@@ -16,7 +16,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { Phone } from 'lucide-react';
+import { Mail, Phone, CheckCircle } from 'lucide-react';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle,
+  DialogFooter
+} from '@/components/ui/dialog';
 
 interface PaymentLink {
   id: string;
@@ -28,6 +35,7 @@ interface PaymentLink {
 
 const SendLinkPage = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [formData, setFormData] = useState({
     patientName: '',
     patientEmail: '',
@@ -90,11 +98,17 @@ const SendLinkPage = () => {
       }
     }
     
+    // Show confirmation dialog instead of proceeding directly
+    setShowConfirmation(true);
+  };
+
+  const sendPaymentLink = () => {
     setIsLoading(true);
     
     // Mock sending email
     setTimeout(() => {
       setIsLoading(false);
+      setShowConfirmation(false);
       
       toast.success('Payment link sent successfully');
       
@@ -144,39 +158,41 @@ const SendLinkPage = () => {
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="patientEmail">Patient Email*</Label>
-              <Input
-                id="patientEmail"
-                name="patientEmail"
-                type="email"
-                placeholder="patient@example.com"
-                value={formData.patientEmail}
-                onChange={handleChange}
-                disabled={isLoading}
-                required
-                className="w-full input-focus"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="patientPhone">Patient Phone (Optional)</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
-                <Input
-                  id="patientPhone"
-                  name="patientPhone"
-                  type="tel"
-                  placeholder="+44 7700 900000"
-                  value={formData.patientPhone}
-                  onChange={handleChange}
-                  disabled={isLoading}
-                  className="w-full input-focus pl-10"
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="patientEmail">Patient Email*</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+                  <Input
+                    id="patientEmail"
+                    name="patientEmail"
+                    type="email"
+                    placeholder="patient@example.com"
+                    value={formData.patientEmail}
+                    onChange={handleChange}
+                    disabled={isLoading}
+                    required
+                    className="w-full input-focus pl-10"
+                  />
+                </div>
               </div>
-              <p className="text-xs text-gray-500">
-                Enter phone number in international format (e.g., +44 7700 900000)
-              </p>
+              
+              <div className="space-y-2">
+                <Label htmlFor="patientPhone">Patient Phone (Optional)</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+                  <Input
+                    id="patientPhone"
+                    name="patientPhone"
+                    type="tel"
+                    placeholder="+44 7700 900000"
+                    value={formData.patientPhone}
+                    onChange={handleChange}
+                    disabled={isLoading}
+                    className="w-full input-focus pl-10"
+                  />
+                </div>
+              </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -238,31 +254,6 @@ const SendLinkPage = () => {
               </p>
             </div>
             
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-blue-700 mb-2">Email Preview</h4>
-              <div className="text-sm text-blue-600">
-                <p>Subject: Payment request from {formData.patientName ? formData.patientName + "'s" : "your"} clinic</p>
-                <p className="mt-1">
-                  Recipients: {formData.patientEmail || 'patient@example.com'}
-                </p>
-                {formData.patientPhone && (
-                  <p className="mt-1">
-                    SMS notification will also be sent to: {formData.patientPhone}
-                  </p>
-                )}
-                {paymentAmount && (
-                  <p className="mt-1">
-                    Payment amount: {paymentAmount}
-                  </p>
-                )}
-                {selectedPaymentLink && (
-                  <p className="mt-1">
-                    Payment for: {selectedPaymentLink.title}
-                  </p>
-                )}
-              </div>
-            </div>
-            
             <Button 
               type="submit" 
               className="w-full btn-gradient"
@@ -274,6 +265,69 @@ const SendLinkPage = () => {
           </form>
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
+              Confirm Payment Link Details
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Recipient:</p>
+              <p className="text-sm">{formData.patientName}</p>
+            </div>
+            
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Send to:</p>
+              <p className="text-sm">
+                Email: {formData.patientEmail}
+                {formData.patientPhone && <span> | Phone: {formData.patientPhone}</span>}
+              </p>
+            </div>
+            
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Payment Details:</p>
+              <p className="text-sm">
+                {selectedPaymentLink ? (
+                  <>Payment for: {selectedPaymentLink.title} ({paymentAmount})</>
+                ) : (
+                  <>Custom payment amount: {paymentAmount}</>
+                )}
+              </p>
+            </div>
+            
+            {formData.message && (
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Custom Message:</p>
+                <p className="text-sm">{formData.message}</p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowConfirmation(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={sendPaymentLink}
+              disabled={isLoading}
+              className="btn-gradient"
+            >
+              {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
+              Send Payment Link
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
