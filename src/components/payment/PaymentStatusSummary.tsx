@@ -7,7 +7,7 @@ interface PaymentStatusSummaryProps {
   status: 'success' | 'failed' | 'pending';
   title: string;
   description: string;
-  primaryActionLabel?: string;
+  primaryActionLabel?: React.ReactNode; // Change from string to ReactNode
   secondaryActionLabel?: string;
   onPrimaryAction?: () => void;
   onSecondaryAction?: () => void;
