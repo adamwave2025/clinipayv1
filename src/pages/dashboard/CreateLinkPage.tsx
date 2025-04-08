@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -17,10 +18,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Copy, ExternalLink, Check, Send } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle,
+  DialogFooter
+} from '@/components/ui/dialog';
 
 const CreateLinkPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [formData, setFormData] = useState({
     paymentTitle: '',
     amount: '',
@@ -61,7 +70,7 @@ const CreateLinkPage = () => {
       
       setGeneratedLink(mockLink);
       setIsLoading(false);
-      toast.success('Payment link created successfully');
+      setShowConfirmation(true);
     }, 1500);
   };
 
@@ -74,6 +83,7 @@ const CreateLinkPage = () => {
 
   const resetForm = () => {
     setGeneratedLink(null);
+    setShowConfirmation(false);
     setFormData({
       paymentTitle: '',
       amount: '',
@@ -83,6 +93,20 @@ const CreateLinkPage = () => {
     });
   };
 
+  // Format currency symbol
+  const getCurrencySymbol = (currency: string) => {
+    switch (currency) {
+      case 'GBP':
+        return '£';
+      case 'EUR':
+        return '€';
+      case 'USD':
+        return '$';
+      default:
+        return '£';
+    }
+  };
+
   return (
     <DashboardLayout userType="clinic">
       <PageHeader 
@@ -90,184 +114,180 @@ const CreateLinkPage = () => {
         description="Generate a secure payment link to send to your patients"
       />
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Form */}
-        <div className="lg:col-span-2">
-          <Card className="card-shadow">
-            <CardContent className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="paymentTitle">Payment Title*</Label>
+      <Card className="card-shadow max-w-2xl mx-auto">
+        <CardContent className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="paymentTitle">Payment Title*</Label>
+              <Input
+                id="paymentTitle"
+                name="paymentTitle"
+                placeholder="e.g., Consultation Deposit"
+                value={formData.paymentTitle}
+                onChange={handleChange}
+                disabled={isLoading}
+                required
+                className="w-full input-focus"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount*</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                    {getCurrencySymbol(formData.currency)}
+                  </span>
                   <Input
-                    id="paymentTitle"
-                    name="paymentTitle"
-                    placeholder="e.g., Consultation Deposit"
-                    value={formData.paymentTitle}
+                    id="amount"
+                    name="amount"
+                    placeholder="0.00"
+                    value={formData.amount}
                     onChange={handleChange}
-                    disabled={isLoading || !!generatedLink}
-                    required
-                    className="w-full input-focus"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Amount*</Label>
-                    <Input
-                      id="amount"
-                      name="amount"
-                      placeholder="0.00"
-                      value={formData.amount}
-                      onChange={handleChange}
-                      disabled={isLoading || !!generatedLink}
-                      required
-                      className="w-full input-focus"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="currency">Currency</Label>
-                    <Select
-                      value={formData.currency}
-                      onValueChange={(value) => handleSelectChange('currency', value)}
-                      disabled={isLoading || !!generatedLink}
-                    >
-                      <SelectTrigger id="currency" className="input-focus">
-                        <SelectValue placeholder="Select currency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="GBP">GBP (£)</SelectItem>
-                        <SelectItem value="EUR">EUR (€)</SelectItem>
-                        <SelectItem value="USD">USD ($)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="paymentType">Payment Type</Label>
-                  <Select
-                    value={formData.paymentType}
-                    onValueChange={(value) => handleSelectChange('paymentType', value)}
-                    disabled={isLoading || !!generatedLink}
-                  >
-                    <SelectTrigger id="paymentType" className="input-focus">
-                      <SelectValue placeholder="Select payment type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="deposit">Deposit</SelectItem>
-                      <SelectItem value="treatment">Treatment</SelectItem>
-                      <SelectItem value="consultation">Consultation</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description (Optional)</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    placeholder="Enter details about this payment..."
-                    value={formData.description}
-                    onChange={handleChange}
-                    disabled={isLoading || !!generatedLink}
-                    className="w-full input-focus min-h-[120px]"
-                  />
-                </div>
-                
-                {!generatedLink && (
-                  <Button 
-                    type="submit" 
-                    className="w-full btn-gradient"
                     disabled={isLoading}
-                  >
-                    {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
-                    Generate Payment Link
-                  </Button>
-                )}
-                
-                {generatedLink && (
-                  <Button 
-                    type="button" 
-                    className="w-full"
-                    variant="outline"
-                    onClick={resetForm}
-                  >
-                    Create Another Link
-                  </Button>
-                )}
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-        
-        {/* Preview / Generated link */}
-        <div>
-          <Card className="card-shadow">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Payment Link</h3>
+                    required
+                    className="w-full input-focus pl-8"
+                  />
+                </div>
+              </div>
               
-              {generatedLink ? (
-                <div className="space-y-4">
-                  <div className="p-4 bg-green-50 rounded-lg text-green-700 text-center">
-                    <Check className="h-6 w-6 mx-auto mb-2" />
-                    <h4 className="font-medium">Link Generated Successfully!</h4>
-                    <p className="text-sm mt-1">Your payment link is now ready to be shared.</p>
-                  </div>
-                  
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg break-all">
-                    <p className="text-sm text-gray-600 flex-1">{generatedLink}</p>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={handleCopyLink}
-                      className="flex-shrink-0 ml-2"
-                      aria-label="Copy link"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="flex flex-col gap-3">
-                    <Button className="btn-gradient w-full" asChild>
-                      <Link to="/dashboard/send-link" className="flex items-center justify-center">
-                        <Send className="mr-2 h-4 w-4" />
-                        Send via Email
-                      </Link>
-                    </Button>
-                    
-                    <Button variant="outline" className="w-full" asChild>
-                      <a 
-                        href={generatedLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center"
-                      >
-                        Preview
-                        <ExternalLink className="ml-2 h-4 w-4" />
-                      </a>
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="min-h-[200px] flex items-center justify-center">
-                  {isLoading ? (
-                    <div className="text-center">
-                      <LoadingSpinner size="lg" className="mx-auto mb-3" />
-                      <p className="text-gray-500">Generating your payment link...</p>
-                    </div>
-                  ) : (
-                    <div className="text-center p-8">
-                      <p className="text-gray-500">Complete the form to generate a payment link</p>
-                    </div>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="currency">Currency</Label>
+                <Select
+                  value={formData.currency}
+                  onValueChange={(value) => handleSelectChange('currency', value)}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="currency" className="input-focus">
+                    <SelectValue placeholder="Select currency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GBP">GBP (£)</SelectItem>
+                    <SelectItem value="EUR">EUR (€)</SelectItem>
+                    <SelectItem value="USD">USD ($)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="paymentType">Payment Type</Label>
+              <Select
+                value={formData.paymentType}
+                onValueChange={(value) => handleSelectChange('paymentType', value)}
+                disabled={isLoading}
+              >
+                <SelectTrigger id="paymentType" className="input-focus">
+                  <SelectValue placeholder="Select payment type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="deposit">Deposit</SelectItem>
+                  <SelectItem value="treatment">Treatment</SelectItem>
+                  <SelectItem value="consultation">Consultation</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="description">Description (Optional)</Label>
+              <Textarea
+                id="description"
+                name="description"
+                placeholder="Enter details about this payment..."
+                value={formData.description}
+                onChange={handleChange}
+                disabled={isLoading}
+                className="w-full input-focus min-h-[120px]"
+              />
+            </div>
+            
+            <Button 
+              type="submit" 
+              className="w-full btn-gradient"
+              disabled={isLoading}
+            >
+              {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
+              Generate Payment Link
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Check className="h-6 w-6 text-green-500 mr-2" />
+              Payment Link Created
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="p-4 bg-green-50 rounded-lg text-green-700 text-center">
+              <p className="font-medium">Your payment link has been generated successfully!</p>
+            </div>
+            
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Payment Details:</p>
+              <p className="text-sm">
+                {formData.paymentTitle} - {getCurrencySymbol(formData.currency)}{Number(formData.amount).toFixed(2)}
+              </p>
+              {formData.description && (
+                <p className="text-sm text-gray-500 mt-1">{formData.description}</p>
               )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            </div>
+            
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Payment Link:</p>
+              <div className="flex items-center p-3 bg-gray-50 rounded-lg break-all">
+                <p className="text-sm text-gray-600 flex-1">{generatedLink}</p>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={handleCopyLink}
+                  className="flex-shrink-0 ml-2"
+                  aria-label="Copy link"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="sm:justify-between flex-wrap gap-2">
+            <div className="flex space-x-2 w-full sm:w-auto">
+              <Button 
+                variant="outline" 
+                className="flex-1 sm:flex-auto"
+                onClick={resetForm}
+              >
+                Create Another
+              </Button>
+              <Button 
+                variant="outline" 
+                className="flex-1 sm:flex-auto"
+                onClick={handleCopyLink}
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Copy Link
+              </Button>
+            </div>
+            <div className="w-full sm:w-auto">
+              <Button 
+                className="btn-gradient w-full" 
+                asChild
+              >
+                <Link to="/dashboard/send-link" className="flex items-center justify-center">
+                  <Send className="mr-2 h-4 w-4" />
+                  Send via Email
+                </Link>
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
