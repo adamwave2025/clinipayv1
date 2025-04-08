@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { Phone } from 'lucide-react';
 
 interface PaymentLink {
   id: string;
@@ -30,6 +31,7 @@ const SendLinkPage = () => {
   const [formData, setFormData] = useState({
     patientName: '',
     patientEmail: '',
+    patientPhone: '',
     selectedLink: '',
     message: '',
   });
@@ -66,6 +68,15 @@ const SendLinkPage = () => {
       return;
     }
     
+    // Phone validation (if provided)
+    if (formData.patientPhone) {
+      const phoneRegex = /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/;
+      if (!phoneRegex.test(formData.patientPhone)) {
+        toast.error('Please enter a valid phone number');
+        return;
+      }
+    }
+    
     setIsLoading(true);
     
     // Mock sending email
@@ -78,6 +89,7 @@ const SendLinkPage = () => {
       setFormData({
         patientName: '',
         patientEmail: '',
+        patientPhone: '',
         selectedLink: '',
         message: '',
       });
@@ -124,6 +136,26 @@ const SendLinkPage = () => {
             </div>
             
             <div className="space-y-2">
+              <Label htmlFor="patientPhone">Patient Phone (Optional)</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <Input
+                  id="patientPhone"
+                  name="patientPhone"
+                  type="tel"
+                  placeholder="+44 7700 900000"
+                  value={formData.patientPhone}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  className="w-full input-focus pl-10"
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                Enter phone number in international format (e.g., +44 7700 900000)
+              </p>
+            </div>
+            
+            <div className="space-y-2">
               <Label htmlFor="selectedLink">Select Payment Link*</Label>
               <Select
                 value={formData.selectedLink}
@@ -166,6 +198,11 @@ const SendLinkPage = () => {
                 <p className="mt-1">
                   Recipients: {formData.patientEmail || 'patient@example.com'}
                 </p>
+                {formData.patientPhone && (
+                  <p className="mt-1">
+                    SMS notification will also be sent to: {formData.patientPhone}
+                  </p>
+                )}
               </div>
             </div>
             

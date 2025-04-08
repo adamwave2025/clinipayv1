@@ -1,8 +1,7 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import StatusBadge from '../common/StatusBadge';
-import DateFilter from '../common/DateFilter';
 
 export interface Payment {
   id: string;
@@ -22,15 +21,6 @@ interface RecentPaymentsCardProps {
 }
 
 const RecentPaymentsCard = ({ payments, onRefund, onPaymentClick }: RecentPaymentsCardProps) => {
-  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
-  
-  const filteredPayments = dateFilter 
-    ? payments.filter(payment => {
-        const paymentDate = new Date(payment.date);
-        return paymentDate.toDateString() === dateFilter.toDateString();
-      })
-    : payments;
-
   // Capitalize first letter of payment type
   const capitalizeFirstLetter = (string: string) => {
     return string.charAt(0).toUpperCase() + string.slice(1);
@@ -43,10 +33,6 @@ const RecentPaymentsCard = ({ payments, onRefund, onPaymentClick }: RecentPaymen
           <CardTitle>Recent Payments</CardTitle>
           <CardDescription>Manage your recent payments</CardDescription>
         </div>
-        <DateFilter 
-          date={dateFilter} 
-          onDateChange={setDateFilter} 
-        />
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
@@ -61,14 +47,14 @@ const RecentPaymentsCard = ({ payments, onRefund, onPaymentClick }: RecentPaymen
               </tr>
             </thead>
             <tbody>
-              {filteredPayments.length === 0 ? (
+              {payments.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-4 text-center text-gray-500">
                     No payments found
                   </td>
                 </tr>
               ) : (
-                filteredPayments.map((payment) => (
+                payments.map((payment) => (
                   <tr 
                     key={payment.id} 
                     className="border-b hover:bg-gray-50 transition-colors cursor-pointer"

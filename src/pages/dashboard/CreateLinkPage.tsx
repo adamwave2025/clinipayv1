@@ -15,7 +15,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Copy, ExternalLink } from 'lucide-react';
+import { Copy, ExternalLink, Check, Send } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 const CreateLinkPage = () => {
@@ -72,6 +72,17 @@ const CreateLinkPage = () => {
     }
   };
 
+  const resetForm = () => {
+    setGeneratedLink(null);
+    setFormData({
+      paymentTitle: '',
+      amount: '',
+      currency: 'GBP',
+      paymentType: 'deposit',
+      description: '',
+    });
+  };
+
   return (
     <DashboardLayout userType="clinic">
       <PageHeader 
@@ -93,7 +104,7 @@ const CreateLinkPage = () => {
                     placeholder="e.g., Consultation Deposit"
                     value={formData.paymentTitle}
                     onChange={handleChange}
-                    disabled={isLoading}
+                    disabled={isLoading || !!generatedLink}
                     required
                     className="w-full input-focus"
                   />
@@ -108,7 +119,7 @@ const CreateLinkPage = () => {
                       placeholder="0.00"
                       value={formData.amount}
                       onChange={handleChange}
-                      disabled={isLoading}
+                      disabled={isLoading || !!generatedLink}
                       required
                       className="w-full input-focus"
                     />
@@ -119,7 +130,7 @@ const CreateLinkPage = () => {
                     <Select
                       value={formData.currency}
                       onValueChange={(value) => handleSelectChange('currency', value)}
-                      disabled={isLoading}
+                      disabled={isLoading || !!generatedLink}
                     >
                       <SelectTrigger id="currency" className="input-focus">
                         <SelectValue placeholder="Select currency" />
@@ -138,7 +149,7 @@ const CreateLinkPage = () => {
                   <Select
                     value={formData.paymentType}
                     onValueChange={(value) => handleSelectChange('paymentType', value)}
-                    disabled={isLoading}
+                    disabled={isLoading || !!generatedLink}
                   >
                     <SelectTrigger id="paymentType" className="input-focus">
                       <SelectValue placeholder="Select payment type" />
@@ -160,19 +171,32 @@ const CreateLinkPage = () => {
                     placeholder="Enter details about this payment..."
                     value={formData.description}
                     onChange={handleChange}
-                    disabled={isLoading}
+                    disabled={isLoading || !!generatedLink}
                     className="w-full input-focus min-h-[120px]"
                   />
                 </div>
                 
-                <Button 
-                  type="submit" 
-                  className="w-full btn-gradient"
-                  disabled={isLoading}
-                >
-                  {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
-                  Generate Payment Link
-                </Button>
+                {!generatedLink && (
+                  <Button 
+                    type="submit" 
+                    className="w-full btn-gradient"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
+                    Generate Payment Link
+                  </Button>
+                )}
+                
+                {generatedLink && (
+                  <Button 
+                    type="button" 
+                    className="w-full"
+                    variant="outline"
+                    onClick={resetForm}
+                  >
+                    Create Another Link
+                  </Button>
+                )}
               </form>
             </CardContent>
           </Card>
@@ -186,6 +210,12 @@ const CreateLinkPage = () => {
               
               {generatedLink ? (
                 <div className="space-y-4">
+                  <div className="p-4 bg-green-50 rounded-lg text-green-700 text-center">
+                    <Check className="h-6 w-6 mx-auto mb-2" />
+                    <h4 className="font-medium">Link Generated Successfully!</h4>
+                    <p className="text-sm mt-1">Your payment link is now ready to be shared.</p>
+                  </div>
+                  
                   <div className="flex items-center p-3 bg-gray-50 rounded-lg break-all">
                     <p className="text-sm text-gray-600 flex-1">{generatedLink}</p>
                     <Button 
@@ -201,9 +231,10 @@ const CreateLinkPage = () => {
                   
                   <div className="flex flex-col gap-3">
                     <Button className="btn-gradient w-full" asChild>
-                      <a href="/dashboard/send-link" className="flex items-center justify-center">
+                      <Link to="/dashboard/send-link" className="flex items-center justify-center">
+                        <Send className="mr-2 h-4 w-4" />
                         Send via Email
-                      </a>
+                      </Link>
                     </Button>
                     
                     <Button variant="outline" className="w-full" asChild>
@@ -220,8 +251,17 @@ const CreateLinkPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <p>Your generated payment link will appear here</p>
+                <div className="min-h-[200px] flex items-center justify-center">
+                  {isLoading ? (
+                    <div className="text-center">
+                      <LoadingSpinner size="lg" className="mx-auto mb-3" />
+                      <p className="text-gray-500">Generating your payment link...</p>
+                    </div>
+                  ) : (
+                    <div className="text-center p-8">
+                      <p className="text-gray-500">Complete the form to generate a payment link</p>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

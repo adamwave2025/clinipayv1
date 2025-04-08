@@ -10,6 +10,16 @@ import PaymentStatsCards from '@/components/dashboard/PaymentStatsCards';
 import PaymentLinksCard, { PaymentLink } from '@/components/dashboard/PaymentLinksCard';
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const DashboardPage = () => {
   // Mock data
@@ -95,6 +105,8 @@ const DashboardPage = () => {
 
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
 
   const stats = {
     totalReceivedToday: 200.00,
@@ -103,17 +115,29 @@ const DashboardPage = () => {
     totalRefundedMonth: 225.00,
   };
 
-  const handleRefund = (paymentId: string) => {
+  const openRefundDialog = (paymentId: string) => {
+    setPaymentToRefund(paymentId);
+    setRefundDialogOpen(true);
+  };
+
+  const handleRefund = () => {
+    if (!paymentToRefund) return;
+    
     // Mock refund process
     setPayments(prevPayments =>
       prevPayments.map(payment =>
-        payment.id === paymentId
+        payment.id === paymentToRefund
           ? { ...payment, status: 'refunded' as const }
           : payment
       )
     );
     
+    // Close both dialogs
+    setRefundDialogOpen(false);
+    setDialogOpen(false);
+    
     toast.success('Payment refunded successfully');
+    setPaymentToRefund(null);
   };
 
   const handlePaymentClick = (payment: Payment) => {
@@ -144,7 +168,7 @@ const DashboardPage = () => {
       
       <RecentPaymentsCard 
         payments={payments} 
-        onRefund={handleRefund}
+        onRefund={openRefundDialog}
         onPaymentClick={handlePaymentClick}
       />
 
@@ -152,8 +176,25 @@ const DashboardPage = () => {
         payment={selectedPayment}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onRefund={handleRefund}
+        onRefund={openRefundDialog}
       />
+
+      <AlertDialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Refund</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to refund this payment? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRefund} className="bg-red-500 hover:bg-red-600">
+              Refund
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
