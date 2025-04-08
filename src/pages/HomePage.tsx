@@ -91,7 +91,7 @@ const HomePage = () => {
             Join clinics already using CliniPay to streamline their payment process and reduce no-shows.
           </p>
           <Button 
-            className="bg-white text-transparent bg-clip-text bg-gradient-primary hover:bg-white text-lg py-6 px-8 rounded-full" 
+            className="bg-white !text-transparent bg-clip-text bg-gradient-primary hover:!bg-white border border-gray-200 shadow-sm text-lg py-6 px-8 rounded-full" 
             asChild
           >
             <Link to="/sign-up">Get Started</Link>
