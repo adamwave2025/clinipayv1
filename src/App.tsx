@@ -1,10 +1,31 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+
+// Public Pages
+import HomePage from "./pages/HomePage";
+import SignInPage from "./pages/SignInPage";
+import SignUpPage from "./pages/SignUpPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 import NotFound from "./pages/NotFound";
+
+// Clinic Dashboard Pages
+import DashboardPage from "./pages/dashboard/DashboardPage";
+import CreateLinkPage from "./pages/dashboard/CreateLinkPage";
+import SendLinkPage from "./pages/dashboard/SendLinkPage";
+import SettingsPage from "./pages/dashboard/SettingsPage";
+
+// Admin Pages
+import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import ClinicsPage from "./pages/admin/ClinicsPage";
+
+// Payment Pages
+import PatientPaymentPage from "./pages/payment/PatientPaymentPage";
+import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
+import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
 
 const queryClient = new QueryClient();
 
@@ -15,8 +36,28 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          {/* Public Routes */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/sign-in" element={<SignInPage />} />
+          <Route path="/sign-up" element={<SignUpPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          
+          {/* Clinic Dashboard Routes */}
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/dashboard/create-link" element={<CreateLinkPage />} />
+          <Route path="/dashboard/send-link" element={<SendLinkPage />} />
+          <Route path="/dashboard/settings" element={<SettingsPage />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminDashboardPage />} />
+          <Route path="/admin/clinics" element={<ClinicsPage />} />
+          
+          {/* Payment Routes */}
+          <Route path="/payment" element={<PatientPaymentPage />} />
+          <Route path="/payment/success" element={<PaymentSuccessPage />} />
+          <Route path="/payment/failed" element={<PaymentFailedPage />} />
+          
+          {/* Catch-all Route */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
