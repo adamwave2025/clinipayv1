@@ -19,7 +19,10 @@ const SettingsPage = () => {
     clinicName: 'Greenfield Medical Clinic',
     email: 'contact@greenfieldclinic.com',
     phone: '+44 20 1234 5678',
-    address: '123 Harley Street, London, W1G 6AB',
+    addressLine1: '123 Harley Street',
+    addressLine2: 'Suite 101',
+    city: 'London',
+    postcode: 'W1G 6AB',
     logo: '',
   });
 
@@ -56,6 +59,11 @@ const SettingsPage = () => {
 
   const handleConnectStripe = () => {
     toast.info('Redirecting to Stripe Connect...');
+  };
+
+  const handleUpdatePassword = () => {
+    // Mock password update
+    toast.success('Password updated successfully');
   };
 
   return (
@@ -140,14 +148,49 @@ const SettingsPage = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
+                    <Label htmlFor="addressLine1">Address Line 1</Label>
                     <Input
-                      id="address"
-                      name="address"
-                      value={profileData.address}
+                      id="addressLine1"
+                      name="addressLine1"
+                      value={profileData.addressLine1}
                       onChange={handleProfileChange}
                       className="w-full input-focus"
                     />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="addressLine2">Address Line 2</Label>
+                    <Input
+                      id="addressLine2"
+                      name="addressLine2"
+                      value={profileData.addressLine2}
+                      onChange={handleProfileChange}
+                      className="w-full input-focus"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City</Label>
+                      <Input
+                        id="city"
+                        name="city"
+                        value={profileData.city}
+                        onChange={handleProfileChange}
+                        className="w-full input-focus"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="postcode">Postcode</Label>
+                      <Input
+                        id="postcode"
+                        name="postcode"
+                        value={profileData.postcode}
+                        onChange={handleProfileChange}
+                        className="w-full input-focus"
+                      />
+                    </div>
                   </div>
                   
                   <Button 
@@ -179,37 +222,6 @@ const SettingsPage = () => {
                   <Button onClick={handleConnectStripe} className="btn-gradient">
                     Connect Stripe
                   </Button>
-                </div>
-              </div>
-              
-              <div className="space-y-6">
-                <div>
-                  <h4 className="font-medium mb-2">Payment Settings</h4>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Configure your payment preferences and default settings.
-                  </p>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Default Currency</p>
-                        <p className="text-sm text-gray-500">British Pound (GBP)</p>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        Change
-                      </Button>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Payment Link Expiry</p>
-                        <p className="text-sm text-gray-500">Links expire after 30 days</p>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        Change
-                      </Button>
-                    </div>
-                  </div>
                 </div>
               </div>
             </CardContent>
@@ -299,7 +311,7 @@ const SettingsPage = () => {
           </Card>
         </TabsContent>
         
-        {/* Security Tab */}
+        {/* Security Tab - Simplified */}
         <TabsContent value="security">
           <Card className="card-shadow">
             <CardContent className="p-6">
@@ -343,32 +355,10 @@ const SettingsPage = () => {
                       />
                     </div>
                     
-                    <Button className="btn-gradient">
+                    <Button className="btn-gradient" onClick={handleUpdatePassword}>
                       Update Password
                     </Button>
                   </div>
-                </div>
-                
-                <div className="pt-6 border-t">
-                  <h4 className="font-medium mb-2">Two-Factor Authentication</h4>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Add an extra layer of security to your account.
-                  </p>
-                  
-                  <Button variant="outline">
-                    Enable 2FA
-                  </Button>
-                </div>
-                
-                <div className="pt-6 border-t">
-                  <h4 className="font-medium mb-2 text-red-600">Danger Zone</h4>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Permanently delete your account and all associated data.
-                  </p>
-                  
-                  <Button variant="destructive">
-                    Delete Account
-                  </Button>
                 </div>
               </div>
             </CardContent>
