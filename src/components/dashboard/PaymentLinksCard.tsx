@@ -1,10 +1,18 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Copy, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 export interface PaymentLink {
   id: string;
@@ -19,10 +27,23 @@ interface PaymentLinksCardProps {
   links: PaymentLink[];
 }
 
+const ITEMS_PER_PAGE = 3;
+
 const PaymentLinksCard = ({ links }: PaymentLinksCardProps) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  
   const handleCopyLink = (url: string) => {
     navigator.clipboard.writeText(url);
     toast.success('Link copied to clipboard');
+  };
+  
+  const totalPages = Math.ceil(links.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedLinks = links.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  // Capitalize first letter of payment type
+  const capitalizeFirstLetter = (string: string) => {
+    return string.charAt(0).toUpperCase() + string.slice(1);
   };
 
   return (
@@ -49,14 +70,14 @@ const PaymentLinksCard = ({ links }: PaymentLinksCardProps) => {
               </tr>
             </thead>
             <tbody>
-              {links.length === 0 ? (
+              {paginatedLinks.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-4 text-center text-gray-500">
                     No payment links found. <Link to="/dashboard/create-link" className="text-primary hover:underline">Create one now</Link>
                   </td>
                 </tr>
               ) : (
-                links.map((link) => (
+                paginatedLinks.map((link) => (
                   <tr 
                     key={link.id} 
                     className="border-b hover:bg-gray-50 transition-colors"
@@ -68,7 +89,7 @@ const PaymentLinksCard = ({ links }: PaymentLinksCardProps) => {
                       £{link.amount.toFixed(2)}
                     </td>
                     <td className="py-4 px-3 text-gray-700">
-                      {link.type}
+                      {capitalizeFirstLetter(link.type)}
                     </td>
                     <td className="py-4 px-3 text-gray-500">
                       {link.createdAt}
@@ -102,6 +123,39 @@ const PaymentLinksCard = ({ links }: PaymentLinksCardProps) => {
               )}
             </tbody>
           </table>
+          
+          {totalPages > 1 && (
+            <div className="mt-4">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: totalPages }).map((_, index) => (
+                    <PaginationItem key={index}>
+                      <PaginationLink
+                        isActive={currentPage === index + 1}
+                        onClick={() => setCurrentPage(index + 1)}
+                      >
+                        {index + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

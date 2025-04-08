@@ -5,13 +5,21 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogClose
+  DialogDescription
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import StatusBadge from '../common/StatusBadge';
-import { X } from 'lucide-react';
 import { Payment } from './RecentPaymentsCard';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PaymentDetailDialogProps {
   payment: Payment | null;
@@ -26,74 +34,99 @@ const PaymentDetailDialog = ({
   onOpenChange,
   onRefund
 }: PaymentDetailDialogProps) => {
+  const [refundAlertOpen, setRefundAlertOpen] = React.useState(false);
+  
   if (!payment) return null;
 
+  // Capitalize first letter of payment type
+  const capitalizedType = payment.type.charAt(0).toUpperCase() + payment.type.slice(1);
+
   const handleRefund = () => {
+    setRefundAlertOpen(true);
+  };
+  
+  const confirmRefund = () => {
     if (onRefund && payment.status === 'paid') {
       onRefund(payment.id);
+      setRefundAlertOpen(false);
       onOpenChange(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Payment Details</DialogTitle>
-          <DialogDescription>
-            View detailed information about this payment.
-          </DialogDescription>
-          <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </DialogClose>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">Patient</h4>
-              <p className="mt-1 font-medium">{payment.patientName}</p>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Payment Details</DialogTitle>
+            <DialogDescription>
+              View detailed information about this payment.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">Patient</h4>
+                <p className="mt-1 font-medium">{payment.patientName}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">Amount</h4>
+                <p className="mt-1 font-medium">£{payment.amount.toFixed(2)}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">Email</h4>
+                <p className="mt-1">{payment.patientEmail || 'Not provided'}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">Phone</h4>
+                <p className="mt-1">{payment.patientPhone || 'Not provided'}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">Date</h4>
+                <p className="mt-1">{payment.date}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">Type</h4>
+                <p className="mt-1">{capitalizedType}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-500">Status</h4>
+                <StatusBadge status={payment.status} className="mt-1" />
+              </div>
             </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">Amount</h4>
-              <p className="mt-1 font-medium">£{payment.amount.toFixed(2)}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">Email</h4>
-              <p className="mt-1">{payment.patientEmail || 'Not provided'}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">Phone</h4>
-              <p className="mt-1">{payment.patientPhone || 'Not provided'}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">Date</h4>
-              <p className="mt-1">{payment.date}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">Type</h4>
-              <p className="mt-1">{payment.type}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">Status</h4>
-              <StatusBadge status={payment.status} className="mt-1" />
-            </div>
+            
+            {payment.status === 'paid' && onRefund && (
+              <div className="flex justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={handleRefund}
+                  className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
+                >
+                  Issue Refund
+                </Button>
+              </div>
+            )}
           </div>
-          
-          {payment.status === 'paid' && onRefund && (
-            <div className="flex justify-end">
-              <Button 
-                variant="outline" 
-                onClick={handleRefund}
-                className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
-              >
-                Issue Refund
-              </Button>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={refundAlertOpen} onOpenChange={setRefundAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Refund</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to issue a refund for £{payment.amount.toFixed(2)} to {payment.patientName}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRefund} className="bg-red-500 hover:bg-red-600">
+              Yes, Refund Payment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -18,6 +17,16 @@ import {
 import { Search } from 'lucide-react';
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const PaymentHistoryPage = () => {
   // Mock data
@@ -72,7 +81,6 @@ const PaymentHistoryPage = () => {
       status: 'failed',
       type: 'treatment',
     },
-    // Additional mock data for payment history
     {
       id: '6',
       patientName: 'Robert Smith',
@@ -112,18 +120,30 @@ const PaymentHistoryPage = () => {
   
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [refundAlertOpen, setRefundAlertOpen] = useState(false);
 
-  const handleRefund = (paymentId: string) => {
-    // Mock refund process
-    setPayments(prevPayments =>
-      prevPayments.map(payment =>
-        payment.id === paymentId
-          ? { ...payment, status: 'refunded' as const }
-          : payment
-      )
-    );
-    
-    toast.success('Payment refunded successfully');
+  const handleRefundInitiate = (paymentId: string) => {
+    const payment = payments.find(p => p.id === paymentId);
+    if (payment) {
+      setSelectedPayment(payment);
+      setRefundAlertOpen(true);
+    }
+  };
+
+  const handleRefundConfirm = () => {
+    if (selectedPayment) {
+      setPayments(prevPayments =>
+        prevPayments.map(payment =>
+          payment.id === selectedPayment.id
+            ? { ...payment, status: 'refunded' as const }
+            : payment
+        )
+      );
+      
+      toast.success('Payment refunded successfully');
+      setRefundAlertOpen(false);
+      setDialogOpen(false);
+    }
   };
 
   const handlePaymentClick = (payment: Payment) => {
@@ -131,22 +151,21 @@ const PaymentHistoryPage = () => {
     setDialogOpen(true);
   };
 
-  // Filter payments based on search, date, type, and status
+  const capitalizeFirstLetter = (string: string) => {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  };
+
   const filteredPayments = payments.filter(payment => {
-    // Search filter
     const matchesSearch = search === '' || 
       payment.patientName.toLowerCase().includes(search.toLowerCase()) ||
       payment.patientEmail?.toLowerCase().includes(search.toLowerCase()) ||
       payment.patientPhone?.includes(search);
     
-    // Date filter
     const matchesDate = !dateFilter || 
       new Date(payment.date).toDateString() === dateFilter.toDateString();
     
-    // Type filter
     const matchesType = typeFilter === 'all' || payment.type === typeFilter;
     
-    // Status filter
     const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
     
     return matchesSearch && matchesDate && matchesType && matchesStatus;
@@ -247,7 +266,7 @@ const PaymentHistoryPage = () => {
                         £{payment.amount.toFixed(2)}
                       </td>
                       <td className="py-4 px-3 text-gray-700">
-                        {payment.type}
+                        {capitalizeFirstLetter(payment.type)}
                       </td>
                       <td className="py-4 px-3 text-gray-500">
                         {payment.date}
@@ -268,8 +287,29 @@ const PaymentHistoryPage = () => {
         payment={selectedPayment}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onRefund={handleRefund}
+        onRefund={handleRefundInitiate}
       />
+
+      <AlertDialog open={refundAlertOpen} onOpenChange={setRefundAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Refund</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedPayment && (
+                <>
+                  Are you sure you want to issue a refund for £{selectedPayment.amount.toFixed(2)} to {selectedPayment.patientName}? This action cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRefundConfirm} className="bg-red-500 hover:bg-red-600">
+              Yes, Refund Payment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };

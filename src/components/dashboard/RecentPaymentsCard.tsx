@@ -31,6 +31,11 @@ const RecentPaymentsCard = ({ payments, onRefund, onPaymentClick }: RecentPaymen
       })
     : payments;
 
+  // Capitalize first letter of payment type
+  const capitalizeFirstLetter = (string: string) => {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  };
+
   return (
     <Card className="card-shadow">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -76,7 +81,7 @@ const RecentPaymentsCard = ({ payments, onRefund, onPaymentClick }: RecentPaymen
                       £{payment.amount.toFixed(2)}
                     </td>
                     <td className="py-4 px-3 text-gray-700">
-                      {payment.type}
+                      {capitalizeFirstLetter(payment.type)}
                     </td>
                     <td className="py-4 px-3 text-gray-500">
                       {payment.date}
