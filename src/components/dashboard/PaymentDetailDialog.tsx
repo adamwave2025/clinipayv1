@@ -10,16 +10,6 @@ import {
 import { Button } from '@/components/ui/button';
 import StatusBadge from '../common/StatusBadge';
 import { Payment } from './RecentPaymentsCard';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 interface PaymentDetailDialogProps {
   payment: Payment | null;
@@ -34,99 +24,72 @@ const PaymentDetailDialog = ({
   onOpenChange,
   onRefund
 }: PaymentDetailDialogProps) => {
-  const [refundAlertOpen, setRefundAlertOpen] = React.useState(false);
-  
   if (!payment) return null;
 
   // Capitalize first letter of payment type
   const capitalizedType = payment.type.charAt(0).toUpperCase() + payment.type.slice(1);
 
   const handleRefund = () => {
-    setRefundAlertOpen(true);
-  };
-  
-  const confirmRefund = () => {
     if (onRefund && payment.status === 'paid') {
       onRefund(payment.id);
-      setRefundAlertOpen(false);
-      onOpenChange(false);
     }
   };
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Payment Details</DialogTitle>
-            <DialogDescription>
-              View detailed information about this payment.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Patient</h4>
-                <p className="mt-1 font-medium">{payment.patientName}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Amount</h4>
-                <p className="mt-1 font-medium">£{payment.amount.toFixed(2)}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Email</h4>
-                <p className="mt-1">{payment.patientEmail || 'Not provided'}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Phone</h4>
-                <p className="mt-1">{payment.patientPhone || 'Not provided'}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Date</h4>
-                <p className="mt-1">{payment.date}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Type</h4>
-                <p className="mt-1">{capitalizedType}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Status</h4>
-                <StatusBadge status={payment.status} className="mt-1" />
-              </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Payment Details</DialogTitle>
+          <DialogDescription>
+            View detailed information about this payment.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h4 className="text-sm font-medium text-gray-500">Patient</h4>
+              <p className="mt-1 font-medium">{payment.patientName}</p>
             </div>
-            
-            {payment.status === 'paid' && onRefund && (
-              <div className="flex justify-end">
-                <Button 
-                  variant="outline" 
-                  onClick={handleRefund}
-                  className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
-                >
-                  Issue Refund
-                </Button>
-              </div>
-            )}
+            <div>
+              <h4 className="text-sm font-medium text-gray-500">Amount</h4>
+              <p className="mt-1 font-medium">£{payment.amount.toFixed(2)}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-gray-500">Email</h4>
+              <p className="mt-1">{payment.patientEmail || 'Not provided'}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-gray-500">Phone</h4>
+              <p className="mt-1">{payment.patientPhone || 'Not provided'}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-gray-500">Date</h4>
+              <p className="mt-1">{payment.date}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-gray-500">Type</h4>
+              <p className="mt-1">{capitalizedType}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-gray-500">Status</h4>
+              <StatusBadge status={payment.status} className="mt-1" />
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={refundAlertOpen} onOpenChange={setRefundAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Refund</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to issue a refund for £{payment.amount.toFixed(2)} to {payment.patientName}? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRefund} className="bg-red-500 hover:bg-red-600">
-              Yes, Refund Payment
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+          
+          {payment.status === 'paid' && onRefund && (
+            <div className="flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={handleRefund}
+                className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
+              >
+                Issue Refund
+              </Button>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

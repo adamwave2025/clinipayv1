@@ -5,7 +5,6 @@ import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Logo from '../common/Logo';
 import { Link } from 'react-router-dom';
-import { Toaster } from "@/components/ui/sonner";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -21,8 +20,6 @@ const DashboardLayout = ({ children, userType }: DashboardLayoutProps) => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
-      <Toaster position="top-right" />
-      
       {/* Mobile header */}
       <div className="md:hidden flex items-center justify-between p-4 bg-white shadow-sm">
         <Link to="/" className="flex items-center">
