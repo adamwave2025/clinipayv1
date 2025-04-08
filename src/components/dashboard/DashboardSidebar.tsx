@@ -8,7 +8,8 @@ import {
   Settings, 
   Users, 
   LogOut, 
-  X 
+  X,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Logo from '../common/Logo';
@@ -41,6 +42,11 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
       to: '/dashboard/send-link', 
       label: 'Send a Link', 
       icon: <Send className="w-5 h-5" /> 
+    },
+    { 
+      to: '/dashboard/payment-history', 
+      label: 'Payment History', 
+      icon: <Clock className="w-5 h-5" /> 
     },
     { 
       to: '/dashboard/settings', 

@@ -22,6 +22,7 @@ import DashboardPage from "./pages/dashboard/DashboardPage";
 import CreateLinkPage from "./pages/dashboard/CreateLinkPage";
 import SendLinkPage from "./pages/dashboard/SendLinkPage";
 import SettingsPage from "./pages/dashboard/SettingsPage";
+import PaymentHistoryPage from "./pages/dashboard/PaymentHistoryPage";
 
 // Admin Pages
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
@@ -57,6 +58,7 @@ const App = () => (
           <Route path="/dashboard/create-link" element={<CreateLinkPage />} />
           <Route path="/dashboard/send-link" element={<SendLinkPage />} />
           <Route path="/dashboard/settings" element={<SettingsPage />} />
+          <Route path="/dashboard/payment-history" element={<PaymentHistoryPage />} />
           
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminDashboardPage />} />
