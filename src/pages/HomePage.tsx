@@ -50,8 +50,8 @@ const HomePage = () => {
           </div>
 
           <div className="flex flex-col md:flex-row justify-center gap-8 max-w-4xl mx-auto">
-            <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg">
-              <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center mb-4">
+            <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg text-center">
+              <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center mb-4 mx-auto">
                 <CreditCard className="text-white h-6 w-6" />
               </div>
               <h3 className="text-xl font-bold mb-2">Create payment links</h3>
@@ -60,8 +60,8 @@ const HomePage = () => {
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg">
-              <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center mb-4">
+            <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg text-center">
+              <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center mb-4 mx-auto">
                 <Check className="text-white h-6 w-6" />
               </div>
               <h3 className="text-xl font-bold mb-2">Collect payments</h3>
@@ -70,8 +70,8 @@ const HomePage = () => {
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg">
-              <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center mb-4">
+            <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg text-center">
+              <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center mb-4 mx-auto">
                 <Shield className="text-white h-6 w-6" />
               </div>
               <h3 className="text-xl font-bold mb-2">Manage everything</h3>
@@ -91,7 +91,7 @@ const HomePage = () => {
             Join clinics already using CliniPay to streamline their payment process and reduce no-shows.
           </p>
           <Button 
-            className="bg-white text-transparent bg-clip-text bg-gradient-primary hover:bg-gray-100 text-lg py-6 px-8 rounded-full"
+            className="bg-white text-transparent bg-clip-text bg-gradient-primary hover:bg-white text-lg py-6 px-8 rounded-full" 
             asChild
           >
             <Link to="/sign-up">Get Started</Link>
