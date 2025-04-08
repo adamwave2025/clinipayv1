@@ -16,7 +16,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Copy, ExternalLink, Check, Send } from 'lucide-react';
+import { Copy, Send, Check } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { 
   Dialog, 
@@ -33,7 +33,6 @@ const CreateLinkPage = () => {
   const [formData, setFormData] = useState({
     paymentTitle: '',
     amount: '',
-    currency: 'GBP',
     paymentType: 'deposit',
     description: '',
   });
@@ -87,24 +86,9 @@ const CreateLinkPage = () => {
     setFormData({
       paymentTitle: '',
       amount: '',
-      currency: 'GBP',
       paymentType: 'deposit',
       description: '',
     });
-  };
-
-  // Format currency symbol
-  const getCurrencySymbol = (currency: string) => {
-    switch (currency) {
-      case 'GBP':
-        return '£';
-      case 'EUR':
-        return '€';
-      case 'USD':
-        return '$';
-      default:
-        return '£';
-    }
   };
 
   return (
@@ -131,42 +115,22 @@ const CreateLinkPage = () => {
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount*</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                    {getCurrencySymbol(formData.currency)}
-                  </span>
-                  <Input
-                    id="amount"
-                    name="amount"
-                    placeholder="0.00"
-                    value={formData.amount}
-                    onChange={handleChange}
-                    disabled={isLoading}
-                    required
-                    className="w-full input-focus pl-8"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="currency">Currency</Label>
-                <Select
-                  value={formData.currency}
-                  onValueChange={(value) => handleSelectChange('currency', value)}
+            <div className="space-y-2">
+              <Label htmlFor="amount">Amount*</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                  £
+                </span>
+                <Input
+                  id="amount"
+                  name="amount"
+                  placeholder="0.00"
+                  value={formData.amount}
+                  onChange={handleChange}
                   disabled={isLoading}
-                >
-                  <SelectTrigger id="currency" className="input-focus">
-                    <SelectValue placeholder="Select currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="GBP">GBP (£)</SelectItem>
-                    <SelectItem value="EUR">EUR (€)</SelectItem>
-                    <SelectItem value="USD">USD ($)</SelectItem>
-                  </SelectContent>
-                </Select>
+                  required
+                  className="w-full input-focus pl-8"
+                />
               </div>
             </div>
             
@@ -232,7 +196,7 @@ const CreateLinkPage = () => {
             <div className="space-y-1">
               <p className="text-sm font-medium">Payment Details:</p>
               <p className="text-sm">
-                {formData.paymentTitle} - {getCurrencySymbol(formData.currency)}{Number(formData.amount).toFixed(2)}
+                {formData.paymentTitle} - £{Number(formData.amount).toFixed(2)}
               </p>
               {formData.description && (
                 <p className="text-sm text-gray-500 mt-1">{formData.description}</p>
@@ -256,35 +220,16 @@ const CreateLinkPage = () => {
             </div>
           </div>
           
-          <DialogFooter className="sm:justify-between flex-wrap gap-2">
-            <div className="flex space-x-2 w-full sm:w-auto">
-              <Button 
-                variant="outline" 
-                className="flex-1 sm:flex-auto"
-                onClick={resetForm}
-              >
-                Create Another
-              </Button>
-              <Button 
-                variant="outline" 
-                className="flex-1 sm:flex-auto"
-                onClick={handleCopyLink}
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                Copy Link
-              </Button>
-            </div>
-            <div className="w-full sm:w-auto">
-              <Button 
-                className="btn-gradient w-full" 
-                asChild
-              >
-                <Link to="/dashboard/send-link" className="flex items-center justify-center">
-                  <Send className="mr-2 h-4 w-4" />
-                  Send via Email
-                </Link>
-              </Button>
-            </div>
+          <DialogFooter>
+            <Button 
+              className="btn-gradient w-full" 
+              asChild
+            >
+              <Link to="/dashboard/send-link" className="flex items-center justify-center">
+                <Send className="mr-2 h-4 w-4" />
+                Send Link
+              </Link>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
