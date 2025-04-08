@@ -33,6 +33,7 @@ const SendLinkPage = () => {
     patientEmail: '',
     patientPhone: '',
     selectedLink: '',
+    customAmount: '',
     message: '',
   });
 
@@ -56,8 +57,20 @@ const SendLinkPage = () => {
     e.preventDefault();
     
     // Basic validation
-    if (!formData.patientName || !formData.patientEmail || !formData.selectedLink) {
+    if (!formData.patientName || !formData.patientEmail) {
       toast.error('Please fill in all required fields');
+      return;
+    }
+    
+    // Validate either selectedLink or customAmount is filled
+    if (!formData.selectedLink && !formData.customAmount) {
+      toast.error('Please either select a payment link or enter a custom amount');
+      return;
+    }
+    
+    // Custom amount validation
+    if (formData.customAmount && (isNaN(Number(formData.customAmount)) || Number(formData.customAmount) <= 0)) {
+      toast.error('Please enter a valid amount');
       return;
     }
     
@@ -91,10 +104,21 @@ const SendLinkPage = () => {
         patientEmail: '',
         patientPhone: '',
         selectedLink: '',
+        customAmount: '',
         message: '',
       });
     }, 1500);
   };
+
+  // Find the selected payment link for the preview
+  const selectedPaymentLink = formData.selectedLink 
+    ? paymentLinks.find(link => link.id === formData.selectedLink) 
+    : null;
+  
+  // Determine the payment amount for the preview
+  const paymentAmount = selectedPaymentLink 
+    ? `£${selectedPaymentLink.amount.toFixed(2)}` 
+    : (formData.customAmount ? `£${Number(formData.customAmount).toFixed(2)}` : '');
 
   return (
     <DashboardLayout userType="clinic">
@@ -155,24 +179,47 @@ const SendLinkPage = () => {
               </p>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="selectedLink">Select Payment Link*</Label>
-              <Select
-                value={formData.selectedLink}
-                onValueChange={handleSelectChange}
-                disabled={isLoading}
-              >
-                <SelectTrigger id="selectedLink" className="input-focus">
-                  <SelectValue placeholder="Choose a payment link" />
-                </SelectTrigger>
-                <SelectContent>
-                  {paymentLinks.map(link => (
-                    <SelectItem key={link.id} value={link.id}>
-                      {link.title} - £{link.amount.toFixed(2)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="selectedLink">Select Payment Link (Optional)</Label>
+                <Select
+                  value={formData.selectedLink}
+                  onValueChange={handleSelectChange}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="selectedLink" className="input-focus">
+                    <SelectValue placeholder="Choose a payment link" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paymentLinks.map(link => (
+                      <SelectItem key={link.id} value={link.id}>
+                        {link.title} - £{link.amount.toFixed(2)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">Select an existing payment link or enter a custom amount</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="customAmount">Custom Amount (Optional)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">£</span>
+                  <Input
+                    id="customAmount"
+                    name="customAmount"
+                    type="text"
+                    placeholder="0.00"
+                    value={formData.customAmount}
+                    onChange={handleChange}
+                    disabled={isLoading}
+                    className="w-full input-focus pl-8"
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Enter a custom amount if not using an existing payment link
+                </p>
+              </div>
             </div>
             
             <div className="space-y-2">
@@ -201,6 +248,16 @@ const SendLinkPage = () => {
                 {formData.patientPhone && (
                   <p className="mt-1">
                     SMS notification will also be sent to: {formData.patientPhone}
+                  </p>
+                )}
+                {paymentAmount && (
+                  <p className="mt-1">
+                    Payment amount: {paymentAmount}
+                  </p>
+                )}
+                {selectedPaymentLink && (
+                  <p className="mt-1">
+                    Payment for: {selectedPaymentLink.title}
                   </p>
                 )}
               </div>
