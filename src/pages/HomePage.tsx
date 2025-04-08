@@ -31,12 +31,9 @@ const HomePage = () => {
           <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
             Reduce no-shows and streamline bookings with secure payment collection. CliniPay helps private clinics build trust with a professional payment experience.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex justify-center">
             <Button className="btn-gradient rounded-full text-lg py-6 px-8" asChild>
               <Link to="/sign-up">Start collecting payments</Link>
-            </Button>
-            <Button className="btn-outline rounded-full text-lg py-6 px-8" asChild>
-              <Link to="#how-it-works">See how it works</Link>
             </Button>
           </div>
         </div>
@@ -46,14 +43,14 @@ const HomePage = () => {
       <section className="py-16 px-6 md:px-8 bg-gray-50" id="how-it-works">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">How CliniPay works</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 gradient-text">How CliniPay works</h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               A simple, secure way to manage payments and reduce no-shows for your clinic
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white p-6 rounded-xl card-shadow">
+          <div className="flex flex-col md:flex-row justify-center gap-8 max-w-4xl mx-auto">
+            <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg">
               <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center mb-4">
                 <CreditCard className="text-white h-6 w-6" />
               </div>
@@ -63,7 +60,7 @@ const HomePage = () => {
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-xl card-shadow">
+            <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg">
               <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center mb-4">
                 <Check className="text-white h-6 w-6" />
               </div>
@@ -73,7 +70,7 @@ const HomePage = () => {
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-xl card-shadow">
+            <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg">
               <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center mb-4">
                 <Shield className="text-white h-6 w-6" />
               </div>
@@ -97,7 +94,7 @@ const HomePage = () => {
             className="bg-white text-transparent bg-clip-text bg-gradient-primary hover:bg-gray-100 text-lg py-6 px-8 rounded-full"
             asChild
           >
-            <Link to="/sign-up">Create your account</Link>
+            <Link to="/sign-up">Get Started</Link>
           </Button>
         </div>
       </section>
@@ -109,7 +106,7 @@ const HomePage = () => {
             <Logo className="h-8 w-auto mb-4 md:mb-0" />
             <div className="flex gap-6">
               <Link to="/about" className="text-gray-600 hover:text-gray-900">About</Link>
-              <Link to="/pricing" className="text-gray-600 hover:text-gray-900">Pricing</Link>
+              <Link to="/fees" className="text-gray-600 hover:text-gray-900">Fees</Link>
               <Link to="/contact" className="text-gray-600 hover:text-gray-900">Contact</Link>
               <Link to="/terms" className="text-gray-600 hover:text-gray-900">Terms</Link>
               <Link to="/privacy" className="text-gray-600 hover:text-gray-900">Privacy</Link>
