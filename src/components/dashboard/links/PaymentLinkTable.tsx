@@ -2,7 +2,7 @@
 import React from 'react';
 import PaymentLinkTableRow from './PaymentLinkTableRow';
 import { Link } from 'react-router-dom';
-import { PaymentLink } from '../PaymentLinksCard';
+import { PaymentLink } from '@/types/payment';
 
 interface PaymentLinkTableProps {
   links: PaymentLink[];

@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import StatusBadge from '../common/StatusBadge';
-import { Payment } from './RecentPaymentsCard';
+import { Payment } from '@/types/payment';
 import { capitalizeFirstLetter, formatCurrency } from '@/utils/formatters';
 
 interface PaymentDetailDialogProps {

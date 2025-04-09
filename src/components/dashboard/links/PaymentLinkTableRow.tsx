@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Copy, ExternalLink } from 'lucide-react';
 import { capitalizeFirstLetter, formatCurrency } from '@/utils/formatters';
-import { PaymentLink } from '../PaymentLinksCard';
+import { PaymentLink } from '@/types/payment';
 
 interface PaymentLinkTableRowProps {
   link: PaymentLink;

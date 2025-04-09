@@ -1,7 +1,7 @@
 
 import React from 'react';
 import PaymentTableRow from './PaymentTableRow';
-import { Payment } from '../RecentPaymentsCard';
+import { Payment } from '@/types/payment';
 
 interface PaymentTableProps {
   payments: Payment[];
