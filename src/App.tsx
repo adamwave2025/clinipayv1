@@ -38,6 +38,9 @@ import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
 // Auth callback page
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 
+// Protected Route Component
+import ProtectedRoute from "./components/common/ProtectedRoute";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -59,23 +62,59 @@ const App = () => (
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             
-            {/* Clinic Dashboard Routes */}
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/dashboard/create-link" element={<CreateLinkPage />} />
-            <Route path="/dashboard/send-link" element={<SendLinkPage />} />
-            <Route path="/dashboard/settings" element={<SettingsPage />} />
-            <Route path="/dashboard/payment-history" element={<PaymentHistoryPage />} />
-            
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminDashboardPage />} />
-            <Route path="/admin/clinics" element={<ClinicsPage />} />
-            <Route path="/admin/clinics/:clinicId" element={<ClinicProfilePage />} />
-            <Route path="/admin/settings" element={<AdminSettingsPage />} />
-            
-            {/* Payment Routes */}
+            {/* Payment Routes (Public) */}
             <Route path="/payment" element={<PatientPaymentPage />} />
             <Route path="/payment/success" element={<PaymentSuccessPage />} />
             <Route path="/payment/failed" element={<PaymentFailedPage />} />
+            
+            {/* Protected Clinic Dashboard Routes */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/create-link" element={
+              <ProtectedRoute>
+                <CreateLinkPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/send-link" element={
+              <ProtectedRoute>
+                <SendLinkPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/settings" element={
+              <ProtectedRoute>
+                <SettingsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/payment-history" element={
+              <ProtectedRoute>
+                <PaymentHistoryPage />
+              </ProtectedRoute>
+            } />
+            
+            {/* Protected Admin Routes */}
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <AdminDashboardPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/clinics" element={
+              <ProtectedRoute>
+                <ClinicsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/clinics/:clinicId" element={
+              <ProtectedRoute>
+                <ClinicProfilePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/settings" element={
+              <ProtectedRoute>
+                <AdminSettingsPage />
+              </ProtectedRoute>
+            } />
             
             {/* Catch-all Route */}
             <Route path="*" element={<NotFound />} />

@@ -82,6 +82,26 @@ export function useAuthActions() {
 
   const signIn = async (email: string, password: string) => {
     try {
+      // First check if the user is already verified in our system
+      // by trying to find them by email
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, verified')
+        .eq('email', email)
+        .maybeSingle();
+      
+      if (userError) {
+        console.error('Error checking user verification status:', userError);
+      } else if (userData && !userData.verified) {
+        // If we know the user exists but is not verified, prevent signin
+        toast.error('Please verify your email address before signing in');
+        localStorage.setItem('verificationEmail', email);
+        localStorage.setItem('userId', userData.id);
+        navigate('/verify-email');
+        return { error: new Error('Email not verified') };
+      }
+      
+      // Proceed with sign in attempt
       const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -122,6 +142,7 @@ export function useAuthActions() {
       }
       
       toast.success('Signed in successfully');
+      navigate('/dashboard');
       return { error: null };
     } catch (error: any) {
       console.error('Error during sign in:', error);
@@ -134,6 +155,7 @@ export function useAuthActions() {
     try {
       await supabase.auth.signOut();
       toast.success('Signed out successfully');
+      navigate('/sign-in');
     } catch (error) {
       console.error('Error during sign out:', error);
       toast.error('An error occurred during sign out');
