@@ -50,8 +50,10 @@ const SignUpPage = () => {
     }
     
     setIsLoading(true);
+    toast.info('Creating your account... Please wait');
     
     try {
+      console.log("Submitting signup form for:", formData.email);
       const { error } = await signUp(
         formData.email, 
         formData.password, 
@@ -59,12 +61,14 @@ const SignUpPage = () => {
       );
       
       if (error) {
+        console.error("Signup error:", error);
         toast.error(error.message || 'Failed to create account');
       } else {
         toast.success('Account created! Please check your email to verify your account.');
         // Note: Navigation is now handled in AuthContext.signUp
       }
     } catch (err: any) {
+      console.error("Unexpected signup error:", err);
       toast.error(err.message || 'An unexpected error occurred');
     } finally {
       setIsLoading(false);

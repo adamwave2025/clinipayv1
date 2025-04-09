@@ -120,6 +120,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, clinicName: string) => {
     try {
+      console.log("Starting signup process for:", email);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -131,12 +133,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (error) {
+        console.error("Signup error:", error.message);
         toast.error(error.message);
         return { error };
       }
       
       // If signup was successful, call our edge function to handle the new signup
       if (data?.user) {
+        console.log("Signup successful, user created:", data.user.id);
         try {
           console.log("Calling handle-new-signup function for user:", data.user.id);
           // Store userId in localStorage for verification page
@@ -156,7 +160,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (response.error) {
             console.error("Error calling handle-new-signup function:", response.error);
-            toast.error("Sign up successful, but there was an issue setting up your account. Our team has been notified.");
+            
+            // Try a fallback: create the required records directly
+            console.log("Attempting fallback: direct record creation");
+            const { error: clinicError } = await supabase
+              .from('clinics')
+              .upsert({
+                id: data.user.id,
+                clinic_name: clinicName,
+                email: data.user.email,
+                created_at: new Date().toISOString()
+              });
+            
+            if (clinicError) {
+              console.error("Fallback clinic creation failed:", clinicError);
+            } else {
+              console.log("Fallback clinic created successfully");
+            }
+            
+            const { error: userError } = await supabase
+              .from('users')
+              .upsert({
+                id: data.user.id,
+                email: data.user.email,
+                role: "clinic",
+                clinic_id: data.user.id,
+                verified: false
+              });
+            
+            if (userError) {
+              console.error("Fallback user record creation failed:", userError);
+            } else {
+              console.log("Fallback user record created successfully");
+            }
+            
+            toast.error("Sign up successful, but there was an issue setting up your account. Please check your email for verification.");
           } else {
             console.log("handle-new-signup function called successfully:", response.data);
             toast.success("Sign up successful! Please check your email for verification.");
@@ -164,7 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (functionError) {
           console.error("Failed to call handle-new-signup function:", functionError);
           // We continue anyway since the user was created
-          toast.error("Sign up successful, but there was an issue setting up your account. Our team has been notified.");
+          toast.error("Sign up successful, but there was an issue setting up your account. Please check your email for verification.");
         }
       }
       
