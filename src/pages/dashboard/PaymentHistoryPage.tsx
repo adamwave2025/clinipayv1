@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -29,9 +28,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { isWithinInterval, parseISO } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 
 const PaymentHistoryPage = () => {
-  // Mock data
   const [payments, setPayments] = useState<Payment[]>([
     {
       id: '1',
@@ -116,8 +115,7 @@ const PaymentHistoryPage = () => {
   ]);
 
   const [search, setSearch] = useState('');
-  const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
-  const [toDate, setToDate] = useState<Date | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   
@@ -166,18 +164,18 @@ const PaymentHistoryPage = () => {
     
     // Date range filter
     let matchesDateRange = true;
-    if (fromDate || toDate) {
+    if (dateRange?.from || dateRange?.to) {
       const paymentDate = parseISO(payment.date);
       
-      if (fromDate && toDate) {
+      if (dateRange.from && dateRange.to) {
         // Both from and to dates are set
-        matchesDateRange = isWithinInterval(paymentDate, { start: fromDate, end: toDate });
-      } else if (fromDate) {
+        matchesDateRange = isWithinInterval(paymentDate, { start: dateRange.from, end: dateRange.to });
+      } else if (dateRange.from) {
         // Only from date is set
-        matchesDateRange = paymentDate >= fromDate;
-      } else if (toDate) {
+        matchesDateRange = paymentDate >= dateRange.from;
+      } else if (dateRange.to) {
         // Only to date is set
-        matchesDateRange = paymentDate <= toDate;
+        matchesDateRange = paymentDate <= dateRange.to;
       }
     }
     
@@ -210,10 +208,8 @@ const PaymentHistoryPage = () => {
             
             <div className="flex flex-wrap gap-4">
               <DateRangeFilter
-                fromDate={fromDate}
-                toDate={toDate}
-                onFromDateChange={setFromDate}
-                onToDateChange={setToDate}
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
               />
               
               <Select value={typeFilter} onValueChange={setTypeFilter}>
