@@ -28,58 +28,31 @@ serve(async (req) => {
       }
     );
 
-    // First check if execute_sql function exists
-    console.log("Checking if execute_sql function exists");
-    const { data: fnData, error: fnError } = await supabaseAdmin
-      .from('pg_proc')
-      .select('proname')
-      .eq('proname', 'execute_sql')
-      .limit(1);
+    // Check if the auth trigger function exists and create it if not
+    console.log("Verifying handle_new_user function and trigger");
+    
+    // We'll use a direct SQL query to check if the trigger exists
+    const { data: triggerData, error: triggerError } = await supabaseAdmin.rpc('execute_sql', {
+      sql: `
+      SELECT EXISTS (
+        SELECT 1 
+        FROM pg_trigger 
+        WHERE tgname = 'on_auth_user_created'
+      ) AS trigger_exists;
+      `
+    });
 
-    console.log("Function check result:", fnData, fnError);
-
-    // If execute_sql function doesn't exist, create it
-    if (fnError || !fnData || fnData.length === 0) {
-      console.log("Creating execute_sql function...");
-      const { error: createFnError } = await supabaseAdmin.rpc('execute_sql', {
-        sql: `
-        -- Create a generic function to execute SQL commands
-        CREATE OR REPLACE FUNCTION public.execute_sql(sql text)
-        RETURNS json
-        LANGUAGE plpgsql
-        SECURITY DEFINER
-        AS $$
-        BEGIN
-          EXECUTE sql;
-          RETURN json_build_object('success', true);
-        EXCEPTION WHEN OTHERS THEN
-          RETURN json_build_object('success', false, 'error', SQLERRM);
-        END;
-        $$;
-        `
-      });
-
-      if (createFnError) {
-        console.log("Error creating execute_sql function:", createFnError);
-        
-        // Alternative method if RPC fails: use raw query
-        const { error: rawError } = await supabaseAdmin.auth.admin.createUser({
-          email: "temp@example.com",
-          password: "temp-password-123",
-          email_confirm: true,
-          user_metadata: { temp: true }
-        });
-        
-        if (rawError) {
-          console.error("Could not create temp user:", rawError);
-          throw new Error("Failed to create execute_sql function: " + rawError.message);
-        }
-      }
+    if (triggerError) {
+      console.log("Error checking trigger existence, will proceed with creation:", triggerError);
+    } else {
+      console.log("Trigger check result:", triggerData);
     }
 
-    // Verify the auth trigger is working or create it
+    // Create or update the auth trigger regardless of previous check result
+    // This ensures we always have the latest version
     console.log("Creating/updating auth trigger...");
-    const { error: triggerError } = await supabaseAdmin.rpc('execute_sql', {
+    
+    const { error: updateError } = await supabaseAdmin.rpc('execute_sql', {
       sql: `
       -- Create function to handle new users
       CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -89,41 +62,43 @@ serve(async (req) => {
       AS $$
       DECLARE
         clinic_id uuid;
+        clinic_name text;
       BEGIN
-        -- Extract clinic_name from user metadata and use it to create or find clinic
-        IF NEW.raw_user_meta_data->>'clinic_name' IS NOT NULL THEN
-          -- For debugging
-          RAISE NOTICE 'Creating clinic with name: %', NEW.raw_user_meta_data->>'clinic_name';
-          
-          -- First try to find existing clinic with this email to avoid duplicates
+        -- Extract clinic_name from user metadata for debugging
+        clinic_name := NEW.raw_user_meta_data->>'clinic_name';
+        
+        -- Log the new user creation for debugging
+        RAISE NOTICE 'New user created: id=%, email=%, clinic_name=%', NEW.id, NEW.email, clinic_name;
+        
+        -- If clinic_name is provided, try to find or create a clinic
+        IF clinic_name IS NOT NULL THEN
+          -- First check if a clinic already exists with this email to avoid duplicates
           SELECT id INTO clinic_id FROM public.clinics WHERE email = NEW.email LIMIT 1;
           
           IF clinic_id IS NULL THEN
-            -- Create new clinic record if none exists
+            -- Create new clinic record
             INSERT INTO public.clinics (email, clinic_name)
-            VALUES (NEW.email, NEW.raw_user_meta_data->>'clinic_name')
+            VALUES (NEW.email, clinic_name)
             RETURNING id INTO clinic_id;
             
-            -- For debugging
-            RAISE NOTICE 'Created new clinic with ID: %', clinic_id;
+            RAISE NOTICE 'Created new clinic with ID: % for email: % and name: %', clinic_id, NEW.email, clinic_name;
           ELSE
-            -- For debugging
-            RAISE NOTICE 'Found existing clinic with ID: %', clinic_id;
+            RAISE NOTICE 'Found existing clinic with ID: % for email: %', clinic_id, NEW.email;
           END IF;
         ELSE
-          -- For debugging
-          RAISE NOTICE 'No clinic_name found in user metadata';
+          RAISE NOTICE 'No clinic_name provided in user metadata, skipping clinic creation';
         END IF;
         
-        -- Insert into users table with clinic_id
+        -- Insert or update user record with clinic_id (if found)
         INSERT INTO public.users (id, email, role, verified, clinic_id)
         VALUES (NEW.id, NEW.email, 'clinic', false, clinic_id)
-        ON CONFLICT (id) DO UPDATE 
-        SET clinic_id = EXCLUDED.clinic_id
-        WHERE public.users.clinic_id IS NULL;
+        ON CONFLICT (id) 
+        DO UPDATE SET 
+          clinic_id = EXCLUDED.clinic_id,
+          email = EXCLUDED.email
+        WHERE public.users.clinic_id IS NULL OR public.users.clinic_id = EXCLUDED.clinic_id;
         
-        -- For debugging
-        RAISE NOTICE 'Inserted user with ID: % and clinic_id: %', NEW.id, clinic_id;
+        RAISE NOTICE 'Inserted/updated user record with clinic_id: %', clinic_id;
         
         RETURN NEW;
       END;
@@ -137,12 +112,12 @@ serve(async (req) => {
       `
     });
     
-    if (triggerError) {
-      console.error("Error creating auth trigger:", triggerError);
-      throw new Error("Failed to create auth trigger: " + triggerError.message);
+    if (updateError) {
+      console.error("Error updating auth trigger:", updateError);
+      throw new Error("Failed to update auth trigger: " + updateError.message);
     }
     
-    console.log("Auth trigger created successfully");
+    console.log("Auth trigger updated successfully");
     
     // Set up webhook URL for auth user creation
     const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/handle-new-signup`;

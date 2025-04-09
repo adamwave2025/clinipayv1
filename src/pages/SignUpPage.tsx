@@ -59,7 +59,7 @@ const SignUpPage = () => {
     }
     
     setIsLoading(true);
-    console.log('Starting sign up process...');
+    console.log('Starting sign up process...', { email: formData.email, clinicName: formData.clinicName });
     
     try {
       const { error } = await signUp(

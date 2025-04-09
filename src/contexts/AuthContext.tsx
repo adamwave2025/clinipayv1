@@ -20,7 +20,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { session, user, loading } = useAuthState();
   const { signUp, signIn, signOut } = useAuthActions();
   
-  // Setup auth trigger
+  // Setup auth trigger - this ensures our handle_new_user function is properly setup
   useAuthTrigger();
 
   return (
