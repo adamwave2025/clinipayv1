@@ -70,22 +70,28 @@ const SignUpPage = () => {
       
       if (error) {
         console.error('Sign up error:', error);
-        // Enhanced error logging - capture more details
-        if (error.message && error.message.includes('Database error')) {
-          console.error('Possible database constraint violation during signup');
-          // Show a more user-friendly message
-          setSignupError('There was a problem with account creation. Our team has been notified.');
-          toast.error('Account creation failed. Please try again later or contact support.');
+
+        // Improved error handling with specific user messages
+        if (error.message) {
+          if (error.message.includes('already exists') || error.message.includes('already registered')) {
+            setSignupError('An account with this email already exists. Please sign in instead.');
+            toast.error('An account with this email already exists. Please sign in instead.');
+          } else if (error.message.includes('constraint violation') || error.message.includes('Database error')) {
+            setSignupError('There was a problem with your account details. Please try a different email or clinic name.');
+            toast.error('There was a problem with your account details. Please try a different email or clinic name.');
+          } else {
+            setSignupError(error.message);
+            toast.error(error.message);
+          }
         } else {
-          setSignupError(error.message || 'An error occurred during sign up');
-          toast.error(error.message || 'An error occurred during sign up');
+          setSignupError('An error occurred during sign up. Please try again.');
+          toast.error('An error occurred during sign up. Please try again.');
         }
       } else {
         console.log('Sign up successful, navigating to verification page');
       }
     } catch (error: any) {
       console.error('Unexpected sign up error:', error);
-      // Enhanced error logging - include stack trace if available
       console.error('Error stack:', error.stack);
       setSignupError(error.message || 'An unexpected error occurred');
       toast.error(error.message || 'An unexpected error occurred');

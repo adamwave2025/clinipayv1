@@ -58,14 +58,25 @@ export function useAuthActions() {
           if (!verification.success) {
             console.error("Error setting up verification:", verification.error);
             
-            // More detailed error logging
-            if (verification.error && verification.error.includes('Database error')) {
-              console.error('Possible database constraint violation during user verification setup');
-              console.error('Verification error details:', verification);
+            // Detailed error categorization for better debugging
+            if (verification.error) {
+              if (verification.error.includes('Database error') || 
+                  verification.error.includes('constraint violation')) {
+                console.error('Database constraint violation detected during user verification setup');
+                console.error('Verification error details:', verification);
+                toast.error("There was an issue with your account setup. Please try again with a different email.");
+              } else if (verification.error.includes('already exists')) {
+                toast.error("An account with this email already exists. Please sign in instead.");
+              } else {
+                toast.error("There was an issue setting up your account. Please try again.");
+              }
+            } else {
+              toast.error("There was an issue setting up your account. Please try again.");
             }
             
-            toast.error("There was an issue setting up your account. Please try again.");
-            return { error: new Error(verification.error) };
+            // Sign out the user after signup failure
+            await supabase.auth.signOut();
+            return { error: new Error(verification.error || "Unknown error during verification setup") };
           }
           
           console.log('Verification setup successful');
