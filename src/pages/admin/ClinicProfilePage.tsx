@@ -56,18 +56,18 @@ const ClinicProfilePage = () => {
 
   const StatCard = ({ title, value, icon, secondaryText }: StatCardProps) => (
     <Card className="card-shadow">
-      <CardContent className="p-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-sm font-medium text-gray-500">{title}</p>
-            <h3 className="text-2xl font-bold mt-1">{value}</h3>
-            {secondaryText && (
-              <p className="text-sm text-gray-500 mt-1">{secondaryText}</p>
-            )}
-          </div>
+      <CardContent className="pt-4 px-4 pb-4">
+        <div className="flex items-center justify-between mb-3">
           <div className="bg-gradient-primary p-2 rounded-full h-10 w-10 flex items-center justify-center">
             {icon}
           </div>
+          <p className="text-sm font-medium text-gray-500">{title}</p>
+        </div>
+        <div>
+          <h3 className="text-3xl font-bold">{value}</h3>
+          {secondaryText && (
+            <p className="text-sm font-medium text-gray-500 mt-1">{secondaryText}</p>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -96,11 +96,11 @@ const ClinicProfilePage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Clinic Info Card */}
         <Card className="card-shadow lg:col-span-1">
-          <CardHeader>
+          <CardHeader className="pb-2">
             <CardTitle>Clinic Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center mb-6">
+            <div className="flex items-center mb-5">
               <Avatar className="h-16 w-16 mr-4">
                 <AvatarFallback className="bg-gradient-primary text-white text-xl">
                   {clinic.logo}
@@ -112,41 +112,41 @@ const ClinicProfilePage = () => {
               </div>
             </div>
             
-            <div className="space-y-4">
-              <div className="flex items-start">
-                <Mail className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
+            <div className="space-y-3">
+              <div className="flex items-center">
+                <Mail className="h-5 w-5 text-gray-400 mr-3" />
                 <div>
                   <p className="text-sm font-medium text-gray-500">Email</p>
                   <p>{clinic.email}</p>
                 </div>
               </div>
               
-              <div className="flex items-start">
-                <Phone className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
+              <div className="flex items-center">
+                <Phone className="h-5 w-5 text-gray-400 mr-3" />
                 <div>
                   <p className="text-sm font-medium text-gray-500">Phone</p>
                   <p>{clinic.phone}</p>
                 </div>
               </div>
               
-              <div className="flex items-start">
-                <MapPin className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
+              <div className="flex items-center">
+                <MapPin className="h-5 w-5 text-gray-400 mr-3" />
                 <div>
                   <p className="text-sm font-medium text-gray-500">Address</p>
                   <p>{clinic.address}</p>
                 </div>
               </div>
               
-              <div className="flex items-start">
-                <CreditCard className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
+              <div className="flex items-center">
+                <CreditCard className="h-5 w-5 text-gray-400 mr-3" />
                 <div>
                   <p className="text-sm font-medium text-gray-500">Stripe Connect</p>
                   <div className="mt-1">{getStripeStatusBadge(clinic.stripeStatus)}</div>
                 </div>
               </div>
               
-              <div className="flex items-start">
-                <Calendar className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
+              <div className="flex items-center">
+                <Calendar className="h-5 w-5 text-gray-400 mr-3" />
                 <div>
                   <p className="text-sm font-medium text-gray-500">Date Joined</p>
                   <p>{new Date(clinic.joinDate).toLocaleDateString()}</p>
@@ -173,7 +173,7 @@ const ClinicProfilePage = () => {
           />
           
           <StatCard
-            title="CliniPay Fees Collected"
+            title="CliniPay Fees"
             value={`£${clinic.stats.feesCollected.toFixed(2)}`}
             icon={<DollarSign className="h-5 w-5 text-white" />}
           />
