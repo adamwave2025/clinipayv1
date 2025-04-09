@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -11,18 +12,20 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { useClinicData, ClinicData } from '@/hooks/useClinicData';
 
 const SettingsPage = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [profileData, setProfileData] = useState({
-    clinicName: '',
+  const { clinicData, isLoading: dataLoading, updateClinicData } = useClinicData();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profileData, setProfileData] = useState<Partial<ClinicData>>({
+    clinic_name: '',
     email: '',
     phone: '',
-    addressLine1: '',
-    addressLine2: '',
+    address_line_1: '',
+    address_line_2: '',
     city: '',
     postcode: '',
-    logo: '',
+    logo_url: '',
   });
 
   const [notificationSettings, setNotificationSettings] = useState({
@@ -33,6 +36,22 @@ const SettingsPage = () => {
     smsRefunds: false,
   });
 
+  // Update the form when clinic data is loaded
+  useEffect(() => {
+    if (clinicData) {
+      setProfileData({
+        clinic_name: clinicData.clinic_name || '',
+        email: clinicData.email || '',
+        phone: clinicData.phone || '',
+        address_line_1: clinicData.address_line_1 || '',
+        address_line_2: clinicData.address_line_2 || '',
+        city: clinicData.city || '',
+        postcode: clinicData.postcode || '',
+        logo_url: clinicData.logo_url || '',
+      });
+    }
+  }, [clinicData]);
+
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setProfileData(prev => ({ ...prev, [name]: value }));
@@ -42,14 +61,32 @@ const SettingsPage = () => {
     setNotificationSettings(prev => ({ ...prev, [setting]: checked }));
   };
 
-  const handleSaveProfile = () => {
-    setIsLoading(true);
+  const handleSaveProfile = async () => {
+    setIsSubmitting(true);
     
-    // Mock saving process
-    setTimeout(() => {
-      setIsLoading(false);
-      toast.success('Profile settings saved successfully');
-    }, 1500);
+    try {
+      const result = await updateClinicData({
+        clinic_name: profileData.clinic_name || null,
+        email: profileData.email || null,
+        phone: profileData.phone || null,
+        address_line_1: profileData.address_line_1 || null,
+        address_line_2: profileData.address_line_2 || null,
+        city: profileData.city || null,
+        postcode: profileData.postcode || null,
+        logo_url: profileData.logo_url || null,
+      });
+      
+      if (result.success) {
+        toast.success('Profile settings saved successfully');
+      } else {
+        toast.error('Failed to save profile settings');
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      toast.error('An error occurred while saving profile settings');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSaveNotifications = () => {
@@ -64,6 +101,16 @@ const SettingsPage = () => {
     // Mock password update
     toast.success('Password updated successfully');
   };
+
+  if (dataLoading) {
+    return (
+      <DashboardLayout userType="clinic">
+        <div className="flex items-center justify-center h-64">
+          <LoadingSpinner size="lg" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout userType="clinic">
@@ -98,9 +145,9 @@ const SettingsPage = () => {
               <div className="flex flex-col md:flex-row gap-8">
                 <div className="flex flex-col items-center gap-4">
                   <Avatar className="h-32 w-32">
-                    <AvatarImage src={profileData.logo || ''} alt="Clinic Logo" />
+                    <AvatarImage src={profileData.logo_url || ''} alt="Clinic Logo" />
                     <AvatarFallback className="bg-gradient-primary text-white text-4xl">
-                      {profileData.clinicName ? profileData.clinicName.charAt(0) : '?'}
+                      {profileData.clinic_name ? profileData.clinic_name.charAt(0) : '?'}
                     </AvatarFallback>
                   </Avatar>
                   <Button variant="outline" className="w-full">
@@ -110,11 +157,11 @@ const SettingsPage = () => {
                 
                 <div className="flex-1 space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="clinicName">Clinic Name</Label>
+                    <Label htmlFor="clinic_name">Clinic Name</Label>
                     <Input
-                      id="clinicName"
-                      name="clinicName"
-                      value={profileData.clinicName}
+                      id="clinic_name"
+                      name="clinic_name"
+                      value={profileData.clinic_name || ''}
                       onChange={handleProfileChange}
                       className="w-full input-focus"
                       placeholder="Enter clinic name"
@@ -127,7 +174,7 @@ const SettingsPage = () => {
                       id="email"
                       name="email"
                       type="email"
-                      value={profileData.email}
+                      value={profileData.email || ''}
                       onChange={handleProfileChange}
                       className="w-full input-focus"
                       placeholder="Enter email address"
@@ -139,7 +186,7 @@ const SettingsPage = () => {
                     <Input
                       id="phone"
                       name="phone"
-                      value={profileData.phone}
+                      value={profileData.phone || ''}
                       onChange={handleProfileChange}
                       className="w-full input-focus"
                       placeholder="Enter phone number"
@@ -147,11 +194,11 @@ const SettingsPage = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="addressLine1">Address Line 1</Label>
+                    <Label htmlFor="address_line_1">Address Line 1</Label>
                     <Input
-                      id="addressLine1"
-                      name="addressLine1"
-                      value={profileData.addressLine1}
+                      id="address_line_1"
+                      name="address_line_1"
+                      value={profileData.address_line_1 || ''}
                       onChange={handleProfileChange}
                       className="w-full input-focus"
                       placeholder="Enter address line 1"
@@ -159,11 +206,11 @@ const SettingsPage = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="addressLine2">Address Line 2</Label>
+                    <Label htmlFor="address_line_2">Address Line 2</Label>
                     <Input
-                      id="addressLine2"
-                      name="addressLine2"
-                      value={profileData.addressLine2}
+                      id="address_line_2"
+                      name="address_line_2"
+                      value={profileData.address_line_2 || ''}
                       onChange={handleProfileChange}
                       className="w-full input-focus"
                       placeholder="Enter address line 2 (optional)"
@@ -176,7 +223,7 @@ const SettingsPage = () => {
                       <Input
                         id="city"
                         name="city"
-                        value={profileData.city}
+                        value={profileData.city || ''}
                         onChange={handleProfileChange}
                         className="w-full input-focus"
                         placeholder="Enter city"
@@ -188,7 +235,7 @@ const SettingsPage = () => {
                       <Input
                         id="postcode"
                         name="postcode"
-                        value={profileData.postcode}
+                        value={profileData.postcode || ''}
                         onChange={handleProfileChange}
                         className="w-full input-focus"
                         placeholder="Enter postcode"
@@ -199,9 +246,9 @@ const SettingsPage = () => {
                   <Button 
                     onClick={handleSaveProfile} 
                     className="btn-gradient"
-                    disabled={isLoading}
+                    disabled={isSubmitting}
                   >
-                    {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
+                    {isSubmitting ? <LoadingSpinner size="sm" className="mr-2" /> : null}
                     Save Changes
                   </Button>
                 </div>
