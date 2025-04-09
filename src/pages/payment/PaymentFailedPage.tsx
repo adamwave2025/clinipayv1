@@ -1,9 +1,8 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentStatusSummary from '@/components/payment/PaymentStatusSummary';
-import { RefreshCcw, Building, Mail, Phone, MapPin } from 'lucide-react';
+import { Building, Mail, Phone, MapPin } from 'lucide-react';
 
 const PaymentFailedReasons = () => (
   <div className="bg-red-50 rounded-lg p-4 mb-6 text-left">
@@ -19,8 +18,6 @@ const PaymentFailedReasons = () => (
 );
 
 const PaymentFailedPage = () => {
-  const navigate = useNavigate();
-
   // Mock clinic details
   const clinicDetails = {
     name: 'Greenfield Medical Clinic',
@@ -29,26 +26,12 @@ const PaymentFailedPage = () => {
     address: '123 Harley Street, London, W1G 7JU',
   };
 
-  const handleTryAgain = () => {
-    // Go back to the payment page
-    navigate('/payment');
-  };
-
   return (
     <PaymentLayout>
       <PaymentStatusSummary
         status="failed"
         title="Payment Failed"
         description="Your payment could not be processed. Please check your payment details and try again."
-        primaryActionLabel={
-          <>
-            <RefreshCcw className="mr-2 h-4 w-4" />
-            Try Again
-          </>
-        }
-        secondaryActionLabel="Close"
-        onPrimaryAction={handleTryAgain}
-        onSecondaryAction={() => window.close()}
       />
       
       <PaymentFailedReasons />

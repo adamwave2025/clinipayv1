@@ -37,10 +37,6 @@ const PaymentSuccessPage = () => {
         status="success"
         title="Payment Successful!"
         description="Your payment has been processed successfully. A confirmation email has been sent to your email address."
-        primaryActionLabel="Download Receipt"
-        secondaryActionLabel="Close"
-        onPrimaryAction={() => {/* Download receipt logic */}}
-        onSecondaryAction={() => window.close()}
       />
       
       <PaymentDetailsCard details={details} />
