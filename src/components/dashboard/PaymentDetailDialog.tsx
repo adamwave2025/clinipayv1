@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import StatusBadge from '../common/StatusBadge';
 import { Payment } from './RecentPaymentsCard';
+import { capitalizeFirstLetter, formatCurrency } from '@/utils/formatters';
 
 interface PaymentDetailDialogProps {
   payment: Payment | null;
@@ -27,7 +28,7 @@ const PaymentDetailDialog = ({
   if (!payment) return null;
 
   // Capitalize first letter of payment type
-  const capitalizedType = payment.type.charAt(0).toUpperCase() + payment.type.slice(1);
+  const capitalizedType = capitalizeFirstLetter(payment.type);
 
   const handleRefund = () => {
     if (onRefund && payment.status === 'paid') {
@@ -52,7 +53,7 @@ const PaymentDetailDialog = ({
             </div>
             <div>
               <h4 className="text-sm font-medium text-gray-500">Amount</h4>
-              <p className="mt-1 font-medium">£{payment.amount.toFixed(2)}</p>
+              <p className="mt-1 font-medium">{formatCurrency(payment.amount)}</p>
             </div>
             <div>
               <h4 className="text-sm font-medium text-gray-500">Email</h4>
