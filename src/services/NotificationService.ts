@@ -1,61 +1,20 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { NotificationPreference, NotificationSettings } from '@/types/notification';
+import { NotificationMapperService } from './NotificationMapperService';
 
-export interface NotificationPreference {
-  id: string;
-  clinic_id: string;
-  channel: 'email' | 'sms';
-  type: 'payment_received' | 'refund_processed' | 'weekly_summary';
-  enabled: boolean;
-}
+export type { NotificationPreference, NotificationSettings } from '@/types/notification';
 
-// Mapping between UI state and database records
-export interface NotificationSettings {
-  emailPaymentReceived: boolean;
-  emailRefundProcessed: boolean;
-  emailWeeklySummary: boolean;
-  smsPaymentReceived: boolean;
-  smsRefundProcessed: boolean;
-}
-
+/**
+ * Service for handling notification preferences
+ */
 export const NotificationService = {
-  // Convert database records to UI state
-  mapPreferencesToSettings(preferences: NotificationPreference[]): NotificationSettings {
-    const defaultSettings: NotificationSettings = {
-      emailPaymentReceived: false,
-      emailRefundProcessed: false,
-      emailWeeklySummary: false,
-      smsPaymentReceived: false,
-      smsRefundProcessed: false
-    };
-
-    if (!preferences || preferences.length === 0) {
-      return defaultSettings;
-    }
-
-    return preferences.reduce((settings, pref) => {
-      // Create the settings key based on channel and type
-      let key: keyof NotificationSettings;
-      
-      if (pref.channel === 'email') {
-        if (pref.type === 'payment_received') key = 'emailPaymentReceived';
-        else if (pref.type === 'refund_processed') key = 'emailRefundProcessed';
-        else if (pref.type === 'weekly_summary') key = 'emailWeeklySummary';
-        else return settings; // Skip if not a valid type
-      } else if (pref.channel === 'sms') {
-        if (pref.type === 'payment_received') key = 'smsPaymentReceived';
-        else if (pref.type === 'refund_processed') key = 'smsRefundProcessed';
-        else return settings; // Skip if not a valid type
-      } else {
-        return settings; // Skip if not a valid channel
-      }
-      
-      return { ...settings, [key]: pref.enabled };
-    }, defaultSettings);
-  },
-
-  // Fetch notification preferences for a clinic
+  ...NotificationMapperService,
+  
+  /**
+   * Fetch notification preferences for a clinic
+   */
   async fetchNotificationPreferences(clinicId: string): Promise<NotificationPreference[]> {
     try {
       const { data, error } = await supabase
@@ -75,7 +34,9 @@ export const NotificationService = {
     }
   },
 
-  // Update a specific notification preference
+  /**
+   * Update a specific notification preference
+   */
   async updateNotificationPreference(
     clinicId: string, 
     channel: 'email' | 'sms', 
@@ -102,7 +63,9 @@ export const NotificationService = {
     }
   },
 
-  // Update all notification preferences at once
+  /**
+   * Update all notification preferences at once
+   */
   async updateAllNotificationPreferences(
     clinicId: string,
     settings: NotificationSettings

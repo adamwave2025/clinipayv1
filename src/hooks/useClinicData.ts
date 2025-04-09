@@ -1,16 +1,15 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { 
-  NotificationService, 
+  NotificationService,
   NotificationSettings, 
-  NotificationPreference 
 } from '@/services/NotificationService';
+import type { NotificationPreference } from '@/types/notification';
 import { ClinicDataService, ClinicData } from '@/services/ClinicDataService';
 import { LogoService } from '@/services/LogoService';
 
-export { ClinicData } from '@/services/ClinicDataService';
+export type { ClinicData } from '@/services/ClinicDataService';
 
 export function useClinicData() {
   const [clinicData, setClinicData] = useState<ClinicData | null>(null);
@@ -131,30 +130,14 @@ export function useClinicData() {
   const updateNotificationSetting = async (setting: string, checked: boolean) => {
     if (!clinicData) return false;
 
-    let channel: 'email' | 'sms';
-    let type: 'payment_received' | 'refund_processed' | 'weekly_summary';
-
-    if (setting.startsWith('email')) {
-      channel = 'email';
-      if (setting === 'emailPaymentReceived') type = 'payment_received';
-      else if (setting === 'emailRefundProcessed') type = 'refund_processed';
-      else if (setting === 'emailWeeklySummary') type = 'weekly_summary';
-      else {
-        console.error('Invalid notification setting:', setting);
-        return false;
-      }
-    } else if (setting.startsWith('sms')) {
-      channel = 'sms';
-      if (setting === 'smsPaymentReceived') type = 'payment_received';
-      else if (setting === 'smsRefundProcessed') type = 'refund_processed';
-      else {
-        console.error('Invalid notification setting:', setting);
-        return false;
-      }
-    } else {
+    const mappedPreference = NotificationService.mapSettingToPreference(setting);
+    
+    if (!mappedPreference) {
       console.error('Invalid notification setting:', setting);
       return false;
     }
+
+    const { channel, type } = mappedPreference;
 
     setNotificationSettings(prev => ({
       ...prev,

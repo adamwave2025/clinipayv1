@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -7,8 +6,9 @@ import { User, CreditCard, Bell, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useClinicData, ClinicData } from '@/hooks/useClinicData';
+import { NotificationService } from '@/services/NotificationService';
 
-// Import the new component files
+// Import the component files
 import ProfileSettings from '@/components/settings/ProfileSettings';
 import PaymentSettings from '@/components/settings/PaymentSettings';
 import NotificationSettings from '@/components/settings/NotificationSettings';
@@ -58,21 +58,14 @@ const SettingsPage = () => {
     setProfileData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Updated function to provide more user-friendly toast messages
+  // Updated function to provide more user-friendly toast messages using the notification mapper
   const handleNotificationChange = (setting: string, checked: boolean) => {
     updateNotificationSetting(setting, checked);
     
-    // Map setting keys to user-friendly messages
-    const notificationMessages: Record<string, string> = {
-      emailPaymentReceived: "Payment received email notifications",
-      emailRefundProcessed: "Refund processed email notifications",
-      emailWeeklySummary: "Weekly summary email notifications",
-      smsPaymentReceived: "Payment received SMS notifications",
-      smsRefundProcessed: "Refund processed SMS notifications"
-    };
+    // Get a user-friendly name for the setting from our mapper service
+    const settingName = NotificationService.getSettingDisplayName(setting);
     
     // Create a user-friendly message based on the setting and the new state
-    const settingName = notificationMessages[setting] || setting;
     const statusText = checked ? "enabled" : "disabled";
     
     // Show a toast notification with the user-friendly message
