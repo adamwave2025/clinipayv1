@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.29.0";
+import * as jose from "https://esm.sh/jose@4.14.4";
 
 // CORS headers for browser requests
 const corsHeaders = {
@@ -23,9 +24,9 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // Handle different types of requests
+    // Determine what type of request we're handling
     if (requestData.type === 'verify_token') {
-      // Verify a token
+      // Verify a JWT token
       return await handleVerifyToken(supabase, requestData, corsHeaders);
     } else if (requestData.type === 'resend') {
       // Resend verification email
@@ -46,6 +47,20 @@ serve(async (req) => {
   }
 });
 
+// Generate a JWT verification token
+async function generateJwtToken(userId: string, email: string) {
+  const secret = Deno.env.get("JWT_SECRET") || new TextEncoder().encode(crypto.randomUUID());
+  
+  // Create JWT token with 24-hour expiration
+  const jwt = await new jose.SignJWT({ userId, email })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('24h')
+    .sign(typeof secret === 'string' ? new TextEncoder().encode(secret) : secret);
+  
+  return jwt;
+}
+
 // Handle new signup
 async function handleNewSignup(supabase, requestData, corsHeaders) {
   try {
@@ -53,61 +68,24 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
     
     console.log(`Processing new signup: ${email} with ID ${id}`);
     
-    // Check if verification record exists first
-    const { data: existingVerification, error: checkError } = await supabase
-      .from('user_verification')
-      .select('verification_token, expires_at')
-      .eq('user_id', id)
-      .eq('verified', false)
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false })
-      .limit(1);
+    // Generate a verification token via the database function
+    const { data: tokenData, error: tokenError } = await supabase.rpc(
+      'generate_verification_token',
+      { user_id: id }
+    );
     
-    // If there was an error checking for existing verification
-    if (checkError) {
-      console.error("Error checking for existing verification:", checkError);
+    if (tokenError) {
+      console.error("Error generating verification token:", tokenError);
+      throw tokenError;
     }
     
-    let verificationToken;
-    let verificationRecord;
+    // Get the token from result
+    const verificationToken = tokenData;
     
-    // If we found a valid verification token, use it
-    if (existingVerification && existingVerification.length > 0) {
-      console.log("Found existing verification record");
-      verificationToken = existingVerification[0].verification_token;
-      verificationRecord = existingVerification[0];
-    } else {
-      console.log("Creating new verification record");
-      // Create verification token
-      verificationToken = crypto.randomUUID();
-      const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + 1); // 24 hours
-      
-      // Insert directly into user_verification table
-      const { data: newVerification, error: insertError } = await supabase
-        .from('user_verification')
-        .insert({
-          user_id: id,
-          email: email,
-          verification_token: verificationToken,
-          expires_at: expiryDate.toISOString(),
-          verified: false
-        })
-        .select();
-        
-      if (insertError) {
-        console.error("Error inserting verification record:", insertError);
-        throw insertError;
-      }
-      
-      verificationRecord = newVerification[0];
-      
-      // Create clinic and user records if they don't exist
-      await createUserRecordsIfNeeded(supabase, id, email, clinic_name);
-    }
+    // Create clinic and user records if they don't exist
+    await createUserRecordsIfNeeded(supabase, id, email, clinic_name);
     
-    // Generate verification URL
-    // Base URL would come from environment variable in production
+    // Generate verification URL with JWT
     const baseUrl = Deno.env.get("SITE_URL") || "https://clinipay.co.uk";
     const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}&userId=${id}`;
     
@@ -216,22 +194,23 @@ async function handleVerifyToken(supabase, requestData, corsHeaders) {
     
     console.log(`Verifying token for user ${userId}`);
     
-    // Find the verification record
-    const { data: verificationData, error: queryError } = await supabase
-      .from('user_verification')
-      .select('*')
-      .eq('verification_token', token)
-      .eq('user_id', userId)
-      .gt('expires_at', new Date().toISOString())
-      .eq('verified', false)
-      .maybeSingle();
+    // Find the user record
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('verification_token, token_expires_at')
+      .eq('id', userId)
+      .single();
     
-    if (queryError) {
-      console.error("Error querying verification:", queryError);
-      throw queryError;
+    if (userError) {
+      console.error("Error querying user:", userError);
+      throw userError;
     }
     
-    if (!verificationData) {
+    // Verify token and expiry
+    if (!userData || 
+        userData.verification_token !== token || 
+        !userData.token_expires_at || 
+        new Date(userData.token_expires_at) < new Date()) {
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -244,24 +223,16 @@ async function handleVerifyToken(supabase, requestData, corsHeaders) {
     // Update the user as verified
     const { error: updateError } = await supabase
       .from('users')
-      .update({ verified: true })
+      .update({ 
+        verified: true,
+        verification_token: null,
+        token_expires_at: null
+      })
       .eq('id', userId);
       
     if (updateError) {
       console.error("Error updating user verification status:", updateError);
       throw updateError;
-    }
-    
-    // Update verification record
-    const { error: updateVerfError } = await supabase
-      .from('user_verification')
-      .update({ verified: true })
-      .eq('verification_token', token)
-      .eq('user_id', userId);
-        
-    if (updateVerfError) {
-      console.error("Error updating verification record:", updateVerfError);
-      throw updateVerfError;
     }
     
     return new Response(
@@ -303,30 +274,20 @@ async function handleResendVerification(supabase, requestData, corsHeaders) {
       userId = userData.id;
     }
     
-    // Create new verification token
-    const verificationToken = crypto.randomUUID();
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 1); // 24 hours
+    // Generate a new verification token
+    const { data: token, error: tokenError } = await supabase.rpc(
+      'generate_verification_token',
+      { user_id: userId }
+    );
     
-    // Insert new verification record
-    const { error: insertError } = await supabase
-      .from('user_verification')
-      .insert({
-        user_id: userId,
-        email: email,
-        verification_token: verificationToken,
-        expires_at: expiryDate.toISOString(),
-        verified: false
-      });
-      
-    if (insertError) {
-      console.error("Error inserting verification record:", insertError);
-      throw insertError;
+    if (tokenError) {
+      console.error("Error generating verification token:", tokenError);
+      throw tokenError;
     }
     
-    // Generate verification URL
+    // Generate verification URL with token
     const baseUrl = Deno.env.get("SITE_URL") || "https://clinipay.co.uk";
-    const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}&userId=${userId}`;
+    const verificationUrl = `${baseUrl}/verify-email?token=${token}&userId=${userId}`;
     
     // Forward the verification URL to the NEW_SIGN_UP webhook if configured
     const newSignUpWebhook = Deno.env.get("NEW_SIGN_UP");

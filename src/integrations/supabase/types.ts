@@ -272,36 +272,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_verification: {
-        Row: {
-          created_at: string | null
-          email: string
-          expires_at: string
-          id: string
-          user_id: string
-          verification_token: string
-          verified: boolean | null
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          expires_at: string
-          id?: string
-          user_id: string
-          verification_token: string
-          verified?: boolean | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          expires_at?: string
-          id?: string
-          user_id?: string
-          verification_token?: string
-          verified?: boolean | null
-        }
-        Relationships: []
-      }
       users: {
         Row: {
           clinic_id: string | null
@@ -309,6 +279,8 @@ export type Database = {
           email: string | null
           id: string
           role: string | null
+          token_expires_at: string | null
+          verification_token: string | null
           verified: boolean | null
         }
         Insert: {
@@ -317,6 +289,8 @@ export type Database = {
           email?: string | null
           id?: string
           role?: string | null
+          token_expires_at?: string | null
+          verification_token?: string | null
           verified?: boolean | null
         }
         Update: {
@@ -325,6 +299,8 @@ export type Database = {
           email?: string | null
           id?: string
           role?: string | null
+          token_expires_at?: string | null
+          verification_token?: string | null
           verified?: boolean | null
         }
         Relationships: [
@@ -344,6 +320,10 @@ export type Database = {
     Functions: {
       bytea_to_text: {
         Args: { data: string }
+        Returns: string
+      }
+      generate_verification_token: {
+        Args: { user_id: string }
         Returns: string
       }
       http: {
