@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, clinicName: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -68,7 +68,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error };
       }
       
+      // If signup was successful, call our edge function to handle the new signup
+      if (data?.user) {
+        try {
+          console.log("Calling handle-new-signup function for user:", data.user.id);
+          const response = await supabase.functions.invoke('handle-new-signup', {
+            method: 'POST',
+            body: {
+              id: data.user.id,
+              email: data.user.email,
+              clinic_name: clinicName,
+              type: 'signup'
+            }
+          });
+
+          if (response.error) {
+            console.error("Error calling handle-new-signup function:", response.error);
+          } else {
+            console.log("handle-new-signup function called successfully:", response.data);
+          }
+        } catch (functionError) {
+          console.error("Failed to call handle-new-signup function:", functionError);
+          // We continue anyway since the user was created
+        }
+      }
+      
       // Successfully signed up, but need email verification
+      localStorage.setItem('verificationEmail', email);
       return { error: null };
     } catch (error) {
       console.error('Error during sign up:', error);
@@ -87,6 +113,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         if (error.message.includes('Email not confirmed')) {
           toast.error('Please verify your email address before signing in');
+          // Store email for the verification page
+          localStorage.setItem('verificationEmail', email);
+          navigate('/verify-email');
         } else {
           toast.error(error.message);
         }

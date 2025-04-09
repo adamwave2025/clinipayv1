@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mail, AlertCircle, CheckCircle } from 'lucide-react';
 import AuthLayout from '@/components/layouts/AuthLayout';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -14,6 +14,7 @@ const VerifyEmailPage = () => {
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Check for email in URL params or in local storage
   useEffect(() => {
@@ -31,6 +32,18 @@ const VerifyEmailPage = () => {
     }
   }, [location]);
 
+  // If user is already signed in, navigate to dashboard
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        navigate('/dashboard');
+      }
+    };
+    
+    checkSession();
+  }, [navigate]);
+
   const handleResendEmail = async () => {
     if (!email) {
       toast.error('Please enter your email address');
@@ -42,29 +55,47 @@ const VerifyEmailPage = () => {
     setMessage('');
     
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-        options: {
-          emailRedirectTo: 'https://clinipay.co.uk/auth/callback',
+      // First try using the edge function
+      try {
+        const functionResponse = await supabase.functions.invoke('handle-new-signup', {
+          method: 'POST',
+          body: { email, requestType: 'resend' }
+        });
+        
+        if (functionResponse.error) {
+          throw new Error(functionResponse.error.message);
         }
-      });
-      
-      if (error) {
-        setStatus('error');
-        setMessage(error.message);
-        toast.error(error.message);
-      } else {
+        
+        setStatus('success');
+        setMessage('Verification email has been resent. Please check your inbox.');
+        localStorage.setItem('verificationEmail', email);
+        toast.success('Verification email has been resent.');
+      } catch (functionError) {
+        console.error("Error with edge function:", functionError);
+        
+        // Fall back to standard resend
+        const { error } = await supabase.auth.resend({
+          type: 'signup',
+          email,
+          options: {
+            emailRedirectTo: 'https://clinipay.co.uk/auth/callback',
+          }
+        });
+        
+        if (error) {
+          throw error;
+        }
+        
         setStatus('success');
         setMessage('Verification email has been resent. Please check your inbox.');
         localStorage.setItem('verificationEmail', email);
         toast.success('Verification email has been resent.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error resending verification email:', error);
       setStatus('error');
-      setMessage('An error occurred while resending the verification email');
-      toast.error('An error occurred while resending the verification email');
+      setMessage(error.message || 'An error occurred while resending the verification email');
+      toast.error(error.message || 'An error occurred while resending the verification email');
     } finally {
       setIsResending(false);
     }

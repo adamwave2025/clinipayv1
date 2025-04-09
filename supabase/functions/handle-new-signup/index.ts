@@ -15,20 +15,33 @@ serve(async (req) => {
 
   try {
     // Get request data
-    const { record, type } = await req.json();
+    let userData;
     
-    console.log("Webhook received data:", JSON.stringify({ record, type }));
+    try {
+      // First, try to parse it as a webhook payload from our trigger
+      const { record, type } = await req.json();
+      userData = { id: record?.id, email: record?.email, type };
+      console.log("Received webhook data:", JSON.stringify(userData));
+    } catch (parseError) {
+      // If that fails, try to parse it as a direct API call
+      try {
+        userData = await req.json();
+        console.log("Received direct API data:", JSON.stringify(userData));
+      } catch (directError) {
+        throw new Error("Invalid request data format");
+      }
+    }
     
-    // Only process new user signups
-    if (type !== 'INSERT' || !record?.id || !record?.email) {
-      console.log("Not a valid user signup event, skipping");
+    // Validate required data
+    if (!userData?.id || !userData?.email) {
+      console.log("Missing required user data, received:", JSON.stringify(userData));
       return new Response(
-        JSON.stringify({ message: "Not a new user signup event" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        JSON.stringify({ error: "Missing required user data (id and email)" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    console.log("Processing new user signup:", record.email, "User ID:", record.id);
+    console.log("Processing user signup:", userData.email, "User ID:", userData.id);
     
     // Create a Supabase client with the service role key for admin access
     const supabaseAdmin = createClient(
@@ -43,25 +56,26 @@ serve(async (req) => {
     );
 
     // 1. Assign the 'clinic' role to the new user
-    const { data: userData, error: userError } = await supabaseAdmin
+    console.log("Assigning 'clinic' role to user:", userData.id);
+    const { data: roleData, error: roleError } = await supabaseAdmin
       .from("users")
       .insert({
-        id: record.id,
-        email: record.email,
+        id: userData.id,
+        email: userData.email,
         role: "clinic",
       });
 
-    if (userError) {
-      console.error("Error assigning role to user:", userError);
+    if (roleError) {
+      console.error("Error assigning role to user:", roleError);
     } else {
       console.log("Successfully assigned 'clinic' role to user");
     }
 
     // 2. Generate email verification token
-    console.log("Generating verification token for:", record.email);
+    console.log("Generating verification token for:", userData.email);
     const { data: token, error: tokenError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'signup',
-      email: record.email,
+      email: userData.email,
       options: {
         redirectTo: 'https://clinipay.co.uk/auth/callback'
       }
@@ -78,7 +92,7 @@ serve(async (req) => {
       throw new Error("No verification URL returned from Supabase");
     }
 
-    console.log("Generated verification link successfully:", token.properties.action_link.substring(0, 60) + "...");
+    console.log("Generated verification link successfully");
 
     // Extract the verification URL from the response
     const verificationUrl = token.properties.action_link;
@@ -90,16 +104,16 @@ serve(async (req) => {
       throw new Error("NEW_SIGN_UP webhook URL is not configured");
     }
 
-    console.log("Preparing to send data to webhook:", webhookUrl);
+    console.log("Sending data to GHL webhook:", webhookUrl);
 
     const webhookPayload = {
-      email: record.email,
+      email: userData.email,
       verificationUrl: verificationUrl,
-      userId: record.id,
+      userId: userData.id,
       timestamp: new Date().toISOString()
     };
 
-    console.log("Sending webhook payload:", JSON.stringify(webhookPayload).substring(0, 100) + "...");
+    console.log("Webhook payload prepared");
 
     const webhookResponse = await fetch(webhookUrl, {
       method: "POST",
@@ -130,12 +144,13 @@ serve(async (req) => {
       JSON.stringify({ 
         message: "Verification email handling complete", 
         success: true,
-        email: record.email
+        email: userData.email,
+        verificationUrl: verificationUrl
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error) {
-    console.error("Error handling new signup:", error);
+    console.error("Error handling signup:", error);
     
     return new Response(
       JSON.stringify({ error: error.message }),

@@ -25,39 +25,9 @@ serve(async (req) => {
         },
       }
     );
-
-    // First, create the webhook function if it doesn't exist
-    const { error: functionError } = await supabaseAdmin.rpc('create_webhook_function', {});
     
-    if (functionError) {
-      console.error("Error creating webhook function:", functionError);
-      
-      // Try to create the function directly with SQL
-      const { error: sqlError } = await supabaseAdmin.rpc('create_pg_webhook_function');
-      
-      if (sqlError) {
-        console.error("Error creating webhook function with SQL:", sqlError);
-        throw new Error("Failed to create webhook function: " + sqlError.message);
-      }
-    }
-
-    console.log("Webhook function created successfully");
-
-    // Now create the trigger
-    const { error } = await supabaseAdmin.rpc('create_pg_webhook', {
-      webhook_name: 'auth_user_created',
-      url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/handle-new-signup`,
-      events: ['INSERT'],
-      table: 'users',
-      schema: 'auth'
-    });
-
-    if (error) {
-      console.error("Error creating webhook trigger:", error);
-      throw error;
-    }
-
-    // Also, let's disable Supabase's automatic email verification
+    // Disable Supabase's automatic email verification
+    console.log("Attempting to disable Supabase automatic email verification...");
     const { error: authSettingsError } = await supabaseAdmin
       .from('auth.config')
       .update({ enable_signup_captcha: false, enable_email_confirm: false })
@@ -67,18 +37,36 @@ serve(async (req) => {
       console.log("Note: Could not disable automatic email verification:", authSettingsError.message);
       // Continue anyway, this is not critical
     } else {
-      console.log("Disabled Supabase automatic email verification");
+      console.log("Disabled Supabase automatic email verification successfully");
+    }
+
+    // Set up webhook URL for auth user creation
+    const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/handle-new-signup`;
+    
+    // Store the webhook URL in a Supabase setting if needed
+    const { error: settingError } = await supabaseAdmin
+      .from('system_settings')
+      .upsert({
+        key: 'auth_webhook_url',
+        value: webhookUrl
+      }, { onConflict: 'key' })
+      .select();
+    
+    if (settingError) {
+      console.log("Note: Could not store webhook URL in settings:", settingError.message);
+      // This is optional, so continue anyway
     }
 
     return new Response(
       JSON.stringify({ 
-        message: "Webhook trigger setup successfully",
-        note: "To complete setup, remember to check Edge Function logs for confirmation" 
+        message: "Auth settings updated successfully",
+        webhookUrl: webhookUrl,
+        note: "The system is configured to handle new signups. Make sure to test a signup flow." 
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error) {
-    console.error("Error setting up trigger:", error);
+    console.error("Error updating auth settings:", error);
     
     return new Response(
       JSON.stringify({ 
