@@ -3,6 +3,8 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Check, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PaymentSettingsProps {
   stripeAccountId: string | null;
@@ -16,6 +18,28 @@ const PaymentSettings = ({
   handleDisconnectStripe 
 }: PaymentSettingsProps) => {
   const isConnected = !!stripeAccountId;
+
+  const startStripeConnect = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('connect-onboarding', {
+        body: { returnUrl: window.location.origin + '/auth/callback?type=stripe_connect' }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.url) {
+        // Redirect to Stripe Connect onboarding
+        window.location.href = data.url;
+      } else {
+        toast.error('Failed to get Stripe onboarding URL');
+      }
+    } catch (error: any) {
+      console.error('Error connecting to Stripe:', error);
+      toast.error(`Failed to connect to Stripe: ${error.message || 'Unknown error'}`);
+    }
+  };
 
   return (
     <Card className="card-shadow">
@@ -53,7 +77,7 @@ const PaymentSettings = ({
               </Button>
             ) : (
               <Button 
-                onClick={handleConnectStripe} 
+                onClick={startStripeConnect} 
                 className="btn-gradient"
               >
                 Connect Stripe
