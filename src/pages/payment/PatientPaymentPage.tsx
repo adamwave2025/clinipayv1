@@ -7,21 +7,11 @@ import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentPageClinicCard from '@/components/payment/PaymentPageClinicCard';
 import CliniPaySecuritySection from '@/components/payment/CliniPaySecuritySection';
 import { Card, CardContent } from '@/components/ui/card';
+import { clinicDetails } from '@/data/clinicData';
 
 const PatientPaymentPage = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-
-  // Mock clinic and payment details
-  const clinicDetails = {
-    name: 'Greenfield Medical Clinic',
-    logo: '',
-    email: 'contact@greenfieldclinic.com',
-    phone: '+44 20 7123 4567',
-    address: '123 Harley Street, London, W1G 7JU',
-    paymentType: 'Consultation Deposit',
-    amount: 75.00,
-  };
 
   const handlePaymentSubmit = (formData: PaymentFormValues) => {
     setIsLoading(true);
