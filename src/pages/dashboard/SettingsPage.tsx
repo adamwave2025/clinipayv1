@@ -58,10 +58,25 @@ const SettingsPage = () => {
     setProfileData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Updated function to provide more user-friendly toast messages
   const handleNotificationChange = (setting: string, checked: boolean) => {
     updateNotificationSetting(setting, checked);
-    // Show a toast notification to confirm change
-    toast.success(`${setting} preference updated`);
+    
+    // Map setting keys to user-friendly messages
+    const notificationMessages: Record<string, string> = {
+      emailPaymentReceived: "Payment received email notifications",
+      emailRefundProcessed: "Refund processed email notifications",
+      emailWeeklySummary: "Weekly summary email notifications",
+      smsPaymentReceived: "Payment received SMS notifications",
+      smsRefundProcessed: "Refund processed SMS notifications"
+    };
+    
+    // Create a user-friendly message based on the setting and the new state
+    const settingName = notificationMessages[setting] || setting;
+    const statusText = checked ? "enabled" : "disabled";
+    
+    // Show a toast notification with the user-friendly message
+    toast.success(`${settingName} ${statusText}`);
   };
 
   const handleSaveProfile = async () => {
