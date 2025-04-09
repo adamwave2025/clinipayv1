@@ -66,7 +66,7 @@ const AdminDashboardPage = () => {
               {change}
             </span>
           </div>
-          <div className="bg-gradient-primary p-2 rounded-full">
+          <div className="bg-gradient-primary p-2 rounded-full h-10 w-10 flex items-center justify-center">
             {icon}
           </div>
         </div>

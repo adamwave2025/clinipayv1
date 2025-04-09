@@ -43,9 +43,35 @@ const getMockClinicData = (id: string) => ({
   ]
 });
 
+interface StatCardProps {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  secondaryText?: string;
+}
+
 const ClinicProfilePage = () => {
   const { clinicId } = useParams<{ clinicId: string }>();
   const clinic = getMockClinicData(clinicId || '');
+
+  const StatCard = ({ title, value, icon, secondaryText }: StatCardProps) => (
+    <Card className="card-shadow">
+      <CardContent className="p-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-sm font-medium text-gray-500">{title}</p>
+            <h3 className="text-2xl font-bold mt-1">{value}</h3>
+            {secondaryText && (
+              <p className="text-sm text-gray-500 mt-1">{secondaryText}</p>
+            )}
+          </div>
+          <div className="bg-gradient-primary p-2 rounded-full h-10 w-10 flex items-center justify-center">
+            {icon}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   const getStripeStatusBadge = (status: string) => {
     switch (status) {
@@ -130,41 +156,34 @@ const ClinicProfilePage = () => {
           </CardContent>
         </Card>
         
-        {/* Stats Card */}
-        <Card className="card-shadow lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Payment Statistics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-gray-500">Total Payments</p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold">{clinic.stats.totalPayments}</span>
-                  <span className="text-lg font-medium text-gray-500">£{clinic.stats.totalAmount.toFixed(2)}</span>
-                </div>
-              </div>
-              
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-gray-500">Total Refunds</p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold">{clinic.stats.totalRefunds}</span>
-                  <span className="text-lg font-medium text-gray-500">£{clinic.stats.refundAmount.toFixed(2)}</span>
-                </div>
-              </div>
-              
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-gray-500">CliniPay Fees Collected</p>
-                <p className="text-2xl font-bold">£{clinic.stats.feesCollected.toFixed(2)}</p>
-              </div>
-              
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-gray-500">Average Payment</p>
-                <p className="text-2xl font-bold">£{clinic.stats.averagePayment.toFixed(2)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Stats Cards */}
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <StatCard
+            title="Total Payments"
+            value={`${clinic.stats.totalPayments}`}
+            secondaryText={`£${clinic.stats.totalAmount.toFixed(2)}`}
+            icon={<CreditCard className="h-5 w-5 text-white" />}
+          />
+          
+          <StatCard
+            title="Total Refunds"
+            value={`${clinic.stats.totalRefunds}`}
+            secondaryText={`£${clinic.stats.refundAmount.toFixed(2)}`}
+            icon={<RefreshCcw className="h-5 w-5 text-white" />}
+          />
+          
+          <StatCard
+            title="CliniPay Fees Collected"
+            value={`£${clinic.stats.feesCollected.toFixed(2)}`}
+            icon={<DollarSign className="h-5 w-5 text-white" />}
+          />
+          
+          <StatCard
+            title="Average Payment"
+            value={`£${clinic.stats.averagePayment.toFixed(2)}`}
+            icon={<BarChart2 className="h-5 w-5 text-white" />}
+          />
+        </div>
       </div>
       
       {/* Activity Section */}
