@@ -54,10 +54,25 @@ serve(async (req) => {
         LANGUAGE plpgsql
         SECURITY DEFINER SET search_path = public
         AS $$
+        DECLARE
+          clinic_id uuid;
         BEGIN
-          -- Insert into users table
-          INSERT INTO public.users (id, email, role, verified)
-          VALUES (NEW.id, NEW.email, 'clinic', false)
+          -- Extract clinic_name from user metadata and use it to create or find clinic
+          IF NEW.raw_user_meta_data->>'clinic_name' IS NOT NULL THEN
+            -- First try to find existing clinic with this email to avoid duplicates
+            SELECT id INTO clinic_id FROM public.clinics WHERE email = NEW.email LIMIT 1;
+            
+            IF clinic_id IS NULL THEN
+              -- Create new clinic record if none exists
+              INSERT INTO public.clinics (email, clinic_name)
+              VALUES (NEW.email, NEW.raw_user_meta_data->>'clinic_name')
+              RETURNING id INTO clinic_id;
+            END IF;
+          END IF;
+          
+          -- Insert into users table with clinic_id
+          INSERT INTO public.users (id, email, role, verified, clinic_id)
+          VALUES (NEW.id, NEW.email, 'clinic', false, clinic_id)
           ON CONFLICT (id) DO NOTHING;
           
           RETURN NEW;

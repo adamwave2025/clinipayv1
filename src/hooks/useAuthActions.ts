@@ -54,11 +54,19 @@ export function useAuthActions() {
           }
           
           console.log('Verification setup successful');
+          
+          // Sign out the user after signup to force verification
+          await supabase.auth.signOut();
+          
           toast.success("Sign up successful! Please check your email for verification.");
           navigate('/verify-email?email=' + encodeURIComponent(email));
           return { error: null };
         } catch (functionError: any) {
           console.error("Failed during signup process:", functionError);
+          
+          // Sign out the user if there was an error
+          await supabase.auth.signOut();
+          
           toast.error("There was an issue setting up your account. Please try again.");
           return { error: functionError };
         }
