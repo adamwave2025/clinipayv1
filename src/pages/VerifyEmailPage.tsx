@@ -45,17 +45,8 @@ const VerifyEmailPage = () => {
     }
   }, [location]);
 
-  // If user is already signed in, navigate to dashboard
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        navigate('/dashboard');
-      }
-    };
-    
-    checkSession();
-  }, [navigate]);
+  // Don't redirect signed-in users from verification page
+  // The verification page should be accessible even to unauthenticated users
 
   const handleVerifyToken = async (token: string, userId: string) => {
     setIsVerifying(true);

@@ -25,23 +25,91 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Set up the auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
+      async (event, newSession) => {
         console.log('Auth state changed:', event);
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
         
-        if (event === 'SIGNED_OUT') {
-          navigate('/sign-in');
-        } else if (event === 'SIGNED_IN') {
-          navigate('/dashboard');
+        // Update session state
+        setSession(newSession);
+        
+        // If signed in, check verification status before setting user
+        if (newSession?.user) {
+          try {
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('verified')
+              .eq('id', newSession.user.id)
+              .single();
+            
+            if (userError) {
+              console.error('Error checking verification status:', userError);
+              setUser(null);
+              return;
+            }
+            
+            // Only set the user if they are verified
+            if (userData && userData.verified === true) {
+              setUser(newSession.user);
+              if (event === 'SIGNED_IN') {
+                navigate('/dashboard');
+              }
+            } else {
+              // If not verified, sign out
+              console.log('User not verified, signing out');
+              setUser(null);
+              // Don't call signOut here as it would create an infinite loop
+              // Just update the UI state
+            }
+          } catch (error) {
+            console.error('Error checking user verification:', error);
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+          if (event === 'SIGNED_OUT') {
+            navigate('/sign-in');
+          }
         }
       }
     );
 
     // Then check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      if (currentSession?.user) {
+        try {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('verified')
+            .eq('id', currentSession.user.id)
+            .single();
+          
+          if (userError) {
+            console.error('Error checking verification status:', userError);
+            setUser(null);
+            setSession(null);
+            setLoading(false);
+            return;
+          }
+          
+          // Only set the user if they are verified
+          if (userData && userData.verified === true) {
+            setSession(currentSession);
+            setUser(currentSession.user);
+          } else {
+            // If not verified, clear the session
+            await supabase.auth.signOut();
+            setSession(null);
+            setUser(null);
+            navigate('/verify-email');
+          }
+        } catch (error) {
+          console.error('Error checking user verification:', error);
+          setSession(null);
+          setUser(null);
+        }
+      } else {
+        setSession(null);
+        setUser(null);
+      }
       setLoading(false);
     });
 
@@ -100,7 +168,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      // Successfully signed up, but need email verification
+      // Sign out the user after sign up
+      await supabase.auth.signOut();
+      
+      // Store email for verification page and redirect
       localStorage.setItem('verificationEmail', email);
       navigate('/verify-email');
       return { error: null };
