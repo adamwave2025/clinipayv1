@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -16,19 +15,19 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 const SettingsPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [profileData, setProfileData] = useState({
-    clinicName: 'Greenfield Medical Clinic',
-    email: 'contact@greenfieldclinic.com',
-    phone: '+44 20 1234 5678',
-    addressLine1: '123 Harley Street',
-    addressLine2: 'Suite 101',
-    city: 'London',
-    postcode: 'W1G 6AB',
+    clinicName: '',
+    email: '',
+    phone: '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    postcode: '',
     logo: '',
   });
 
   const [notificationSettings, setNotificationSettings] = useState({
-    emailPayments: true,
-    emailRefunds: true,
+    emailPayments: false,
+    emailRefunds: false,
     emailSummary: false,
     smsPayments: false,
     smsRefunds: false,
@@ -93,17 +92,15 @@ const SettingsPage = () => {
           </TabsTrigger>
         </TabsList>
         
-        {/* Profile Tab */}
         <TabsContent value="profile">
           <Card className="card-shadow">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row gap-8">
-                {/* Clinic Logo */}
                 <div className="flex flex-col items-center gap-4">
                   <Avatar className="h-32 w-32">
                     <AvatarImage src={profileData.logo || ''} alt="Clinic Logo" />
                     <AvatarFallback className="bg-gradient-primary text-white text-4xl">
-                      {profileData.clinicName.charAt(0)}
+                      {profileData.clinicName ? profileData.clinicName.charAt(0) : '?'}
                     </AvatarFallback>
                   </Avatar>
                   <Button variant="outline" className="w-full">
@@ -111,7 +108,6 @@ const SettingsPage = () => {
                   </Button>
                 </div>
                 
-                {/* Profile Form */}
                 <div className="flex-1 space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="clinicName">Clinic Name</Label>
@@ -121,6 +117,7 @@ const SettingsPage = () => {
                       value={profileData.clinicName}
                       onChange={handleProfileChange}
                       className="w-full input-focus"
+                      placeholder="Enter clinic name"
                     />
                   </div>
                   
@@ -133,6 +130,7 @@ const SettingsPage = () => {
                       value={profileData.email}
                       onChange={handleProfileChange}
                       className="w-full input-focus"
+                      placeholder="Enter email address"
                     />
                   </div>
                   
@@ -144,6 +142,7 @@ const SettingsPage = () => {
                       value={profileData.phone}
                       onChange={handleProfileChange}
                       className="w-full input-focus"
+                      placeholder="Enter phone number"
                     />
                   </div>
                   
@@ -155,6 +154,7 @@ const SettingsPage = () => {
                       value={profileData.addressLine1}
                       onChange={handleProfileChange}
                       className="w-full input-focus"
+                      placeholder="Enter address line 1"
                     />
                   </div>
                   
@@ -166,6 +166,7 @@ const SettingsPage = () => {
                       value={profileData.addressLine2}
                       onChange={handleProfileChange}
                       className="w-full input-focus"
+                      placeholder="Enter address line 2 (optional)"
                     />
                   </div>
                   
@@ -178,6 +179,7 @@ const SettingsPage = () => {
                         value={profileData.city}
                         onChange={handleProfileChange}
                         className="w-full input-focus"
+                        placeholder="Enter city"
                       />
                     </div>
                     
@@ -189,6 +191,7 @@ const SettingsPage = () => {
                         value={profileData.postcode}
                         onChange={handleProfileChange}
                         className="w-full input-focus"
+                        placeholder="Enter postcode"
                       />
                     </div>
                   </div>
@@ -207,7 +210,6 @@ const SettingsPage = () => {
           </Card>
         </TabsContent>
         
-        {/* Payments Tab */}
         <TabsContent value="payments">
           <Card className="card-shadow">
             <CardContent className="p-6">
@@ -228,7 +230,6 @@ const SettingsPage = () => {
           </Card>
         </TabsContent>
         
-        {/* Notifications Tab */}
         <TabsContent value="notifications">
           <Card className="card-shadow">
             <CardContent className="p-6">
@@ -311,7 +312,6 @@ const SettingsPage = () => {
           </Card>
         </TabsContent>
         
-        {/* Security Tab - Simplified */}
         <TabsContent value="security">
           <Card className="card-shadow">
             <CardContent className="p-6">

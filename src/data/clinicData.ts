@@ -1,13 +1,13 @@
 
 // Mock clinic details used across the application
 export const clinicDetails = {
-  name: 'Greenfield Medical Clinic',
+  name: '',
   logo: '',
-  email: 'contact@greenfieldclinic.com',
-  phone: '+44 20 7123 4567',
-  address: '123 Harley Street, London, W1G 7JU',
-  paymentType: 'Consultation Deposit',
-  amount: 75.00,
+  email: '',
+  phone: '',
+  address: '',
+  paymentType: '',
+  amount: 0,
 };
 
 // Mock payment details
