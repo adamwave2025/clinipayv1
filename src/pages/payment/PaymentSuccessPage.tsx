@@ -32,7 +32,7 @@ const PaymentSuccessPage = () => {
   ];
 
   return (
-    <PaymentLayout>
+    <PaymentLayout hideHeaderFooter={true}>
       <PaymentStatusSummary
         status="success"
         title="Payment Successful!"
