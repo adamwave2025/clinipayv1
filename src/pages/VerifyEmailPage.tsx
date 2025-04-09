@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mail, AlertCircle, CheckCircle } from 'lucide-react';
@@ -64,33 +63,54 @@ const VerifyEmailPage = () => {
     
     try {
       console.log("Verifying token:", token, "for user:", userId);
-      const response = await supabase.functions.invoke('handle-new-signup', {
-        method: 'POST',
-        body: { 
-          type: 'verify_token',
-          token,
-          userId
-        }
-      });
       
-      if (response.error) {
-        throw new Error(response.error.message || "Error verifying email");
+      // First check if the verification record exists and is valid
+      const { data: verificationRecords, error: findError } = await supabase
+        .from('user_verification')
+        .select('*')
+        .eq('verification_token', token)
+        .eq('user_id', userId)
+        .gt('expires_at', new Date().toISOString())
+        .eq('verified', false)
+        .limit(1);
+      
+      if (findError) {
+        throw new Error(findError.message || "Error finding verification record");
       }
       
-      console.log("Verification response:", response.data);
+      if (!verificationRecords || verificationRecords.length === 0) {
+        throw new Error("Invalid or expired verification token");
+      }
       
-      if (response.data?.success) {
-        setStatus('success');
-        setMessage('Your email has been verified! You can now sign in to your account.');
-        toast.success('Email verification successful!');
+      // Update the user as verified
+      const { error: updateUserError } = await supabase
+        .from('users')
+        .update({ verified: true })
+        .eq('id', userId);
         
-        // Redirect to sign-in page after a short delay
-        setTimeout(() => {
-          navigate('/sign-in');
-        }, 3000);
-      } else {
-        throw new Error(response.data?.error || "Failed to verify email");
+      if (updateUserError) {
+        throw new Error(updateUserError.message || "Error updating user verification status");
       }
+      
+      // Update verification record
+      const { error: verificationUpdateError } = await supabase
+        .from('user_verification')
+        .update({ verified: true })
+        .eq('verification_token', token)
+        .eq('user_id', userId);
+        
+      if (verificationUpdateError) {
+        throw new Error(verificationUpdateError.message || "Error updating verification record");
+      }
+      
+      setStatus('success');
+      setMessage('Your email has been verified! You can now sign in to your account.');
+      toast.success('Email verification successful!');
+      
+      // Redirect to sign-in page after a short delay
+      setTimeout(() => {
+        navigate('/sign-in');
+      }, 3000);
     } catch (error: any) {
       console.error('Error verifying token:', error);
       setStatus('error');

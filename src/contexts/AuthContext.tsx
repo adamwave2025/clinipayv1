@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,10 +45,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
+    // Setup auth trigger on initialization
+    setupAuthTrigger();
+
     return () => {
       subscription.unsubscribe();
     };
   }, [navigate]);
+
+  // Set up the auth trigger to handle webhooks
+  const setupAuthTrigger = async () => {
+    try {
+      const { error } = await supabase.functions.invoke('setup-auth-trigger');
+      if (error) {
+        console.error('Error setting up auth trigger:', error);
+      } else {
+        console.log('Auth trigger setup complete');
+      }
+    } catch (error) {
+      console.error('Failed to set up auth trigger:', error);
+    }
+  };
 
   // Helper function to create user records directly
   const createUserRecords = async (userId: string, email: string, clinicName: string) => {
@@ -86,19 +104,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw userError;
       }
       
-      // 3. Create verification record - using raw query to avoid type error
-      // Since user_verification table might not be in the TypeScript types yet
+      // 3. Create verification record - using direct insert instead of RPC
       const verificationToken = crypto.randomUUID();
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + 1); // 24 hours from now
       
-      // Use rpc to execute a raw SQL query instead of direct table access
-      const { error: verificationError } = await supabase.rpc('insert_verification', {
-        p_user_id: userId,
-        p_email: email,
-        p_token: verificationToken,
-        p_expires_at: expiryDate.toISOString()
-      });
+      // Direct insert into user_verification table
+      const { error: verificationError } = await supabase
+        .from('user_verification')
+        .insert({
+          user_id: userId,
+          email: email,
+          verification_token: verificationToken,
+          expires_at: expiryDate.toISOString(),
+          verified: false
+        });
       
       if (verificationError) {
         console.error('Error creating verification record:', verificationError);

@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.29.0";
 
@@ -44,12 +45,10 @@ serve(async (req) => {
 
 // Handle new signup
 async function handleNewSignup(supabase, requestData, corsHeaders) {
-  // Implementation depends on your existing code
-  // This is just a skeleton
   try {
     const { id, email, clinic_name } = requestData;
     
-    // Create all necessary records via RPC functions
+    // Create all necessary records via direct table operations
     const { error: clinicError } = await supabase
       .from('clinics')
       .upsert({
@@ -79,13 +78,16 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + 1); // 24 hours
     
-    // Use RPC function to create verification record
-    const { error: verificationError } = await supabase.rpc('insert_verification', {
-      p_user_id: id,
-      p_email: email,
-      p_token: verificationToken,
-      p_expires_at: expiryDate.toISOString()
-    });
+    // Insert verification record directly
+    const { error: verificationError } = await supabase
+      .from('user_verification')
+      .insert({
+        user_id: id,
+        email: email,
+        verification_token: verificationToken,
+        expires_at: expiryDate.toISOString(),
+        verified: false
+      });
     
     if (verificationError) throw verificationError;
     
@@ -117,12 +119,15 @@ async function handleVerifyToken(supabase, requestData, corsHeaders) {
   try {
     const { token, userId } = requestData;
     
-    // Find the verification record
+    // Find the verification record directly
     const { data: verificationRecords, error: findError } = await supabase
-      .rpc('find_verification_by_token', {
-        p_token: token,
-        p_user_id: userId
-      });
+      .from('user_verification')
+      .select('*')
+      .eq('verification_token', token)
+      .eq('user_id', userId)
+      .gt('expires_at', new Date().toISOString())
+      .eq('verified', false)
+      .limit(1);
       
     if (findError) throw findError;
     
@@ -143,10 +148,10 @@ async function handleVerifyToken(supabase, requestData, corsHeaders) {
     
     // Update verification record
     const { error: verificationUpdateError } = await supabase
-      .rpc('update_verification_status', {
-        p_token: token,
-        p_user_id: userId
-      });
+      .from('user_verification')
+      .update({ verified: true })
+      .eq('verification_token', token)
+      .eq('user_id', userId);
       
     if (verificationUpdateError) throw verificationUpdateError;
     
@@ -186,13 +191,16 @@ async function handleResendVerification(supabase, requestData, corsHeaders) {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + 1); // 24 hours
     
-    // Use RPC function to recreate verification record
-    const { error: verificationError } = await supabase.rpc('insert_verification', {
-      p_user_id: userId,
-      p_email: email,
-      p_token: verificationToken,
-      p_expires_at: expiryDate.toISOString()
-    });
+    // Insert new verification record directly
+    const { error: verificationError } = await supabase
+      .from('user_verification')
+      .insert({
+        user_id: userId,
+        email: email,
+        verification_token: verificationToken,
+        expires_at: expiryDate.toISOString(),
+        verified: false
+      });
     
     if (verificationError) throw verificationError;
     
