@@ -74,14 +74,12 @@ const VerifyEmailPage = () => {
         throw new Error(result.error || "Invalid verification token");
       }
       
-      setStatus('success');
-      setMessage('Your email has been verified! You can now sign in to your account.');
-      toast.success('Email verification successful!');
+      // Just show success toast and redirect to sign-in page directly
+      toast.success('Email verification successful! You can now sign in.');
       
-      // Redirect to sign-in page after a short delay
-      setTimeout(() => {
-        navigate('/sign-in');
-      }, 3000);
+      // Redirect to sign-in page immediately
+      navigate('/sign-in');
+      return;
     } catch (error: any) {
       console.error('Error verifying token:', error);
       setStatus('error');

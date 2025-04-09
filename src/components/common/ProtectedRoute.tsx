@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
+import { toast } from 'sonner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -17,8 +18,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     // Once the auth state is loaded, we can stop checking
     if (!loading) {
       setIsChecking(false);
+      
+      // If user is authenticated but trying to access auth pages, redirect to dashboard
+      const authPaths = ['/sign-in', '/sign-up', '/verify-email'];
+      if (user && authPaths.includes(location.pathname)) {
+        toast.info('You are already signed in');
+      }
     }
-  }, [loading]);
+  }, [loading, user, location.pathname]);
 
   if (isChecking || loading) {
     return (

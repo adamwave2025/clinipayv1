@@ -37,7 +37,7 @@ const SignInPage = () => {
       const { error } = await signIn(formData.email, formData.password);
       
       if (!error) {
-        toast.success('Signed in successfully');
+        // Toast is now only shown in useAuthActions.ts
         navigate('/dashboard');
       }
     } finally {

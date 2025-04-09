@@ -82,13 +82,17 @@ export function useAuthActions() {
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('Attempting sign in for:', email);
+      
       // First check if the user is already verified in our system
       // by trying to find them by email
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, verified')
+        .select('id, verified, clinic_id')
         .eq('email', email)
         .maybeSingle();
+      
+      console.log('User verification check:', userData, userError);
       
       if (userError) {
         console.error('Error checking user verification status:', userError);
@@ -121,7 +125,10 @@ export function useAuthActions() {
       }
       
       // Check if the user is verified in our custom system
+      console.log('Checking verification status for user ID:', data.user.id);
       const verificationCheck = await checkUserVerification(data.user.id);
+      
+      console.log('Verification check result:', verificationCheck);
       
       if (verificationCheck.error) {
         console.error('Error checking verification status:', verificationCheck.error);
@@ -141,6 +148,7 @@ export function useAuthActions() {
         return { error: new Error('Email not verified') };
       }
       
+      // Show success message here
       toast.success('Signed in successfully');
       navigate('/dashboard');
       return { error: null };
