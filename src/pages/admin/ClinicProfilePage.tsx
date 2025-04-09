@@ -48,26 +48,33 @@ interface StatCardProps {
   value: string;
   icon: React.ReactNode;
   secondaryText?: string;
+  trend?: 'up' | 'down' | 'neutral';
 }
 
 const ClinicProfilePage = () => {
   const { clinicId } = useParams<{ clinicId: string }>();
   const clinic = getMockClinicData(clinicId || '');
 
-  const StatCard = ({ title, value, icon, secondaryText }: StatCardProps) => (
+  const StatCard = ({ title, value, icon, secondaryText, trend }: StatCardProps) => (
     <Card className="card-shadow">
-      <CardContent className="pt-4 px-4 pb-4">
-        <div className="flex items-center justify-between mb-3">
+      <CardContent className="p-6">
+        <div className="flex justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <h3 className="text-2xl font-bold">{value}</h3>
+            {secondaryText && (
+              <span className={`text-xs font-medium ${
+                trend === 'up' ? 'text-green-500' : 
+                trend === 'down' ? 'text-red-500' : 
+                'text-gray-500'
+              }`}>
+                {secondaryText}
+              </span>
+            )}
+          </div>
           <div className="bg-gradient-primary p-2 rounded-full h-10 w-10 flex items-center justify-center">
             {icon}
           </div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-        </div>
-        <div>
-          <h3 className="text-3xl font-bold">{value}</h3>
-          {secondaryText && (
-            <p className="text-sm font-medium text-gray-500 mt-1">{secondaryText}</p>
-          )}
         </div>
       </CardContent>
     </Card>
@@ -93,7 +100,37 @@ const ClinicProfilePage = () => {
         description="Clinic profile and details"
       />
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatCard
+          title="Total Payments"
+          value={`${clinic.stats.totalPayments}`}
+          secondaryText={`£${clinic.stats.totalAmount.toFixed(2)}`}
+          icon={<CreditCard className="h-5 w-5 text-white" />}
+        />
+        
+        <StatCard
+          title="Total Refunds"
+          value={`${clinic.stats.totalRefunds}`}
+          secondaryText={`£${clinic.stats.refundAmount.toFixed(2)}`}
+          icon={<RefreshCcw className="h-5 w-5 text-white" />}
+        />
+        
+        <StatCard
+          title="CliniPay Fees"
+          value={`£${clinic.stats.feesCollected.toFixed(2)}`}
+          icon={<DollarSign className="h-5 w-5 text-white" />}
+        />
+        
+        <StatCard
+          title="Average Payment"
+          value={`£${clinic.stats.averagePayment.toFixed(2)}`}
+          icon={<BarChart2 className="h-5 w-5 text-white" />}
+        />
+      </div>
+      
+      {/* Clinic Info and Activity Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Clinic Info Card */}
         <Card className="card-shadow lg:col-span-1">
           <CardHeader className="pb-2">
@@ -156,40 +193,8 @@ const ClinicProfilePage = () => {
           </CardContent>
         </Card>
         
-        {/* Stats Cards */}
-        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <StatCard
-            title="Total Payments"
-            value={`${clinic.stats.totalPayments}`}
-            secondaryText={`£${clinic.stats.totalAmount.toFixed(2)}`}
-            icon={<CreditCard className="h-5 w-5 text-white" />}
-          />
-          
-          <StatCard
-            title="Total Refunds"
-            value={`${clinic.stats.totalRefunds}`}
-            secondaryText={`£${clinic.stats.refundAmount.toFixed(2)}`}
-            icon={<RefreshCcw className="h-5 w-5 text-white" />}
-          />
-          
-          <StatCard
-            title="CliniPay Fees"
-            value={`£${clinic.stats.feesCollected.toFixed(2)}`}
-            icon={<DollarSign className="h-5 w-5 text-white" />}
-          />
-          
-          <StatCard
-            title="Average Payment"
-            value={`£${clinic.stats.averagePayment.toFixed(2)}`}
-            icon={<BarChart2 className="h-5 w-5 text-white" />}
-          />
-        </div>
-      </div>
-      
-      {/* Activity Section */}
-      <div className="space-y-6">
         {/* Recent Payments */}
-        <Card className="card-shadow">
+        <Card className="card-shadow lg:col-span-2">
           <CardHeader>
             <CardTitle>Recent Payments</CardTitle>
           </CardHeader>
@@ -218,39 +223,39 @@ const ClinicProfilePage = () => {
             </Table>
           </CardContent>
         </Card>
-        
-        {/* Payment Links */}
-        <Card className="card-shadow">
-          <CardHeader>
-            <CardTitle>Payment Links</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Link Name</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Usage</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clinic.links.map((link) => (
-                  <TableRow key={link.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center">
-                        <Link className="h-4 w-4 mr-2 text-gray-400" />
-                        {link.name}
-                      </div>
-                    </TableCell>
-                    <TableCell>{new Date(link.created).toLocaleDateString()}</TableCell>
-                    <TableCell>{link.usageCount} times</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
       </div>
+      
+      {/* Payment Links */}
+      <Card className="card-shadow">
+        <CardHeader>
+          <CardTitle>Payment Links</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Link Name</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Usage</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {clinic.links.map((link) => (
+                <TableRow key={link.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center">
+                      <Link className="h-4 w-4 mr-2 text-gray-400" />
+                      {link.name}
+                    </div>
+                  </TableCell>
+                  <TableCell>{new Date(link.created).toLocaleDateString()}</TableCell>
+                  <TableCell>{link.usageCount} times</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </DashboardLayout>
   );
 };
