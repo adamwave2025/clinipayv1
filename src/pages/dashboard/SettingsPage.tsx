@@ -1,18 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
 import { User, CreditCard, Bell, Shield } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useClinicData, ClinicData } from '@/hooks/useClinicData';
-import FileUpload from '@/components/common/FileUpload';
+
+// Import the new component files
+import ProfileSettings from '@/components/settings/ProfileSettings';
+import PaymentSettings from '@/components/settings/PaymentSettings';
+import NotificationSettings from '@/components/settings/NotificationSettings';
+import SecuritySettings from '@/components/settings/SecuritySettings';
 
 const SettingsPage = () => {
   const { 
@@ -64,7 +64,7 @@ const SettingsPage = () => {
     setProfileData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleNotificationChange = (setting: keyof typeof notificationSettings, checked: boolean) => {
+  const handleNotificationChange = (setting: string, checked: boolean) => {
     setNotificationSettings(prev => ({ ...prev, [setting]: checked }));
   };
 
@@ -153,285 +153,31 @@ const SettingsPage = () => {
         </TabsList>
         
         <TabsContent value="profile">
-          <Card className="card-shadow">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-8">
-                <div className="flex flex-col items-center gap-4">
-                  <Avatar className="h-32 w-32">
-                    <AvatarImage src={profileData.logo_url || ''} alt="Clinic Logo" />
-                    <AvatarFallback className="bg-gradient-primary text-white text-4xl">
-                      {profileData.clinic_name ? profileData.clinic_name.charAt(0) : '?'}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <FileUpload
-                    onFileSelected={handleFileUpload}
-                    buttonText="Upload Logo"
-                    accept="image/*"
-                    maxSizeMB={2}
-                    isLoading={isUploading}
-                    currentImageUrl={profileData.logo_url || null}
-                    onDelete={handleDeleteLogo}
-                    className="w-full"
-                    showPreview={false}
-                  />
-                </div>
-                
-                <div className="flex-1 space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="clinic_name">Clinic Name</Label>
-                    <Input
-                      id="clinic_name"
-                      name="clinic_name"
-                      value={profileData.clinic_name || ''}
-                      onChange={handleProfileChange}
-                      className="w-full input-focus"
-                      placeholder="Enter clinic name"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={profileData.email || ''}
-                      onChange={handleProfileChange}
-                      className="w-full input-focus"
-                      placeholder="Enter email address"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      value={profileData.phone || ''}
-                      onChange={handleProfileChange}
-                      className="w-full input-focus"
-                      placeholder="Enter phone number"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="address_line_1">Address Line 1</Label>
-                    <Input
-                      id="address_line_1"
-                      name="address_line_1"
-                      value={profileData.address_line_1 || ''}
-                      onChange={handleProfileChange}
-                      className="w-full input-focus"
-                      placeholder="Enter address line 1"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="address_line_2">Address Line 2</Label>
-                    <Input
-                      id="address_line_2"
-                      name="address_line_2"
-                      value={profileData.address_line_2 || ''}
-                      onChange={handleProfileChange}
-                      className="w-full input-focus"
-                      placeholder="Enter address line 2 (optional)"
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="city">City</Label>
-                      <Input
-                        id="city"
-                        name="city"
-                        value={profileData.city || ''}
-                        onChange={handleProfileChange}
-                        className="w-full input-focus"
-                        placeholder="Enter city"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="postcode">Postcode</Label>
-                      <Input
-                        id="postcode"
-                        name="postcode"
-                        value={profileData.postcode || ''}
-                        onChange={handleProfileChange}
-                        className="w-full input-focus"
-                        placeholder="Enter postcode"
-                      />
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    onClick={handleSaveProfile} 
-                    className="btn-gradient"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? <LoadingSpinner size="sm" className="mr-2" /> : null}
-                    Save Changes
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <ProfileSettings 
+            profileData={profileData}
+            handleProfileChange={handleProfileChange}
+            handleSaveProfile={handleSaveProfile}
+            isSubmitting={isSubmitting}
+            handleFileUpload={handleFileUpload}
+            handleDeleteLogo={handleDeleteLogo}
+            isUploading={isUploading}
+          />
         </TabsContent>
         
         <TabsContent value="payments">
-          <Card className="card-shadow">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Payment Processing</h3>
-              
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium">Stripe Connect</h4>
-                    <p className="text-sm text-gray-500">Status: Not Connected</p>
-                  </div>
-                  <Button onClick={handleConnectStripe} className="btn-gradient">
-                    Connect Stripe
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <PaymentSettings handleConnectStripe={handleConnectStripe} />
         </TabsContent>
         
         <TabsContent value="notifications">
-          <Card className="card-shadow">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Notification Preferences</h3>
-              
-              <div className="space-y-6">
-                <div>
-                  <h4 className="font-medium mb-4">Email Notifications</h4>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Payment Received</p>
-                        <p className="text-sm text-gray-500">Get notified when a payment is received</p>
-                      </div>
-                      <Switch 
-                        checked={notificationSettings.emailPayments}
-                        onCheckedChange={(checked) => handleNotificationChange('emailPayments', checked)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Refund Processed</p>
-                        <p className="text-sm text-gray-500">Get notified when a refund is processed</p>
-                      </div>
-                      <Switch 
-                        checked={notificationSettings.emailRefunds}
-                        onCheckedChange={(checked) => handleNotificationChange('emailRefunds', checked)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Weekly Summary</p>
-                        <p className="text-sm text-gray-500">Receive a weekly summary of all transactions</p>
-                      </div>
-                      <Switch 
-                        checked={notificationSettings.emailSummary}
-                        onCheckedChange={(checked) => handleNotificationChange('emailSummary', checked)}
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="pt-4 border-t">
-                  <h4 className="font-medium mb-4">SMS Notifications</h4>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Payment Received</p>
-                        <p className="text-sm text-gray-500">Get SMS alerts for new payments</p>
-                      </div>
-                      <Switch 
-                        checked={notificationSettings.smsPayments}
-                        onCheckedChange={(checked) => handleNotificationChange('smsPayments', checked)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">Refund Processed</p>
-                        <p className="text-sm text-gray-500">Get SMS alerts for refunds</p>
-                      </div>
-                      <Switch 
-                        checked={notificationSettings.smsRefunds}
-                        onCheckedChange={(checked) => handleNotificationChange('smsRefunds', checked)}
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <Button 
-                  onClick={handleSaveNotifications} 
-                  className="btn-gradient"
-                >
-                  Save Preferences
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <NotificationSettings 
+            notificationSettings={notificationSettings}
+            handleNotificationChange={handleNotificationChange}
+            handleSaveNotifications={handleSaveNotifications}
+          />
         </TabsContent>
         
         <TabsContent value="security">
-          <Card className="card-shadow">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Security Settings</h3>
-              
-              <div className="space-y-6">
-                <div>
-                  <h4 className="font-medium mb-2">Change Password</h4>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Update your password regularly to keep your account secure.
-                  </p>
-                  
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="currentPassword">Current Password</Label>
-                      <Input
-                        id="currentPassword"
-                        type="password"
-                        placeholder="••••••••"
-                        className="w-full input-focus"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="newPassword">New Password</Label>
-                      <Input
-                        id="newPassword"
-                        type="password"
-                        placeholder="••••••••"
-                        className="w-full input-focus"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        placeholder="••••••••"
-                        className="w-full input-focus"
-                      />
-                    </div>
-                    
-                    <Button className="btn-gradient" onClick={handleUpdatePassword}>
-                      Update Password
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <SecuritySettings handleUpdatePassword={handleUpdatePassword} />
         </TabsContent>
       </Tabs>
     </DashboardLayout>
