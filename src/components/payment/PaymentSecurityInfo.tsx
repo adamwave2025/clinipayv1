@@ -1,18 +1,18 @@
 
 import React from 'react';
-import { Check, Lock } from 'lucide-react';
+import { Shield, Lock } from 'lucide-react';
 
 const PaymentSecurityInfo = () => {
   return (
     <>
       <div className="text-center text-sm text-gray-500 flex items-center justify-center mt-6">
-        <Lock className="h-4 w-4 mr-1" />
+        <Lock className="h-4 w-4 mr-1 text-green-600" />
         Secure payment processed by CliniPay
       </div>
       
-      <div className="mt-8 text-center space-y-3">
+      <div className="mt-4 text-center space-y-3">
         <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
-          <Check className="h-4 w-4 text-green-500" />
+          <Shield className="h-4 w-4 text-green-600" />
           <span>Your payment is secure and encrypted</span>
         </div>
         <div className="flex items-center justify-center space-x-4">
