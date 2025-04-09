@@ -35,7 +35,7 @@ const PaymentStatusSummary = ({
         <div className="space-y-3">
           {primaryActionLabel && (
             <Button 
-              className="w-full btn-gradient" 
+              className="w-full bg-gradient-primary text-white hover:opacity-90" 
               onClick={onPrimaryAction}
             >
               {primaryActionLabel}

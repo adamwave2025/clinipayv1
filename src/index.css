@@ -105,7 +105,7 @@
   }
   
   .btn-outline {
-    @apply bg-white text-transparent bg-clip-text bg-gradient-primary border-2 border-transparent hover:shadow-md transition-all duration-300;
+    @apply relative text-primary border-2 border-transparent hover:shadow-md transition-all duration-300;
     background-image: linear-gradient(white, white), linear-gradient(135deg, #ab53de 0%, #538fde 100%);
     background-origin: border-box;
     background-clip: padding-box, border-box;
