@@ -2,24 +2,14 @@
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
-import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
-import RecentPaymentsCard, { Payment } from '@/components/dashboard/RecentPaymentsCard';
+import DashboardActions from '@/components/dashboard/DashboardActions';
+import RecentPaymentsCard from '@/components/dashboard/RecentPaymentsCard';
 import PaymentStatsCards from '@/components/dashboard/PaymentStatsCards';
-import PaymentLinksCard, { PaymentLink } from '@/components/dashboard/PaymentLinksCard';
+import PaymentLinksCard from '@/components/dashboard/PaymentLinksCard';
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
+import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { Payment, PaymentLink, PaymentStats } from '@/types/payment';
 
 const DashboardPage = () => {
   // Mock data
@@ -103,17 +93,17 @@ const DashboardPage = () => {
     },
   ]);
 
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
-  const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
-
-  const stats = {
+  const stats: PaymentStats = {
     totalReceivedToday: 200.00,
     totalPendingToday: 100.00,
     totalReceivedMonth: 1875.50,
     totalRefundedMonth: 225.00,
   };
+
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
 
   const openRefundDialog = (paymentId: string) => {
     setPaymentToRefund(paymentId);
@@ -134,7 +124,7 @@ const DashboardPage = () => {
     
     // Close both dialogs
     setRefundDialogOpen(false);
-    setDialogOpen(false);
+    setDetailDialogOpen(false);
     
     toast.success('Payment refunded successfully');
     setPaymentToRefund(null);
@@ -142,7 +132,7 @@ const DashboardPage = () => {
 
   const handlePaymentClick = (payment: Payment) => {
     setSelectedPayment(payment);
-    setDialogOpen(true);
+    setDetailDialogOpen(true);
   };
 
   return (
@@ -150,14 +140,7 @@ const DashboardPage = () => {
       <PageHeader 
         title="Dashboard" 
         description="View and manage your payments"
-        action={
-          <Button className="btn-gradient" asChild>
-            <Link to="/dashboard/create-link">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Link
-            </Link>
-          </Button>
-        }
+        action={<DashboardActions />}
       />
       
       <PaymentStatsCards stats={stats} />
@@ -174,27 +157,16 @@ const DashboardPage = () => {
 
       <PaymentDetailDialog
         payment={selectedPayment}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
         onRefund={openRefundDialog}
       />
 
-      <AlertDialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Refund</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to refund this payment? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRefund} className="bg-red-500 hover:bg-red-600">
-              Refund
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <PaymentRefundDialog
+        open={refundDialogOpen}
+        onOpenChange={setRefundDialogOpen}
+        onConfirm={handleRefund}
+      />
     </DashboardLayout>
   );
 };

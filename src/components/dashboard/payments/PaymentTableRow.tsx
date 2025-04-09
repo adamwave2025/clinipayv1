@@ -1,8 +1,8 @@
 
 import React from 'react';
 import StatusBadge from '@/components/common/StatusBadge';
-import { formatCurrency, capitalizeFirstLetter } from '@/utils/formatters';
-import { Payment } from '../RecentPaymentsCard';
+import { formatCurrency, capitalizeFirstLetter, formatDate } from '@/utils/formatters';
+import { Payment } from '@/types/payment';
 
 interface PaymentTableRowProps {
   payment: Payment;
@@ -25,7 +25,7 @@ const PaymentTableRow = ({ payment, onClick }: PaymentTableRowProps) => {
         {capitalizeFirstLetter(payment.type)}
       </td>
       <td className="py-4 px-3 text-gray-500">
-        {payment.date}
+        {formatDate(payment.date)}
       </td>
       <td className="py-4 px-3">
         <StatusBadge status={payment.status} />

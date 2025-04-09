@@ -2,17 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import PaymentTable from './payments/PaymentTable';
-
-export interface Payment {
-  id: string;
-  patientName: string;
-  patientEmail?: string;
-  patientPhone?: string;
-  amount: number;
-  date: string;
-  status: 'paid' | 'refunded' | 'pending' | 'failed';
-  type: 'deposit' | 'treatment' | 'consultation' | 'other';
-}
+import { Payment } from '@/types/payment';
 
 interface RecentPaymentsCardProps {
   payments: Payment[];

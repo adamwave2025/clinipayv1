@@ -13,15 +13,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import PaymentLinkTable from './links/PaymentLinkTable';
-
-export interface PaymentLink {
-  id: string;
-  title: string;
-  amount: number;
-  type: string;
-  url: string;
-  createdAt: string;
-}
+import { PaymentLink } from '@/types/payment';
 
 interface PaymentLinksCardProps {
   links: PaymentLink[];

@@ -2,13 +2,7 @@
 import React from 'react';
 import { DollarSign, Calendar, RefreshCcw } from 'lucide-react';
 import StatCardTrend from './StatCardTrend';
-
-interface PaymentStats {
-  totalReceivedToday: number;
-  totalPendingToday: number;
-  totalReceivedMonth: number;
-  totalRefundedMonth: number;
-}
+import { PaymentStats } from '@/types/payment';
 
 interface PaymentStatsCardsProps {
   stats: PaymentStats;
