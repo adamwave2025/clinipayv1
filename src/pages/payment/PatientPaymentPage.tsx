@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PaymentForm, { PaymentFormValues } from '@/components/payment/PaymentForm';
+import PaymentForm from '@/components/payment/PaymentForm';
+import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentPageClinicCard from '@/components/payment/PaymentPageClinicCard';
 import CliniPaySecuritySection from '@/components/payment/CliniPaySecuritySection';
