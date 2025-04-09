@@ -141,9 +141,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (userError) {
           console.error('Error checking verification status:', userError);
-          // Continue login but track the error
-          console.log('Continuing login despite verification check error');
-        } else if (!userData || userData.verified !== true) {
+          // If there's an error checking verification, sign them out to be safe
+          await supabase.auth.signOut();
+          toast.error('Error verifying account status. Please try again.');
+          return { error: new Error('Error checking verification status') };
+        } 
+        
+        if (!userData || userData.verified !== true) {
           // User is not verified in our custom system
           await supabase.auth.signOut(); // Sign them out
           toast.error('Please verify your email address before signing in');
@@ -154,7 +158,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (verificationError) {
         console.error('Error checking verification status:', verificationError);
-        // Continue anyway, but log the error
+        // Sign them out if there's any error in verification
+        await supabase.auth.signOut();
+        toast.error('Error verifying account status. Please try again.');
+        return { error: verificationError };
       }
       
       toast.success('Signed in successfully');

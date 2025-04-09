@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   Home, 
   Link as LinkIcon, 
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Logo from '../common/Logo';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SidebarLink {
   to: string;
@@ -27,6 +28,9 @@ interface DashboardSidebarProps {
 }
 
 const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) => {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+  
   const clinicLinks: SidebarLink[] = [
     { 
       to: '/dashboard', 
@@ -75,6 +79,11 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
 
   const links = userType === 'clinic' ? clinicLinks : adminLinks;
   const baseUrl = userType === 'clinic' ? '/dashboard' : '/admin';
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/sign-in');
+  };
 
   return (
     <>
@@ -138,12 +147,10 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
             <Button 
               variant="ghost" 
               className="w-full justify-start text-gray-700 hover:bg-gray-100"
-              asChild
+              onClick={handleSignOut}
             >
-              <NavLink to="/logout">
-                <LogOut className="w-5 h-5 mr-3" />
-                Sign Out
-              </NavLink>
+              <LogOut className="w-5 h-5 mr-3" />
+              Sign Out
             </Button>
           </div>
         </div>
