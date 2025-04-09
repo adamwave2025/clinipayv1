@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { sendVerificationEmail } from '@/utils/auth-utils';
 import { toast } from 'sonner';
 
