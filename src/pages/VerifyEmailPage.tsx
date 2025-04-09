@@ -1,16 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Mail, AlertCircle, CheckCircle } from 'lucide-react';
-import AuthLayout from '@/components/layouts/AuthLayout';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { sendVerificationEmail, verifyEmailToken } from '@/utils/auth-utils';
+import AuthLayout from '@/components/layouts/AuthLayout';
+import { verifyEmailToken } from '@/utils/auth-utils';
+
+import { EmailIcon } from '@/components/verify-email/EmailIcon';
+import { VerifyingEmail } from '@/components/verify-email/VerifyingEmail';
+import { VerificationStatus } from '@/components/verify-email/VerificationStatus';
+import { VerificationUrlDisplay } from '@/components/verify-email/VerificationUrlDisplay';
+import { VerificationForm } from '@/components/verify-email/VerificationForm';
+import { VerificationInfo } from '@/components/verify-email/VerificationInfo';
 
 const VerifyEmailPage = () => {
-  const [isResending, setIsResending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -88,45 +91,6 @@ const VerifyEmailPage = () => {
     }
   };
 
-  const handleResendEmail = async () => {
-    if (!email) {
-      toast.error('Please enter your email address');
-      return;
-    }
-
-    setIsResending(true);
-    setStatus('idle');
-    setMessage('');
-    
-    try {
-      const result = await sendVerificationEmail(
-        email, 
-        localStorage.getItem('userId') || undefined
-      );
-      
-      if (!result.success) {
-        throw new Error(result.error || "Failed to resend verification email");
-      }
-      
-      // If we got a direct verification URL, display it
-      if (result.verificationUrl) {
-        setVerificationUrl(result.verificationUrl);
-      }
-      
-      setStatus('success');
-      setMessage('Verification email has been resent. Please check your inbox.');
-      localStorage.setItem('verificationEmail', email);
-      toast.success('Verification email has been resent.');
-    } catch (error: any) {
-      console.error('Error resending verification email:', error);
-      setStatus('error');
-      setMessage(error.message || 'An error occurred while resending the verification email');
-      toast.error(error.message || 'An error occurred while resending the verification email');
-    } finally {
-      setIsResending(false);
-    }
-  };
-
   return (
     <AuthLayout 
       title="Verify your email"
@@ -134,16 +98,9 @@ const VerifyEmailPage = () => {
     >
       <div className="text-center">
         {isVerifying ? (
-          <div className="flex flex-col items-center justify-center my-8">
-            <LoadingSpinner size="lg" className="mb-4" />
-            <p className="text-gray-600">Verifying your email...</p>
-          </div>
+          <VerifyingEmail />
         ) : (
-          <div className="flex justify-center my-8">
-            <div className="bg-blue-50 rounded-full p-6">
-              <Mail className="h-12 w-12 text-blue-500" />
-            </div>
-          </div>
+          <EmailIcon />
         )}
         
         <p className="mb-6 text-gray-600">
@@ -151,75 +108,21 @@ const VerifyEmailPage = () => {
           If you don't see the email, check your spam folder.
         </p>
 
-        {status === 'success' && (
-          <div className="mb-6 p-4 bg-green-50 rounded-lg flex items-center">
-            <CheckCircle className="text-green-500 mr-2 h-5 w-5" />
-            <p className="text-green-700 text-sm">{message}</p>
-          </div>
-        )}
-
-        {status === 'error' && (
-          <div className="mb-6 p-4 bg-red-50 rounded-lg flex items-center">
-            <AlertCircle className="text-red-500 mr-2 h-5 w-5" />
-            <p className="text-red-700 text-sm">{message}</p>
-          </div>
-        )}
+        <VerificationStatus status={status} message={message} />
         
-        {/* If verification URL is available, show it */}
-        {verificationUrl && (
-          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-            <h3 className="font-medium text-blue-700 mb-2">Verification Link (for testing):</h3>
-            <a 
-              href={verificationUrl}
-              className="text-blue-600 hover:text-blue-800 break-all underline text-sm"
-              target="_blank" 
-              rel="noopener noreferrer"
-            >
-              {verificationUrl}
-            </a>
-            <p className="mt-2 text-xs text-gray-500">
-              (This link is shown here for testing purposes only. In production, it would only be sent via email.)
-            </p>
-          </div>
-        )}
+        <VerificationUrlDisplay verificationUrl={verificationUrl} />
         
         {!isVerifying && (
-          <div className="space-y-4">
-            <input
-              type="email"
-              placeholder="Enter your email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            
-            <Button 
-              variant="outline" 
-              onClick={handleResendEmail}
-              disabled={isResending}
-              className="w-full"
-            >
-              {isResending ? <LoadingSpinner size="sm" className="mr-2" /> : null}
-              Resend verification email
-            </Button>
-          </div>
+          <VerificationForm 
+            email={email}
+            setEmail={setEmail}
+            setStatus={setStatus}
+            setMessage={setMessage}
+            setVerificationUrl={setVerificationUrl}
+          />
         )}
         
-        <p className="text-sm text-gray-500 mt-6">
-          Already verified?{' '}
-          <Link to="/sign-in" className="text-blue-600 hover:text-blue-800">
-            Sign in
-          </Link>
-        </p>
-
-        <div className="mt-8 text-xs text-gray-500">
-          <p>If you're having trouble with verification:</p>
-          <ul className="list-disc list-inside mt-2 text-left">
-            <li>Make sure to check your spam/junk folder</li>
-            <li>Try resending the verification email</li>
-            <li>If problems persist, contact support</li>
-          </ul>
-        </div>
+        <VerificationInfo />
       </div>
     </AuthLayout>
   );
