@@ -23,6 +23,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log("Setting up auth state listener...");
+    
     // Set up the auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
@@ -74,6 +76,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Then check for existing session
     supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      console.log("Checking existing session:", currentSession ? "Found" : "None");
+      
       if (currentSession?.user) {
         try {
           const { data: userData, error: userError } = await supabase
@@ -96,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(currentSession.user);
           } else {
             // If not verified, clear the session
+            console.log('User not verified, clearing session');
             await supabase.auth.signOut();
             setSession(null);
             setUser(null);
@@ -141,10 +146,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // If signup was successful, call our edge function to handle the new signup
       if (data?.user) {
         console.log("Signup successful, user created:", data.user.id);
+        
+        // Store userId and email in localStorage for verification page
+        localStorage.setItem('userId', data.user.id);
+        localStorage.setItem('verificationEmail', email);
+        
         try {
           console.log("Calling handle-new-signup function for user:", data.user.id);
-          // Store userId in localStorage for verification page
-          localStorage.setItem('userId', data.user.id);
           
           // Send to the edge function directly with the needed data
           const response = await supabase.functions.invoke('handle-new-signup', {
@@ -160,57 +168,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (response.error) {
             console.error("Error calling handle-new-signup function:", response.error);
-            
-            // Try a fallback: create the required records directly
-            console.log("Attempting fallback: direct record creation");
-            const { error: clinicError } = await supabase
-              .from('clinics')
-              .upsert({
-                id: data.user.id,
-                clinic_name: clinicName,
-                email: data.user.email,
-                created_at: new Date().toISOString()
-              });
-            
-            if (clinicError) {
-              console.error("Fallback clinic creation failed:", clinicError);
-            } else {
-              console.log("Fallback clinic created successfully");
-            }
-            
-            const { error: userError } = await supabase
-              .from('users')
-              .upsert({
-                id: data.user.id,
-                email: data.user.email,
-                role: "clinic",
-                clinic_id: data.user.id,
-                verified: false
-              });
-            
-            if (userError) {
-              console.error("Fallback user record creation failed:", userError);
-            } else {
-              console.log("Fallback user record created successfully");
-            }
-            
-            toast.error("Sign up successful, but there was an issue setting up your account. Please check your email for verification.");
+            toast.error("Sign up successful, but there was an issue setting up your account. Please contact support.");
           } else {
             console.log("handle-new-signup function called successfully:", response.data);
             toast.success("Sign up successful! Please check your email for verification.");
           }
         } catch (functionError) {
           console.error("Failed to call handle-new-signup function:", functionError);
-          // We continue anyway since the user was created
-          toast.error("Sign up successful, but there was an issue setting up your account. Please check your email for verification.");
+          toast.error("Sign up successful, but there was an issue setting up your account. Please contact support.");
         }
       }
       
       // Sign out the user after sign up
       await supabase.auth.signOut();
       
-      // Store email for verification page and redirect
-      localStorage.setItem('verificationEmail', email);
+      // Redirect to verification page
       navigate('/verify-email');
       return { error: null };
     } catch (error) {
@@ -265,6 +237,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           navigate('/verify-email');
           return { error: new Error('Email not verified') };
         }
+        
+        toast.success('Signed in successfully');
+        return { error: null };
       } catch (verificationError) {
         console.error('Error checking verification status:', verificationError);
         // Sign them out if there's any error in verification
@@ -272,9 +247,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toast.error('Error verifying account status. Please try again.');
         return { error: verificationError };
       }
-      
-      toast.success('Signed in successfully');
-      return { error: null };
     } catch (error) {
       console.error('Error during sign in:', error);
       toast.error('An unexpected error occurred during sign in');

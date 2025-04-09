@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 const setupAuthTrigger = async () => {
   try {
     console.log("Setting up auth trigger...");
-    const { error } = await supabase.functions.invoke('setup-auth-trigger');
+    const { data, error } = await supabase.functions.invoke('setup-auth-trigger');
     if (error) {
       console.error("Error setting up auth trigger:", error);
     } else {

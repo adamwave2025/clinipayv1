@@ -25,6 +25,7 @@ const VerifyEmailPage = () => {
     const userId = searchParams.get('userId');
     
     if (token && userId) {
+      console.log("Found verification token in URL, verifying...");
       handleVerifyToken(token, userId);
     }
   }, [searchParams]);
@@ -44,9 +45,6 @@ const VerifyEmailPage = () => {
       }
     }
   }, [location]);
-
-  // Don't redirect signed-in users from verification page
-  // The verification page should be accessible even to unauthenticated users
 
   const handleVerifyToken = async (token: string, userId: string) => {
     setIsVerifying(true);
