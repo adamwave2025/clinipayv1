@@ -1,12 +1,12 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ArrowUpRight, Users, CreditCard, RefreshCcw, DollarSign } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Users, CreditCard, RefreshCcw, DollarSign } from 'lucide-react';
 
 // Mock data for the admin dashboard
 const recentClinics = [
@@ -49,22 +49,22 @@ interface StatCardProps {
 }
 
 const AdminDashboardPage = () => {
+  const navigate = useNavigate();
+
   const StatCard = ({ title, value, change, trend, icon }: StatCardProps) => (
     <Card className="card-shadow">
       <CardContent className="p-6">
         <div className="flex justify-between">
           <div>
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-2xl font-bold">{value}</h3>
-              <span className={`text-xs font-medium ${
-                trend === 'up' ? 'text-green-500' : 
-                trend === 'down' ? 'text-red-500' : 
-                'text-gray-500'
-              }`}>
-                {change}
-              </span>
-            </div>
+            <h3 className="text-2xl font-bold">{value}</h3>
+            <span className={`text-xs font-medium ${
+              trend === 'up' ? 'text-green-500' : 
+              trend === 'down' ? 'text-red-500' : 
+              'text-gray-500'
+            }`}>
+              {change}
+            </span>
           </div>
           <div className="bg-gradient-primary p-2 rounded-full">
             {icon}
@@ -85,6 +85,10 @@ const AdminDashboardPage = () => {
       default:
         return null;
     }
+  };
+
+  const handleClinicClick = (clinicId: string) => {
+    navigate(`/admin/clinics/${clinicId}`);
   };
 
   return (
@@ -138,12 +142,15 @@ const AdminDashboardPage = () => {
                   <th className="pb-3 font-medium text-gray-500">Date Joined</th>
                   <th className="pb-3 font-medium text-gray-500">Stripe Status</th>
                   <th className="pb-3 font-medium text-gray-500">Payments Processed</th>
-                  <th className="pb-3 font-medium text-gray-500 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {recentClinics.map((clinic, index) => (
-                  <tr key={index} className="border-b hover:bg-gray-50">
+                  <tr 
+                    key={index} 
+                    className="border-b hover:bg-gray-50 cursor-pointer" 
+                    onClick={() => handleClinicClick(clinic.id)}
+                  >
                     <td className="py-4">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
@@ -165,24 +172,11 @@ const AdminDashboardPage = () => {
                     <td className="py-4 text-gray-500">
                       {clinic.paymentsProcessed}
                     </td>
-                    <td className="py-4 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => window.location.href = `/admin/clinics/${clinic.id}`}
-                      >
-                        <ArrowUpRight className="h-4 w-4" />
-                      </Button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <Button variant="outline" className="w-full mt-6" onClick={() => window.location.href = '/admin/clinics'}>
-            View All Clinics
-          </Button>
         </CardContent>
       </Card>
     </DashboardLayout>

@@ -26,6 +26,8 @@ import PaymentHistoryPage from "./pages/dashboard/PaymentHistoryPage";
 // Admin Pages
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import ClinicsPage from "./pages/admin/ClinicsPage";
+import ClinicProfilePage from "./pages/admin/ClinicProfilePage";
+import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 
 // Payment Pages
 import PatientPaymentPage from "./pages/payment/PatientPaymentPage";
@@ -61,6 +63,8 @@ const App = () => (
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/admin/clinics" element={<ClinicsPage />} />
+          <Route path="/admin/clinics/:clinicId" element={<ClinicProfilePage />} />
+          <Route path="/admin/settings" element={<AdminSettingsPage />} />
           
           {/* Payment Routes */}
           <Route path="/payment" element={<PatientPaymentPage />} />

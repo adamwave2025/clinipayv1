@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,15 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Check, X, Search, MoreVertical, User } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Clinic {
@@ -29,6 +22,7 @@ interface Clinic {
 
 const ClinicsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
   
   // Mock clinic data
   const clinics: Clinic[] = [
@@ -92,16 +86,13 @@ const ClinicsPage = () => {
     }
   };
 
-  const handleActivate = (clinicId: string) => {
-    toast.success('Clinic activated successfully');
+  const handleAddClinic = () => {
+    toast.success('New clinic form opened');
+    // Add implementation for adding a new clinic
   };
 
-  const handleSuspend = (clinicId: string) => {
-    toast.success('Clinic suspended successfully');
-  };
-
-  const handleDelete = (clinicId: string) => {
-    toast.success('Clinic deleted successfully');
+  const handleClinicClick = (clinicId: string) => {
+    navigate(`/admin/clinics/${clinicId}`);
   };
 
   return (
@@ -110,7 +101,7 @@ const ClinicsPage = () => {
         title="Clinics" 
         description="Manage all registered clinics"
         action={
-          <Button className="btn-gradient">
+          <Button className="btn-gradient" onClick={handleAddClinic}>
             Add New Clinic
           </Button>
         }
@@ -138,19 +129,22 @@ const ClinicsPage = () => {
                   <th className="pb-3 font-medium text-gray-500">Status</th>
                   <th className="pb-3 font-medium text-gray-500">Join Date</th>
                   <th className="pb-3 font-medium text-gray-500">Transactions</th>
-                  <th className="pb-3 font-medium text-gray-500 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredClinics.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-6 text-center text-gray-500">
+                    <td colSpan={4} className="py-6 text-center text-gray-500">
                       No clinics found
                     </td>
                   </tr>
                 ) : (
                   filteredClinics.map((clinic) => (
-                    <tr key={clinic.id} className="border-b hover:bg-gray-50">
+                    <tr 
+                      key={clinic.id} 
+                      className="border-b hover:bg-gray-50 cursor-pointer" 
+                      onClick={() => handleClinicClick(clinic.id)}
+                    >
                       <td className="py-4">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9">
@@ -172,57 +166,6 @@ const ClinicsPage = () => {
                       </td>
                       <td className="py-4 text-gray-500">
                         {clinic.transactions}
-                      </td>
-                      <td className="py-4 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem className="flex items-center gap-2">
-                              <User className="h-4 w-4" />
-                              View Profile
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {clinic.status === 'pending' && (
-                              <DropdownMenuItem 
-                                className="flex items-center gap-2"
-                                onClick={() => handleActivate(clinic.id)}
-                              >
-                                <Check className="h-4 w-4 text-green-500" />
-                                Activate
-                              </DropdownMenuItem>
-                            )}
-                            {clinic.status === 'active' && (
-                              <DropdownMenuItem 
-                                className="flex items-center gap-2"
-                                onClick={() => handleSuspend(clinic.id)}
-                              >
-                                <X className="h-4 w-4 text-red-500" />
-                                Suspend
-                              </DropdownMenuItem>
-                            )}
-                            {clinic.status === 'suspended' && (
-                              <DropdownMenuItem 
-                                className="flex items-center gap-2"
-                                onClick={() => handleActivate(clinic.id)}
-                              >
-                                <Check className="h-4 w-4 text-green-500" />
-                                Reactivate
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem
-                              className="flex items-center gap-2 text-red-600"
-                              onClick={() => handleDelete(clinic.id)}
-                            >
-                              <X className="h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </td>
                     </tr>
                   ))
