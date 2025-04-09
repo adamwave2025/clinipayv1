@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -87,20 +86,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw userError;
       }
       
-      // 3. Create verification record
+      // 3. Create verification record - using raw query to avoid type error
+      // Since user_verification table might not be in the TypeScript types yet
       const verificationToken = crypto.randomUUID();
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + 1); // 24 hours from now
       
-      const { error: verificationError } = await supabase
-        .from('user_verification')
-        .upsert({
-          user_id: userId,
-          email: email,
-          verification_token: verificationToken,
-          expires_at: expiryDate.toISOString(),
-          verified: false
-        });
+      // Use rpc to execute a raw SQL query instead of direct table access
+      const { error: verificationError } = await supabase.rpc('insert_verification', {
+        p_user_id: userId,
+        p_email: email,
+        p_token: verificationToken,
+        p_expires_at: expiryDate.toISOString()
+      });
       
       if (verificationError) {
         console.error('Error creating verification record:', verificationError);
