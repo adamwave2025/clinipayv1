@@ -50,6 +50,75 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [navigate]);
 
+  // Helper function to create user records directly
+  const createUserRecords = async (userId: string, email: string, clinicName: string) => {
+    console.log('Creating user records directly for:', userId);
+    
+    try {
+      // 1. Create clinic record
+      const { error: clinicError } = await supabase
+        .from('clinics')
+        .upsert({
+          id: userId,
+          clinic_name: clinicName,
+          email: email,
+          created_at: new Date().toISOString()
+        });
+      
+      if (clinicError) {
+        console.error('Error creating clinic record:', clinicError);
+        throw clinicError;
+      }
+      
+      // 2. Create user record with clinic role
+      const { error: userError } = await supabase
+        .from('users')
+        .upsert({
+          id: userId,
+          email: email,
+          role: 'clinic',
+          clinic_id: userId,
+          verified: false,
+          created_at: new Date().toISOString()
+        });
+      
+      if (userError) {
+        console.error('Error creating user record:', userError);
+        throw userError;
+      }
+      
+      // 3. Create verification record
+      const verificationToken = crypto.randomUUID();
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 1); // 24 hours from now
+      
+      const { error: verificationError } = await supabase
+        .from('user_verification')
+        .upsert({
+          user_id: userId,
+          email: email,
+          verification_token: verificationToken,
+          expires_at: expiryDate.toISOString(),
+          verified: false
+        });
+      
+      if (verificationError) {
+        console.error('Error creating verification record:', verificationError);
+        throw verificationError;
+      }
+      
+      // Return verification information
+      return { 
+        success: true,
+        verificationToken,
+        verificationUrl: `https://clinipay.co.uk/verify-email?token=${verificationToken}&userId=${userId}`
+      };
+    } catch (error) {
+      console.error('Error in createUserRecords:', error);
+      return { success: false, error };
+    }
+  };
+
   const signUp = async (email: string, password: string, clinicName: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -67,14 +136,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error };
       }
       
-      // If signup was successful, call our edge function to handle the new signup
+      // If signup was successful
       if (data?.user) {
         try {
-          console.log("Calling handle-new-signup function for user:", data.user.id);
           // Store userId in localStorage for verification page
           localStorage.setItem('userId', data.user.id);
+          localStorage.setItem('verificationEmail', email);
           
-          // Send to the edge function directly with the needed data
+          console.log("Calling handle-new-signup function for user:", data.user.id);
+          
+          // First try to use the edge function for verification
           const response = await supabase.functions.invoke('handle-new-signup', {
             method: 'POST',
             body: {
@@ -88,22 +159,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (response.error) {
             console.error("Error calling handle-new-signup function:", response.error);
-            toast.error("Sign up successful, but there was an issue setting up your account. Our team has been notified.");
+            
+            // If edge function fails, fall back to direct record creation
+            console.log("Falling back to direct record creation");
+            const directResult = await createUserRecords(data.user.id, email, clinicName);
+            
+            if (directResult.success) {
+              console.log("Direct record creation successful");
+              toast.success("Sign up successful! Please check your email for verification.");
+              navigate('/verify-email?email=' + encodeURIComponent(email));
+              return { error: null };
+            } else {
+              console.error("Direct record creation failed:", directResult.error);
+              toast.error("There was an issue setting up your account. Please try again.");
+            }
           } else {
             console.log("handle-new-signup function called successfully:", response.data);
             toast.success("Sign up successful! Please check your email for verification.");
+            navigate('/verify-email?email=' + encodeURIComponent(email));
+            return { error: null };
           }
         } catch (functionError) {
           console.error("Failed to call handle-new-signup function:", functionError);
-          // We continue anyway since the user was created
-          toast.error("Sign up successful, but there was an issue setting up your account. Our team has been notified.");
+          
+          // Fall back to direct record creation
+          console.log("Falling back to direct record creation due to exception");
+          const directResult = await createUserRecords(data.user.id, email, clinicName);
+          
+          if (directResult.success) {
+            console.log("Direct record creation successful after exception");
+            toast.success("Sign up successful! Please check your email for verification.");
+            navigate('/verify-email?email=' + encodeURIComponent(email));
+            return { error: null };
+          } else {
+            console.error("Direct record creation failed after exception:", directResult.error);
+            toast.error("There was an issue setting up your account. Please try again.");
+          }
         }
       }
       
-      // Successfully signed up, but need email verification
-      localStorage.setItem('verificationEmail', email);
-      navigate('/verify-email');
-      return { error: null };
+      return { error: new Error("Failed to complete signup process") };
     } catch (error) {
       console.error('Error during sign up:', error);
       toast.error('An unexpected error occurred during sign up');

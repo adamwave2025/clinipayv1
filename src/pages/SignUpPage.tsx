@@ -9,11 +9,13 @@ import AuthLayout from '@/components/layouts/AuthLayout';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
+import { AlertCircle } from 'lucide-react';
 
 const SignUpPage = () => {
   const navigate = useNavigate();
   const { signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [signupError, setSignupError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     clinicName: '',
     email: '',
@@ -25,32 +27,39 @@ const SignUpPage = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    setSignupError(null); // Clear any errors when user changes input
   };
 
   const handleCheckboxChange = (checked: boolean) => {
     setFormData(prev => ({ ...prev, agreeTerms: checked }));
+    setSignupError(null); // Clear any errors when user changes input
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSignupError(null);
     
     // Simple validation
     if (!formData.clinicName || !formData.email || !formData.password || !formData.confirmPassword) {
+      setSignupError('Please fill in all fields');
       toast.error('Please fill in all fields');
       return;
     }
     
     if (formData.password !== formData.confirmPassword) {
+      setSignupError('Passwords do not match');
       toast.error('Passwords do not match');
       return;
     }
     
     if (!formData.agreeTerms) {
+      setSignupError('You must agree to the terms and conditions');
       toast.error('You must agree to the terms and conditions');
       return;
     }
     
     setIsLoading(true);
+    console.log('Starting sign up process...');
     
     try {
       const { error } = await signUp(
@@ -59,10 +68,17 @@ const SignUpPage = () => {
         formData.clinicName
       );
       
-      if (!error) {
-        toast.success('Account created! Please check your email to verify your account.');
-        navigate('/verify-email?email=' + encodeURIComponent(formData.email));
+      if (error) {
+        console.error('Sign up error:', error);
+        setSignupError(error.message || 'An error occurred during sign up');
+        toast.error(error.message || 'An error occurred during sign up');
+      } else {
+        console.log('Sign up successful, navigating to verification page');
       }
+    } catch (error: any) {
+      console.error('Unexpected sign up error:', error);
+      setSignupError(error.message || 'An unexpected error occurred');
+      toast.error(error.message || 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -74,6 +90,13 @@ const SignUpPage = () => {
       subtitle="Start accepting payments for your clinic"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
+        {signupError && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-md flex items-start">
+            <AlertCircle className="text-red-500 mr-2 h-5 w-5 mt-0.5" />
+            <span className="text-red-700 text-sm">{signupError}</span>
+          </div>
+        )}
+        
         <div className="space-y-2">
           <Label htmlFor="clinicName">Clinic Name</Label>
           <Input

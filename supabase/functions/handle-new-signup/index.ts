@@ -10,14 +10,13 @@ const corsHeaders = {
 
 // Generate a verification token
 function generateVerificationToken(userId: string, email: string): string {
-  const data = `${userId}:${email}:${Date.now()}`;
+  const data = `${userId}:${email}:${Date.now()}:${Math.random()}`;
   return createHash('sha256').update(data).digest('hex');
 }
 
-// Generate a custom verification URL
+// Generate a custom verification URL using clinipay.co.uk domain
 function generateVerificationUrl(token: string, userId: string): string {
-  const appUrl = "https://clinipay.co.uk";
-  return `${appUrl}/verify-email?token=${token}&userId=${userId}`;
+  return `https://clinipay.co.uk/verify-email?token=${token}&userId=${userId}`;
 }
 
 serve(async (req) => {
@@ -27,15 +26,17 @@ serve(async (req) => {
   }
 
   try {
+    console.log("handle-new-signup function called with method:", req.method);
+    
     // Get request data
     let userData;
     
     try {
-      // First, try to parse it as a direct webhook payload from database trigger
+      // Parse the request data
       const requestData = await req.json();
       console.log("Raw request data:", JSON.stringify(requestData));
       
-      // Check if this is a database trigger webhook or direct API call
+      // Check request type
       if (requestData.type === 'INSERT' && requestData.table === 'users' && requestData.record) {
         // This is from our database trigger
         userData = {
@@ -58,7 +59,10 @@ serve(async (req) => {
       }
     } catch (parseError) {
       console.error("Error parsing request data:", parseError);
-      throw new Error("Invalid request data format");
+      return new Response(
+        JSON.stringify({ error: "Invalid request data format", details: parseError.message }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
     }
     
     // Validate required data
@@ -106,6 +110,7 @@ serve(async (req) => {
 
     if (clinicError) {
       console.error("Error creating clinic record:", clinicError);
+      throw clinicError;
     } else {
       console.log("Successfully created clinic record:", clinicData);
     }
@@ -124,6 +129,7 @@ serve(async (req) => {
 
     if (roleError) {
       console.error("Error assigning role to user:", roleError);
+      throw roleError;
     } else {
       console.log("Successfully assigned 'clinic' role to user");
     }
@@ -132,26 +138,28 @@ serve(async (req) => {
     const verificationToken = generateVerificationToken(userData.id, userData.email);
     console.log("Generated verification token for:", userData.email);
     
-    // 4. Store the verification token in the database using system_settings
-    const tokenKey = `verification_token:${userData.id}`;
-    const expiryKey = `verification_expiry:${userData.id}`;
+    // 4. Store the verification token in user_verification table
+    const expiryTime = new Date();
+    expiryTime.setDate(expiryTime.getDate() + 1); // 24 hours from now
     
-    const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
-    
-    // Store the token and expiry time in system_settings
-    const { error: tokenError } = await supabaseAdmin
-      .from("system_settings")
-      .upsert([
-        { key: tokenKey, value: verificationToken },
-        { key: expiryKey, value: expiryTime }
-      ]);
+    const { data: verificationData, error: verificationError } = await supabaseAdmin
+      .from("user_verification")
+      .upsert({
+        user_id: userData.id,
+        email: userData.email,
+        verification_token: verificationToken,
+        expires_at: expiryTime.toISOString(),
+        verified: false
+      });
       
-    if (tokenError) {
-      console.error("Error storing verification token:", tokenError);
-      throw tokenError;
+    if (verificationError) {
+      console.error("Error storing verification token:", verificationError);
+      throw verificationError;
+    } else {
+      console.log("Successfully stored verification token");
     }
     
-    // 5. Generate the custom verification URL
+    // 5. Generate the custom verification URL using clinipay.co.uk domain
     const verificationUrl = generateVerificationUrl(verificationToken, userData.id);
     console.log("Generated verification URL:", verificationUrl);
     
@@ -159,7 +167,20 @@ serve(async (req) => {
     const webhookUrl = Deno.env.get("NEW_SIGN_UP");
     if (!webhookUrl) {
       console.error("NEW_SIGN_UP webhook URL is not configured");
-      throw new Error("NEW_SIGN_UP webhook URL is not configured");
+      
+      // Return success with the verification URL even if webhook fails
+      // This allows the frontend to handle verification for testing
+      return new Response(
+        JSON.stringify({ 
+          message: "User created successfully but webhook failed (NEW_SIGN_UP not configured)", 
+          success: true,
+          email: userData.email,
+          verificationUrl: verificationUrl,
+          userId: userData.id,
+          clinicName: clinicName
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     console.log("Sending data to GHL webhook:", webhookUrl);
@@ -174,29 +195,60 @@ serve(async (req) => {
 
     console.log("Webhook payload:", JSON.stringify(webhookPayload));
 
-    const webhookResponse = await fetch(webhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(webhookPayload),
-    });
-
-    if (!webhookResponse.ok) {
-      const errorText = await webhookResponse.text();
-      console.error(`Error sending to webhook (${webhookResponse.status}):`, errorText);
-      throw new Error(`Error sending to webhook: ${webhookResponse.status} ${errorText}`);
-    }
-
-    console.log("Successfully sent verification data to webhook with status:", webhookResponse.status);
-    
-    // Try to read the response body
-    let responseBody;
     try {
-      responseBody = await webhookResponse.text();
-      console.log("Webhook response body:", responseBody);
-    } catch (err) {
-      console.log("Could not read webhook response body:", err.message);
+      const webhookResponse = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(webhookPayload),
+      });
+
+      if (!webhookResponse.ok) {
+        const errorText = await webhookResponse.text();
+        console.error(`Error sending to webhook (${webhookResponse.status}):`, errorText);
+        
+        // Return success with the verification URL even if webhook fails
+        return new Response(
+          JSON.stringify({ 
+            message: "User created successfully but webhook failed", 
+            success: true,
+            email: userData.email,
+            verificationUrl: verificationUrl,
+            userId: userData.id,
+            clinicName: clinicName,
+            webhookError: `${webhookResponse.status}: ${errorText}`
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
+
+      console.log("Successfully sent verification data to webhook with status:", webhookResponse.status);
+      
+      // Try to read the response body
+      let responseBody;
+      try {
+        responseBody = await webhookResponse.text();
+        console.log("Webhook response body:", responseBody);
+      } catch (err) {
+        console.log("Could not read webhook response body:", err.message);
+      }
+    } catch (webhookError) {
+      console.error("Error sending to webhook:", webhookError);
+      
+      // Return success with the verification URL even if webhook fails
+      return new Response(
+        JSON.stringify({ 
+          message: "User created successfully but webhook failed", 
+          success: true,
+          email: userData.email,
+          verificationUrl: verificationUrl,
+          userId: userData.id,
+          clinicName: clinicName,
+          webhookError: webhookError.message
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     return new Response(
@@ -214,7 +266,7 @@ serve(async (req) => {
     console.error("Error handling signup:", error);
     
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message, stack: error.stack }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
@@ -244,53 +296,64 @@ async function handleVerifyToken(requestData: any, req: Request) {
     }
   );
   
-  // Check if the token is valid by checking system_settings
-  const tokenKey = `verification_token:${userId}`;
-  const expiryKey = `verification_expiry:${userId}`;
+  // Check if the token is valid by checking the user_verification table
+  const { data: verificationData, error: verificationError } = await supabaseAdmin
+    .from("user_verification")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("verification_token", token)
+    .maybeSingle();
   
-  // Get the stored token and expiry time
-  const { data: settingsData, error: settingsError } = await supabaseAdmin
-    .from("system_settings")
-    .select("key, value")
-    .in("key", [tokenKey, expiryKey]);
-  
-  if (settingsError || !settingsData || settingsData.length < 2) {
-    console.error("Error retrieving verification settings:", settingsError);
+  if (verificationError || !verificationData) {
+    console.error("Error retrieving verification record:", verificationError);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: "Verification token not found or expired" 
+        error: "Verification token not found" 
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
     );
   }
   
-  // Extract token and expiry from results
-  const storedToken = settingsData.find(item => item.key === tokenKey)?.value;
-  const expiryTime = settingsData.find(item => item.key === expiryKey)?.value;
-  
-  // Verify token matches and hasn't expired
-  if (storedToken !== token || !expiryTime || new Date(expiryTime) < new Date()) {
-    console.error("Invalid or expired verification token");
+  // Check if verification has expired
+  if (new Date(verificationData.expires_at) < new Date()) {
+    console.error("Verification token has expired");
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: "Invalid or expired verification token" 
+        error: "Verification token has expired" 
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+    );
+  }
+  
+  // Mark the verification record as verified
+  const { error: updateVerificationError } = await supabaseAdmin
+    .from("user_verification")
+    .update({ verified: true })
+    .eq("user_id", userId);
+  
+  if (updateVerificationError) {
+    console.error("Error updating verification record:", updateVerificationError);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: "Failed to update verification status" 
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
   
   // Mark the user as verified in the users table
-  const { error: updateError } = await supabaseAdmin
+  const { error: updateUserError } = await supabaseAdmin
     .from("users")
     .update({ verified: true })
     .eq("id", userId);
   
-  if (updateError) {
-    console.error("Error updating verification status:", updateError);
+  if (updateUserError) {
+    console.error("Error updating user verification status:", updateUserError);
     return new Response(
-      JSON.stringify({ success: false, error: "Failed to verify email" }),
+      JSON.stringify({ success: false, error: "Failed to verify user account" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
@@ -308,12 +371,6 @@ async function handleVerifyToken(requestData: any, req: Request) {
   }
   
   console.log("User verified successfully:", userId);
-  
-  // Clean up the verification tokens from system_settings
-  await supabaseAdmin
-    .from("system_settings")
-    .delete()
-    .in("key", [tokenKey, expiryKey]);
   
   return new Response(
     JSON.stringify({ 
@@ -337,7 +394,7 @@ async function handleResendVerification(requestData: any, req: Request) {
   
   console.log("Processing resend verification request for:", email);
   
-  // First, verify that this user exists
+  // Create Supabase client with admin privileges
   const supabaseAdmin = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -376,22 +433,22 @@ async function handleResendVerification(requestData: any, req: Request) {
   // Generate a new verification token
   const verificationToken = generateVerificationToken(userId, email);
   
-  // Update the token and expiry in system_settings
-  const tokenKey = `verification_token:${userId}`;
-  const expiryKey = `verification_expiry:${userId}`;
+  // Update the verification record with the new token
+  const expiryTime = new Date();
+  expiryTime.setDate(expiryTime.getDate() + 1); // 24 hours from now
   
-  const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+  const { error: verificationError } = await supabaseAdmin
+    .from("user_verification")
+    .upsert({
+      user_id: userId,
+      email: email,
+      verification_token: verificationToken,
+      expires_at: expiryTime.toISOString(),
+      verified: false
+    });
   
-  // Store the new token and expiry
-  const { error: tokenError } = await supabaseAdmin
-    .from("system_settings")
-    .upsert([
-      { key: tokenKey, value: verificationToken },
-      { key: expiryKey, value: expiryTime }
-    ]);
-  
-  if (tokenError) {
-    console.error("Error storing new verification token:", tokenError);
+  if (verificationError) {
+    console.error("Error storing new verification token:", verificationError);
     return new Response(
       JSON.stringify({ 
         success: false, 
@@ -401,7 +458,7 @@ async function handleResendVerification(requestData: any, req: Request) {
     );
   }
   
-  // Generate the verification URL
+  // Generate the verification URL using clinipay.co.uk domain
   const verificationUrl = generateVerificationUrl(verificationToken, userId);
   
   // Get the user's clinic name
@@ -417,12 +474,15 @@ async function handleResendVerification(requestData: any, req: Request) {
   const webhookUrl = Deno.env.get("NEW_SIGN_UP");
   if (!webhookUrl) {
     console.error("NEW_SIGN_UP webhook URL is not configured");
+    
+    // Return success with the verification URL even if webhook fails
     return new Response(
       JSON.stringify({ 
-        success: false, 
-        error: "Webhook URL is not configured" 
+        success: true, 
+        message: "Verification token regenerated successfully but webhook failed",
+        verificationUrl: verificationUrl 
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   }
   
@@ -449,7 +509,17 @@ async function handleResendVerification(requestData: any, req: Request) {
     if (!webhookResponse.ok) {
       const errorText = await webhookResponse.text();
       console.error(`Error sending to webhook (${webhookResponse.status}):`, errorText);
-      throw new Error(`Error sending to webhook: ${webhookResponse.status}`);
+      
+      // Return success with the verification URL even if webhook fails
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "Verification token regenerated successfully but webhook failed",
+          verificationUrl: verificationUrl,
+          webhookError: `${webhookResponse.status}: ${errorText}`
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
     
     console.log("Successfully resent verification email");
@@ -465,13 +535,15 @@ async function handleResendVerification(requestData: any, req: Request) {
   } catch (error) {
     console.error("Error sending verification email:", error);
     
+    // Return success with the verification URL even if webhook fails
     return new Response(
       JSON.stringify({ 
-        success: false, 
-        error: "Failed to resend verification email",
-        verificationUrl: verificationUrl // Still send the URL for testing 
+        success: true, 
+        message: "Verification token regenerated successfully but webhook failed",
+        verificationUrl: verificationUrl,
+        webhookError: error.message
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   }
 }

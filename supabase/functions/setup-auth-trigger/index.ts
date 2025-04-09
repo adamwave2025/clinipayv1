@@ -14,6 +14,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Setup auth trigger function called");
+    
     // Create Supabase client with admin privileges
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -68,6 +70,98 @@ serve(async (req) => {
       console.error("Error updating auth settings:", configError);
     }
 
+    // Create user_verification table if it doesn't exist
+    console.log("Creating user_verification table if it doesn't exist...");
+    try {
+      const { error: tableError } = await supabaseAdmin.rpc('select_service_role', {
+        service_request: `
+          CREATE TABLE IF NOT EXISTS public.user_verification (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+            email TEXT NOT NULL,
+            verification_token TEXT NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+            expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            verified BOOLEAN DEFAULT false
+          );
+          
+          -- Add indexes for faster token lookups
+          CREATE INDEX IF NOT EXISTS idx_user_verification_token ON public.user_verification(verification_token);
+          CREATE INDEX IF NOT EXISTS idx_user_verification_user_id ON public.user_verification(user_id);
+          
+          -- Add RLS policies
+          ALTER TABLE public.user_verification ENABLE ROW LEVEL SECURITY;
+        `
+      });
+      
+      if (tableError) {
+        console.error("Error creating user_verification table:", tableError);
+      } else {
+        console.log("Successfully created user_verification table or confirmed it exists");
+      }
+    } catch (tableError) {
+      console.error("Error creating user_verification table:", tableError);
+    }
+
+    // Create process_auth_user_created function if it doesn't exist
+    console.log("Creating process_auth_user_created function if it doesn't exist...");
+    try {
+      const { error: functionError } = await supabaseAdmin.rpc('select_service_role', {
+        service_request: `
+          CREATE OR REPLACE FUNCTION public.process_auth_user_created()
+          RETURNS trigger
+          LANGUAGE plpgsql
+          AS $$
+          DECLARE
+            webhook_url TEXT;
+            payload JSONB;
+            result JSONB;
+          BEGIN
+            -- Get the webhook URL from system_settings
+            SELECT value INTO webhook_url FROM public.system_settings WHERE key = 'auth_webhook_url';
+            
+            -- Skip if no webhook URL is configured
+            IF webhook_url IS NULL THEN
+              RAISE WARNING 'No webhook URL configured for auth_user_created';
+              RETURN NEW;
+            END IF;
+            
+            -- Prepare the payload
+            payload := jsonb_build_object(
+              'type', 'INSERT',
+              'table', TG_TABLE_NAME,
+              'schema', TG_TABLE_SCHEMA,
+              'record', row_to_json(NEW)::jsonb
+            );
+            
+            -- Send the webhook asynchronously
+            PERFORM http_post(
+              webhook_url,
+              payload::text,
+              'application/json'
+            );
+            
+            RAISE NOTICE 'Webhook sent to %', webhook_url;
+            
+            RETURN NEW;
+          EXCEPTION
+            WHEN OTHERS THEN
+              RAISE WARNING 'Error sending webhook: %', SQLERRM;
+              RETURN NEW;
+          END;
+          $$;
+        `
+      });
+      
+      if (functionError) {
+        console.error("Error creating process_auth_user_created function:", functionError);
+      } else {
+        console.log("Successfully created process_auth_user_created function");
+      }
+    } catch (functionError) {
+      console.error("Error creating process_auth_user_created function:", functionError);
+    }
+
     // Set up webhook URL for auth user creation
     const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/handle-new-signup`;
     
@@ -81,6 +175,8 @@ serve(async (req) => {
     
     if (settingError) {
       console.log("Could not store webhook URL in settings:", settingError.message);
+    } else {
+      console.log("Successfully stored webhook URL in system_settings:", webhookUrl);
     }
     
     // Check if the database trigger is set up
@@ -123,6 +219,7 @@ serve(async (req) => {
       console.log("Auth user creation trigger already exists");
     }
     
+    // Return success
     return new Response(
       JSON.stringify({ 
         message: "Auth settings updated successfully",

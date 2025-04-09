@@ -15,7 +15,6 @@ export type Database = {
           address_line_2: string | null
           city: string | null
           clinic_name: string | null
-          contact_name: string | null
           country: string | null
           created_at: string | null
           email: string | null
@@ -30,7 +29,6 @@ export type Database = {
           address_line_2?: string | null
           city?: string | null
           clinic_name?: string | null
-          contact_name?: string | null
           country?: string | null
           created_at?: string | null
           email?: string | null
@@ -45,7 +43,6 @@ export type Database = {
           address_line_2?: string | null
           city?: string | null
           clinic_name?: string | null
-          contact_name?: string | null
           country?: string | null
           created_at?: string | null
           email?: string | null
