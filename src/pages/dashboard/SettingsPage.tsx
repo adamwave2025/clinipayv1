@@ -13,9 +13,18 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useClinicData, ClinicData } from '@/hooks/useClinicData';
+import FileUpload from '@/components/common/FileUpload';
 
 const SettingsPage = () => {
-  const { clinicData, isLoading: dataLoading, updateClinicData } = useClinicData();
+  const { 
+    clinicData, 
+    isLoading: dataLoading, 
+    isUploading,
+    updateClinicData,
+    uploadLogo,
+    deleteLogo 
+  } = useClinicData();
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profileData, setProfileData] = useState<Partial<ClinicData>>({
     clinic_name: '',
@@ -73,7 +82,6 @@ const SettingsPage = () => {
         address_line_2: profileData.address_line_2 || null,
         city: profileData.city || null,
         postcode: profileData.postcode || null,
-        logo_url: profileData.logo_url || null,
       });
       
       if (result.success) {
@@ -87,6 +95,14 @@ const SettingsPage = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleFileUpload = async (file: File) => {
+    await uploadLogo(file);
+  };
+
+  const handleDeleteLogo = async () => {
+    await deleteLogo();
   };
 
   const handleSaveNotifications = () => {
@@ -150,9 +166,17 @@ const SettingsPage = () => {
                       {profileData.clinic_name ? profileData.clinic_name.charAt(0) : '?'}
                     </AvatarFallback>
                   </Avatar>
-                  <Button variant="outline" className="w-full">
-                    Upload Logo
-                  </Button>
+                  
+                  <FileUpload
+                    onFileSelected={handleFileUpload}
+                    buttonText="Upload Logo"
+                    accept="image/*"
+                    maxSizeMB={2}
+                    isLoading={isUploading}
+                    currentImageUrl={profileData.logo_url || null}
+                    onDelete={handleDeleteLogo}
+                    className="w-full"
+                  />
                 </div>
                 
                 <div className="flex-1 space-y-6">
