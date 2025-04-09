@@ -30,6 +30,9 @@ serve(async (req) => {
     } else if (requestData.type === 'resend') {
       // Resend verification email
       return await handleResendVerification(supabase, requestData, corsHeaders);
+    } else if (requestData.type === 'check_verification') {
+      // Check verification status
+      return await handleCheckVerification(supabase, requestData, corsHeaders);
     } else {
       // Handle signup
       return await handleNewSignup(supabase, requestData, corsHeaders);
@@ -226,3 +229,51 @@ async function handleResendVerification(supabase, requestData, corsHeaders) {
     );
   }
 }
+
+// New function to check verification status
+async function handleCheckVerification(supabase, requestData, corsHeaders) {
+  try {
+    const { userId, token } = requestData;
+    
+    // Find the verification record
+    const { data: verificationRecords, error: findError } = await supabase
+      .from('user_verification')
+      .select('*')
+      .eq('verification_token', token)
+      .eq('user_id', userId)
+      .limit(1);
+      
+    if (findError) throw findError;
+    
+    if (!verificationRecords || verificationRecords.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          verified: false, 
+          error: "Verification record not found" 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const verificationRecord = verificationRecords[0];
+    const isExpired = new Date(verificationRecord.expires_at) < new Date();
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        verified: verificationRecord.verified, 
+        isExpired: isExpired,
+        record: verificationRecord
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error in handleCheckVerification:", error);
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+    );
+  }
+}
+

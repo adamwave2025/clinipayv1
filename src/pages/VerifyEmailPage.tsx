@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mail, AlertCircle, CheckCircle } from 'lucide-react';
@@ -64,43 +65,22 @@ const VerifyEmailPage = () => {
     try {
       console.log("Verifying token:", token, "for user:", userId);
       
-      // First check if the verification record exists and is valid
-      const { data: verificationRecords, error: findError } = await supabase
-        .from('user_verification')
-        .select('*')
-        .eq('verification_token', token)
-        .eq('user_id', userId)
-        .gt('expires_at', new Date().toISOString())
-        .eq('verified', false)
-        .limit(1);
+      // Use the edge function to verify the token
+      const { data, error } = await supabase.functions.invoke('handle-new-signup', {
+        method: 'POST',
+        body: { 
+          token, 
+          userId, 
+          type: 'verify_token'
+        }
+      });
       
-      if (findError) {
-        throw new Error(findError.message || "Error finding verification record");
+      if (error) {
+        throw new Error(error.message || "Error verifying token");
       }
       
-      if (!verificationRecords || verificationRecords.length === 0) {
-        throw new Error("Invalid or expired verification token");
-      }
-      
-      // Update the user as verified
-      const { error: updateUserError } = await supabase
-        .from('users')
-        .update({ verified: true })
-        .eq('id', userId);
-        
-      if (updateUserError) {
-        throw new Error(updateUserError.message || "Error updating user verification status");
-      }
-      
-      // Update verification record
-      const { error: verificationUpdateError } = await supabase
-        .from('user_verification')
-        .update({ verified: true })
-        .eq('verification_token', token)
-        .eq('user_id', userId);
-        
-      if (verificationUpdateError) {
-        throw new Error(verificationUpdateError.message || "Error updating verification record");
+      if (!data.success) {
+        throw new Error(data.error || "Invalid verification token");
       }
       
       setStatus('success');
@@ -134,7 +114,7 @@ const VerifyEmailPage = () => {
     try {
       // Call the edge function for resending verification
       console.log("Calling handle-new-signup function for resend email:", email);
-      const functionResponse = await supabase.functions.invoke('handle-new-signup', {
+      const { data, error } = await supabase.functions.invoke('handle-new-signup', {
         method: 'POST',
         body: { 
           email, 
@@ -143,13 +123,17 @@ const VerifyEmailPage = () => {
         }
       });
       
-      if (functionResponse.error) {
-        throw new Error(functionResponse.error.message || "Error resending verification");
+      if (error) {
+        throw new Error(error.message || "Error resending verification");
+      }
+      
+      if (!data.success) {
+        throw new Error(data.error || "Failed to resend verification email");
       }
       
       // If we got a direct verification URL, display it
-      if (functionResponse.data?.verificationUrl) {
-        setVerificationUrl(functionResponse.data.verificationUrl);
+      if (data.verificationUrl) {
+        setVerificationUrl(data.verificationUrl);
       }
       
       setStatus('success');

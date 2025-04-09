@@ -67,76 +67,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Helper function to create user records directly
-  const createUserRecords = async (userId: string, email: string, clinicName: string) => {
-    console.log('Creating user records directly for:', userId);
-    
-    try {
-      // 1. Create clinic record
-      const { error: clinicError } = await supabase
-        .from('clinics')
-        .upsert({
-          id: userId,
-          clinic_name: clinicName,
-          email: email,
-          created_at: new Date().toISOString()
-        });
-      
-      if (clinicError) {
-        console.error('Error creating clinic record:', clinicError);
-        throw clinicError;
-      }
-      
-      // 2. Create user record with clinic role
-      const { error: userError } = await supabase
-        .from('users')
-        .upsert({
-          id: userId,
-          email: email,
-          role: 'clinic',
-          clinic_id: userId,
-          verified: false,
-          created_at: new Date().toISOString()
-        });
-      
-      if (userError) {
-        console.error('Error creating user record:', userError);
-        throw userError;
-      }
-      
-      // 3. Create verification record - using direct insert instead of RPC
-      const verificationToken = crypto.randomUUID();
-      const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + 1); // 24 hours from now
-      
-      // Direct insert into user_verification table
-      const { error: verificationError } = await supabase
-        .from('user_verification')
-        .insert({
-          user_id: userId,
-          email: email,
-          verification_token: verificationToken,
-          expires_at: expiryDate.toISOString(),
-          verified: false
-        });
-      
-      if (verificationError) {
-        console.error('Error creating verification record:', verificationError);
-        throw verificationError;
-      }
-      
-      // Return verification information
-      return { 
-        success: true,
-        verificationToken,
-        verificationUrl: `https://clinipay.co.uk/verify-email?token=${verificationToken}&userId=${userId}`
-      };
-    } catch (error) {
-      console.error('Error in createUserRecords:', error);
-      return { success: false, error };
-    }
-  };
-
   const signUp = async (email: string, password: string, clinicName: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -163,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           console.log("Calling handle-new-signup function for user:", data.user.id);
           
-          // First try to use the edge function for verification
+          // Use the edge function for record creation and verification
           const response = await supabase.functions.invoke('handle-new-signup', {
             method: 'POST',
             body: {
@@ -177,20 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (response.error) {
             console.error("Error calling handle-new-signup function:", response.error);
-            
-            // If edge function fails, fall back to direct record creation
-            console.log("Falling back to direct record creation");
-            const directResult = await createUserRecords(data.user.id, email, clinicName);
-            
-            if (directResult.success) {
-              console.log("Direct record creation successful");
-              toast.success("Sign up successful! Please check your email for verification.");
-              navigate('/verify-email?email=' + encodeURIComponent(email));
-              return { error: null };
-            } else {
-              console.error("Direct record creation failed:", directResult.error);
-              toast.error("There was an issue setting up your account. Please try again.");
-            }
+            toast.error("There was an issue setting up your account. Please try again.");
+            return { error: response.error };
           } else {
             console.log("handle-new-signup function called successfully:", response.data);
             toast.success("Sign up successful! Please check your email for verification.");
@@ -199,20 +117,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch (functionError) {
           console.error("Failed to call handle-new-signup function:", functionError);
-          
-          // Fall back to direct record creation
-          console.log("Falling back to direct record creation due to exception");
-          const directResult = await createUserRecords(data.user.id, email, clinicName);
-          
-          if (directResult.success) {
-            console.log("Direct record creation successful after exception");
-            toast.success("Sign up successful! Please check your email for verification.");
-            navigate('/verify-email?email=' + encodeURIComponent(email));
-            return { error: null };
-          } else {
-            console.error("Direct record creation failed after exception:", directResult.error);
-            toast.error("There was an issue setting up your account. Please try again.");
-          }
+          toast.error("There was an issue setting up your account. Please try again.");
+          return { error: functionError };
         }
       }
       
