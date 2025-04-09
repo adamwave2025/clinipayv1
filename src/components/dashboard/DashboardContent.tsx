@@ -16,6 +16,7 @@ const DashboardContent = () => {
     detailDialogOpen,
     refundDialogOpen,
     setDetailDialogOpen,
+    setRefundDialogOpen,
     openRefundDialog,
     handlePaymentClick,
     handleRefund

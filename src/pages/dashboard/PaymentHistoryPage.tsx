@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
-import { Payment } from '@/components/dashboard/RecentPaymentsCard';
+import { Payment } from '@/types/payment';
 import { Card, CardContent } from '@/components/ui/card';
 import StatusBadge from '@/components/common/StatusBadge';
 import { Input } from '@/components/ui/input';
