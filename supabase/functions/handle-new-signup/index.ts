@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.47.0";
 import { createHash } from "https://deno.land/std@0.168.0/node/crypto.ts";
@@ -15,9 +14,10 @@ function generateVerificationToken(userId: string, email: string): string {
 }
 
 // Generate a custom verification URL
-function generateVerificationUrl(token: string, userId: string): string {
-  const appUrl = "https://clinipay.co.uk";
-  return `${appUrl}/verify-email?token=${token}&userId=${userId}`;
+function generateVerificationUrl(token: string, userId: string, appUrl?: string): string {
+  // Use the app URL from request or default to production URL if not provided
+  const baseUrl = appUrl || "https://clinipay.co.uk"; // Default for production
+  return `${baseUrl}/verify-email?token=${token}&userId=${userId}`;
 }
 
 serve(async (req) => {
@@ -151,8 +151,21 @@ serve(async (req) => {
       throw tokenError;
     }
     
+    // Extract app URL from request headers or use default
+    let appUrl = null;
+    const referer = req.headers.get('referer');
+    if (referer) {
+      try {
+        const url = new URL(referer);
+        appUrl = `${url.protocol}//${url.host}`;
+        console.log("Using app URL from request:", appUrl);
+      } catch (e) {
+        console.log("Could not parse referer URL:", referer);
+      }
+    }
+    
     // 5. Generate the custom verification URL
-    const verificationUrl = generateVerificationUrl(verificationToken, userData.id);
+    const verificationUrl = generateVerificationUrl(verificationToken, userData.id, appUrl);
     console.log("Generated verification URL:", verificationUrl);
     
     // 6. Send the verification data to the GHL webhook
