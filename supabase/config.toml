@@ -6,3 +6,7 @@ verify_jwt = false
 
 [functions.setup-auth-trigger]
 verify_jwt = false
+
+# Add the execute_sql RPC function
+[functions.execute_sql]
+verify_jwt = false

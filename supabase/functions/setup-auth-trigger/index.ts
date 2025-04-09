@@ -27,6 +27,68 @@ serve(async (req) => {
         },
       }
     );
+
+    // Set up trigger for new user creation
+    const { error: triggerError } = await supabaseAdmin.rpc('setup_auth_user_trigger');
+    
+    if (triggerError) {
+      console.error("Error setting up auth trigger:", triggerError);
+      
+      // Create the stored procedure if it doesn't exist
+      const { error: createProcedureError } = await supabaseAdmin.rpc('create_auth_user_trigger');
+      
+      if (createProcedureError) {
+        console.error("Error creating auth trigger procedure:", createProcedureError);
+        
+        // Try creating the procedure manually
+        const { error: sqlError } = await supabaseAdmin.rpc('execute_sql', {
+          sql: `
+          -- Create function to handle new users
+          CREATE OR REPLACE FUNCTION public.handle_new_user()
+          RETURNS trigger
+          LANGUAGE plpgsql
+          SECURITY DEFINER SET search_path = public
+          AS $$
+          BEGIN
+            -- Insert into users table
+            INSERT INTO public.users (id, email, role, verified)
+            VALUES (NEW.id, NEW.email, 'clinic', false)
+            ON CONFLICT (id) DO NOTHING;
+            
+            RETURN NEW;
+          END;
+          $$;
+
+          -- Create or replace the trigger
+          DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+          CREATE TRIGGER on_auth_user_created
+            AFTER INSERT ON auth.users
+            FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+          
+          -- Create function to set up the trigger
+          CREATE OR REPLACE FUNCTION public.setup_auth_user_trigger()
+          RETURNS void
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $$
+          BEGIN
+            -- Function just returns success if called
+            RETURN;
+          END;
+          $$;
+          `
+        });
+        
+        if (sqlError) {
+          console.error("Error executing SQL to create trigger:", sqlError);
+          throw new Error("Failed to create auth trigger");
+        } else {
+          console.log("Successfully created auth user trigger");
+        }
+      }
+    } else {
+      console.log("Auth trigger setup successful");
+    }
     
     // Set up webhook URL for auth user creation
     const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/handle-new-signup`;
