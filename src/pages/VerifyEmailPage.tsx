@@ -13,6 +13,7 @@ const VerifyEmailPage = () => {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
+  const [verificationUrl, setVerificationUrl] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -57,13 +58,24 @@ const VerifyEmailPage = () => {
     try {
       // First try using the edge function
       try {
+        console.log("Calling handle-new-signup function for resend email:", email);
         const functionResponse = await supabase.functions.invoke('handle-new-signup', {
           method: 'POST',
-          body: { email, requestType: 'resend' }
+          body: { 
+            email, 
+            id: localStorage.getItem('userId') || undefined, 
+            type: 'resend',
+            requestType: 'resend'
+          }
         });
         
         if (functionResponse.error) {
-          throw new Error(functionResponse.error.message);
+          throw new Error(functionResponse.error.message || "Error resending verification");
+        }
+        
+        // If we got a direct verification URL, display it
+        if (functionResponse.data?.verificationUrl) {
+          setVerificationUrl(functionResponse.data.verificationUrl);
         }
         
         setStatus('success');
@@ -129,6 +141,24 @@ const VerifyEmailPage = () => {
           <div className="mb-6 p-4 bg-red-50 rounded-lg flex items-center">
             <AlertCircle className="text-red-500 mr-2 h-5 w-5" />
             <p className="text-red-700 text-sm">{message}</p>
+          </div>
+        )}
+        
+        {/* If verification URL is available, show it */}
+        {verificationUrl && (
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+            <h3 className="font-medium text-blue-700 mb-2">Verification Link (for testing):</h3>
+            <a 
+              href={verificationUrl}
+              className="text-blue-600 hover:text-blue-800 break-all underline text-sm"
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              {verificationUrl}
+            </a>
+            <p className="mt-2 text-xs text-gray-500">
+              (This link is shown here for testing purposes only. In production, it would only be sent via email.)
+            </p>
           </div>
         )}
         

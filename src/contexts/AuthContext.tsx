@@ -72,29 +72,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data?.user) {
         try {
           console.log("Calling handle-new-signup function for user:", data.user.id);
+          // Send to the edge function directly with the needed data
           const response = await supabase.functions.invoke('handle-new-signup', {
             method: 'POST',
             body: {
               id: data.user.id,
               email: data.user.email,
               clinic_name: clinicName,
-              type: 'signup'
+              raw_user_meta_data: data.user.user_metadata,
+              type: 'direct_call'
             }
           });
 
           if (response.error) {
             console.error("Error calling handle-new-signup function:", response.error);
+            toast.error("Sign up successful, but there was an issue setting up your account. Our team has been notified.");
           } else {
             console.log("handle-new-signup function called successfully:", response.data);
+            toast.success("Sign up successful! Please check your email for verification.");
           }
         } catch (functionError) {
           console.error("Failed to call handle-new-signup function:", functionError);
           // We continue anyway since the user was created
+          toast.error("Sign up successful, but there was an issue setting up your account. Our team has been notified.");
         }
       }
       
       // Successfully signed up, but need email verification
       localStorage.setItem('verificationEmail', email);
+      navigate('/verify-email');
       return { error: null };
     } catch (error) {
       console.error('Error during sign up:', error);
@@ -122,6 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error };
       }
       
+      toast.success('Signed in successfully');
       return { error: null };
     } catch (error) {
       console.error('Error during sign in:', error);

@@ -18,18 +18,28 @@ serve(async (req) => {
     let userData;
     
     try {
-      // First, try to parse it as a webhook payload from our trigger
-      const { record, type } = await req.json();
-      userData = { id: record?.id, email: record?.email, type };
-      console.log("Received webhook data:", JSON.stringify(userData));
-    } catch (parseError) {
-      // If that fails, try to parse it as a direct API call
-      try {
-        userData = await req.json();
-        console.log("Received direct API data:", JSON.stringify(userData));
-      } catch (directError) {
-        throw new Error("Invalid request data format");
+      // First, try to parse it as a direct webhook payload from database trigger
+      const requestData = await req.json();
+      console.log("Raw request data:", JSON.stringify(requestData));
+      
+      // Check if this is a database trigger webhook or direct API call
+      if (requestData.type === 'INSERT' && requestData.table === 'users' && requestData.record) {
+        // This is from our database trigger
+        userData = {
+          id: requestData.record.id,
+          email: requestData.record.email,
+          raw_user_meta_data: requestData.record.raw_user_meta_data,
+          type: 'webhook_trigger'
+        };
+        console.log("Parsed webhook trigger data:", JSON.stringify(userData));
+      } else {
+        // This is a direct API call
+        userData = requestData;
+        console.log("Parsed direct API data:", JSON.stringify(userData));
       }
+    } catch (parseError) {
+      console.error("Error parsing request data:", parseError);
+      throw new Error("Invalid request data format");
     }
     
     // Validate required data
@@ -55,14 +65,41 @@ serve(async (req) => {
       }
     );
 
-    // 1. Assign the 'clinic' role to the new user
+    // Extract clinic name from user metadata if available
+    let clinicName = "New Clinic";
+    if (userData.raw_user_meta_data?.clinic_name) {
+      clinicName = userData.raw_user_meta_data.clinic_name;
+    } else if (userData.clinic_name) {
+      clinicName = userData.clinic_name;
+    }
+
+    // 1. Create clinic record if it doesn't exist
+    console.log("Creating/updating clinic record for user:", userData.id);
+    const { data: clinicData, error: clinicError } = await supabaseAdmin
+      .from("clinics")
+      .upsert({
+        id: userData.id, // Use the user ID as the clinic ID
+        clinic_name: clinicName,
+        email: userData.email,
+        created_at: new Date().toISOString()
+      })
+      .select();
+
+    if (clinicError) {
+      console.error("Error creating clinic record:", clinicError);
+    } else {
+      console.log("Successfully created clinic record:", clinicData);
+    }
+
+    // 2. Assign the 'clinic' role to the new user
     console.log("Assigning 'clinic' role to user:", userData.id);
     const { data: roleData, error: roleError } = await supabaseAdmin
       .from("users")
-      .insert({
+      .upsert({
         id: userData.id,
         email: userData.email,
         role: "clinic",
+        clinic_id: userData.id, // Link user to their clinic
       });
 
     if (roleError) {
@@ -71,7 +108,7 @@ serve(async (req) => {
       console.log("Successfully assigned 'clinic' role to user");
     }
 
-    // 2. Generate email verification token
+    // 3. Generate email verification token
     console.log("Generating verification token for:", userData.email);
     const { data: token, error: tokenError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'signup',
@@ -110,10 +147,11 @@ serve(async (req) => {
       email: userData.email,
       verificationUrl: verificationUrl,
       userId: userData.id,
+      clinicName: clinicName,
       timestamp: new Date().toISOString()
     };
 
-    console.log("Webhook payload prepared");
+    console.log("Webhook payload:", JSON.stringify(webhookPayload));
 
     const webhookResponse = await fetch(webhookUrl, {
       method: "POST",
@@ -145,7 +183,9 @@ serve(async (req) => {
         message: "Verification email handling complete", 
         success: true,
         email: userData.email,
-        verificationUrl: verificationUrl
+        verificationUrl: verificationUrl,
+        userId: userData.id,
+        clinicName: clinicName
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
