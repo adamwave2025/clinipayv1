@@ -17,15 +17,18 @@ serve(async (req) => {
     // Get request data
     const { record, type } = await req.json();
     
+    console.log("Webhook received data:", JSON.stringify({ record, type }));
+    
     // Only process new user signups
     if (type !== 'INSERT' || !record?.id || !record?.email) {
+      console.log("Not a valid user signup event, skipping");
       return new Response(
         JSON.stringify({ message: "Not a new user signup event" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
-    console.log("Processing new user signup:", record.email);
+    console.log("Processing new user signup:", record.email, "User ID:", record.id);
     
     // Create a Supabase client with the service role key for admin access
     const supabaseAdmin = createClient(
@@ -40,7 +43,6 @@ serve(async (req) => {
     );
 
     // 1. Assign the 'clinic' role to the new user
-    // Fetch the user UUID from auth.users that matches the email
     const { data: userData, error: userError } = await supabaseAdmin
       .from("users")
       .insert({
@@ -56,6 +58,7 @@ serve(async (req) => {
     }
 
     // 2. Generate email verification token
+    console.log("Generating verification token for:", record.email);
     const { data: token, error: tokenError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'signup',
       email: record.email,
@@ -69,7 +72,13 @@ serve(async (req) => {
       throw tokenError;
     }
 
-    console.log("Generated verification link successfully");
+    // Ensure we got a valid token response
+    if (!token?.properties?.action_link) {
+      console.error("Error: No verification URL in the response:", JSON.stringify(token));
+      throw new Error("No verification URL returned from Supabase");
+    }
+
+    console.log("Generated verification link successfully:", token.properties.action_link.substring(0, 60) + "...");
 
     // Extract the verification URL from the response
     const verificationUrl = token.properties.action_link;
@@ -77,8 +86,11 @@ serve(async (req) => {
     // 3. Send the verification data to the GHL webhook
     const webhookUrl = Deno.env.get("NEW_SIGN_UP");
     if (!webhookUrl) {
+      console.error("NEW_SIGN_UP webhook URL is not configured");
       throw new Error("NEW_SIGN_UP webhook URL is not configured");
     }
+
+    console.log("Preparing to send data to webhook:", webhookUrl);
 
     const webhookPayload = {
       email: record.email,
@@ -86,6 +98,8 @@ serve(async (req) => {
       userId: record.id,
       timestamp: new Date().toISOString()
     };
+
+    console.log("Sending webhook payload:", JSON.stringify(webhookPayload).substring(0, 100) + "...");
 
     const webhookResponse = await fetch(webhookUrl, {
       method: "POST",
@@ -96,13 +110,28 @@ serve(async (req) => {
     });
 
     if (!webhookResponse.ok) {
-      throw new Error(`Error sending to webhook: ${webhookResponse.status} ${await webhookResponse.text()}`);
+      const errorText = await webhookResponse.text();
+      console.error(`Error sending to webhook (${webhookResponse.status}):`, errorText);
+      throw new Error(`Error sending to webhook: ${webhookResponse.status} ${errorText}`);
     }
 
-    console.log("Successfully sent verification data to webhook");
+    console.log("Successfully sent verification data to webhook with status:", webhookResponse.status);
+    
+    // Try to read the response body
+    let responseBody;
+    try {
+      responseBody = await webhookResponse.text();
+      console.log("Webhook response body:", responseBody);
+    } catch (err) {
+      console.log("Could not read webhook response body:", err.message);
+    }
 
     return new Response(
-      JSON.stringify({ message: "Verification email handling complete" }),
+      JSON.stringify({ 
+        message: "Verification email handling complete", 
+        success: true,
+        email: record.email
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error) {
