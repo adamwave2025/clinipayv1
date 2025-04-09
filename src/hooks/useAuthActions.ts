@@ -12,6 +12,8 @@ export function useAuthActions() {
 
   const signUp = async (email: string, password: string, clinicName: string) => {
     try {
+      console.log('Starting sign up process...', { email, clinicName });
+      
       // First sign up the user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -24,6 +26,7 @@ export function useAuthActions() {
       });
       
       if (error) {
+        console.error('Supabase Auth signup error:', error);
         toast.error(error.message);
         return { error };
       }
@@ -31,6 +34,8 @@ export function useAuthActions() {
       // If signup was successful
       if (data?.user) {
         try {
+          console.log('User created successfully, setting up verification...', data.user.id);
+          
           // Store userId in localStorage for verification page
           localStorage.setItem('userId', data.user.id);
           localStorage.setItem('verificationEmail', email);
@@ -48,6 +53,7 @@ export function useAuthActions() {
             return { error: new Error(verification.error) };
           }
           
+          console.log('Verification setup successful');
           toast.success("Sign up successful! Please check your email for verification.");
           navigate('/verify-email?email=' + encodeURIComponent(email));
           return { error: null };

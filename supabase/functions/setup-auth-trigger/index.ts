@@ -28,14 +28,25 @@ serve(async (req) => {
       }
     );
 
-    // First, try to call the create_auth_user_trigger function
-    const { error: createError } = await supabaseAdmin.rpc('create_auth_user_trigger');
+    // Verify the auth trigger is working
+    const { data, error } = await supabaseAdmin.rpc('execute_sql', {
+      sql: `SELECT EXISTS (
+        SELECT 1 FROM pg_trigger 
+        WHERE tgname = 'on_auth_user_created'
+      )`
+    });
     
-    if (createError) {
-      console.error("Error creating auth trigger:", createError);
-      
-      // If that fails, try to execute the SQL directly
-      const { error: sqlError } = await supabaseAdmin.rpc('execute_sql', {
+    if (error) {
+      console.error("Error checking trigger:", error);
+      throw new Error("Failed to verify auth trigger: " + error.message);
+    }
+
+    const triggerExists = data && data[0] && data[0].exists === true;
+    console.log("Auth trigger exists:", triggerExists);
+    
+    if (!triggerExists) {
+      // If trigger doesn't exist, recreate it
+      const { error: createError } = await supabaseAdmin.rpc('execute_sql', {
         sql: `
         -- Create function to handle new users
         CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -61,14 +72,12 @@ serve(async (req) => {
         `
       });
       
-      if (sqlError) {
-        console.error("Error executing SQL to create trigger:", sqlError);
-        throw new Error("Failed to create auth trigger: " + sqlError.message);
-      } else {
-        console.log("Successfully created auth user trigger via direct SQL");
+      if (createError) {
+        console.error("Error creating auth trigger:", createError);
+        throw new Error("Failed to create auth trigger: " + createError.message);
       }
-    } else {
-      console.log("Auth trigger setup successful via function");
+      
+      console.log("Auth trigger created successfully");
     }
     
     // Set up webhook URL for auth user creation
@@ -92,8 +101,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         message: "Auth settings updated successfully",
-        webhookUrl: webhookUrl,
-        note: "The system is configured for custom email verification." 
+        webhookUrl: webhookUrl
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );

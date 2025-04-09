@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.29.0";
-import * as jose from "https://esm.sh/jose@4.14.4";
 
 // CORS headers for browser requests
 const corsHeaders = {
@@ -25,17 +24,15 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Determine what type of request we're handling
-    if (requestData.type === 'verify_token') {
-      // Verify a JWT token
+    const { type } = requestData;
+    
+    if (type === 'verify_token') {
       return await handleVerifyToken(supabase, requestData, corsHeaders);
-    } else if (requestData.type === 'resend') {
-      // Resend verification email
+    } else if (type === 'resend') {
       return await handleResendVerification(supabase, requestData, corsHeaders);
-    } else if (requestData.type === 'check_verification') {
-      // Check verification status
+    } else if (type === 'check_verification') {
       return await handleCheckVerification(supabase, requestData, corsHeaders);
     } else {
-      // Handle signup
       return await handleNewSignup(supabase, requestData, corsHeaders);
     }
   } catch (error) {
@@ -47,28 +44,14 @@ serve(async (req) => {
   }
 });
 
-// Generate a JWT verification token
-async function generateJwtToken(userId: string, email: string) {
-  const secret = Deno.env.get("JWT_SECRET") || new TextEncoder().encode(crypto.randomUUID());
-  
-  // Create JWT token with 24-hour expiration
-  const jwt = await new jose.SignJWT({ userId, email })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('24h')
-    .sign(typeof secret === 'string' ? new TextEncoder().encode(secret) : secret);
-  
-  return jwt;
-}
-
 // Handle new signup
 async function handleNewSignup(supabase, requestData, corsHeaders) {
   try {
-    const { id, email, clinic_name, type } = requestData;
+    const { id, email, clinic_name } = requestData;
     
     console.log(`Processing new signup: ${email} with ID ${id}`);
     
-    // Generate a verification token via the database function
+    // Generate a verification token
     const { data: tokenData, error: tokenError } = await supabase.rpc(
       'generate_verification_token',
       { user_id: id }
@@ -82,15 +65,25 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
     // Get the token from result
     const verificationToken = tokenData;
     
-    // Create clinic and user records if they don't exist
-    await createUserRecordsIfNeeded(supabase, id, email, clinic_name);
+    // Create clinic if it doesn't exist
+    if (clinic_name) {
+      const { error: clinicError } = await supabase
+        .from('clinics')
+        .upsert({
+          id: id,
+          clinic_name: clinic_name,
+          email: email,
+          created_at: new Date().toISOString()
+        });
+            
+      if (clinicError) {
+        console.error("Error creating clinic record:", clinicError);
+      }
+    }
     
-    // Generate verification URL with JWT
+    // Generate verification URL
     const baseUrl = Deno.env.get("SITE_URL") || "https://clinipay.co.uk";
     const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}&userId=${id}`;
-    
-    // In production, send this via email
-    console.log("Generated verification URL:", verificationUrl);
     
     // Forward the verification URL to the NEW_SIGN_UP webhook if configured
     const newSignUpWebhook = Deno.env.get("NEW_SIGN_UP");
@@ -131,74 +124,6 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
       JSON.stringify({ success: false, error: error.message }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
-  }
-}
-
-// Helper function to create user records if they don't exist
-async function createUserRecordsIfNeeded(supabase, userId, email, clinicName) {
-  try {
-    // Check if user already exists in public.users table
-    const { data: existingUser, error: userQueryError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('id', userId)
-      .maybeSingle();
-    
-    if (userQueryError) {
-      console.error("Error checking if user exists:", userQueryError);
-    }
-    
-    if (!existingUser) {
-      console.log("Creating user record for", email);
-      // Create user record
-      const { error: userError } = await supabase
-        .from('users')
-        .insert({
-          id: userId,
-          email: email,
-          role: 'clinic',
-          verified: false
-        });
-          
-      if (userError) {
-        console.error("Error creating user record:", userError);
-        throw userError;
-      }
-    }
-    
-    // Check if clinic already exists
-    if (clinicName) {
-      const { data: existingClinic, error: clinicQueryError } = await supabase
-        .from('clinics')
-        .select('id')
-        .eq('id', userId)
-        .maybeSingle();
-      
-      if (clinicQueryError) {
-        console.error("Error checking if clinic exists:", clinicQueryError);
-      }
-      
-      if (!existingClinic) {
-        console.log("Creating clinic record for", clinicName);
-        // Create clinic record
-        const { error: clinicError } = await supabase
-          .from('clinics')
-          .insert({
-            id: userId,
-            clinic_name: clinicName,
-            email: email,
-            created_at: new Date().toISOString()
-          });
-            
-        if (clinicError) {
-          console.error("Error creating clinic record:", clinicError);
-          throw clinicError;
-        }
-      }
-    }
-  } catch (error) {
-    console.error("Error in createUserRecordsIfNeeded:", error);
-    throw error;
   }
 }
 
@@ -346,7 +271,7 @@ async function handleResendVerification(supabase, requestData, corsHeaders) {
 // Function to check verification status
 async function handleCheckVerification(supabase, requestData, corsHeaders) {
   try {
-    const { userId, email } = requestData;
+    const { userId } = requestData;
     
     // Find the user verification status
     const { data: userData, error: userError } = await supabase
