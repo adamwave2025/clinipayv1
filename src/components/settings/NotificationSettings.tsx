@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { NotificationSettings as NotificationSettingsType } from '@/services/NotificationService';
@@ -8,15 +7,11 @@ import { NotificationSettings as NotificationSettingsType } from '@/services/Not
 interface NotificationSettingsProps {
   notificationSettings: NotificationSettingsType;
   handleNotificationChange: (setting: string, checked: boolean) => void;
-  handleSaveNotifications: () => void;
-  isSubmitting?: boolean;
 }
 
 const NotificationSettings = ({
   notificationSettings,
   handleNotificationChange,
-  handleSaveNotifications,
-  isSubmitting = false
 }: NotificationSettingsProps) => {
   return (
     <Card className="card-shadow">
@@ -88,14 +83,6 @@ const NotificationSettings = ({
               </div>
             </div>
           </div>
-          
-          <Button 
-            onClick={handleSaveNotifications} 
-            className="btn-gradient"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Saving...' : 'Save Preferences'}
-          </Button>
         </div>
       </CardContent>
     </Card>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,7 +41,6 @@ export function useClinicData() {
     setError(null);
 
     try {
-      // First, get the user's clinic ID
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('clinic_id')
@@ -57,7 +55,6 @@ export function useClinicData() {
         throw new Error('User is not associated with a clinic');
       }
 
-      // Now fetch the clinic data using the clinic_id
       const { data: clinicData, error: clinicError } = await supabase
         .from('clinics')
         .select('*')
@@ -70,11 +67,9 @@ export function useClinicData() {
 
       setClinicData(clinicData);
 
-      // Fetch notification preferences for the clinic
       const preferences = await NotificationService.fetchNotificationPreferences(clinicData.id);
       setNotificationPreferences(preferences);
       
-      // Convert preferences to UI settings
       const settings = NotificationService.mapPreferencesToSettings(preferences);
       setNotificationSettings(settings);
       
@@ -102,7 +97,6 @@ export function useClinicData() {
         throw new Error(error.message);
       }
 
-      // Update local state
       setClinicData({
         ...clinicData,
         ...updatedData,
@@ -125,11 +119,9 @@ export function useClinicData() {
     setIsUploading(true);
 
     try {
-      // Create a unique file path with user ID as folder and timestamp for uniqueness
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/${Date.now()}.${fileExt}`;
 
-      // Upload the file to the cliniclogo bucket
       const { error: uploadError, data } = await supabase.storage
         .from('cliniclogo')
         .upload(filePath, file, {
@@ -139,12 +131,10 @@ export function useClinicData() {
 
       if (uploadError) throw uploadError;
 
-      // Get the public URL for the uploaded file
       const { data: { publicUrl } } = supabase.storage
         .from('cliniclogo')
         .getPublicUrl(filePath);
 
-      // Update clinic record with the new logo URL
       const { error: updateError } = await supabase
         .from('clinics')
         .update({ logo_url: publicUrl })
@@ -152,7 +142,6 @@ export function useClinicData() {
 
       if (updateError) throw updateError;
 
-      // Update local state
       setClinicData({
         ...clinicData,
         logo_url: publicUrl
@@ -177,7 +166,6 @@ export function useClinicData() {
     setIsUploading(true);
 
     try {
-      // Extract the file path from the public URL
       const fileUrl = new URL(clinicData.logo_url);
       const pathWithBucket = fileUrl.pathname.split('/');
       const bucketIndex = pathWithBucket.findIndex(part => part === 'cliniclogo');
@@ -188,14 +176,12 @@ export function useClinicData() {
       
       const filePath = pathWithBucket.slice(bucketIndex + 1).join('/');
       
-      // Delete the file from storage
       const { error: deleteError } = await supabase.storage
         .from('cliniclogo')
         .remove([filePath]);
 
       if (deleteError) throw deleteError;
 
-      // Update clinic record to remove the logo URL
       const { error: updateError } = await supabase
         .from('clinics')
         .update({ logo_url: null })
@@ -203,7 +189,6 @@ export function useClinicData() {
 
       if (updateError) throw updateError;
 
-      // Update local state
       setClinicData({
         ...clinicData,
         logo_url: null
@@ -222,7 +207,6 @@ export function useClinicData() {
   const updateNotificationSetting = async (setting: string, checked: boolean) => {
     if (!clinicData) return false;
 
-    // Map UI setting name to channel and type
     let channel: 'email' | 'sms';
     let type: 'payment_received' | 'refund_processed' | 'weekly_summary';
 
@@ -248,13 +232,11 @@ export function useClinicData() {
       return false;
     }
 
-    // Update setting in local state
     setNotificationSettings(prev => ({
       ...prev,
       [setting]: checked
     }));
 
-    // Update in database
     try {
       const success = await NotificationService.updateNotificationPreference(
         clinicData.id,
@@ -266,32 +248,6 @@ export function useClinicData() {
       return success;
     } catch (error) {
       console.error('Error updating notification setting:', error);
-      return false;
-    }
-  };
-
-  const saveAllNotificationSettings = async () => {
-    if (!clinicData) {
-      toast.error('No clinic data available');
-      return false;
-    }
-
-    try {
-      const success = await NotificationService.updateAllNotificationPreferences(
-        clinicData.id,
-        notificationSettings
-      );
-
-      if (success) {
-        toast.success('Notification preferences saved successfully');
-      } else {
-        toast.error('Failed to save notification preferences');
-      }
-
-      return success;
-    } catch (error) {
-      console.error('Error saving notification settings:', error);
-      toast.error('An error occurred while saving notification preferences');
       return false;
     }
   };
@@ -310,7 +266,6 @@ export function useClinicData() {
     updateClinicData,
     uploadLogo,
     deleteLogo,
-    updateNotificationSetting,
-    saveAllNotificationSettings
+    updateNotificationSetting
   };
 }

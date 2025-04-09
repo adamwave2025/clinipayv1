@@ -23,12 +23,10 @@ const SettingsPage = () => {
     updateClinicData,
     uploadLogo,
     deleteLogo,
-    updateNotificationSetting,
-    saveAllNotificationSettings
+    updateNotificationSetting
   } = useClinicData();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isNotificationSubmitting, setIsNotificationSubmitting] = useState(false);
   const [profileData, setProfileData] = useState<Partial<ClinicData>>({
     clinic_name: '',
     email: '',
@@ -62,6 +60,8 @@ const SettingsPage = () => {
 
   const handleNotificationChange = (setting: string, checked: boolean) => {
     updateNotificationSetting(setting, checked);
+    // Show a toast notification to confirm change
+    toast.success(`${setting} preference updated`);
   };
 
   const handleSaveProfile = async () => {
@@ -97,12 +97,6 @@ const SettingsPage = () => {
 
   const handleDeleteLogo = async () => {
     await deleteLogo();
-  };
-
-  const handleSaveNotifications = async () => {
-    setIsNotificationSubmitting(true);
-    await saveAllNotificationSettings();
-    setIsNotificationSubmitting(false);
   };
 
   const handleConnectStripe = () => {
@@ -170,8 +164,6 @@ const SettingsPage = () => {
           <NotificationSettings 
             notificationSettings={notificationSettings}
             handleNotificationChange={handleNotificationChange}
-            handleSaveNotifications={handleSaveNotifications}
-            isSubmitting={isNotificationSubmitting}
           />
         </TabsContent>
         
