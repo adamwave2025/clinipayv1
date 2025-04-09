@@ -6,7 +6,7 @@ import { Payment } from '@/types/payment';
 import { Card, CardContent } from '@/components/ui/card';
 import StatusBadge from '@/components/common/StatusBadge';
 import { Input } from '@/components/ui/input';
-import DateFilter from '@/components/common/DateFilter';
+import DateRangeFilter from '@/components/common/DateRangeFilter';
 import {
   Select,
   SelectContent,
@@ -28,6 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { isWithinInterval, parseISO } from 'date-fns';
 
 const PaymentHistoryPage = () => {
   // Mock data
@@ -115,7 +116,8 @@ const PaymentHistoryPage = () => {
   ]);
 
   const [search, setSearch] = useState('');
-  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
+  const [toDate, setToDate] = useState<Date | undefined>(undefined);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   
@@ -162,14 +164,28 @@ const PaymentHistoryPage = () => {
       payment.patientEmail?.toLowerCase().includes(search.toLowerCase()) ||
       payment.patientPhone?.includes(search);
     
-    const matchesDate = !dateFilter || 
-      new Date(payment.date).toDateString() === dateFilter.toDateString();
+    // Date range filter
+    let matchesDateRange = true;
+    if (fromDate || toDate) {
+      const paymentDate = parseISO(payment.date);
+      
+      if (fromDate && toDate) {
+        // Both from and to dates are set
+        matchesDateRange = isWithinInterval(paymentDate, { start: fromDate, end: toDate });
+      } else if (fromDate) {
+        // Only from date is set
+        matchesDateRange = paymentDate >= fromDate;
+      } else if (toDate) {
+        // Only to date is set
+        matchesDateRange = paymentDate <= toDate;
+      }
+    }
     
     const matchesType = typeFilter === 'all' || payment.type === typeFilter;
     
     const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
     
-    return matchesSearch && matchesDate && matchesType && matchesStatus;
+    return matchesSearch && matchesDateRange && matchesType && matchesStatus;
   });
 
   return (
@@ -193,9 +209,11 @@ const PaymentHistoryPage = () => {
             </div>
             
             <div className="flex flex-wrap gap-4">
-              <DateFilter
-                date={dateFilter}
-                onDateChange={setDateFilter}
+              <DateRangeFilter
+                fromDate={fromDate}
+                toDate={toDate}
+                onFromDateChange={setFromDate}
+                onToDateChange={setToDate}
               />
               
               <Select value={typeFilter} onValueChange={setTypeFilter}>
