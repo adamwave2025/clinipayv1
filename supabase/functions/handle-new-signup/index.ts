@@ -1,11 +1,24 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.47.0";
+import { createHash } from "https://deno.land/std@0.168.0/node/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Generate a verification token
+function generateVerificationToken(userId: string, email: string): string {
+  const data = `${userId}:${email}:${Date.now()}`;
+  return createHash('sha256').update(data).digest('hex');
+}
+
+// Generate a custom verification URL
+function generateVerificationUrl(token: string, userId: string): string {
+  const appUrl = "https://clinipay.co.uk";
+  return `${appUrl}/verify-email?token=${token}&userId=${userId}`;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -32,6 +45,9 @@ serve(async (req) => {
           type: 'webhook_trigger'
         };
         console.log("Parsed webhook trigger data:", JSON.stringify(userData));
+      } else if (requestData.type === 'verify_token') {
+        // This is a token verification request
+        return await handleVerifyToken(requestData, req);
       } else {
         // This is a direct API call
         userData = requestData;
@@ -108,33 +124,31 @@ serve(async (req) => {
       console.log("Successfully assigned 'clinic' role to user");
     }
 
-    // 3. Generate email verification token
-    console.log("Generating verification token for:", userData.email);
-    const { data: token, error: tokenError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'signup',
-      email: userData.email,
-      options: {
-        redirectTo: 'https://clinipay.co.uk/auth/callback'
-      }
-    });
-
+    // 3. Generate a custom verification token
+    const verificationToken = generateVerificationToken(userData.id, userData.email);
+    console.log("Generated verification token for:", userData.email);
+    
+    // 4. Store the verification token in the database
+    const { error: tokenError } = await supabaseAdmin
+      .from("user_verification")
+      .upsert({
+        user_id: userData.id,
+        email: userData.email,
+        verification_token: verificationToken,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours expiry
+        verified: false
+      });
+      
     if (tokenError) {
-      console.error("Error generating verification token:", tokenError);
+      console.error("Error storing verification token:", tokenError);
       throw tokenError;
     }
-
-    // Ensure we got a valid token response
-    if (!token?.properties?.action_link) {
-      console.error("Error: No verification URL in the response:", JSON.stringify(token));
-      throw new Error("No verification URL returned from Supabase");
-    }
-
-    console.log("Generated verification link successfully");
-
-    // Extract the verification URL from the response
-    const verificationUrl = token.properties.action_link;
     
-    // 3. Send the verification data to the GHL webhook
+    // 5. Generate the custom verification URL
+    const verificationUrl = generateVerificationUrl(verificationToken, userData.id);
+    console.log("Generated verification URL:", verificationUrl);
+    
+    // 6. Send the verification data to the GHL webhook
     const webhookUrl = Deno.env.get("NEW_SIGN_UP");
     if (!webhookUrl) {
       console.error("NEW_SIGN_UP webhook URL is not configured");
@@ -198,3 +212,84 @@ serve(async (req) => {
     );
   }
 });
+
+// Handler for token verification requests
+async function handleVerifyToken(requestData: any, req: Request) {
+  const { token, userId } = requestData;
+  
+  if (!token || !userId) {
+    return new Response(
+      JSON.stringify({ error: "Missing token or userId" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+    );
+  }
+  
+  console.log("Processing verification request for token:", token, "and user:", userId);
+  
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+  
+  // Check if the token is valid
+  const { data: verificationData, error: verificationError } = await supabaseAdmin
+    .from("user_verification")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("verification_token", token)
+    .gt("expires_at", new Date().toISOString())
+    .single();
+  
+  if (verificationError || !verificationData) {
+    console.error("Invalid or expired verification token:", verificationError);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: "Invalid or expired verification token" 
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+    );
+  }
+  
+  // Mark the user as verified
+  const { error: updateError } = await supabaseAdmin
+    .from("user_verification")
+    .update({ verified: true })
+    .eq("user_id", userId);
+  
+  if (updateError) {
+    console.error("Error updating verification status:", updateError);
+    return new Response(
+      JSON.stringify({ success: false, error: "Failed to verify email" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+    );
+  }
+  
+  // Set the user's email as confirmed in auth schema
+  try {
+    await supabaseAdmin.auth.admin.updateUserById(
+      userId,
+      { email_confirm: true }
+    );
+    console.log("User email confirmed in auth schema");
+  } catch (authError) {
+    console.error("Error confirming user email in auth schema:", authError);
+    // Continue anyway, our custom verification is more important
+  }
+  
+  console.log("User verified successfully:", userId);
+  
+  return new Response(
+    JSON.stringify({ 
+      success: true, 
+      message: "Email verified successfully" 
+    }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+  );
+}

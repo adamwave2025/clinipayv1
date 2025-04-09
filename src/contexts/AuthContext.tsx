@@ -56,7 +56,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password,
         options: {
-          emailRedirectTo: 'https://clinipay.co.uk/auth/callback',
           data: {
             clinic_name: clinicName
           }
@@ -72,6 +71,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data?.user) {
         try {
           console.log("Calling handle-new-signup function for user:", data.user.id);
+          // Store userId in localStorage for verification page
+          localStorage.setItem('userId', data.user.id);
+          
           // Send to the edge function directly with the needed data
           const response = await supabase.functions.invoke('handle-new-signup', {
             method: 'POST',
@@ -111,12 +113,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) {
+        // Check if this is an email verification error
         if (error.message.includes('Email not confirmed')) {
           toast.error('Please verify your email address before signing in');
           // Store email for the verification page
@@ -126,6 +129,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           toast.error(error.message);
         }
         return { error };
+      }
+      
+      // Check if the user is verified in our custom system
+      try {
+        const { data: userData, error: userError } = await supabase
+          .from('user_verification')
+          .select('verified')
+          .eq('user_id', data.user.id)
+          .single();
+        
+        if (userError || !userData || !userData.verified) {
+          // User is not verified in our custom system
+          await supabase.auth.signOut(); // Sign them out
+          toast.error('Please verify your email address before signing in');
+          localStorage.setItem('verificationEmail', email);
+          localStorage.setItem('userId', data.user.id);
+          navigate('/verify-email');
+          return { error: new Error('Email not verified') };
+        }
+      } catch (verificationError) {
+        console.error('Error checking verification status:', verificationError);
+        // Continue anyway, but log the error
       }
       
       toast.success('Signed in successfully');

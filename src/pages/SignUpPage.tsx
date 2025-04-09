@@ -61,7 +61,7 @@ const SignUpPage = () => {
       
       if (!error) {
         toast.success('Account created! Please check your email to verify your account.');
-        navigate('/verify-email');
+        navigate('/verify-email?email=' + encodeURIComponent(formData.email));
       }
     } finally {
       setIsLoading(false);

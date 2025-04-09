@@ -3,19 +3,31 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mail, AlertCircle, CheckCircle } from 'lucide-react';
 import AuthLayout from '@/components/layouts/AuthLayout';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 const VerifyEmailPage = () => {
   const [isResending, setIsResending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [verificationUrl, setVerificationUrl] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Check if we have a token and userId in the URL for verification
+  useEffect(() => {
+    const token = searchParams.get('token');
+    const userId = searchParams.get('userId');
+    
+    if (token && userId) {
+      handleVerifyToken(token, userId);
+    }
+  }, [searchParams]);
 
   // Check for email in URL params or in local storage
   useEffect(() => {
@@ -44,6 +56,50 @@ const VerifyEmailPage = () => {
     
     checkSession();
   }, [navigate]);
+
+  const handleVerifyToken = async (token: string, userId: string) => {
+    setIsVerifying(true);
+    setStatus('idle');
+    setMessage('');
+    
+    try {
+      console.log("Verifying token:", token, "for user:", userId);
+      const response = await supabase.functions.invoke('handle-new-signup', {
+        method: 'POST',
+        body: { 
+          type: 'verify_token',
+          token,
+          userId
+        }
+      });
+      
+      if (response.error) {
+        throw new Error(response.error.message || "Error verifying email");
+      }
+      
+      console.log("Verification response:", response.data);
+      
+      if (response.data?.success) {
+        setStatus('success');
+        setMessage('Your email has been verified! You can now sign in to your account.');
+        toast.success('Email verification successful!');
+        
+        // Redirect to sign-in page after a short delay
+        setTimeout(() => {
+          navigate('/sign-in');
+        }, 3000);
+      } else {
+        throw new Error(response.data?.error || "Failed to verify email");
+      }
+    } catch (error: any) {
+      console.error('Error verifying token:', error);
+      setStatus('error');
+      setMessage(error.message || 'An error occurred during email verification');
+      toast.error(error.message || 'An error occurred during email verification');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const handleResendEmail = async () => {
     if (!email) {
@@ -119,11 +175,18 @@ const VerifyEmailPage = () => {
       subtitle="We've sent a verification link to your email"
     >
       <div className="text-center">
-        <div className="flex justify-center my-8">
-          <div className="bg-blue-50 rounded-full p-6">
-            <Mail className="h-12 w-12 text-blue-500" />
+        {isVerifying ? (
+          <div className="flex flex-col items-center justify-center my-8">
+            <LoadingSpinner size="lg" className="mb-4" />
+            <p className="text-gray-600">Verifying your email...</p>
           </div>
-        </div>
+        ) : (
+          <div className="flex justify-center my-8">
+            <div className="bg-blue-50 rounded-full p-6">
+              <Mail className="h-12 w-12 text-blue-500" />
+            </div>
+          </div>
+        )}
         
         <p className="mb-6 text-gray-600">
           Please check your inbox and click on the verification link to complete your registration.
@@ -162,25 +225,27 @@ const VerifyEmailPage = () => {
           </div>
         )}
         
-        <div className="space-y-4">
-          <input
-            type="email"
-            placeholder="Enter your email address"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          
-          <Button 
-            variant="outline" 
-            onClick={handleResendEmail}
-            disabled={isResending}
-            className="w-full"
-          >
-            {isResending ? <LoadingSpinner size="sm" className="mr-2" /> : null}
-            Resend verification email
-          </Button>
-        </div>
+        {!isVerifying && (
+          <div className="space-y-4">
+            <input
+              type="email"
+              placeholder="Enter your email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            
+            <Button 
+              variant="outline" 
+              onClick={handleResendEmail}
+              disabled={isResending}
+              className="w-full"
+            >
+              {isResending ? <LoadingSpinner size="sm" className="mr-2" /> : null}
+              Resend verification email
+            </Button>
+          </div>
+        )}
         
         <p className="text-sm text-gray-500 mt-6">
           Already verified?{' '}

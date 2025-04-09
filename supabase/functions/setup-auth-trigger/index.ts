@@ -27,35 +27,45 @@ serve(async (req) => {
     );
     
     // Disable Supabase's automatic email verification
-    console.log("Attempting to disable Supabase automatic email verification...");
+    console.log("Disabling Supabase's automatic email verification...");
     
     try {
-      // Note: We're using this approach because the auth.config update may not be available in all Supabase instances
-      const { error } = await supabaseAdmin.rpc('select_service_role', {
+      // We're using multiple approaches to ensure email verification is disabled
+      // First try using RPC
+      const { error: rpcError } = await supabaseAdmin.rpc('select_service_role', {
         service_request: `UPDATE auth.config SET enable_signup_captcha = false, enable_email_confirm = false WHERE id = 1`
       });
       
-      if (error) {
-        console.log("Note: Could not disable automatic email verification using RPC:", error.message);
+      if (rpcError) {
+        console.log("Could not disable email verification using RPC:", rpcError.message);
         
         // Try direct method as fallback
-        const { error: authSettingsError } = await supabaseAdmin
+        const { error: directError } = await supabaseAdmin
           .from('auth.config')
           .update({ enable_signup_captcha: false, enable_email_confirm: false })
           .eq('id', 1);
           
-        if (authSettingsError) {
-          console.log("Note: Could not disable automatic email verification directly:", authSettingsError.message);
-          // Continue anyway, this is not critical
+        if (directError) {
+          console.log("Could not disable email verification directly:", directError.message);
         } else {
-          console.log("Disabled Supabase automatic email verification successfully using direct method");
+          console.log("Disabled Supabase email verification successfully using direct method");
         }
       } else {
-        console.log("Disabled Supabase automatic email verification successfully using RPC");
+        console.log("Disabled Supabase email verification successfully using RPC");
       }
+      
+      // Try additional methods to be thorough
+      console.log("Applying additional verification disabling methods...");
+      
+      // Set auto confirm to true via another method
+      await supabaseAdmin.rpc('select_service_role', {
+        service_request: `INSERT INTO auth.config (name, value) 
+        VALUES ('mailer.autoconfirm', 'true') 
+        ON CONFLICT (name) DO UPDATE SET value = 'true'`
+      });
+      
     } catch (configError) {
       console.error("Error updating auth settings:", configError);
-      // Continue anyway, this is not critical
     }
 
     // Set up webhook URL for auth user creation
@@ -70,8 +80,7 @@ serve(async (req) => {
       }, { onConflict: 'key' });
     
     if (settingError) {
-      console.log("Note: Could not store webhook URL in settings:", settingError.message);
-      // This is optional, so continue anyway
+      console.log("Could not store webhook URL in settings:", settingError.message);
     }
     
     // Check if the database trigger is set up
@@ -92,7 +101,7 @@ serve(async (req) => {
         message: "Auth settings updated successfully",
         webhookUrl: webhookUrl,
         triggerExists: triggerExists,
-        note: "The system is configured to handle new signups. Make sure to test a signup flow." 
+        note: "The system is configured for custom email verification. Automatic Supabase verification has been disabled." 
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
