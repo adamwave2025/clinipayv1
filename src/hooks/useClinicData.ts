@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { NotificationService, NotificationSettings, NotificationPreference } from '@/services/NotificationService';
 
 export type ClinicData = {
   id: string;
@@ -21,6 +21,14 @@ export function useClinicData() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreference[]>([]);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+    emailPayments: false,
+    emailRefunds: false,
+    emailSummary: false,
+    smsPayments: false,
+    smsRefunds: false
+  });
   const { user } = useAuth();
 
   const fetchClinicData = async () => {
@@ -60,6 +68,15 @@ export function useClinicData() {
       }
 
       setClinicData(clinicData);
+
+      // Fetch notification preferences for the clinic
+      const preferences = await NotificationService.fetchNotificationPreferences(clinicData.id);
+      setNotificationPreferences(preferences);
+      
+      // Convert preferences to UI settings
+      const settings = NotificationService.mapPreferencesToSettings(preferences);
+      setNotificationSettings(settings);
+      
     } catch (error: any) {
       console.error('Error fetching clinic data:', error);
       setError(error.message);
@@ -201,6 +218,72 @@ export function useClinicData() {
     }
   };
 
+  const updateNotificationSetting = async (setting: string, checked: boolean) => {
+    if (!clinicData) return false;
+
+    // Map UI setting name to channel and type
+    let channel: 'email' | 'sms';
+    let type: 'payments' | 'refunds' | 'summary';
+
+    if (setting.startsWith('email')) {
+      channel = 'email';
+      type = setting.replace('email', '').toLowerCase() as 'payments' | 'refunds' | 'summary';
+    } else if (setting.startsWith('sms')) {
+      channel = 'sms';
+      type = setting.replace('sms', '').toLowerCase() as 'payments' | 'refunds' | 'summary';
+    } else {
+      console.error('Invalid notification setting:', setting);
+      return false;
+    }
+
+    // Update setting in local state
+    setNotificationSettings(prev => ({
+      ...prev,
+      [setting]: checked
+    }));
+
+    // Update in database
+    try {
+      const success = await NotificationService.updateNotificationPreference(
+        clinicData.id,
+        channel,
+        type,
+        checked
+      );
+
+      return success;
+    } catch (error) {
+      console.error('Error updating notification setting:', error);
+      return false;
+    }
+  };
+
+  const saveAllNotificationSettings = async () => {
+    if (!clinicData) {
+      toast.error('No clinic data available');
+      return false;
+    }
+
+    try {
+      const success = await NotificationService.updateAllNotificationPreferences(
+        clinicData.id,
+        notificationSettings
+      );
+
+      if (success) {
+        toast.success('Notification preferences saved successfully');
+      } else {
+        toast.error('Failed to save notification preferences');
+      }
+
+      return success;
+    } catch (error) {
+      console.error('Error saving notification settings:', error);
+      toast.error('An error occurred while saving notification preferences');
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchClinicData();
   }, [user]);
@@ -210,9 +293,12 @@ export function useClinicData() {
     isLoading,
     isUploading,
     error,
+    notificationSettings,
     fetchClinicData,
     updateClinicData,
     uploadLogo,
-    deleteLogo
+    deleteLogo,
+    updateNotificationSetting,
+    saveAllNotificationSettings
   };
 }
