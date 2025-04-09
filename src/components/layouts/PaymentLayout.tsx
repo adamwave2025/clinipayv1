@@ -7,18 +7,21 @@ interface PaymentLayoutProps {
   children: React.ReactNode;
   cardClassName?: string;
   isSplitView?: boolean;
+  hideHeaderFooter?: boolean;
 }
 
-const PaymentLayout = ({ children, cardClassName, isSplitView = false }: PaymentLayoutProps) => {
+const PaymentLayout = ({ children, cardClassName, isSplitView = false, hideHeaderFooter = false }: PaymentLayoutProps) => {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
-      <header className="py-6 px-4 border-b bg-white">
-        <div className="max-w-5xl mx-auto flex justify-center">
-          <Logo className="h-8 w-auto" />
-        </div>
-      </header>
+      {!hideHeaderFooter && (
+        <header className="py-6 px-4 border-b bg-white">
+          <div className="max-w-5xl mx-auto flex justify-center">
+            <Logo className="h-8 w-auto" />
+          </div>
+        </header>
+      )}
       
-      <main className="flex-1 flex items-center justify-center p-4 py-8">
+      <main className={`flex-1 flex items-center justify-center p-4 py-8 ${hideHeaderFooter ? 'py-0' : ''}`}>
         <div className={`w-full ${isSplitView ? 'max-w-5xl' : 'max-w-xl'}`}>
           {isSplitView ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -34,11 +37,13 @@ const PaymentLayout = ({ children, cardClassName, isSplitView = false }: Payment
         </div>
       </main>
       
-      <footer className="py-4 px-4 border-t bg-white">
-        <div className="max-w-5xl mx-auto text-center text-sm text-gray-500">
-          &copy; {new Date().getFullYear()} CliniPay. All rights reserved.
-        </div>
-      </footer>
+      {!hideHeaderFooter && (
+        <footer className="py-4 px-4 border-t bg-white">
+          <div className="max-w-5xl mx-auto text-center text-sm text-gray-500">
+            &copy; {new Date().getFullYear()} CliniPay. All rights reserved.
+          </div>
+        </footer>
+      )}
     </div>
   );
 };

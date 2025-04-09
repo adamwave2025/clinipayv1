@@ -6,7 +6,6 @@ import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentPageClinicCard from '@/components/payment/PaymentPageClinicCard';
 import CliniPaySecuritySection from '@/components/payment/CliniPaySecuritySection';
-import PaymentSecurityInfo from '@/components/payment/PaymentSecurityInfo';
 import { Card, CardContent } from '@/components/ui/card';
 
 const PatientPaymentPage = () => {
@@ -35,7 +34,7 @@ const PatientPaymentPage = () => {
   };
 
   return (
-    <PaymentLayout isSplitView={true}>
+    <PaymentLayout isSplitView={true} hideHeaderFooter={true}>
       {/* Left Column - Clinic Info & Security */}
       <div className="space-y-4">
         <PaymentPageClinicCard clinic={clinicDetails} />
@@ -53,8 +52,6 @@ const PatientPaymentPage = () => {
             onSubmit={handlePaymentSubmit}
             isLoading={isLoading}
           />
-          
-          <PaymentSecurityInfo />
         </CardContent>
       </Card>
     </PaymentLayout>
