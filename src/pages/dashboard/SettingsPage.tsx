@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -45,7 +44,6 @@ const SettingsPage = () => {
     smsRefunds: false,
   });
 
-  // Update the form when clinic data is loaded
   useEffect(() => {
     if (clinicData) {
       setProfileData({
@@ -114,7 +112,6 @@ const SettingsPage = () => {
   };
 
   const handleUpdatePassword = () => {
-    // Mock password update
     toast.success('Password updated successfully');
   };
 
@@ -176,6 +173,7 @@ const SettingsPage = () => {
                     currentImageUrl={profileData.logo_url || null}
                     onDelete={handleDeleteLogo}
                     className="w-full"
+                    showPreview={false}
                   />
                 </div>
                 

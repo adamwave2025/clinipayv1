@@ -14,6 +14,7 @@ interface FileUploadProps {
   isLoading?: boolean;
   currentImageUrl?: string | null;
   onDelete?: () => Promise<void>;
+  showPreview?: boolean;
 }
 
 const FileUpload = ({
@@ -24,7 +25,8 @@ const FileUpload = ({
   className = '',
   isLoading = false,
   currentImageUrl = null,
-  onDelete
+  onDelete,
+  showPreview = true
 }: FileUploadProps) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentImageUrl);
   const [isUploading, setIsUploading] = useState(false);
@@ -84,7 +86,7 @@ const FileUpload = ({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {previewUrl ? (
+      {showPreview && previewUrl ? (
         <div className="relative">
           <img 
             src={previewUrl} 
