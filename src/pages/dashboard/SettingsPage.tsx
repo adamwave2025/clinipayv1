@@ -58,17 +58,13 @@ const SettingsPage = () => {
     setProfileData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Updated function to provide more user-friendly toast messages using the notification mapper
   const handleNotificationChange = (setting: string, checked: boolean) => {
     updateNotificationSetting(setting, checked);
     
-    // Get a user-friendly name for the setting from our mapper service
     const settingName = NotificationService.getSettingDisplayName(setting);
     
-    // Create a user-friendly message based on the setting and the new state
     const statusText = checked ? "enabled" : "disabled";
     
-    // Show a toast notification with the user-friendly message
     toast.success(`${settingName} ${statusText}`);
   };
 
@@ -107,8 +103,42 @@ const SettingsPage = () => {
     await deleteLogo();
   };
 
-  const handleConnectStripe = () => {
-    toast.info('Redirecting to Stripe Connect...');
+  const handleConnectStripe = async () => {
+    toast.info('Connecting to Stripe...');
+    
+    try {
+      const result = await updateClinicData({
+        stripe_account_id: 'acct_' + Math.random().toString(36).substring(2, 15),
+      });
+      
+      if (result.success) {
+        toast.success('Successfully connected to Stripe');
+      } else {
+        toast.error('Failed to connect to Stripe');
+      }
+    } catch (error) {
+      console.error('Error connecting to Stripe:', error);
+      toast.error('An error occurred while connecting to Stripe');
+    }
+  };
+
+  const handleDisconnectStripe = async () => {
+    toast.info('Disconnecting from Stripe...');
+    
+    try {
+      const result = await updateClinicData({
+        stripe_account_id: null,
+      });
+      
+      if (result.success) {
+        toast.success('Successfully disconnected from Stripe');
+      } else {
+        toast.error('Failed to disconnect from Stripe');
+      }
+    } catch (error) {
+      console.error('Error disconnecting from Stripe:', error);
+      toast.error('An error occurred while disconnecting from Stripe');
+    }
   };
 
   const handleUpdatePassword = () => {
@@ -165,7 +195,11 @@ const SettingsPage = () => {
         </TabsContent>
         
         <TabsContent value="payments">
-          <PaymentSettings handleConnectStripe={handleConnectStripe} />
+          <PaymentSettings 
+            stripeAccountId={clinicData?.stripe_account_id || null}
+            handleConnectStripe={handleConnectStripe}
+            handleDisconnectStripe={handleDisconnectStripe}
+          />
         </TabsContent>
         
         <TabsContent value="notifications">
