@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -29,132 +30,27 @@ import {
 } from "@/components/ui/alert-dialog";
 import { isWithinInterval, parseISO } from 'date-fns';
 import { DateRange } from 'react-day-picker';
+import { useDashboardData } from '@/components/dashboard/DashboardDataProvider';
+import PaymentTable from '@/components/dashboard/payments/PaymentTable';
 
 const PaymentHistoryPage = () => {
-  const [payments, setPayments] = useState<Payment[]>([
-    {
-      id: '1',
-      patientName: 'Sarah Johnson',
-      patientEmail: 'sarah.j@example.com',
-      patientPhone: '+44 7700 900123',
-      amount: 75.00,
-      date: '2025-04-08',
-      status: 'paid',
-      type: 'deposit',
-    },
-    {
-      id: '2',
-      patientName: 'Michael Brown',
-      patientEmail: 'michael.b@example.com',
-      patientPhone: '+44 7700 900456',
-      amount: 125.00,
-      date: '2025-04-07',
-      status: 'paid',
-      type: 'treatment',
-    },
-    {
-      id: '3',
-      patientName: 'Emily Davis',
-      patientEmail: 'emily.d@example.com',
-      patientPhone: '+44 7700 900789',
-      amount: 50.00,
-      date: '2025-04-07',
-      status: 'refunded',
-      type: 'consultation',
-    },
-    {
-      id: '4',
-      patientName: 'James Wilson',
-      patientEmail: 'james.w@example.com',
-      patientPhone: '+44 7700 900246',
-      amount: 100.00,
-      date: '2025-04-06',
-      status: 'sent',
-      type: 'deposit',
-    },
-    {
-      id: '5',
-      patientName: 'Jennifer Lee',
-      patientEmail: 'jennifer.l@example.com',
-      patientPhone: '+44 7700 900135',
-      amount: 85.00,
-      date: '2025-04-05',
-      status: 'sent',
-      type: 'treatment',
-    },
-    {
-      id: '6',
-      patientName: 'Robert Smith',
-      patientEmail: 'robert.s@example.com',
-      patientPhone: '+44 7700 900753',
-      amount: 150.00,
-      date: '2025-04-03',
-      status: 'paid',
-      type: 'treatment',
-    },
-    {
-      id: '7',
-      patientName: 'Lisa Thompson',
-      patientEmail: 'lisa.t@example.com',
-      patientPhone: '+44 7700 900951',
-      amount: 55.00,
-      date: '2025-04-01',
-      status: 'paid',
-      type: 'consultation',
-    },
-    {
-      id: '8',
-      patientName: 'Daniel Wilson',
-      patientEmail: 'daniel.w@example.com',
-      patientPhone: '+44 7700 900258',
-      amount: 120.00,
-      date: '2025-03-28',
-      status: 'refunded',
-      type: 'deposit',
-    },
-  ]);
+  // Use the dashboard context to get payments data instead of local state
+  const { 
+    payments, 
+    handlePaymentClick, 
+    openRefundDialog, 
+    handleRefund,
+    refundDialogOpen,
+    setRefundDialogOpen,
+    detailDialogOpen,
+    setDetailDialogOpen,
+    selectedPayment 
+  } = useDashboardData();
 
   const [search, setSearch] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [refundAlertOpen, setRefundAlertOpen] = useState(false);
-
-  const handleRefundInitiate = (paymentId: string) => {
-    const payment = payments.find(p => p.id === paymentId);
-    if (payment) {
-      setSelectedPayment(payment);
-      setRefundAlertOpen(true);
-    }
-  };
-
-  const handleRefundConfirm = () => {
-    if (selectedPayment) {
-      setPayments(prevPayments =>
-        prevPayments.map(payment =>
-          payment.id === selectedPayment.id
-            ? { ...payment, status: 'refunded' as const }
-            : payment
-        )
-      );
-      
-      toast.success('Payment refunded successfully');
-      setRefundAlertOpen(false);
-      setDialogOpen(false);
-    }
-  };
-
-  const handlePaymentClick = (payment: Payment) => {
-    setSelectedPayment(payment);
-    setDialogOpen(true);
-  };
-
-  const capitalizeFirstLetter = (string: string) => {
-    return string.charAt(0).toUpperCase() + string.slice(1);
-  };
 
   const filteredPayments = payments.filter(payment => {
     const matchesSearch = search === '' || 
@@ -247,78 +143,35 @@ const PaymentHistoryPage = () => {
       
       <Card className="card-shadow">
         <CardContent className="p-6">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead className="text-left text-sm text-gray-500">
-                <tr className="border-b">
-                  <th className="pb-3 pl-2 pr-3 font-medium">Patient</th>
-                  <th className="pb-3 px-3 font-medium">Amount</th>
-                  <th className="pb-3 px-3 font-medium">Type</th>
-                  <th className="pb-3 px-3 font-medium">Date</th>
-                  <th className="pb-3 px-3 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPayments.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-4 text-center text-gray-500">
-                      No payments found matching your filters
-                    </td>
-                  </tr>
-                ) : (
-                  filteredPayments.map((payment) => (
-                    <tr 
-                      key={payment.id} 
-                      className="border-b hover:bg-gray-50 transition-colors cursor-pointer"
-                      onClick={() => handlePaymentClick(payment)}
-                    >
-                      <td className="py-4 pl-2 pr-3">
-                        <div className="font-medium text-gray-900">{payment.patientName}</div>
-                        <div className="text-xs text-gray-500">{payment.patientEmail}</div>
-                      </td>
-                      <td className="py-4 px-3 font-medium">
-                        £{payment.amount.toFixed(2)}
-                      </td>
-                      <td className="py-4 px-3 text-gray-700">
-                        {capitalizeFirstLetter(payment.type)}
-                      </td>
-                      <td className="py-4 px-3 text-gray-500">
-                        {payment.date}
-                      </td>
-                      <td className="py-4 px-3">
-                        <StatusBadge status={payment.status} />
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <PaymentTable 
+            payments={filteredPayments} 
+            onPaymentClick={handlePaymentClick} 
+          />
         </CardContent>
       </Card>
       
       <PaymentDetailDialog
         payment={selectedPayment}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onRefund={handleRefundInitiate}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        onRefund={openRefundDialog}
       />
 
-      <AlertDialog open={refundAlertOpen} onOpenChange={setRefundAlertOpen}>
+      <AlertDialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Refund</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedPayment && (
                 <>
-                  Are you sure you want to issue a refund for £{selectedPayment.amount.toFixed(2)} to {selectedPayment.patientName}? This action cannot be undone.
+                  Are you sure you want to issue a refund for {formatCurrency(selectedPayment.amount)} to {selectedPayment.patientName}? This action cannot be undone.
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRefundConfirm} className="bg-red-500 hover:bg-red-600">
+            <AlertDialogAction onClick={handleRefund} className="bg-red-500 hover:bg-red-600">
               Yes, Refund Payment
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -326,6 +179,11 @@ const PaymentHistoryPage = () => {
       </AlertDialog>
     </DashboardLayout>
   );
+};
+
+// Helper function to format currency
+const formatCurrency = (amount: number) => {
+  return `£${amount.toFixed(2)}`;
 };
 
 export default PaymentHistoryPage;
