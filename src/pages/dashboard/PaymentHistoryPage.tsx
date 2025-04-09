@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
-import { Payment } from '@/types/payment';
 import { Card, CardContent } from '@/components/ui/card';
 import StatusBadge from '@/components/common/StatusBadge';
 import { Input } from '@/components/ui/input';
@@ -17,7 +16,6 @@ import {
 } from '@/components/ui/select';
 import { Search } from 'lucide-react';
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
-import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,11 +28,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { isWithinInterval, parseISO } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { useDashboardData } from '@/components/dashboard/DashboardDataProvider';
+import { useDashboardData, DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
 import PaymentTable from '@/components/dashboard/payments/PaymentTable';
 
-const PaymentHistoryPage = () => {
-  // Use the dashboard context to get payments data instead of local state
+// Wrapper component to use the DashboardDataProvider context
+const PaymentHistoryContent = () => {
   const { 
     payments, 
     handlePaymentClick, 
@@ -83,12 +81,7 @@ const PaymentHistoryPage = () => {
   });
 
   return (
-    <DashboardLayout userType="clinic">
-      <PageHeader 
-        title="Payment History" 
-        description="View and manage all your payment transactions"
-      />
-      
+    <>
       <Card className="card-shadow mb-8">
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
@@ -177,6 +170,21 @@ const PaymentHistoryPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </>
+  );
+};
+
+const PaymentHistoryPage = () => {
+  return (
+    <DashboardLayout userType="clinic">
+      <PageHeader 
+        title="Payment History" 
+        description="View and manage all your payment transactions"
+      />
+      
+      <DashboardDataProvider>
+        <PaymentHistoryContent />
+      </DashboardDataProvider>
     </DashboardLayout>
   );
 };
