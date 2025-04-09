@@ -15,10 +15,9 @@ function generateVerificationToken(userId: string, email: string): string {
 }
 
 // Generate a custom verification URL
-function generateVerificationUrl(token: string, userId: string, appUrl?: string): string {
-  // Use the app URL from request or default to production URL if not provided
-  const baseUrl = appUrl || "https://clinipay.co.uk"; // Default for production
-  return `${baseUrl}/verify-email?token=${token}&userId=${userId}`;
+function generateVerificationUrl(token: string, userId: string): string {
+  const appUrl = "https://clinipay.co.uk";
+  return `${appUrl}/verify-email?token=${token}&userId=${userId}`;
 }
 
 serve(async (req) => {
@@ -103,11 +102,10 @@ serve(async (req) => {
         email: userData.email,
         created_at: new Date().toISOString()
       })
-      .select("id");
+      .select();
 
     if (clinicError) {
       console.error("Error creating clinic record:", clinicError);
-      throw new Error(`Failed to create clinic record: ${clinicError.message}`);
     } else {
       console.log("Successfully created clinic record:", clinicData);
     }
@@ -122,61 +120,39 @@ serve(async (req) => {
         role: "clinic",
         clinic_id: userData.id, // Link user to their clinic
         verified: false
-      })
-      .select("id");
+      });
 
     if (roleError) {
       console.error("Error assigning role to user:", roleError);
-      throw new Error(`Failed to assign role to user: ${roleError.message}`);
     } else {
-      console.log("Successfully assigned 'clinic' role to user:", roleData);
+      console.log("Successfully assigned 'clinic' role to user");
     }
 
     // 3. Generate a custom verification token
     const verificationToken = generateVerificationToken(userData.id, userData.email);
     console.log("Generated verification token for:", userData.email);
     
-    // 4. Store the verification token in the verification table
-    const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+    // 4. Store the verification token in the database using system_settings
+    const tokenKey = `verification_token:${userData.id}`;
+    const expiryKey = `verification_expiry:${userData.id}`;
     
-    const { data: verificationData, error: verificationError } = await supabaseAdmin
-      .from("user_verification")
-      .upsert({
-        user_id: userData.id,
-        email: userData.email,
-        verification_token: verificationToken,
-        expires_at: expiryTime.toISOString(),
-        verified: false
-      })
-      .select("id");
+    const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+    
+    // Store the token and expiry time in system_settings
+    const { error: tokenError } = await supabaseAdmin
+      .from("system_settings")
+      .upsert([
+        { key: tokenKey, value: verificationToken },
+        { key: expiryKey, value: expiryTime }
+      ]);
       
-    if (verificationError) {
-      console.error("Error storing verification data:", verificationError);
-      throw new Error(`Failed to store verification data: ${verificationError.message}`);
-    } else {
-      console.log("Successfully stored verification data:", verificationData);
-    }
-    
-    // Extract app URL from request headers or use default
-    let appUrl = null;
-    const referer = req.headers.get('referer');
-    const origin = req.headers.get('origin');
-    
-    if (referer) {
-      try {
-        const url = new URL(referer);
-        appUrl = `${url.protocol}//${url.host}`;
-        console.log("Using app URL from referer:", appUrl);
-      } catch (e) {
-        console.log("Could not parse referer URL:", referer);
-      }
-    } else if (origin) {
-      appUrl = origin;
-      console.log("Using app URL from origin:", appUrl);
+    if (tokenError) {
+      console.error("Error storing verification token:", tokenError);
+      throw tokenError;
     }
     
     // 5. Generate the custom verification URL
-    const verificationUrl = generateVerificationUrl(verificationToken, userData.id, appUrl);
+    const verificationUrl = generateVerificationUrl(verificationToken, userData.id);
     console.log("Generated verification URL:", verificationUrl);
     
     // 6. Send the verification data to the GHL webhook
@@ -268,93 +244,84 @@ async function handleVerifyToken(requestData: any, req: Request) {
     }
   );
   
-  try {
-    // Check if the token is valid in the user_verification table
-    const { data: verificationData, error: verificationError } = await supabaseAdmin
-      .from("user_verification")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("verification_token", token)
-      .single();
-    
-    if (verificationError || !verificationData) {
-      console.error("Verification record not found:", verificationError);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "Verification token not found" 
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
-    }
-    
-    // Check if token has expired
-    if (new Date(verificationData.expires_at) < new Date()) {
-      console.error("Verification token expired");
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "Verification token has expired" 
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
-    }
-    
-    // Mark the verification record as verified
-    const { error: updateVerificationError } = await supabaseAdmin
-      .from("user_verification")
-      .update({ verified: true })
-      .eq("id", verificationData.id);
-    
-    if (updateVerificationError) {
-      console.error("Error updating verification record:", updateVerificationError);
-    }
-    
-    // Mark the user as verified in the users table
-    const { error: updateUserError } = await supabaseAdmin
-      .from("users")
-      .update({ verified: true })
-      .eq("id", userId);
-    
-    if (updateUserError) {
-      console.error("Error updating verification status:", updateUserError);
-      return new Response(
-        JSON.stringify({ success: false, error: "Failed to verify email" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-      );
-    }
-    
-    // Set the user's email as confirmed in auth schema
-    try {
-      await supabaseAdmin.auth.admin.updateUserById(
-        userId,
-        { email_confirm: true }
-      );
-      console.log("User email confirmed in auth schema");
-    } catch (authError) {
-      console.error("Error confirming user email in auth schema:", authError);
-      // Continue anyway, our custom verification is more important
-    }
-    
-    console.log("User verified successfully:", userId);
-    
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Email verified successfully" 
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-    );
-  } catch (error) {
-    console.error("Error processing verification:", error);
+  // Check if the token is valid by checking system_settings
+  const tokenKey = `verification_token:${userId}`;
+  const expiryKey = `verification_expiry:${userId}`;
+  
+  // Get the stored token and expiry time
+  const { data: settingsData, error: settingsError } = await supabaseAdmin
+    .from("system_settings")
+    .select("key, value")
+    .in("key", [tokenKey, expiryKey]);
+  
+  if (settingsError || !settingsData || settingsData.length < 2) {
+    console.error("Error retrieving verification settings:", settingsError);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: "An error occurred while processing verification" 
+        error: "Verification token not found or expired" 
       }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+    );
+  }
+  
+  // Extract token and expiry from results
+  const storedToken = settingsData.find(item => item.key === tokenKey)?.value;
+  const expiryTime = settingsData.find(item => item.key === expiryKey)?.value;
+  
+  // Verify token matches and hasn't expired
+  if (storedToken !== token || !expiryTime || new Date(expiryTime) < new Date()) {
+    console.error("Invalid or expired verification token");
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: "Invalid or expired verification token" 
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+    );
+  }
+  
+  // Mark the user as verified in the users table
+  const { error: updateError } = await supabaseAdmin
+    .from("users")
+    .update({ verified: true })
+    .eq("id", userId);
+  
+  if (updateError) {
+    console.error("Error updating verification status:", updateError);
+    return new Response(
+      JSON.stringify({ success: false, error: "Failed to verify email" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
+  
+  // Set the user's email as confirmed in auth schema
+  try {
+    await supabaseAdmin.auth.admin.updateUserById(
+      userId,
+      { email_confirm: true }
+    );
+    console.log("User email confirmed in auth schema");
+  } catch (authError) {
+    console.error("Error confirming user email in auth schema:", authError);
+    // Continue anyway, our custom verification is more important
+  }
+  
+  console.log("User verified successfully:", userId);
+  
+  // Clean up the verification tokens from system_settings
+  await supabaseAdmin
+    .from("system_settings")
+    .delete()
+    .in("key", [tokenKey, expiryKey]);
+  
+  return new Response(
+    JSON.stringify({ 
+      success: true, 
+      message: "Email verified successfully" 
+    }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+  );
 }
 
 // Handler for resending verification emails
@@ -409,21 +376,22 @@ async function handleResendVerification(requestData: any, req: Request) {
   // Generate a new verification token
   const verificationToken = generateVerificationToken(userId, email);
   
-  // Create or update the verification record
-  const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+  // Update the token and expiry in system_settings
+  const tokenKey = `verification_token:${userId}`;
+  const expiryKey = `verification_expiry:${userId}`;
   
-  const { error: verificationError } = await supabaseAdmin
-    .from("user_verification")
-    .upsert({
-      user_id: userId,
-      email: email,
-      verification_token: verificationToken,
-      expires_at: expiryTime.toISOString(),
-      verified: false
-    });
+  const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
   
-  if (verificationError) {
-    console.error("Error storing new verification token:", verificationError);
+  // Store the new token and expiry
+  const { error: tokenError } = await supabaseAdmin
+    .from("system_settings")
+    .upsert([
+      { key: tokenKey, value: verificationToken },
+      { key: expiryKey, value: expiryTime }
+    ]);
+  
+  if (tokenError) {
+    console.error("Error storing new verification token:", tokenError);
     return new Response(
       JSON.stringify({ 
         success: false, 

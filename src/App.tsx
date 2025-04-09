@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // Public Pages
 import HomePage from "./pages/HomePage";
@@ -60,54 +59,18 @@ const App = () => (
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             
-            {/* Clinic Dashboard Routes - Protected */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/create-link" element={
-              <ProtectedRoute>
-                <CreateLinkPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/send-link" element={
-              <ProtectedRoute>
-                <SendLinkPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/settings" element={
-              <ProtectedRoute>
-                <SettingsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/payment-history" element={
-              <ProtectedRoute>
-                <PaymentHistoryPage />
-              </ProtectedRoute>
-            } />
+            {/* Clinic Dashboard Routes */}
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/dashboard/create-link" element={<CreateLinkPage />} />
+            <Route path="/dashboard/send-link" element={<SendLinkPage />} />
+            <Route path="/dashboard/settings" element={<SettingsPage />} />
+            <Route path="/dashboard/payment-history" element={<PaymentHistoryPage />} />
             
-            {/* Admin Routes - Protected */}
-            <Route path="/admin" element={
-              <ProtectedRoute>
-                <AdminDashboardPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/clinics" element={
-              <ProtectedRoute>
-                <ClinicsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/clinics/:clinicId" element={
-              <ProtectedRoute>
-                <ClinicProfilePage />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/settings" element={
-              <ProtectedRoute>
-                <AdminSettingsPage />
-              </ProtectedRoute>
-            } />
+            {/* Admin Routes */}
+            <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/admin/clinics" element={<ClinicsPage />} />
+            <Route path="/admin/clinics/:clinicId" element={<ClinicProfilePage />} />
+            <Route path="/admin/settings" element={<AdminSettingsPage />} />
             
             {/* Payment Routes */}
             <Route path="/payment" element={<PatientPaymentPage />} />

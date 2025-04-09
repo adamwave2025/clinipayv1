@@ -25,7 +25,6 @@ const VerifyEmailPage = () => {
     const userId = searchParams.get('userId');
     
     if (token && userId) {
-      console.log("Found verification token in URL, verifying...");
       handleVerifyToken(token, userId);
     }
   }, [searchParams]);
@@ -45,6 +44,18 @@ const VerifyEmailPage = () => {
       }
     }
   }, [location]);
+
+  // If user is already signed in, navigate to dashboard
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        navigate('/dashboard');
+      }
+    };
+    
+    checkSession();
+  }, [navigate]);
 
   const handleVerifyToken = async (token: string, userId: string) => {
     setIsVerifying(true);

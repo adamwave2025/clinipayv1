@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
 
 const SignUpPage = () => {
+  const navigate = useNavigate();
   const { signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -50,26 +51,18 @@ const SignUpPage = () => {
     }
     
     setIsLoading(true);
-    toast.info('Creating your account... Please wait');
     
     try {
-      console.log("Submitting signup form for:", formData.email);
       const { error } = await signUp(
         formData.email, 
         formData.password, 
         formData.clinicName
       );
       
-      if (error) {
-        console.error("Signup error:", error);
-        toast.error(error.message || 'Failed to create account');
-      } else {
+      if (!error) {
         toast.success('Account created! Please check your email to verify your account.');
-        // Note: Navigation is now handled in AuthContext.signUp
+        navigate('/verify-email?email=' + encodeURIComponent(formData.email));
       }
-    } catch (err: any) {
-      console.error("Unexpected signup error:", err);
-      toast.error(err.message || 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
