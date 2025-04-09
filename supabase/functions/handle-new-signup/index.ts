@@ -136,54 +136,69 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
 
 // Helper function to create user records if they don't exist
 async function createUserRecordsIfNeeded(supabase, userId, email, clinicName) {
-  // Check if user already exists in public.users table
-  const { data: existingUser } = await supabase
-    .from('users')
-    .select('id')
-    .eq('id', userId)
-    .maybeSingle();
-  
-  if (!existingUser) {
-    console.log("Creating user record for", email);
-    // Create user record
-    const { error: userError } = await supabase
+  try {
+    // Check if user already exists in public.users table
+    const { data: existingUser, error: userQueryError } = await supabase
       .from('users')
-      .insert({
-        id: userId,
-        email: email,
-        role: 'clinic',
-        verified: false
-      });
-      
-    if (userError) {
-      console.error("Error creating user record:", userError);
-    }
-  }
-  
-  // Check if clinic already exists
-  if (clinicName) {
-    const { data: existingClinic } = await supabase
-      .from('clinics')
       .select('id')
       .eq('id', userId)
       .maybeSingle();
     
-    if (!existingClinic) {
-      console.log("Creating clinic record for", clinicName);
-      // Create clinic record
-      const { error: clinicError } = await supabase
-        .from('clinics')
+    if (userQueryError) {
+      console.error("Error checking if user exists:", userQueryError);
+    }
+    
+    if (!existingUser) {
+      console.log("Creating user record for", email);
+      // Create user record
+      const { error: userError } = await supabase
+        .from('users')
         .insert({
           id: userId,
-          clinic_name: clinicName,
           email: email,
-          created_at: new Date().toISOString()
+          role: 'clinic',
+          verified: false
         });
-        
-      if (clinicError) {
-        console.error("Error creating clinic record:", clinicError);
+          
+      if (userError) {
+        console.error("Error creating user record:", userError);
+        throw userError;
       }
     }
+    
+    // Check if clinic already exists
+    if (clinicName) {
+      const { data: existingClinic, error: clinicQueryError } = await supabase
+        .from('clinics')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (clinicQueryError) {
+        console.error("Error checking if clinic exists:", clinicQueryError);
+      }
+      
+      if (!existingClinic) {
+        console.log("Creating clinic record for", clinicName);
+        // Create clinic record
+        const { error: clinicError } = await supabase
+          .from('clinics')
+          .insert({
+            id: userId,
+            clinic_name: clinicName,
+            email: email,
+            created_at: new Date().toISOString()
+          });
+            
+        if (clinicError) {
+          console.error("Error creating clinic record:", clinicError);
+          throw clinicError;
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error in createUserRecordsIfNeeded:", error);
+    throw error;
   }
 }
 
