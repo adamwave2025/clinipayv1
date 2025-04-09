@@ -47,7 +47,7 @@ serve(async (req) => {
 // Handle new signup
 async function handleNewSignup(supabase, requestData, corsHeaders) {
   try {
-    const { id, email, clinic_name } = requestData;
+    const { id, email } = requestData;
     
     console.log(`Processing new signup: ${email} with ID ${id}`);
     
@@ -65,21 +65,8 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
     // Get the token from result
     const verificationToken = tokenData;
     
-    // Create clinic if it doesn't exist
-    if (clinic_name) {
-      const { error: clinicError } = await supabase
-        .from('clinics')
-        .upsert({
-          id: id,
-          clinic_name: clinic_name,
-          email: email,
-          created_at: new Date().toISOString()
-        });
-            
-      if (clinicError) {
-        console.error("Error creating clinic record:", clinicError);
-      }
-    }
+    // Note: We removed the clinic creation logic here as it's now handled
+    // completely by the database trigger
     
     // Generate verification URL
     const baseUrl = Deno.env.get("SITE_URL") || "https://clinipay.co.uk";
@@ -99,7 +86,7 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
             email: email,
             verificationUrl: verificationUrl,
             userId: id,
-            clinicName: clinic_name
+            clinicName: requestData.clinic_name // Pass along clinic name for the email template
           })
         });
         
