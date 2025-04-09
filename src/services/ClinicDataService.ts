@@ -12,6 +12,7 @@ export type ClinicData = {
   city: string | null;
   postcode: string | null;
   logo_url: string | null;
+  stripe_account_id: string | null;
 };
 
 export const ClinicDataService = {
