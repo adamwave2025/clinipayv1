@@ -69,7 +69,7 @@ const PaymentHistoryPage = () => {
       patientPhone: '+44 7700 900246',
       amount: 100.00,
       date: '2025-04-06',
-      status: 'pending',
+      status: 'sent',
       type: 'deposit',
     },
     {
@@ -79,7 +79,7 @@ const PaymentHistoryPage = () => {
       patientPhone: '+44 7700 900135',
       amount: 85.00,
       date: '2025-04-05',
-      status: 'failed',
+      status: 'sent',
       type: 'treatment',
     },
     {
@@ -221,9 +221,8 @@ const PaymentHistoryPage = () => {
                   <SelectGroup>
                     <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="sent">Sent</SelectItem>
                     <SelectItem value="refunded">Refunded</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>

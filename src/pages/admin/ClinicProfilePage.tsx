@@ -34,7 +34,7 @@ const getMockClinicData = (id: string) => ({
     { id: 'p2', patientName: 'Emma Wilson', amount: 210.50, date: '2025-03-28', status: 'paid' },
     { id: 'p3', patientName: 'Michael Brown', amount: 75.25, date: '2025-03-24', status: 'refunded' },
     { id: 'p4', patientName: 'Sophia Davis', amount: 180.00, date: '2025-03-20', status: 'paid' },
-    { id: 'p5', patientName: 'James Taylor', amount: 95.00, date: '2025-03-15', status: 'pending' }
+    { id: 'p5', patientName: 'James Taylor', amount: 95.00, date: '2025-03-15', status: 'sent' }
   ],
   links: [
     { id: 'l1', name: 'Consultation Payment', created: '2025-03-10', usageCount: 12 },

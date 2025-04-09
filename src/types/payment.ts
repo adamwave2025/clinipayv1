@@ -6,7 +6,7 @@ export interface Payment {
   patientPhone?: string;
   amount: number;
   date: string;
-  status: 'paid' | 'refunded' | 'pending' | 'failed';
+  status: 'paid' | 'refunded' | 'sent';
   type: 'deposit' | 'treatment' | 'consultation' | 'other';
 }
 

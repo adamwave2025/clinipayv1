@@ -68,7 +68,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
       patientPhone: '+44 7700 900246',
       amount: 100.00,
       date: '2025-04-06',
-      status: 'pending',
+      status: 'sent',
       type: 'deposit',
     },
     {
@@ -78,7 +78,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
       patientPhone: '+44 7700 900135',
       amount: 85.00,
       date: '2025-04-05',
-      status: 'failed',
+      status: 'sent',
       type: 'treatment',
     },
   ]);
