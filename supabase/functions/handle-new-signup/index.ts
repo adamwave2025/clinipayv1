@@ -48,6 +48,9 @@ serve(async (req) => {
       } else if (requestData.type === 'verify_token') {
         // This is a token verification request
         return await handleVerifyToken(requestData, req);
+      } else if (requestData.type === 'resend') {
+        // This is a resend verification request
+        return await handleResendVerification(requestData, req);
       } else {
         // This is a direct API call
         userData = requestData;
@@ -107,7 +110,7 @@ serve(async (req) => {
       console.log("Successfully created clinic record:", clinicData);
     }
 
-    // 2. Assign the 'clinic' role to the new user
+    // 2. Assign the 'clinic' role to the new user and ensure verified is set to false
     console.log("Assigning 'clinic' role to user:", userData.id);
     const { data: roleData, error: roleError } = await supabaseAdmin
       .from("users")
@@ -116,6 +119,7 @@ serve(async (req) => {
         email: userData.email,
         role: "clinic",
         clinic_id: userData.id, // Link user to their clinic
+        verified: false
       });
 
     if (roleError) {
@@ -128,16 +132,19 @@ serve(async (req) => {
     const verificationToken = generateVerificationToken(userData.id, userData.email);
     console.log("Generated verification token for:", userData.email);
     
-    // 4. Store the verification token in the database
+    // 4. Store the verification token in the database using system_settings
+    const tokenKey = `verification_token:${userData.id}`;
+    const expiryKey = `verification_expiry:${userData.id}`;
+    
+    const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+    
+    // Store the token and expiry time in system_settings
     const { error: tokenError } = await supabaseAdmin
-      .from("user_verification")
-      .upsert({
-        user_id: userData.id,
-        email: userData.email,
-        verification_token: verificationToken,
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours expiry
-        verified: false
-      });
+      .from("system_settings")
+      .upsert([
+        { key: tokenKey, value: verificationToken },
+        { key: expiryKey, value: expiryTime }
+      ]);
       
     if (tokenError) {
       console.error("Error storing verification token:", tokenError);
@@ -237,17 +244,34 @@ async function handleVerifyToken(requestData: any, req: Request) {
     }
   );
   
-  // Check if the token is valid
-  const { data: verificationData, error: verificationError } = await supabaseAdmin
-    .from("user_verification")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("verification_token", token)
-    .gt("expires_at", new Date().toISOString())
-    .single();
+  // Check if the token is valid by checking system_settings
+  const tokenKey = `verification_token:${userId}`;
+  const expiryKey = `verification_expiry:${userId}`;
   
-  if (verificationError || !verificationData) {
-    console.error("Invalid or expired verification token:", verificationError);
+  // Get the stored token and expiry time
+  const { data: settingsData, error: settingsError } = await supabaseAdmin
+    .from("system_settings")
+    .select("key, value")
+    .in("key", [tokenKey, expiryKey]);
+  
+  if (settingsError || !settingsData || settingsData.length < 2) {
+    console.error("Error retrieving verification settings:", settingsError);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: "Verification token not found or expired" 
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+    );
+  }
+  
+  // Extract token and expiry from results
+  const storedToken = settingsData.find(item => item.key === tokenKey)?.value;
+  const expiryTime = settingsData.find(item => item.key === expiryKey)?.value;
+  
+  // Verify token matches and hasn't expired
+  if (storedToken !== token || !expiryTime || new Date(expiryTime) < new Date()) {
+    console.error("Invalid or expired verification token");
     return new Response(
       JSON.stringify({ 
         success: false, 
@@ -257,11 +281,11 @@ async function handleVerifyToken(requestData: any, req: Request) {
     );
   }
   
-  // Mark the user as verified
+  // Mark the user as verified in the users table
   const { error: updateError } = await supabaseAdmin
-    .from("user_verification")
+    .from("users")
     .update({ verified: true })
-    .eq("user_id", userId);
+    .eq("id", userId);
   
   if (updateError) {
     console.error("Error updating verification status:", updateError);
@@ -285,6 +309,12 @@ async function handleVerifyToken(requestData: any, req: Request) {
   
   console.log("User verified successfully:", userId);
   
+  // Clean up the verification tokens from system_settings
+  await supabaseAdmin
+    .from("system_settings")
+    .delete()
+    .in("key", [tokenKey, expiryKey]);
+  
   return new Response(
     JSON.stringify({ 
       success: true, 
@@ -292,4 +322,156 @@ async function handleVerifyToken(requestData: any, req: Request) {
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
   );
+}
+
+// Handler for resending verification emails
+async function handleResendVerification(requestData: any, req: Request) {
+  const { email, id } = requestData;
+  
+  if (!email) {
+    return new Response(
+      JSON.stringify({ error: "Missing email" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+    );
+  }
+  
+  console.log("Processing resend verification request for:", email);
+  
+  // First, verify that this user exists
+  const supabaseAdmin = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+  
+  let userId = id;
+  
+  // If no ID is provided, try to find the user by email
+  if (!userId) {
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from("users")
+      .select("id")
+      .eq("email", email)
+      .single();
+    
+    if (userError || !userData) {
+      console.error("User not found for email:", email);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "User not found with this email address" 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+      );
+    }
+    
+    userId = userData.id;
+  }
+  
+  // Generate a new verification token
+  const verificationToken = generateVerificationToken(userId, email);
+  
+  // Update the token and expiry in system_settings
+  const tokenKey = `verification_token:${userId}`;
+  const expiryKey = `verification_expiry:${userId}`;
+  
+  const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+  
+  // Store the new token and expiry
+  const { error: tokenError } = await supabaseAdmin
+    .from("system_settings")
+    .upsert([
+      { key: tokenKey, value: verificationToken },
+      { key: expiryKey, value: expiryTime }
+    ]);
+  
+  if (tokenError) {
+    console.error("Error storing new verification token:", tokenError);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: "Failed to generate new verification token" 
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+    );
+  }
+  
+  // Generate the verification URL
+  const verificationUrl = generateVerificationUrl(verificationToken, userId);
+  
+  // Get the user's clinic name
+  const { data: userDetails, error: detailsError } = await supabaseAdmin
+    .from("clinics")
+    .select("clinic_name")
+    .eq("id", userId)
+    .single();
+  
+  const clinicName = userDetails?.clinic_name || "Your Clinic";
+  
+  // Send the verification data to the webhook
+  const webhookUrl = Deno.env.get("NEW_SIGN_UP");
+  if (!webhookUrl) {
+    console.error("NEW_SIGN_UP webhook URL is not configured");
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: "Webhook URL is not configured" 
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+    );
+  }
+  
+  const webhookPayload = {
+    email: email,
+    verificationUrl: verificationUrl,
+    userId: userId,
+    clinicName: clinicName,
+    timestamp: new Date().toISOString(),
+    type: "resend"
+  };
+  
+  console.log("Sending resend webhook payload:", JSON.stringify(webhookPayload));
+  
+  try {
+    const webhookResponse = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(webhookPayload),
+    });
+    
+    if (!webhookResponse.ok) {
+      const errorText = await webhookResponse.text();
+      console.error(`Error sending to webhook (${webhookResponse.status}):`, errorText);
+      throw new Error(`Error sending to webhook: ${webhookResponse.status}`);
+    }
+    
+    console.log("Successfully resent verification email");
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: "Verification email resent successfully",
+        verificationUrl: verificationUrl 
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+    );
+  } catch (error) {
+    console.error("Error sending verification email:", error);
+    
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: "Failed to resend verification email",
+        verificationUrl: verificationUrl // Still send the URL for testing 
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+    );
+  }
 }

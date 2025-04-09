@@ -134,9 +134,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Check if the user is verified in our custom system
       try {
         const { data: userData, error: userError } = await supabase
-          .from('user_verification')
+          .from('users')
           .select('verified')
-          .eq('user_id', data.user.id)
+          .eq('id', data.user.id)
           .single();
         
         if (userError || !userData || !userData.verified) {

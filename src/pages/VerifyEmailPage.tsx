@@ -112,53 +112,30 @@ const VerifyEmailPage = () => {
     setMessage('');
     
     try {
-      // First try using the edge function
-      try {
-        console.log("Calling handle-new-signup function for resend email:", email);
-        const functionResponse = await supabase.functions.invoke('handle-new-signup', {
-          method: 'POST',
-          body: { 
-            email, 
-            id: localStorage.getItem('userId') || undefined, 
-            type: 'resend',
-            requestType: 'resend'
-          }
-        });
-        
-        if (functionResponse.error) {
-          throw new Error(functionResponse.error.message || "Error resending verification");
+      // Call the edge function for resending verification
+      console.log("Calling handle-new-signup function for resend email:", email);
+      const functionResponse = await supabase.functions.invoke('handle-new-signup', {
+        method: 'POST',
+        body: { 
+          email, 
+          id: localStorage.getItem('userId') || undefined, 
+          type: 'resend'
         }
-        
-        // If we got a direct verification URL, display it
-        if (functionResponse.data?.verificationUrl) {
-          setVerificationUrl(functionResponse.data.verificationUrl);
-        }
-        
-        setStatus('success');
-        setMessage('Verification email has been resent. Please check your inbox.');
-        localStorage.setItem('verificationEmail', email);
-        toast.success('Verification email has been resent.');
-      } catch (functionError) {
-        console.error("Error with edge function:", functionError);
-        
-        // Fall back to standard resend
-        const { error } = await supabase.auth.resend({
-          type: 'signup',
-          email,
-          options: {
-            emailRedirectTo: 'https://clinipay.co.uk/auth/callback',
-          }
-        });
-        
-        if (error) {
-          throw error;
-        }
-        
-        setStatus('success');
-        setMessage('Verification email has been resent. Please check your inbox.');
-        localStorage.setItem('verificationEmail', email);
-        toast.success('Verification email has been resent.');
+      });
+      
+      if (functionResponse.error) {
+        throw new Error(functionResponse.error.message || "Error resending verification");
       }
+      
+      // If we got a direct verification URL, display it
+      if (functionResponse.data?.verificationUrl) {
+        setVerificationUrl(functionResponse.data.verificationUrl);
+      }
+      
+      setStatus('success');
+      setMessage('Verification email has been resent. Please check your inbox.');
+      localStorage.setItem('verificationEmail', email);
+      toast.success('Verification email has been resent.');
     } catch (error: any) {
       console.error('Error resending verification email:', error);
       setStatus('error');

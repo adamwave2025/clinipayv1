@@ -282,6 +282,7 @@ export type Database = {
           email: string | null
           id: string
           role: string | null
+          verified: boolean | null
         }
         Insert: {
           clinic_id?: string | null
@@ -289,6 +290,7 @@ export type Database = {
           email?: string | null
           id?: string
           role?: string | null
+          verified?: boolean | null
         }
         Update: {
           clinic_id?: string | null
@@ -296,6 +298,7 @@ export type Database = {
           email?: string | null
           id?: string
           role?: string | null
+          verified?: boolean | null
         }
         Relationships: [
           {

@@ -96,6 +96,33 @@ serve(async (req) => {
     
     const triggerExists = triggerData && triggerData.length > 0 && triggerData[0].trigger_exists;
     
+    // If trigger doesn't exist, create it
+    if (!triggerExists) {
+      console.log("Setting up auth user creation trigger...");
+      
+      try {
+        // Create the trigger to call our function
+        const { error: triggerError } = await supabaseAdmin.rpc('select_service_role', {
+          service_request: `
+            CREATE TRIGGER on_auth_user_created
+            AFTER INSERT ON auth.users
+            FOR EACH ROW
+            EXECUTE FUNCTION public.process_auth_user_created();
+          `
+        });
+        
+        if (triggerError) {
+          console.error("Error creating auth trigger:", triggerError);
+        } else {
+          console.log("Successfully created auth user trigger");
+        }
+      } catch (triggerCreateError) {
+        console.error("Error setting up auth trigger:", triggerCreateError);
+      }
+    } else {
+      console.log("Auth user creation trigger already exists");
+    }
+    
     return new Response(
       JSON.stringify({ 
         message: "Auth settings updated successfully",
