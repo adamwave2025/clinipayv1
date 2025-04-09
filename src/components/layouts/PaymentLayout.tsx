@@ -21,7 +21,7 @@ const PaymentLayout = ({ children, cardClassName, isSplitView = false, hideHeade
         </header>
       )}
       
-      <main className={`flex-1 flex items-center justify-center p-4 py-8 ${hideHeaderFooter ? 'py-0' : ''}`}>
+      <main className="flex-1 flex items-center justify-center p-4 py-8">
         <div className={`w-full ${isSplitView ? 'max-w-5xl' : 'max-w-xl'}`}>
           {isSplitView ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
