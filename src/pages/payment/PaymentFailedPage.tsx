@@ -3,8 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentStatusSummary from '@/components/payment/PaymentStatusSummary';
-import PaymentPageClinicCard from '@/components/payment/PaymentPageClinicCard';
-import { RefreshCcw } from 'lucide-react';
+import { RefreshCcw, Building, Mail, Phone, MapPin } from 'lucide-react';
 
 const PaymentFailedReasons = () => (
   <div className="bg-red-50 rounded-lg p-4 mb-6 text-left">
@@ -22,15 +21,12 @@ const PaymentFailedReasons = () => (
 const PaymentFailedPage = () => {
   const navigate = useNavigate();
 
-  // Mock clinic details - similar to PatientPaymentPage
+  // Mock clinic details
   const clinicDetails = {
     name: 'Greenfield Medical Clinic',
-    logo: '',
     email: 'contact@greenfieldclinic.com',
     phone: '+44 20 7123 4567',
     address: '123 Harley Street, London, W1G 7JU',
-    paymentType: 'Consultation Deposit',
-    amount: 75.00,
   };
 
   const handleTryAgain = () => {
@@ -39,34 +35,66 @@ const PaymentFailedPage = () => {
   };
 
   return (
-    <PaymentLayout isSplitView={true} hideHeaderFooter={true}>
-      {/* Left Column - Payment Status */}
-      <div>
-        <PaymentStatusSummary
-          status="failed"
-          title="Payment Failed"
-          description="Your payment could not be processed. Please check your payment details and try again."
-          primaryActionLabel={
-            <>
-              <RefreshCcw className="mr-2 h-4 w-4" />
-              Try Again
-            </>
-          }
-          onPrimaryAction={handleTryAgain}
-        />
-        
-        <PaymentFailedReasons />
-        
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-500">
-            If you continue to experience issues, please contact the clinic directly.
-          </p>
-        </div>
+    <PaymentLayout>
+      <PaymentStatusSummary
+        status="failed"
+        title="Payment Failed"
+        description="Your payment could not be processed. Please check your payment details and try again."
+        primaryActionLabel={
+          <>
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Try Again
+          </>
+        }
+        secondaryActionLabel="Close"
+        onPrimaryAction={handleTryAgain}
+        onSecondaryAction={() => window.close()}
+      />
+      
+      <PaymentFailedReasons />
+      
+      <div className="mt-6 text-center">
+        <p className="text-sm text-gray-500">
+          If you continue to experience issues, please contact the clinic directly.
+        </p>
       </div>
       
-      {/* Right Column - Clinic Info */}
-      <div>
-        <PaymentPageClinicCard clinic={clinicDetails} />
+      {/* Clinic Details */}
+      <div className="mt-8 bg-white rounded-lg p-4 border border-gray-100">
+        <h3 className="text-lg font-semibold mb-4">Clinic Information</h3>
+        
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
+            <Building className="h-5 w-5 text-gray-400 mt-0.5" />
+            <div>
+              <p className="text-gray-700 font-medium">{clinicDetails.name}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Address</p>
+              <p className="text-gray-700">{clinicDetails.address}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <Mail className="h-5 w-5 text-gray-400 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Email</p>
+              <p className="text-gray-700">{clinicDetails.email}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-3">
+            <Phone className="h-5 w-5 text-gray-400 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Phone</p>
+              <p className="text-gray-700">{clinicDetails.phone}</p>
+            </div>
+          </div>
+        </div>
       </div>
     </PaymentLayout>
   );
