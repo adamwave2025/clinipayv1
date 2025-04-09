@@ -223,7 +223,7 @@ const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) =
           {isLoading ? (
             <LoadingSpinner size="sm" className="mr-2" />
           ) : null}
-          Continue to Payment
+          Pay Now
         </Button>
       </form>
     </Form>

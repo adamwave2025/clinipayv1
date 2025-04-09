@@ -5,6 +5,7 @@ import PaymentForm, { PaymentFormValues } from '@/components/payment/PaymentForm
 import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentPageClinicCard from '@/components/payment/PaymentPageClinicCard';
 import CliniPaySecuritySection from '@/components/payment/CliniPaySecuritySection';
+import PaymentSecurityInfo from '@/components/payment/PaymentSecurityInfo';
 import { Card, CardContent } from '@/components/ui/card';
 
 const PatientPaymentPage = () => {
@@ -51,6 +52,8 @@ const PatientPaymentPage = () => {
             onSubmit={handlePaymentSubmit}
             isLoading={isLoading}
           />
+          
+          <PaymentSecurityInfo />
         </CardContent>
       </Card>
     </PaymentLayout>
