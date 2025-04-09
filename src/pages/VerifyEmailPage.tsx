@@ -7,6 +7,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { sendVerificationEmail, verifyEmailToken } from '@/utils/auth-utils';
 
 const VerifyEmailPage = () => {
   const [isResending, setIsResending] = useState(false);
@@ -63,24 +64,10 @@ const VerifyEmailPage = () => {
     setMessage('');
     
     try {
-      console.log("Verifying token:", token, "for user:", userId);
+      const result = await verifyEmailToken(token, userId);
       
-      // Use the edge function to verify the token
-      const { data, error } = await supabase.functions.invoke('handle-new-signup', {
-        method: 'POST',
-        body: { 
-          token, 
-          userId, 
-          type: 'verify_token'
-        }
-      });
-      
-      if (error) {
-        throw new Error(error.message || "Error verifying token");
-      }
-      
-      if (!data.success) {
-        throw new Error(data.error || "Invalid verification token");
+      if (!result.success) {
+        throw new Error(result.error || "Invalid verification token");
       }
       
       setStatus('success');
@@ -112,28 +99,18 @@ const VerifyEmailPage = () => {
     setMessage('');
     
     try {
-      // Call the edge function for resending verification
-      console.log("Calling handle-new-signup function for resend email:", email);
-      const { data, error } = await supabase.functions.invoke('handle-new-signup', {
-        method: 'POST',
-        body: { 
-          email, 
-          id: localStorage.getItem('userId') || undefined, 
-          type: 'resend'
-        }
-      });
+      const result = await sendVerificationEmail(
+        email, 
+        localStorage.getItem('userId') || undefined
+      );
       
-      if (error) {
-        throw new Error(error.message || "Error resending verification");
-      }
-      
-      if (!data.success) {
-        throw new Error(data.error || "Failed to resend verification email");
+      if (!result.success) {
+        throw new Error(result.error || "Failed to resend verification email");
       }
       
       // If we got a direct verification URL, display it
-      if (data.verificationUrl) {
-        setVerificationUrl(data.verificationUrl);
+      if (result.verificationUrl) {
+        setVerificationUrl(result.verificationUrl);
       }
       
       setStatus('success');

@@ -4,6 +4,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { setupUserVerification, checkUserVerification } from '@/utils/auth-utils';
 
 interface AuthContextType {
   session: Session | null;
@@ -69,6 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, clinicName: string) => {
     try {
+      // First sign up the user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -91,39 +93,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem('userId', data.user.id);
           localStorage.setItem('verificationEmail', email);
           
-          console.log("Calling handle-new-signup function for user:", data.user.id);
-          
-          // Use the edge function for record creation and verification
-          const response = await supabase.functions.invoke('handle-new-signup', {
-            method: 'POST',
-            body: {
-              id: data.user.id,
-              email: data.user.email,
-              clinic_name: clinicName,
-              raw_user_meta_data: data.user.user_metadata,
-              type: 'direct_call'
-            }
-          });
+          // Set up verification for the new user
+          const verification = await setupUserVerification(
+            data.user.id, 
+            email, 
+            clinicName
+          );
 
-          if (response.error) {
-            console.error("Error calling handle-new-signup function:", response.error);
+          if (!verification.success) {
+            console.error("Error setting up verification:", verification.error);
             toast.error("There was an issue setting up your account. Please try again.");
-            return { error: response.error };
-          } else {
-            console.log("handle-new-signup function called successfully:", response.data);
-            toast.success("Sign up successful! Please check your email for verification.");
-            navigate('/verify-email?email=' + encodeURIComponent(email));
-            return { error: null };
+            return { error: new Error(verification.error) };
           }
-        } catch (functionError) {
-          console.error("Failed to call handle-new-signup function:", functionError);
+          
+          toast.success("Sign up successful! Please check your email for verification.");
+          navigate('/verify-email?email=' + encodeURIComponent(email));
+          return { error: null };
+        } catch (functionError: any) {
+          console.error("Failed during signup process:", functionError);
           toast.error("There was an issue setting up your account. Please try again.");
           return { error: functionError };
         }
       }
       
       return { error: new Error("Failed to complete signup process") };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error during sign up:', error);
       toast.error('An unexpected error occurred during sign up');
       return { error };
@@ -151,41 +145,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // Check if the user is verified in our custom system
-      try {
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('verified')
-          .eq('id', data.user.id)
-          .single();
-        
-        if (userError) {
-          console.error('Error checking verification status:', userError);
-          // If there's an error checking verification, sign them out to be safe
-          await supabase.auth.signOut();
-          toast.error('Error verifying account status. Please try again.');
-          return { error: new Error('Error checking verification status') };
-        } 
-        
-        if (!userData || userData.verified !== true) {
-          // User is not verified in our custom system
-          await supabase.auth.signOut(); // Sign them out
-          toast.error('Please verify your email address before signing in');
-          localStorage.setItem('verificationEmail', email);
-          localStorage.setItem('userId', data.user.id);
-          navigate('/verify-email');
-          return { error: new Error('Email not verified') };
-        }
-      } catch (verificationError) {
-        console.error('Error checking verification status:', verificationError);
-        // Sign them out if there's any error in verification
+      const verificationCheck = await checkUserVerification(data.user.id);
+      
+      if (verificationCheck.error) {
+        console.error('Error checking verification status:', verificationCheck.error);
+        // If there's an error checking verification, sign them out to be safe
         await supabase.auth.signOut();
         toast.error('Error verifying account status. Please try again.');
-        return { error: verificationError };
+        return { error: new Error('Error checking verification status') };
+      } 
+      
+      if (!verificationCheck.verified) {
+        // User is not verified in our custom system
+        await supabase.auth.signOut(); // Sign them out
+        toast.error('Please verify your email address before signing in');
+        localStorage.setItem('verificationEmail', email);
+        localStorage.setItem('userId', data.user.id);
+        navigate('/verify-email');
+        return { error: new Error('Email not verified') };
       }
       
       toast.success('Signed in successfully');
       return { error: null };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error during sign in:', error);
       toast.error('An unexpected error occurred during sign in');
       return { error };
