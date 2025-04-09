@@ -67,6 +67,7 @@ const VerifyEmailPage = () => {
     setMessage('');
     
     try {
+      console.log('Verifying token:', token, 'for userId:', userId);
       const result = await verifyEmailToken(token, userId);
       
       if (!result.success) {

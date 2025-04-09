@@ -272,6 +272,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_verification: {
+        Row: {
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          user_id: string
+          verification_token: string
+          verified: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          user_id: string
+          verification_token: string
+          verified?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          user_id?: string
+          verification_token?: string
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           clinic_id: string | null

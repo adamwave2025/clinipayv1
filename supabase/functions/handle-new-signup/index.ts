@@ -40,7 +40,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error processing request:", error);
     return new Response(
-      JSON.stringify({ success: false, error: "Internal server error" }),
+      JSON.stringify({ success: false, error: "Internal server error", details: error.message }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
@@ -49,112 +49,42 @@ serve(async (req) => {
 // Handle new signup
 async function handleNewSignup(supabase, requestData, corsHeaders) {
   try {
-    const { id, email, clinic_name } = requestData;
+    const { id, email, clinic_name, type } = requestData;
     
-    // Create all necessary records via direct table operations
-    const { error: clinicError } = await supabase
-      .from('clinics')
-      .upsert({
-        id,
-        clinic_name,
-        email,
-        created_at: new Date().toISOString()
-      });
-      
-    if (clinicError) throw clinicError;
+    console.log(`Processing new signup: ${email} with ID ${id}`);
     
-    const { error: userError } = await supabase
-      .from('users')
-      .upsert({
-        id,
-        email,
-        role: 'clinic',
-        clinic_id: id,
-        verified: false,
-        created_at: new Date().toISOString()
-      });
-      
-    if (userError) throw userError;
+    // Check if verification record exists first
+    const { data: existingVerification, error: checkError } = await supabase
+      .from('user_verification')
+      .select('verification_token, expires_at')
+      .eq('user_id', id)
+      .eq('verified', false)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1);
     
-    // Create verification token
-    const verificationToken = crypto.randomUUID();
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 1); // 24 hours
-    
-    // First check if table exists
-    const { error: tableCheckError } = await supabase.rpc(
-      'select_service_role',
-      {
-        service_request: `
-          SELECT EXISTS (
-            SELECT FROM information_schema.tables 
-            WHERE table_schema = 'public'
-            AND table_name = 'user_verification'
-          );
-        `
-      }
-    );
-    
-    if (tableCheckError) {
-      console.log("Could not check if user_verification table exists:", tableCheckError.message);
-      
-      // Create the table if it might not exist
-      try {
-        const { error: createTableError } = await supabase.rpc(
-          'select_service_role',
-          {
-            service_request: `
-              CREATE TABLE IF NOT EXISTS public.user_verification (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-                email TEXT NOT NULL,
-                verification_token TEXT NOT NULL,
-                created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-                expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-                verified BOOLEAN DEFAULT false
-              );
-              CREATE INDEX IF NOT EXISTS idx_user_verification_token ON public.user_verification(verification_token);
-              CREATE INDEX IF NOT EXISTS idx_user_verification_user_id ON public.user_verification(user_id);
-              ALTER TABLE public.user_verification ENABLE ROW LEVEL SECURITY;
-            `
-          }
-        );
-        
-        if (createTableError) {
-          console.error("Error creating user_verification table:", createTableError);
-        }
-      } catch (err) {
-        console.error("Failed to create user_verification table:", err);
-      }
+    // If there was an error checking for existing verification
+    if (checkError) {
+      console.error("Error checking for existing verification:", checkError);
     }
     
-    // Insert verification record using direct SQL
-    const { error: insertError } = await supabase.rpc(
-      'select_service_role',
-      {
-        service_request: `
-          INSERT INTO public.user_verification (
-            user_id,
-            email,
-            verification_token,
-            expires_at,
-            verified
-          ) VALUES (
-            '${id}'::uuid,
-            '${email}',
-            '${verificationToken}',
-            '${expiryDate.toISOString()}'::timestamptz,
-            FALSE
-          );
-        `
-      }
-    );
+    let verificationToken;
+    let verificationRecord;
     
-    if (insertError) {
-      console.error("Error inserting verification record:", insertError);
+    // If we found a valid verification token, use it
+    if (existingVerification && existingVerification.length > 0) {
+      console.log("Found existing verification record");
+      verificationToken = existingVerification[0].verification_token;
+      verificationRecord = existingVerification[0];
+    } else {
+      console.log("Creating new verification record");
+      // Create verification token
+      verificationToken = crypto.randomUUID();
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 1); // 24 hours
       
-      // Fallback: try direct table operation if RPC fails
-      const { error: directInsertError } = await supabase
+      // Insert directly into user_verification table
+      const { data: newVerification, error: insertError } = await supabase
         .from('user_verification')
         .insert({
           user_id: id,
@@ -162,24 +92,58 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
           verification_token: verificationToken,
           expires_at: expiryDate.toISOString(),
           verified: false
-        });
+        })
+        .select();
         
-      if (directInsertError) {
-        throw directInsertError;
+      if (insertError) {
+        console.error("Error inserting verification record:", insertError);
+        throw insertError;
       }
+      
+      verificationRecord = newVerification[0];
+      
+      // Create clinic and user records if they don't exist
+      await createUserRecordsIfNeeded(supabase, id, email, clinic_name);
     }
     
     // Generate verification URL
-    const verificationUrl = `https://clinipay.co.uk/verify-email?token=${verificationToken}&userId=${id}`;
+    // Base URL would come from environment variable in production
+    const baseUrl = Deno.env.get("SITE_URL") || "https://clinipay.co.uk";
+    const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}&userId=${id}`;
     
-    // In a real scenario, send an email here
-    console.log("Verification URL:", verificationUrl);
+    // In production, send this via email
+    console.log("Generated verification URL:", verificationUrl);
+    
+    // Forward the verification URL to the NEW_SIGN_UP webhook if configured
+    const newSignUpWebhook = Deno.env.get("NEW_SIGN_UP");
+    if (newSignUpWebhook) {
+      try {
+        console.log("Forwarding verification to webhook:", newSignUpWebhook);
+        const webhookResponse = await fetch(newSignUpWebhook, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email,
+            verificationUrl: verificationUrl,
+            userId: id,
+            clinicName: clinic_name
+          })
+        });
+        
+        console.log("Webhook response status:", webhookResponse.status);
+      } catch (webhookError) {
+        console.error("Error sending to webhook:", webhookError);
+      }
+    }
     
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "User records created successfully",
-        verificationUrl
+        message: "Verification setup successfully",
+        verificationUrl,
+        userId: id
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -192,52 +156,87 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
   }
 }
 
+// Helper function to create user records if they don't exist
+async function createUserRecordsIfNeeded(supabase, userId, email, clinicName) {
+  // Check if user already exists in public.users table
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+  
+  if (!existingUser) {
+    console.log("Creating user record for", email);
+    // Create user record
+    const { error: userError } = await supabase
+      .from('users')
+      .insert({
+        id: userId,
+        email: email,
+        role: 'clinic',
+        verified: false
+      });
+      
+    if (userError) {
+      console.error("Error creating user record:", userError);
+    }
+  }
+  
+  // Check if clinic already exists
+  if (clinicName) {
+    const { data: existingClinic } = await supabase
+      .from('clinics')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (!existingClinic) {
+      console.log("Creating clinic record for", clinicName);
+      // Create clinic record
+      const { error: clinicError } = await supabase
+        .from('clinics')
+        .insert({
+          id: userId,
+          clinic_name: clinicName,
+          email: email,
+          created_at: new Date().toISOString()
+        });
+        
+      if (clinicError) {
+        console.error("Error creating clinic record:", clinicError);
+      }
+    }
+  }
+}
+
 // Handle token verification
 async function handleVerifyToken(supabase, requestData, corsHeaders) {
   try {
     const { token, userId } = requestData;
     
-    // Find the verification record using direct SQL
-    const { data: verificationResult, error: queryError } = await supabase.rpc(
-      'select_service_role',
-      {
-        service_request: `
-          SELECT *
-          FROM public.user_verification
-          WHERE verification_token = '${token}'
-          AND user_id = '${userId}'::uuid
-          AND expires_at > NOW()
-          AND verified = FALSE
-          LIMIT 1;
-        `
-      }
-    );
+    console.log(`Verifying token for user ${userId}`);
     
-    let verificationRecords;
+    // Find the verification record
+    const { data: verificationData, error: queryError } = await supabase
+      .from('user_verification')
+      .select('*')
+      .eq('verification_token', token)
+      .eq('user_id', userId)
+      .gt('expires_at', new Date().toISOString())
+      .eq('verified', false)
+      .maybeSingle();
     
     if (queryError) {
-      console.error("Error querying verification with RPC:", queryError);
-      
-      // Fallback: try direct table operation
-      const { data: directData, error: directError } = await supabase
-        .from('user_verification')
-        .select('*')
-        .eq('verification_token', token)
-        .eq('user_id', userId)
-        .gt('expires_at', new Date().toISOString())
-        .eq('verified', false)
-        .limit(1);
-        
-      if (directError) throw directError;
-      
-      verificationRecords = directData;
-    } else {
-      verificationRecords = verificationResult || [];
+      console.error("Error querying verification:", queryError);
+      throw queryError;
     }
     
-    if (!verificationRecords || verificationRecords.length === 0) {
+    if (!verificationData) {
       return new Response(
-        JSON.stringify({ success: false, error: "Invalid verification token" }),
+        JSON.stringify({ 
+          success: false, 
+          error: "Invalid or expired verification token" 
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
@@ -248,32 +247,21 @@ async function handleVerifyToken(supabase, requestData, corsHeaders) {
       .update({ verified: true })
       .eq('id', userId);
       
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error("Error updating user verification status:", updateError);
+      throw updateError;
+    }
     
     // Update verification record
-    const { error: updateVerfError } = await supabase.rpc(
-      'select_service_role',
-      {
-        service_request: `
-          UPDATE public.user_verification
-          SET verified = TRUE
-          WHERE verification_token = '${token}'
-          AND user_id = '${userId}'::uuid;
-        `
-      }
-    );
-    
-    if (updateVerfError) {
-      console.error("Error updating verification with RPC:", updateVerfError);
-      
-      // Fallback: try direct table operation
-      const { error: directError } = await supabase
-        .from('user_verification')
-        .update({ verified: true })
-        .eq('verification_token', token)
-        .eq('user_id', userId);
+    const { error: updateVerfError } = await supabase
+      .from('user_verification')
+      .update({ verified: true })
+      .eq('verification_token', token)
+      .eq('user_id', userId);
         
-      if (directError) throw directError;
+    if (updateVerfError) {
+      console.error("Error updating verification record:", updateVerfError);
+      throw updateVerfError;
     }
     
     return new Response(
@@ -294,6 +282,8 @@ async function handleResendVerification(supabase, requestData, corsHeaders) {
   try {
     const { email, id } = requestData;
     
+    console.log(`Resending verification for ${email}`);
+    
     // Find user if id not provided
     let userId = id;
     if (!userId) {
@@ -301,9 +291,15 @@ async function handleResendVerification(supabase, requestData, corsHeaders) {
         .from('users')
         .select('id')
         .eq('email', email)
-        .single();
+        .maybeSingle();
         
-      if (userError) throw userError;
+      if (userError || !userData) {
+        console.error("Error finding user:", userError);
+        return new Response(
+          JSON.stringify({ success: false, error: "User not found" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+        );
+      }
       userId = userData.id;
     }
     
@@ -312,50 +308,47 @@ async function handleResendVerification(supabase, requestData, corsHeaders) {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + 1); // 24 hours
     
-    // Insert new verification record using direct SQL
-    const { error: insertError } = await supabase.rpc(
-      'select_service_role',
-      {
-        service_request: `
-          INSERT INTO public.user_verification (
-            user_id,
-            email,
-            verification_token,
-            expires_at,
-            verified
-          ) VALUES (
-            '${userId}'::uuid,
-            '${email}',
-            '${verificationToken}',
-            '${expiryDate.toISOString()}'::timestamptz,
-            FALSE
-          );
-        `
-      }
-    );
-    
-    if (insertError) {
-      console.error("Error inserting verification record with RPC:", insertError);
+    // Insert new verification record
+    const { error: insertError } = await supabase
+      .from('user_verification')
+      .insert({
+        user_id: userId,
+        email: email,
+        verification_token: verificationToken,
+        expires_at: expiryDate.toISOString(),
+        verified: false
+      });
       
-      // Fallback: try direct table operation
-      const { error: directError } = await supabase
-        .from('user_verification')
-        .insert({
-          user_id: userId,
-          email: email,
-          verification_token: verificationToken,
-          expires_at: expiryDate.toISOString(),
-          verified: false
-        });
-        
-      if (directError) throw directError;
+    if (insertError) {
+      console.error("Error inserting verification record:", insertError);
+      throw insertError;
     }
     
     // Generate verification URL
-    const verificationUrl = `https://clinipay.co.uk/verify-email?token=${verificationToken}&userId=${userId}`;
+    const baseUrl = Deno.env.get("SITE_URL") || "https://clinipay.co.uk";
+    const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}&userId=${userId}`;
     
-    // In a real scenario, send an email here
-    console.log("Resent verification URL:", verificationUrl);
+    // Forward the verification URL to the NEW_SIGN_UP webhook if configured
+    const newSignUpWebhook = Deno.env.get("NEW_SIGN_UP");
+    if (newSignUpWebhook) {
+      try {
+        console.log("Forwarding verification to webhook:", newSignUpWebhook);
+        await fetch(newSignUpWebhook, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email,
+            verificationUrl: verificationUrl,
+            userId: userId,
+            resend: true
+          })
+        });
+      } catch (webhookError) {
+        console.error("Error sending to webhook:", webhookError);
+      }
+    }
     
     return new Response(
       JSON.stringify({ 
@@ -377,62 +370,31 @@ async function handleResendVerification(supabase, requestData, corsHeaders) {
 // Function to check verification status
 async function handleCheckVerification(supabase, requestData, corsHeaders) {
   try {
-    const { userId, token } = requestData;
+    const { userId, email } = requestData;
     
-    // Find the verification record using direct SQL
-    const { data: verificationResult, error: queryError } = await supabase.rpc(
-      'select_service_role',
-      {
-        service_request: `
-          SELECT *
-          FROM public.user_verification
-          WHERE verification_token = '${token}'
-          AND user_id = '${userId}'::uuid
-          LIMIT 1;
-        `
-      }
-    );
-    
-    let verificationRecords;
-    
-    if (queryError) {
-      console.error("Error querying verification with RPC:", queryError);
+    // Find the user verification status
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('verified')
+      .eq('id', userId)
+      .maybeSingle();
       
-      // Fallback: try direct table operation
-      const { data: directData, error: directError } = await supabase
-        .from('user_verification')
-        .select('*')
-        .eq('verification_token', token)
-        .eq('user_id', userId)
-        .limit(1);
-        
-      if (directError) throw directError;
-      
-      verificationRecords = directData;
-    } else {
-      verificationRecords = verificationResult || [];
+    if (userError) {
+      console.error("Error checking user verification status:", userError);
+      throw userError;
     }
     
-    if (!verificationRecords || verificationRecords.length === 0) {
+    if (!userData) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          verified: false, 
-          error: "Verification record not found" 
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, verified: false, error: "User not found" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
       );
     }
-    
-    const verificationRecord = verificationRecords[0];
-    const isExpired = new Date(verificationRecord.expires_at) < new Date();
     
     return new Response(
       JSON.stringify({ 
         success: true, 
-        verified: verificationRecord.verified, 
-        isExpired: isExpired,
-        record: verificationRecord
+        verified: userData.verified 
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

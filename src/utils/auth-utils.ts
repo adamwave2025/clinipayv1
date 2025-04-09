@@ -14,6 +14,8 @@ export const sendVerificationEmail = async (email: string, userId?: string): Pro
   error?: string;
 }> => {
   try {
+    console.log('Sending verification email to:', email, 'userId:', userId);
+
     // Call the edge function for sending verification
     const { data, error } = await supabase.functions.invoke('handle-new-signup', {
       method: 'POST',
@@ -28,6 +30,8 @@ export const sendVerificationEmail = async (email: string, userId?: string): Pro
       console.error('Error sending verification email:', error);
       return { success: false, error: error.message };
     }
+    
+    console.log('Verification response:', data);
     
     if (!data.success) {
       return { success: false, error: data.error || 'Failed to send verification email' };
@@ -54,6 +58,8 @@ export const verifyEmailToken = async (token: string, userId: string): Promise<{
   error?: string;
 }> => {
   try {
+    console.log('Verifying email token:', token, 'for userId:', userId);
+    
     // Call the edge function to verify the token
     const { data, error } = await supabase.functions.invoke('handle-new-signup', {
       method: 'POST',
@@ -68,6 +74,8 @@ export const verifyEmailToken = async (token: string, userId: string): Promise<{
       console.error('Error verifying token:', error);
       return { success: false, error: error.message };
     }
+    
+    console.log('Verification result:', data);
     
     if (!data.success) {
       return { 
@@ -94,19 +102,32 @@ export const checkUserVerification = async (userId: string): Promise<{
   error?: string;
 }> => {
   try {
-    // Query user table to check verification status
-    const { data, error } = await supabase
-      .from('users')
-      .select('verified')
-      .eq('id', userId)
-      .single();
+    console.log('Checking verification status for userId:', userId);
+    
+    // Call the edge function to check verification status
+    const { data, error } = await supabase.functions.invoke('handle-new-signup', {
+      method: 'POST',
+      body: { 
+        userId, 
+        type: 'check_verification'
+      }
+    });
     
     if (error) {
       console.error('Error checking verification status:', error);
       return { verified: false, error: error.message };
     }
     
-    return { verified: !!data?.verified };
+    console.log('Verification check result:', data);
+    
+    if (!data.success) {
+      return { 
+        verified: false, 
+        error: data.error || 'Failed to check verification status' 
+      };
+    }
+    
+    return { verified: !!data.verified };
   } catch (error: any) {
     console.error('Error in checkUserVerification:', error);
     return { 
@@ -129,6 +150,8 @@ export const setupUserVerification = async (
   error?: string;
 }> => {
   try {
+    console.log('Setting up verification for:', email, 'userId:', userId, 'clinic:', clinicName);
+    
     // Call the edge function to set up verification
     const response = await supabase.functions.invoke('handle-new-signup', {
       method: 'POST',
@@ -147,6 +170,8 @@ export const setupUserVerification = async (
         error: response.error.message || "There was an issue setting up verification"
       };
     } 
+    
+    console.log('Setup verification response:', response.data);
     
     return { 
       success: true, 
