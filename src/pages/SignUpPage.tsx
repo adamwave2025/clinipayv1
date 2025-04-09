@@ -8,9 +8,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import AuthLayout from '@/components/layouts/AuthLayout';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { useAuth } from '@/contexts/AuthContext';
 
 const SignUpPage = () => {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     clinicName: '',
@@ -50,12 +52,20 @@ const SignUpPage = () => {
     
     setIsLoading(true);
     
-    // Mock signup process for the UI-only version
-    setTimeout(() => {
+    try {
+      const { error } = await signUp(
+        formData.email, 
+        formData.password, 
+        formData.clinicName
+      );
+      
+      if (!error) {
+        toast.success('Account created! Please check your email to verify your account.');
+        navigate('/verify-email');
+      }
+    } finally {
       setIsLoading(false);
-      toast.success('Account created! Please check your email to verify your account.');
-      navigate('/verify-email');
-    }, 1500);
+    }
   };
 
   return (

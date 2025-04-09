@@ -1,1 +1,8 @@
+
 project_id = "jbtxxlkhiubuzanegtzn"
+
+[functions.handle-new-signup]
+verify_jwt = false
+
+[functions.setup-auth-trigger]
+verify_jwt = false

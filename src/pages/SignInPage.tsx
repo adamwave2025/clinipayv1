@@ -7,9 +7,11 @@ import { Label } from '@/components/ui/label';
 import AuthLayout from '@/components/layouts/AuthLayout';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { useAuth } from '@/contexts/AuthContext';
 
 const SignInPage = () => {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -31,13 +33,16 @@ const SignInPage = () => {
     
     setIsLoading(true);
     
-    // Mock authentication for the UI-only version
-    setTimeout(() => {
-      // For demo purposes, let's pretend any login works
+    try {
+      const { error } = await signIn(formData.email, formData.password);
+      
+      if (!error) {
+        toast.success('Signed in successfully');
+        navigate('/dashboard');
+      }
+    } finally {
       setIsLoading(false);
-      toast.success('Signed in successfully');
-      navigate('/dashboard');
-    }, 1500);
+    }
   };
 
   return (

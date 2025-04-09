@@ -1,14 +1,45 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mail } from 'lucide-react';
 import AuthLayout from '@/components/layouts/AuthLayout';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 const VerifyEmailPage = () => {
-  const handleResendEmail = () => {
-    toast.success('Verification email has been resent.');
+  const [isResending, setIsResending] = useState(false);
+  const [email, setEmail] = useState('');
+
+  const handleResendEmail = async () => {
+    if (!email) {
+      toast.error('Please enter your email address');
+      return;
+    }
+
+    setIsResending(true);
+    
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: 'https://clinipay.co.uk/auth/callback',
+        }
+      });
+      
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Verification email has been resent.');
+      }
+    } catch (error) {
+      console.error('Error resending verification email:', error);
+      toast.error('An error occurred while resending the verification email');
+    } finally {
+      setIsResending(false);
+    }
   };
 
   return (
@@ -28,13 +59,25 @@ const VerifyEmailPage = () => {
           If you don't see the email, check your spam folder.
         </p>
         
-        <Button 
-          variant="outline" 
-          onClick={handleResendEmail}
-          className="mb-4 w-full"
-        >
-          Resend verification email
-        </Button>
+        <div className="space-y-4">
+          <input
+            type="email"
+            placeholder="Enter your email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          
+          <Button 
+            variant="outline" 
+            onClick={handleResendEmail}
+            disabled={isResending}
+            className="w-full"
+          >
+            {isResending ? <LoadingSpinner size="sm" className="mr-2" /> : null}
+            Resend verification email
+          </Button>
+        </div>
         
         <p className="text-sm text-gray-500 mt-6">
           Already verified?{' '}
