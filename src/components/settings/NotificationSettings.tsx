@@ -33,8 +33,8 @@ const NotificationSettings = ({
                   <p className="text-sm text-gray-500">Get notified when a payment is received</p>
                 </div>
                 <Switch 
-                  checked={notificationSettings.emailPayments}
-                  onCheckedChange={(checked) => handleNotificationChange('emailPayments', checked)}
+                  checked={notificationSettings.emailPaymentReceived}
+                  onCheckedChange={(checked) => handleNotificationChange('emailPaymentReceived', checked)}
                 />
               </div>
               
@@ -44,8 +44,8 @@ const NotificationSettings = ({
                   <p className="text-sm text-gray-500">Get notified when a refund is processed</p>
                 </div>
                 <Switch 
-                  checked={notificationSettings.emailRefunds}
-                  onCheckedChange={(checked) => handleNotificationChange('emailRefunds', checked)}
+                  checked={notificationSettings.emailRefundProcessed}
+                  onCheckedChange={(checked) => handleNotificationChange('emailRefundProcessed', checked)}
                 />
               </div>
               
@@ -55,8 +55,8 @@ const NotificationSettings = ({
                   <p className="text-sm text-gray-500">Receive a weekly summary of all transactions</p>
                 </div>
                 <Switch 
-                  checked={notificationSettings.emailSummary}
-                  onCheckedChange={(checked) => handleNotificationChange('emailSummary', checked)}
+                  checked={notificationSettings.emailWeeklySummary}
+                  onCheckedChange={(checked) => handleNotificationChange('emailWeeklySummary', checked)}
                 />
               </div>
             </div>
@@ -71,8 +71,8 @@ const NotificationSettings = ({
                   <p className="text-sm text-gray-500">Get SMS alerts for new payments</p>
                 </div>
                 <Switch 
-                  checked={notificationSettings.smsPayments}
-                  onCheckedChange={(checked) => handleNotificationChange('smsPayments', checked)}
+                  checked={notificationSettings.smsPaymentReceived}
+                  onCheckedChange={(checked) => handleNotificationChange('smsPaymentReceived', checked)}
                 />
               </div>
               
@@ -82,8 +82,8 @@ const NotificationSettings = ({
                   <p className="text-sm text-gray-500">Get SMS alerts for refunds</p>
                 </div>
                 <Switch 
-                  checked={notificationSettings.smsRefunds}
-                  onCheckedChange={(checked) => handleNotificationChange('smsRefunds', checked)}
+                  checked={notificationSettings.smsRefundProcessed}
+                  onCheckedChange={(checked) => handleNotificationChange('smsRefundProcessed', checked)}
                 />
               </div>
             </div>

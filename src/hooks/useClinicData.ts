@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,11 +24,11 @@ export function useClinicData() {
   const [isUploading, setIsUploading] = useState(false);
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreference[]>([]);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
-    emailPayments: false,
-    emailRefunds: false,
-    emailSummary: false,
-    smsPayments: false,
-    smsRefunds: false
+    emailPaymentReceived: false,
+    emailRefundProcessed: false,
+    emailWeeklySummary: false,
+    smsPaymentReceived: false,
+    smsRefundProcessed: false
   });
   const { user } = useAuth();
 
@@ -223,14 +224,25 @@ export function useClinicData() {
 
     // Map UI setting name to channel and type
     let channel: 'email' | 'sms';
-    let type: 'payments' | 'refunds' | 'summary';
+    let type: 'payment_received' | 'refund_processed' | 'weekly_summary';
 
     if (setting.startsWith('email')) {
       channel = 'email';
-      type = setting.replace('email', '').toLowerCase() as 'payments' | 'refunds' | 'summary';
+      if (setting === 'emailPaymentReceived') type = 'payment_received';
+      else if (setting === 'emailRefundProcessed') type = 'refund_processed';
+      else if (setting === 'emailWeeklySummary') type = 'weekly_summary';
+      else {
+        console.error('Invalid notification setting:', setting);
+        return false;
+      }
     } else if (setting.startsWith('sms')) {
       channel = 'sms';
-      type = setting.replace('sms', '').toLowerCase() as 'payments' | 'refunds' | 'summary';
+      if (setting === 'smsPaymentReceived') type = 'payment_received';
+      else if (setting === 'smsRefundProcessed') type = 'refund_processed';
+      else {
+        console.error('Invalid notification setting:', setting);
+        return false;
+      }
     } else {
       console.error('Invalid notification setting:', setting);
       return false;

@@ -6,28 +6,28 @@ export interface NotificationPreference {
   id: string;
   clinic_id: string;
   channel: 'email' | 'sms';
-  type: 'payments' | 'refunds' | 'summary';
+  type: 'payment_received' | 'refund_processed' | 'weekly_summary';
   enabled: boolean;
 }
 
 // Mapping between UI state and database records
 export interface NotificationSettings {
-  emailPayments: boolean;
-  emailRefunds: boolean;
-  emailSummary: boolean;
-  smsPayments: boolean;
-  smsRefunds: boolean;
+  emailPaymentReceived: boolean;
+  emailRefundProcessed: boolean;
+  emailWeeklySummary: boolean;
+  smsPaymentReceived: boolean;
+  smsRefundProcessed: boolean;
 }
 
 export const NotificationService = {
   // Convert database records to UI state
   mapPreferencesToSettings(preferences: NotificationPreference[]): NotificationSettings {
     const defaultSettings: NotificationSettings = {
-      emailPayments: false,
-      emailRefunds: false,
-      emailSummary: false,
-      smsPayments: false,
-      smsRefunds: false
+      emailPaymentReceived: false,
+      emailRefundProcessed: false,
+      emailWeeklySummary: false,
+      smsPaymentReceived: false,
+      smsRefundProcessed: false
     };
 
     if (!preferences || preferences.length === 0) {
@@ -35,8 +35,22 @@ export const NotificationService = {
     }
 
     return preferences.reduce((settings, pref) => {
-      // Map database record to UI settings key
-      const key = `${pref.channel}${pref.type.charAt(0).toUpperCase() + pref.type.slice(1)}` as keyof NotificationSettings;
+      // Create the settings key based on channel and type
+      let key: keyof NotificationSettings;
+      
+      if (pref.channel === 'email') {
+        if (pref.type === 'payment_received') key = 'emailPaymentReceived';
+        else if (pref.type === 'refund_processed') key = 'emailRefundProcessed';
+        else if (pref.type === 'weekly_summary') key = 'emailWeeklySummary';
+        else return settings; // Skip if not a valid type
+      } else if (pref.channel === 'sms') {
+        if (pref.type === 'payment_received') key = 'smsPaymentReceived';
+        else if (pref.type === 'refund_processed') key = 'smsRefundProcessed';
+        else return settings; // Skip if not a valid type
+      } else {
+        return settings; // Skip if not a valid channel
+      }
+      
       return { ...settings, [key]: pref.enabled };
     }, defaultSettings);
   },
@@ -65,7 +79,7 @@ export const NotificationService = {
   async updateNotificationPreference(
     clinicId: string, 
     channel: 'email' | 'sms', 
-    type: 'payments' | 'refunds' | 'summary', 
+    type: 'payment_received' | 'refund_processed' | 'weekly_summary', 
     enabled: boolean
   ): Promise<boolean> {
     try {
@@ -96,17 +110,17 @@ export const NotificationService = {
     try {
       // Create an array of update operations
       const updates = [
-        { channel: 'email', type: 'payments', enabled: settings.emailPayments },
-        { channel: 'email', type: 'refunds', enabled: settings.emailRefunds },
-        { channel: 'email', type: 'summary', enabled: settings.emailSummary },
-        { channel: 'sms', type: 'payments', enabled: settings.smsPayments },
-        { channel: 'sms', type: 'refunds', enabled: settings.smsRefunds }
+        { channel: 'email', type: 'payment_received', enabled: settings.emailPaymentReceived },
+        { channel: 'email', type: 'refund_processed', enabled: settings.emailRefundProcessed },
+        { channel: 'email', type: 'weekly_summary', enabled: settings.emailWeeklySummary },
+        { channel: 'sms', type: 'payment_received', enabled: settings.smsPaymentReceived },
+        { channel: 'sms', type: 'refund_processed', enabled: settings.smsRefundProcessed }
       ];
 
       // Perform all updates in parallel
       const results = await Promise.all(
         updates.map(({ channel, type, enabled }) => 
-          this.updateNotificationPreference(clinicId, channel as 'email' | 'sms', type as 'payments' | 'refunds' | 'summary', enabled)
+          this.updateNotificationPreference(clinicId, channel as 'email' | 'sms', type as 'payment_received' | 'refund_processed' | 'weekly_summary', enabled)
         )
       );
 
