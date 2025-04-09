@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentStatusSummary from '@/components/payment/PaymentStatusSummary';
 import PaymentDetailsCard from '@/components/payment/PaymentDetailsCard';
