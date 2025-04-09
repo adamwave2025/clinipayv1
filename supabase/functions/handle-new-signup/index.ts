@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.29.0";
 
@@ -17,6 +16,7 @@ serve(async (req) => {
   try {
     // Get request body
     const requestData = await req.json();
+    console.log("Received request:", JSON.stringify(requestData, null, 2));
     
     // Initialize Supabase client with service role for admin privileges
     const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
@@ -25,6 +25,7 @@ serve(async (req) => {
     
     // Determine what type of request we're handling
     const { type } = requestData;
+    console.log("Request type:", type);
     
     if (type === 'verify_token') {
       return await handleVerifyToken(supabase, requestData, corsHeaders);
@@ -37,6 +38,7 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error("Error processing request:", error);
+    console.error("Error stack:", error.stack);
     return new Response(
       JSON.stringify({ success: false, error: "Internal server error", details: error.message }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
@@ -47,11 +49,12 @@ serve(async (req) => {
 // Handle new signup
 async function handleNewSignup(supabase, requestData, corsHeaders) {
   try {
-    const { id, email } = requestData;
+    const { id, email, clinic_name } = requestData;
     
-    console.log(`Processing new signup: ${email} with ID ${id}`);
+    console.log(`Processing new signup: ${email} with ID ${id}, clinic name: ${clinic_name}`);
     
     // Generate a verification token
+    console.log("Generating verification token...");
     const { data: tokenData, error: tokenError } = await supabase.rpc(
       'generate_verification_token',
       { user_id: id }
@@ -64,13 +67,45 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
     
     // Get the token from result
     const verificationToken = tokenData;
-    
-    // Note: We removed the clinic creation logic here as it's now handled
-    // completely by the database trigger
+    console.log("Verification token generated successfully");
     
     // Generate verification URL
     const baseUrl = Deno.env.get("SITE_URL") || "https://clinipay.co.uk";
     const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}&userId=${id}`;
+    console.log("Verification URL generated:", verificationUrl);
+    
+    // Check if a clinic was created via database trigger
+    console.log("Checking if clinic was created via trigger...");
+    const { data: clinicData, error: clinicError } = await supabase
+      .from('clinics')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+      
+    if (clinicError) {
+      console.error("Error checking clinic:", clinicError);
+    } else if (clinicData) {
+      console.log(`Found clinic with ID ${clinicData.id} for email ${email}`);
+    } else {
+      console.log(`No clinic found for email ${email}, the trigger may not have run yet`);
+    }
+    
+    // Check notification preferences
+    console.log("Checking notification preferences...");
+    if (clinicData?.id) {
+      const { data: prefData, error: prefError } = await supabase
+        .from('notification_preferences')
+        .select('id, channel, type, enabled')
+        .eq('clinic_id', clinicData.id);
+        
+      if (prefError) {
+        console.error("Error checking notification preferences:", prefError);
+      } else if (prefData && prefData.length > 0) {
+        console.log(`Found ${prefData.length} notification preferences:`, prefData);
+      } else {
+        console.log("No notification preferences found, the trigger may not have completed");
+      }
+    }
     
     // Forward the verification URL to the NEW_SIGN_UP webhook if configured
     const newSignUpWebhook = Deno.env.get("NEW_SIGN_UP");
@@ -107,6 +142,7 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
     );
   } catch (error) {
     console.error("Error in handleNewSignup:", error);
+    console.error("Error stack:", error.stack);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }

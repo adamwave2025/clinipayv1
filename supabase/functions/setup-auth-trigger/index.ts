@@ -132,16 +132,23 @@ serve(async (req) => {
                 RAISE NOTICE 'Created new clinic with ID: % for email: % and name: %', clinic_id, NEW.email, clinic_name;
                 
                 -- Create default notification preferences for the new clinic
-                -- Email notifications
-                INSERT INTO public.notification_preferences (clinic_id, channel, type, enabled)
-                VALUES
-                  (clinic_id, 'email', 'payment_received', TRUE),
-                  (clinic_id, 'email', 'refund_processed', TRUE),
-                  (clinic_id, 'email', 'weekly_summary', TRUE),
-                  (clinic_id, 'sms', 'payment_received', TRUE),
-                  (clinic_id, 'sms', 'refund_processed', TRUE);
-                  
-                RAISE NOTICE 'Created default notification preferences for clinic ID: %', clinic_id;
+                -- Explicitly log what we're about to insert
+                RAISE NOTICE 'Creating notification preferences for clinic ID: % with types: payment_received, refund_processed, weekly_summary', clinic_id;
+                
+                BEGIN
+                  -- Email notifications
+                  INSERT INTO public.notification_preferences (clinic_id, channel, type, enabled)
+                  VALUES
+                    (clinic_id, 'email', 'payment_received', TRUE),
+                    (clinic_id, 'email', 'refund_processed', TRUE),
+                    (clinic_id, 'email', 'weekly_summary', TRUE),
+                    (clinic_id, 'sms', 'payment_received', TRUE),
+                    (clinic_id, 'sms', 'refund_processed', TRUE);
+                    
+                  RAISE NOTICE 'Successfully created default notification preferences for clinic ID: %', clinic_id;
+                EXCEPTION WHEN OTHERS THEN
+                  RAISE NOTICE 'Error creating notification preferences: %', SQLERRM;
+                END;
               ELSE
                 RAISE NOTICE 'Found existing clinic with ID: % for email: %', clinic_id, NEW.email;
               END IF;

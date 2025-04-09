@@ -41,14 +41,29 @@ export function useAuthActions() {
           localStorage.setItem('verificationEmail', email);
           
           // Set up verification for the new user
+          console.log('Calling setupUserVerification with:', {
+            userId: data.user.id,
+            email,
+            clinicName
+          });
+          
           const verification = await setupUserVerification(
             data.user.id, 
             email, 
             clinicName
           );
 
+          console.log('Verification setup response:', verification);
+
           if (!verification.success) {
             console.error("Error setting up verification:", verification.error);
+            
+            // More detailed error logging
+            if (verification.error && verification.error.includes('Database error')) {
+              console.error('Possible database constraint violation during user verification setup');
+              console.error('Verification error details:', verification);
+            }
+            
             toast.error("There was an issue setting up your account. Please try again.");
             return { error: new Error(verification.error) };
           }
@@ -63,6 +78,16 @@ export function useAuthActions() {
           return { error: null };
         } catch (functionError: any) {
           console.error("Failed during signup process:", functionError);
+          console.error("Error stack:", functionError.stack);
+          
+          // Additional error context
+          console.error("Context:", {
+            userId: data.user.id,
+            email,
+            clinicName,
+            errorType: functionError.name,
+            errorMessage: functionError.message
+          });
           
           // Sign out the user if there was an error
           await supabase.auth.signOut();
@@ -75,6 +100,7 @@ export function useAuthActions() {
       return { error: new Error("Failed to complete signup process") };
     } catch (error: any) {
       console.error('Error during sign up:', error);
+      console.error('Error stack:', error.stack);
       toast.error('An unexpected error occurred during sign up');
       return { error };
     }

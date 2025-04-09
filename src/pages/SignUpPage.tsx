@@ -70,13 +70,23 @@ const SignUpPage = () => {
       
       if (error) {
         console.error('Sign up error:', error);
-        setSignupError(error.message || 'An error occurred during sign up');
-        toast.error(error.message || 'An error occurred during sign up');
+        // Enhanced error logging - capture more details
+        if (error.message && error.message.includes('Database error')) {
+          console.error('Possible database constraint violation during signup');
+          // Show a more user-friendly message
+          setSignupError('There was a problem with account creation. Our team has been notified.');
+          toast.error('Account creation failed. Please try again later or contact support.');
+        } else {
+          setSignupError(error.message || 'An error occurred during sign up');
+          toast.error(error.message || 'An error occurred during sign up');
+        }
       } else {
         console.log('Sign up successful, navigating to verification page');
       }
     } catch (error: any) {
       console.error('Unexpected sign up error:', error);
+      // Enhanced error logging - include stack trace if available
+      console.error('Error stack:', error.stack);
       setSignupError(error.message || 'An unexpected error occurred');
       toast.error(error.message || 'An unexpected error occurred');
     } finally {
