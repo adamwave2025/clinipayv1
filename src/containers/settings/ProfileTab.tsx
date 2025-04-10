@@ -6,8 +6,8 @@ import { ClinicData } from '@/hooks/useClinicData';
 
 interface ProfileTabProps {
   clinicData: ClinicData | null;
-  uploadLogo: (file: File) => Promise<void>;
-  deleteLogo: () => Promise<void>;
+  uploadLogo: (file: File) => Promise<any>; // Changed return type from Promise<void> to Promise<any>
+  deleteLogo: () => Promise<any>; // Changed return type from Promise<void> to Promise<any>
   updateClinicData: (data: Partial<ClinicData>) => Promise<{ success: boolean }>;
   isUploading: boolean;
 }
