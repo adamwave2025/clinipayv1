@@ -17,11 +17,14 @@ serve(async (req) => {
   }
 
   try {
+    // Log request info for debugging
+    console.log(`Processing payment request: ${req.method} ${req.url}`);
+    
     // Get Stripe secret key from environment variables
     const stripeSecretKey = Deno.env.get("SECRET_KEY");
     if (!stripeSecretKey) {
       console.error("Missing Stripe secret key");
-      throw new Error("Missing Stripe secret key");
+      throw new Error("Payment processing is not configured properly. Please contact support.");
     }
 
     // Initialize Stripe
@@ -34,7 +37,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !supabaseKey) {
       console.error("Missing Supabase credentials");
-      throw new Error("Missing Supabase credentials");
+      throw new Error("Database connection not configured. Please contact support.");
     }
     const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -45,13 +48,13 @@ serve(async (req) => {
       console.log("Request body:", JSON.stringify(requestBody));
     } catch (err) {
       console.error("Error parsing request body:", err);
-      throw new Error("Invalid request body");
+      throw new Error("Invalid payment request format.");
     }
 
     const { amount, clinicId, paymentLinkId, requestId } = requestBody;
 
     if (!amount || !clinicId) {
-      throw new Error("Missing required parameters: amount and clinicId");
+      throw new Error("Missing required payment information.");
     }
 
     console.log(`Creating payment intent for clinic ${clinicId}, amount: ${amount}`);
@@ -65,11 +68,11 @@ serve(async (req) => {
 
     if (clinicError || !clinicData) {
       console.error("Error fetching clinic data:", clinicError);
-      throw new Error(`Clinic not found: ${clinicError?.message}`);
+      throw new Error(`Clinic not found. Please contact the clinic directly for payment options.`);
     }
 
     if (!clinicData.stripe_account_id || clinicData.stripe_status !== "connected") {
-      throw new Error("Clinic does not have Stripe connected");
+      throw new Error("This clinic does not have payment processing set up.");
     }
 
     // Get the platform fee percentage from platform_settings
@@ -144,10 +147,10 @@ serve(async (req) => {
       }
     );
   } catch (err) {
-    console.error("Error:", err);
+    console.error("Payment intent creation error:", err);
     return new Response(
       JSON.stringify({
-        error: err.message,
+        error: err.message || "An unexpected error occurred",
       }),
       {
         headers: {

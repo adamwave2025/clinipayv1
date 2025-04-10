@@ -12,12 +12,13 @@ import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
 
 interface PaymentFormProps {
-  onSubmit: (data: PaymentFormValues) => void;
+  onSubmit: (data: PaymentFormValues, paymentMethod?: { id: string }) => void;
   isLoading: boolean;
   defaultValues?: Partial<PaymentFormValues>;
+  clientSecret?: string | null;
 }
 
-const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) => {
+const PaymentForm = ({ onSubmit, isLoading, defaultValues, clientSecret }: PaymentFormProps) => {
   const stripe = useStripe();
   const elements = useElements();
 

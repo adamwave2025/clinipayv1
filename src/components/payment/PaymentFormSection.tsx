@@ -9,8 +9,9 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-// Initialize Stripe with the publishable key from Supabase environment
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_51OgHYeEXQXA8Yw4lPwEiRXfBg5MCGN8Ri3aELhMOgYm1YyY6SeBwsJcEvL6GZ7fhitWDIyHjRsZ4s3lw2tJgPnzq00dBEHEp2C');
+// Initialize Stripe with the publishable key from environment variables
+// Use null as fallback so we can handle the error gracefully if not provided
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 interface PaymentFormSectionProps {
   isStripeConnected: boolean;
@@ -29,6 +30,12 @@ const PaymentFormSection = ({
   defaultValues,
   onSubmit
 }: PaymentFormSectionProps) => {
+  // Options for Stripe Elements - only pass clientSecret when we have it
+  const options = clientSecret ? { 
+    clientSecret,
+    appearance: { theme: 'stripe' }
+  } : undefined;
+
   return (
     <Card className="card-shadow h-full">
       <CardContent className="p-6">
@@ -50,11 +57,12 @@ const PaymentFormSection = ({
             <p className="ml-3 text-gray-600">Processing payment...</p>
           </div>
         ) : (
-          <Elements stripe={stripePromise} options={clientSecret ? { clientSecret } : undefined}>
+          <Elements stripe={stripePromise} options={options}>
             <PaymentForm 
               onSubmit={onSubmit}
               isLoading={isSubmitting}
               defaultValues={defaultValues}
+              clientSecret={clientSecret}
             />
           </Elements>
         )}

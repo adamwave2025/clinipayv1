@@ -24,10 +24,20 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
     
     try {
       setProcessingPayment(true);
-      const response = await fetch(`${window.location.origin}/functions/v1/create-payment-intent`, {
+      
+      console.log('Creating payment intent with data:', {
+        amount: linkData.amount * 100,
+        clinicId: linkData.clinic.id,
+        paymentLinkId: linkData.isRequest ? null : linkData.id,
+        requestId: linkData.isRequest ? linkData.id : null,
+      });
+      
+      // Use the full URL for the edge function
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.auth.getSession().then(res => res.data.session?.access_token || '')}`,
         },
         body: JSON.stringify({
           amount: linkData.amount * 100, // Convert to pence
@@ -36,9 +46,13 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
           requestId: linkData.isRequest ? linkData.id : null,
         }),
       });
+      
+      console.log('Payment intent response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('Payment intent error response text:', errorText);
+        
         let errorMessage;
         try {
           // Try to parse the error as JSON
@@ -78,13 +92,14 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
     setIsSubmitting(true);
     
     try {
-      // First create a payment intent
-      const secret = await createPaymentIntent();
-      if (!secret) {
-        throw new Error('Could not create payment intent');
+      // First create a payment intent if we don't have one already
+      if (!clientSecret) {
+        const secret = await createPaymentIntent();
+        if (!secret) {
+          throw new Error('Could not create payment intent');
+        }
+        setClientSecret(secret);
       }
-      
-      setClientSecret(secret);
       
       // Get card element
       const cardElement = elements.getElement(CardElement);
@@ -92,25 +107,33 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         throw new Error('Card element not found');
       }
       
+      console.log('Confirming card payment with client secret');
+      
       // Confirm card payment with the client secret
-      const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(secret, {
-        payment_method: {
-          card: cardElement,
-          billing_details: {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone || undefined,
+      const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(
+        clientSecret as string, 
+        {
+          payment_method: {
+            card: cardElement,
+            billing_details: {
+              name: formData.name,
+              email: formData.email,
+              phone: formData.phone || undefined,
+            },
           },
-        },
-      });
+        }
+      );
       
       if (paymentError) {
+        console.error('Payment confirmation error:', paymentError);
         throw new Error(paymentError.message || 'Payment failed');
       }
       
       if (paymentIntent.status !== 'succeeded') {
         throw new Error(`Payment status: ${paymentIntent.status}`);
       }
+      
+      console.log('Payment successful:', paymentIntent);
       
       // After successful payment, create a payment record
       const { data, error } = await supabase
@@ -125,11 +148,14 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
           status: 'paid',
           amount_paid: linkData.amount,
           paid_at: new Date().toISOString(),
-          stripe_payment_intent_id: paymentIntent.id
+          stripe_payment_id: paymentIntent.id
         })
         .select();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating payment record:', error);
+        throw error;
+      }
 
       // If this was a payment request, update its status and paid_at
       if (linkData.isRequest) {
