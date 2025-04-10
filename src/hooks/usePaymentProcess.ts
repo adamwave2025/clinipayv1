@@ -67,13 +67,14 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       
       console.log('Payment successful, creating payment record in database');
       
-      // Create a payment record in the database
+      // Create a payment record in the database - removed payment_request_id field
+      // and added reference field for payment requests
       const { data, error } = await supabase
         .from('payments')
         .insert({
           clinic_id: linkData.clinic.id,
           payment_link_id: linkData.isRequest ? null : linkData.id,
-          payment_request_id: linkData.isRequest ? linkData.id : null,
+          reference: linkData.isRequest ? `Request-${linkData.id}` : null, // Store request ID in reference field
           patient_name: formData.name,
           patient_email: formData.email,
           patient_phone: formData.phone ? formData.phone.replace(/\D/g, '') : null,
