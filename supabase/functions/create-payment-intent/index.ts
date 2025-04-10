@@ -51,13 +51,13 @@ serve(async (req) => {
       throw new Error("Invalid payment request format.");
     }
 
-    const { amount, clinicId, paymentLinkId, requestId } = requestBody;
+    const { amount, clinicId, paymentLinkId, requestId, paymentMethod } = requestBody;
 
-    if (!amount || !clinicId) {
+    if (!amount || !clinicId || !paymentMethod) {
       throw new Error("Missing required payment information.");
     }
 
-    console.log(`Creating payment intent for clinic ${clinicId}, amount: ${amount}`);
+    console.log(`Creating payment for clinic ${clinicId}, amount: ${amount}`);
 
     // Get the clinic's Stripe account ID
     const { data: clinicData, error: clinicError } = await supabase
@@ -97,22 +97,10 @@ serve(async (req) => {
 
     console.log(`Platform fee: ${platformFeePercent}%, Application fee amount: ${applicationFeeAmount}`);
 
-    // Create a payment intent
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount,
-      currency: "gbp",
-      application_fee_amount: applicationFeeAmount,
-      transfer_data: {
-        destination: clinicData.stripe_account_id,
-      },
-      metadata: {
-        clinicId: clinicId,
-        paymentLinkId: paymentLinkId || "",
-        requestId: requestId || "",
-      },
-    });
-
-    // Try to log payment attempt to the database if the table exists
+    // In a real application, we would process with Stripe here
+    // But for a mock UI implementation, we'll just simulate success
+    
+    // Log the mock payment attempt in the database
     try {
       await supabase
         .from("payment_attempts")
@@ -122,21 +110,22 @@ serve(async (req) => {
           payment_request_id: requestId || null,
           amount: amount,
           status: "created",
-          payment_intent_id: paymentIntent.id,
+          payment_intent_id: `mock_pi_${Date.now()}`,
         });
       console.log("Payment attempt logged successfully");
     } catch (logError) {
-      // If table doesn't exist or other error, just log and continue
       console.warn("Could not log payment attempt:", logError.message);
-      // This is non-fatal, we can continue without the payment attempt log
     }
 
-    console.log("Payment intent created successfully:", paymentIntent.id);
+    // Generate a mock payment ID
+    const mockPaymentId = `mock_payment_${Date.now()}`;
+    console.log("Mock payment created successfully:", mockPaymentId);
 
-    // Return the client secret to the client
+    // Return success to the client
     return new Response(
       JSON.stringify({
-        clientSecret: paymentIntent.client_secret,
+        success: true,
+        paymentId: mockPaymentId
       }),
       {
         headers: {
@@ -147,9 +136,10 @@ serve(async (req) => {
       }
     );
   } catch (err) {
-    console.error("Payment intent creation error:", err);
+    console.error("Payment processing error:", err);
     return new Response(
       JSON.stringify({
+        success: false,
         error: err.message || "An unexpected error occurred",
       }),
       {

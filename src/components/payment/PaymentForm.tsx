@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form } from '@/components/ui/form';
@@ -11,35 +11,27 @@ import { Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PaymentFormProps {
-  onSubmit: (data: PaymentFormValues, isCardComplete: boolean) => void;
+  onSubmit: (data: PaymentFormValues) => void;
   isLoading: boolean;
   defaultValues?: Partial<PaymentFormValues>;
 }
 
 const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) => {
-  const [isCardComplete, setIsCardComplete] = useState(false);
-  
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
       name: defaultValues?.name || '',
       email: defaultValues?.email || '',
       phone: defaultValues?.phone || '',
+      cardNumber: '',
+      cardExpiry: '',
+      cardCvc: '',
     }
   });
 
   const handleSubmitForm = async (data: PaymentFormValues) => {
-    if (!isCardComplete) {
-      toast.error("Please complete the card details");
-      return;
-    }
-    
-    // Pass both form data and card completion status to parent
-    onSubmit(data, isCardComplete);
-  };
-
-  const handleCardChange = (complete: boolean) => {
-    setIsCardComplete(complete);
+    // Pass form data to parent
+    onSubmit(data);
   };
 
   return (
@@ -53,7 +45,6 @@ const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) =
         <PaymentDetailsSection
           control={form.control}
           isLoading={isLoading}
-          onCardChange={handleCardChange}
         />
         
         <SubmitButton isLoading={isLoading} />
