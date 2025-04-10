@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Mail, Phone, MapPin, CreditCard, Calendar } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -31,10 +30,10 @@ const ClinicInfo = ({
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Active</Badge>;
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pending</Badge>;
-      case 'disabled':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Disabled</Badge>;
+      case 'not_connected':
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Not Connected</Badge>;
       default:
-        return null;
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Not Connected</Badge>;
     }
   };
 

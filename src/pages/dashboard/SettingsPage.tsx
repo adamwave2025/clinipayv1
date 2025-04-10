@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -109,6 +110,7 @@ const SettingsPage = () => {
     try {
       const result = await updateClinicData({
         stripe_account_id: 'acct_' + Math.random().toString(36).substring(2, 15),
+        stripe_status: 'pending',
       });
       
       if (result.success) {
@@ -128,6 +130,7 @@ const SettingsPage = () => {
     try {
       const result = await updateClinicData({
         stripe_account_id: null,
+        stripe_status: null,
       });
       
       if (result.success) {
@@ -197,6 +200,7 @@ const SettingsPage = () => {
         <TabsContent value="payments">
           <PaymentSettings 
             stripeAccountId={clinicData?.stripe_account_id || null}
+            stripeStatus={clinicData?.stripe_status || null}
             handleConnectStripe={handleConnectStripe}
             handleDisconnectStripe={handleDisconnectStripe}
           />

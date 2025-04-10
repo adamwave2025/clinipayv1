@@ -23,6 +23,7 @@ export type Database = {
           phone: string | null
           postcode: string | null
           stripe_account_id: string | null
+          stripe_status: string | null
         }
         Insert: {
           address_line_1?: string | null
@@ -37,6 +38,7 @@ export type Database = {
           phone?: string | null
           postcode?: string | null
           stripe_account_id?: string | null
+          stripe_status?: string | null
         }
         Update: {
           address_line_1?: string | null
@@ -51,6 +53,7 @@ export type Database = {
           phone?: string | null
           postcode?: string | null
           stripe_account_id?: string | null
+          stripe_status?: string | null
         }
         Relationships: []
       }

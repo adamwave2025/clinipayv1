@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -106,7 +107,7 @@ serve(async (req) => {
     // Check if clinic already has a Stripe account
     const { data: clinic, error: fetchError } = await supabase
       .from("clinics")
-      .select("stripe_account_id")
+      .select("stripe_account_id, stripe_status")
       .eq("id", clinicId)
       .single();
       
@@ -125,11 +126,22 @@ serve(async (req) => {
       
       stripeAccountId = account.id;
       
-      // Update clinic with stripe account ID
+      // Update clinic with stripe account ID and set status to pending
       const { error: updateError } = await supabase
         .from("clinics")
         .update({
-          stripe_account_id: stripeAccountId
+          stripe_account_id: stripeAccountId,
+          stripe_status: "pending"
+        })
+        .eq("id", clinicId);
+        
+      if (updateError) throw updateError;
+    } else if (clinic.stripe_status !== "active") {
+      // If account exists but status is not active, ensure it's marked as pending
+      const { error: updateError } = await supabase
+        .from("clinics")
+        .update({
+          stripe_status: "pending"
         })
         .eq("id", clinicId);
         

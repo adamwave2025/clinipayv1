@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -57,7 +56,7 @@ const AdminSettingsPage = () => {
       id: '5',
       name: 'Riverdale Hospital',
       email: 'contact@riverdalehospital.com',
-      stripeStatus: 'active',
+      stripeStatus: 'not_connected',
     },
   ];
 
@@ -86,8 +85,8 @@ const AdminSettingsPage = () => {
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Connected</Badge>;
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pending</Badge>;
-      case 'disabled':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Disconnected</Badge>;
+      case 'not_connected':
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Not Connected</Badge>;
       default:
         return null;
     }

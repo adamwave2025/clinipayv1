@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.connect-onboarding]
 verify_jwt = true
+
+[functions.stripe-webhooks]
+verify_jwt = false
