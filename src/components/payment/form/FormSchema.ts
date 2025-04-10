@@ -8,6 +8,8 @@ export const paymentFormSchema = z.object({
   cardNumber: z.string().min(1, { message: 'Card number is required' }),
   cardExpiry: z.string().min(1, { message: 'Expiry date is required' }),
   cardCvc: z.string().min(1, { message: 'CVC is required' }),
+  // We'll use a simple boolean for cardComplete
+  cardComplete: z.boolean().optional().default(false),
 });
 
 export type PaymentFormValues = z.infer<typeof paymentFormSchema>;

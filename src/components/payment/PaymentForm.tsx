@@ -26,6 +26,7 @@ const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) =
       cardNumber: '',
       cardExpiry: '',
       cardCvc: '',
+      cardComplete: false,
     }
   });
 

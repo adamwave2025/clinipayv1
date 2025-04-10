@@ -1,10 +1,9 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Control, UseFormSetValue } from 'react-hook-form';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { PaymentFormValues } from './FormSchema';
-import { CardElement } from '@stripe/react-stripe-js';
 
 interface PaymentDetailsSectionProps {
   control: Control<PaymentFormValues>;
@@ -20,30 +19,25 @@ const PaymentDetailsSection = ({ control, setValue, isLoading }: PaymentDetailsS
       <div className="border rounded-md p-4">
         <FormField
           control={control}
-          name="cardElement"
+          name="cardNumber"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Card Information</FormLabel>
               <FormControl>
-                <div className="border rounded-md p-3 bg-white">
-                  <CardElement 
-                    options={{
-                      style: {
-                        base: {
-                          fontSize: '16px',
-                          color: '#424770',
-                          '::placeholder': {
-                            color: '#aab7c4',
-                          },
-                        },
-                        invalid: {
-                          color: '#9e2146',
-                        },
-                      },
-                      disabled: isLoading,
-                    }}
+                <div className="space-y-4">
+                  <Input 
+                    placeholder="Card Number" 
+                    {...field}
+                    disabled={isLoading}
                     onChange={(e) => {
-                      setValue('cardComplete', e.complete);
+                      field.onChange(e);
+                      // Set cardComplete to true when a value is entered
+                      // This is a simplified approach compared to using Stripe Elements
+                      if (e.target.value) {
+                        setValue('cardComplete', true);
+                      } else {
+                        setValue('cardComplete', false);
+                      }
                     }}
                   />
                 </div>
@@ -52,6 +46,44 @@ const PaymentDetailsSection = ({ control, setValue, isLoading }: PaymentDetailsS
             </FormItem>
           )}
         />
+        
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <FormField
+            control={control}
+            name="cardExpiry"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Expiry Date</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="MM/YY"
+                    disabled={isLoading}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={control}
+            name="cardCvc"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>CVC</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="123"
+                    disabled={isLoading}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
       </div>
     </div>
   );
