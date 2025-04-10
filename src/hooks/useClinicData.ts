@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -91,6 +92,10 @@ export function useClinicData() {
           ...clinicData,
           logo_url: result.url
         });
+        console.log('Logo URL updated in state:', result.url);
+        
+        // Refresh clinic data to ensure we have the latest data
+        fetchClinicData();
       }
       
       return result;
@@ -117,6 +122,9 @@ export function useClinicData() {
           ...clinicData,
           logo_url: null
         });
+        
+        // Refresh clinic data to ensure we have the latest data
+        fetchClinicData();
       }
       
       return result;

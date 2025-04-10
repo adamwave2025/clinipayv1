@@ -8,6 +8,7 @@ export const LogoService = {
       const fileExt = file.name.split('.').pop();
       const filePath = `${userId}/${Date.now()}.${fileExt}`;
 
+      // Upload the file to storage
       const { error: uploadError, data } = await supabase.storage
         .from('cliniclogo')
         .upload(filePath, file, {
@@ -17,17 +18,23 @@ export const LogoService = {
 
       if (uploadError) throw uploadError;
 
+      // Get the public URL for the uploaded file
       const { data: { publicUrl } } = supabase.storage
         .from('cliniclogo')
         .getPublicUrl(filePath);
 
+      // Update the clinic record with the new logo URL
       const { error: updateError } = await supabase
         .from('clinics')
         .update({ logo_url: publicUrl })
         .eq('id', clinicId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Error updating clinic logo URL:', updateError);
+        throw updateError;
+      }
 
+      console.log('Logo URL updated successfully:', publicUrl);
       return { success: true, url: publicUrl };
     } catch (error: any) {
       console.error('Error uploading logo:', error);
@@ -48,19 +55,25 @@ export const LogoService = {
       
       const filePath = pathWithBucket.slice(bucketIndex + 1).join('/');
       
+      // Delete the file from storage
       const { error: deleteError } = await supabase.storage
         .from('cliniclogo')
         .remove([filePath]);
 
       if (deleteError) throw deleteError;
 
+      // Update the clinic record to remove the logo URL
       const { error: updateError } = await supabase
         .from('clinics')
         .update({ logo_url: null })
         .eq('id', clinicId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Error updating clinic logo URL:', updateError);
+        throw updateError;
+      }
 
+      console.log('Logo removed successfully from clinic record');
       return { success: true };
     } catch (error: any) {
       console.error('Error deleting logo:', error);
