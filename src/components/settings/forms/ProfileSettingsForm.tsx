@@ -53,11 +53,11 @@ const ProfileSettingsForm = ({
                 <Label className="mb-2 block">Logo</Label>
                 <FileUpload
                   currentImageUrl={profileData.logo_url || ''}
-                  onFileUpload={onFileUpload}
-                  onDeleteImage={onDeleteLogo}
-                  isUploading={isUploading}
+                  onFileSelected={onFileUpload}
+                  onDelete={onDeleteLogo}
+                  isLoading={isUploading}
                   accept="image/*"
-                  maxSize={5}
+                  maxSizeMB={5}
                 />
               </div>
               
