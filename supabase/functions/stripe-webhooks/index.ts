@@ -65,7 +65,8 @@ serve(async (req) => {
         console.log(`Signature prefix: ${signature.substring(0, 10)}...`);
         console.log(`Secret key prefix: ${stripeWebhookSecret.substring(0, 5)}...`);
         
-        event = stripe.webhooks.constructEvent(requestBody, signature, stripeWebhookSecret);
+        // Use constructEventAsync instead of constructEvent
+        event = await stripe.webhooks.constructEventAsync(requestBody, signature, stripeWebhookSecret);
         console.log("Signature verification successful!");
       } catch (err) {
         console.error(`Webhook signature verification failed: ${err.message}`);
