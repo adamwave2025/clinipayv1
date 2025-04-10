@@ -11,10 +11,10 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Initialize Stripe with the publishable key from environment variables
 // Use null as fallback so we can handle the error gracefully if not provided
-const stripePromise = loadStripe(import.meta.env.VITE_PUBLISHABLE_KEY || '');
+const stripePromise = loadStripe(import.meta.env.PUBLISHABLE_KEY || '');
 
 // Log to debug Stripe initialization
-console.log('Stripe initialization with key available:', !!import.meta.env.VITE_PUBLISHABLE_KEY);
+console.log('Stripe initialization with key available:', !!import.meta.env.PUBLISHABLE_KEY);
 
 interface PaymentFormSectionProps {
   isStripeConnected: boolean;

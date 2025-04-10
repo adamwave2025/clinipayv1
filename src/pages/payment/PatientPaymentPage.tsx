@@ -19,8 +19,8 @@ const PatientPaymentPage = () => {
 
   // Check for environment configuration
   useEffect(() => {
-    if (!import.meta.env.VITE_PUBLISHABLE_KEY) {
-      console.error("Missing VITE_PUBLISHABLE_KEY environment variable");
+    if (!import.meta.env.PUBLISHABLE_KEY) {
+      console.error("Missing PUBLISHABLE_KEY environment variable");
       setInitError("Payment system configuration error. Please contact support.");
     }
   }, []);
