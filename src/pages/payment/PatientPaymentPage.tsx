@@ -8,17 +8,16 @@ import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
 import { usePaymentProcess } from '@/hooks/usePaymentProcess';
 import PaymentPageLoading from '@/components/payment/PaymentPageLoading';
 import PaymentFormSection from '@/components/payment/PaymentFormSection';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+
+// Initialize Stripe with the publishable key from Supabase environment
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_51OgHYeEXQXA8Yw4lPwEiRXfBg5MCGN8Ri3aELhMOgYm1YyY6SeBwsJcEvL6GZ7fhitWDIyHjRsZ4s3lw2tJgPnzq00dBEHEp2C');
 
 const PatientPaymentPage = () => {
   const navigate = useNavigate();
   const { linkId } = useParams<{ linkId: string }>();
   const { linkData, isLoading, error } = usePaymentLinkData(linkId);
-  const { 
-    isSubmitting,
-    clientSecret,
-    processingPayment,
-    handlePaymentSubmit 
-  } = usePaymentProcess(linkId, linkData);
 
   // Redirect if link not found
   useEffect(() => {
@@ -46,6 +45,37 @@ const PatientPaymentPage = () => {
     email: linkData.patientEmail || '',
     phone: linkData.patientPhone || '',
   } : undefined;
+
+  // We need to wrap the whole component in Elements provider
+  return (
+    <Elements stripe={stripePromise}>
+      <PaymentPageContent 
+        linkId={linkId}
+        linkData={linkData}
+        clinicData={clinicData}
+        paymentType={paymentType}
+        isStripeConnected={isStripeConnected}
+        defaultValues={defaultValues}
+      />
+    </Elements>
+  );
+};
+
+// Extract inner content to use usePaymentProcess hook inside Elements provider
+const PaymentPageContent = ({ 
+  linkId, 
+  linkData, 
+  clinicData, 
+  paymentType, 
+  isStripeConnected,
+  defaultValues 
+}) => {
+  const { 
+    isSubmitting,
+    clientSecret,
+    processingPayment,
+    handlePaymentSubmit 
+  } = usePaymentProcess(linkId, linkData);
 
   return (
     <PaymentLayout isSplitView={true} hideHeaderFooter={true}>

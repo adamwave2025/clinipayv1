@@ -9,8 +9,8 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-// Initialize Stripe with the publishable key
-const stripePromise = loadStripe('pk_test_51OgHYeEXQXA8Yw4lPwEiRXfBg5MCGN8Ri3aELhMOgYm1YyY6SeBwsJcEvL6GZ7fhitWDIyHjRsZ4s3lw2tJgPnzq00dBEHEp2C');
+// Initialize Stripe with the publishable key from Supabase environment
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_51OgHYeEXQXA8Yw4lPwEiRXfBg5MCGN8Ri3aELhMOgYm1YyY6SeBwsJcEvL6GZ7fhitWDIyHjRsZ4s3lw2tJgPnzq00dBEHEp2C');
 
 interface PaymentFormSectionProps {
   isStripeConnected: boolean;
@@ -44,7 +44,7 @@ const PaymentFormSection = ({
               This clinic has not set up payment processing. Please contact the clinic directly to arrange payment.
             </AlertDescription>
           </Alert>
-        ) : clientSecret && processingPayment ? (
+        ) : processingPayment ? (
           <div className="flex items-center justify-center h-32">
             <LoadingSpinner size="md" />
             <p className="ml-3 text-gray-600">Processing payment...</p>

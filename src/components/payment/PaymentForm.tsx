@@ -44,7 +44,12 @@ const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) =
       return;
     }
 
-    // Pass the form data to the parent component to create the payment intent
+    if (!data.cardComplete) {
+      toast.error("Please complete the card information.");
+      return;
+    }
+
+    // Pass the form data to the parent component for payment processing
     onSubmit(data);
   };
 

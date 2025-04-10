@@ -4,11 +4,14 @@ import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PaymentLinkData } from './usePaymentLinkData';
+import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 
 export function usePaymentProcess(linkId: string | undefined, linkData: PaymentLinkData | null) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const stripe = useStripe();
+  const elements = useElements();
 
   const createPaymentIntent = async () => {
     if (!linkData) return null;
@@ -49,18 +52,22 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       }
 
       const data = await response.json();
-      setProcessingPayment(false);
+      console.log('Payment intent created successfully:', data);
       return data.clientSecret;
     } catch (error) {
       console.error('Error creating payment intent:', error);
-      setProcessingPayment(false);
       toast.error('Payment setup failed: ' + error.message);
       return null;
+    } finally {
+      setProcessingPayment(false);
     }
   };
 
   const handlePaymentSubmit = async (formData: PaymentFormValues) => {
-    if (!linkData) return;
+    if (!linkData || !stripe || !elements) {
+      toast.error('Payment system is not initialized');
+      return;
+    }
     
     // Check if the clinic has Stripe connected before attempting payment
     if (linkData.clinic.stripeStatus !== 'connected') {
@@ -79,18 +86,46 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       
       setClientSecret(secret);
       
+      // Get card element
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        throw new Error('Card element not found');
+      }
+      
+      // Confirm card payment with the client secret
+      const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(secret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone || undefined,
+          },
+        },
+      });
+      
+      if (paymentError) {
+        throw new Error(paymentError.message || 'Payment failed');
+      }
+      
+      if (paymentIntent.status !== 'succeeded') {
+        throw new Error(`Payment status: ${paymentIntent.status}`);
+      }
+      
       // After successful payment, create a payment record
       const { data, error } = await supabase
         .from('payments')
         .insert({
           clinic_id: linkData.clinic.id,
           payment_link_id: linkData.isRequest ? null : linkData.id,
+          payment_request_id: linkData.isRequest ? linkData.id : null,
           patient_name: formData.name,
           patient_email: formData.email,
           patient_phone: formData.phone ? formData.phone.replace(/\D/g, '') : null,
           status: 'paid',
           amount_paid: linkData.amount,
-          paid_at: new Date().toISOString()
+          paid_at: new Date().toISOString(),
+          stripe_payment_intent_id: paymentIntent.id
         })
         .select();
       
@@ -107,6 +142,8 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
           })
           .eq('id', linkData.id);
       }
+      
+      toast.success('Payment successful!');
       
       // Navigate to success page with the link_id parameter
       window.location.href = `/payment/success?link_id=${linkId}&payment_id=${data[0].id}`;

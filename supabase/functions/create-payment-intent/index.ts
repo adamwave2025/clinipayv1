@@ -39,7 +39,16 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Parse request body
-    const { amount, clinicId, paymentLinkId, requestId } = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log("Request body:", JSON.stringify(requestBody));
+    } catch (err) {
+      console.error("Error parsing request body:", err);
+      throw new Error("Invalid request body");
+    }
+
+    const { amount, clinicId, paymentLinkId, requestId } = requestBody;
 
     if (!amount || !clinicId) {
       throw new Error("Missing required parameters: amount and clinicId");
@@ -118,6 +127,8 @@ serve(async (req) => {
       console.warn("Could not log payment attempt:", logError.message);
       // This is non-fatal, we can continue without the payment attempt log
     }
+
+    console.log("Payment intent created successfully:", paymentIntent.id);
 
     // Return the client secret to the client
     return new Response(
