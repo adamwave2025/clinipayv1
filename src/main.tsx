@@ -7,16 +7,19 @@ import { toast } from 'sonner';
 
 // Make environment variables available globally
 // This ensures they're accessible throughout the application
-window.ENV = {
-  PUBLISHABLE_KEY: import.meta.env.PUBLISHABLE_KEY || '',
-  SUPABASE_URL: import.meta.env.SUPABASE_URL || '',
-};
+// Initialize the window.ENV object before any components try to access it
+if (typeof window !== 'undefined') {
+  window.ENV = {
+    PUBLISHABLE_KEY: import.meta.env.PUBLISHABLE_KEY || '',
+    SUPABASE_URL: import.meta.env.SUPABASE_URL || '',
+  };
 
-// Log available environment variables for debugging
-console.log('Environment variables available:', {
-  PUBLISHABLE_KEY: !!window.ENV.PUBLISHABLE_KEY,
-  SUPABASE_URL: !!window.ENV.SUPABASE_URL
-});
+  // Log available environment variables for debugging
+  console.log('Environment variables available:', {
+    PUBLISHABLE_KEY: !!window.ENV.PUBLISHABLE_KEY,
+    SUPABASE_URL: !!window.ENV.SUPABASE_URL
+  });
+}
 
 // Initialize the auth trigger setup
 const setupAuthTrigger = async () => {

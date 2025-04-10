@@ -13,13 +13,16 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
   const stripe = useStripe();
   const elements = useElements();
 
-  // On mount, log Stripe availability
+  // On mount, log Stripe availability with safety checks
   useEffect(() => {
+    const supabaseURLAvailable = typeof window !== 'undefined' && window.ENV ? !!window.ENV.SUPABASE_URL : false;
+    const publishableKeyAvailable = typeof window !== 'undefined' && window.ENV ? !!window.ENV.PUBLISHABLE_KEY : false;
+    
     console.log('usePaymentProcess initialized', {
       stripeAvailable: !!stripe,
       elementsAvailable: !!elements,
-      supabaseURLAvailable: !!window.ENV.SUPABASE_URL,
-      publishableKeyAvailable: !!window.ENV.PUBLISHABLE_KEY
+      supabaseURLAvailable,
+      publishableKeyAvailable
     });
   }, [stripe, elements]);
 
@@ -29,6 +32,13 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
     // Check if the clinic has Stripe connected
     if (linkData.clinic.stripeStatus !== 'connected') {
       toast.error('This clinic does not have payment processing set up');
+      return null;
+    }
+    
+    // Check if window.ENV is available
+    if (typeof window === 'undefined' || !window.ENV || !window.ENV.SUPABASE_URL) {
+      console.error('Missing SUPABASE_URL environment variable');
+      toast.error('Payment system configuration error. Please contact support.');
       return null;
     }
     
@@ -42,7 +52,7 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         requestId: linkData.isRequest ? linkData.id : null,
       });
       
-      // Use the full URL for the edge function from window.ENV
+      // Use the full URL for the edge function from window.ENV with safety check
       const functionUrl = `${window.ENV.SUPABASE_URL}/functions/v1/create-payment-intent`;
       console.log('Calling edge function at:', functionUrl);
       

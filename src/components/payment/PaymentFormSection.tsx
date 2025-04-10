@@ -10,11 +10,14 @@ import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Initialize Stripe with the publishable key from window.ENV
-// Use null as fallback so we can handle the error gracefully if not provided
-const stripePromise = loadStripe(window.ENV.PUBLISHABLE_KEY || '');
+// Add a safety check to prevent accessing undefined properties
+const stripePromise = typeof window !== 'undefined' && window.ENV ? 
+  loadStripe(window.ENV.PUBLISHABLE_KEY || '') : 
+  null;
 
 // Log to debug Stripe initialization
-console.log('Stripe initialization with key available:', !!window.ENV.PUBLISHABLE_KEY);
+console.log('Stripe initialization with key available:', 
+  typeof window !== 'undefined' && window.ENV ? !!window.ENV.PUBLISHABLE_KEY : false);
 
 interface PaymentFormSectionProps {
   isStripeConnected: boolean;
@@ -41,6 +44,9 @@ const PaymentFormSection = ({
     appearance: { theme: 'stripe' as const }  // Type assertion to ensure theme is one of the allowed values
   } : undefined;
 
+  // Add a check for Stripe initialization
+  const isStripeInitialized = !!stripePromise;
+
   return (
     <Card className="card-shadow h-full">
       <CardContent className="p-6">
@@ -54,6 +60,14 @@ const PaymentFormSection = ({
             <AlertTitle>Payment Unavailable</AlertTitle>
             <AlertDescription>
               This clinic has not set up payment processing. Please contact the clinic directly to arrange payment.
+            </AlertDescription>
+          </Alert>
+        ) : !isStripeInitialized ? (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Payment System Error</AlertTitle>
+            <AlertDescription>
+              The payment system is not properly initialized. Please refresh the page or contact support.
             </AlertDescription>
           </Alert>
         ) : processingPayment ? (

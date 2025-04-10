@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
@@ -16,9 +17,9 @@ const PatientPaymentPage = () => {
   const { linkData, isLoading, error } = usePaymentLinkData(linkId);
   const [initError, setInitError] = useState<string | null>(null);
 
-  // Check for environment configuration
+  // Check for environment configuration with a safety check for window.ENV
   useEffect(() => {
-    if (!window.ENV.PUBLISHABLE_KEY) {
+    if (typeof window === 'undefined' || !window.ENV || !window.ENV.PUBLISHABLE_KEY) {
       console.error("Missing PUBLISHABLE_KEY environment variable");
       setInitError("Payment system configuration error. Please contact support.");
     }
