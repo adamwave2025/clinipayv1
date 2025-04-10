@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import ProfileSettings from '@/components/settings/ProfileSettings';
+import ProfileSettingsForm from '@/components/settings/forms/ProfileSettingsForm';
 import { ClinicData } from '@/hooks/useClinicData';
 
 interface ProfileTabProps {
   clinicData: ClinicData | null;
-  uploadLogo: (file: File) => Promise<any>; // Changed return type from Promise<void> to Promise<any>
-  deleteLogo: () => Promise<any>; // Changed return type from Promise<void> to Promise<any>
+  uploadLogo: (file: File) => Promise<any>;
+  deleteLogo: () => Promise<any>;
   updateClinicData: (data: Partial<ClinicData>) => Promise<{ success: boolean }>;
   isUploading: boolean;
 }
@@ -46,23 +46,18 @@ const ProfileTab = ({
     }
   }, [clinicData]);
 
-  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setProfileData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSaveProfile = async () => {
+  const handleSaveProfile = async (data: Partial<ClinicData>) => {
     setIsSubmitting(true);
     
     try {
       const result = await updateClinicData({
-        clinic_name: profileData.clinic_name || null,
-        email: profileData.email || null,
-        phone: profileData.phone || null,
-        address_line_1: profileData.address_line_1 || null,
-        address_line_2: profileData.address_line_2 || null,
-        city: profileData.city || null,
-        postcode: profileData.postcode || null,
+        clinic_name: data.clinic_name || null,
+        email: data.email || null,
+        phone: data.phone || null,
+        address_line_1: data.address_line_1 || null,
+        address_line_2: data.address_line_2 || null,
+        city: data.city || null,
+        postcode: data.postcode || null,
       });
       
       if (result.success) {
@@ -83,13 +78,12 @@ const ProfileTab = ({
   };
 
   return (
-    <ProfileSettings 
+    <ProfileSettingsForm 
       profileData={profileData}
-      handleProfileChange={handleProfileChange}
-      handleSaveProfile={handleSaveProfile}
+      onSubmit={handleSaveProfile}
       isSubmitting={isSubmitting}
-      handleFileUpload={handleFileUpload}
-      handleDeleteLogo={deleteLogo}
+      onFileUpload={handleFileUpload}
+      onDeleteLogo={deleteLogo}
       isUploading={isUploading}
     />
   );

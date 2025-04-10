@@ -9,11 +9,10 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 
 // Import the tab content components
-import ProfileSettings from '@/components/settings/ProfileSettings';
+import ProfileTab from './ProfileTab';
 import PaymentSettings from '@/components/settings/PaymentSettings';
 import NotificationSettings from '@/components/settings/NotificationSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
-import ProfileTab from './ProfileTab';
 import { handlePaymentAction, handleUpdatePassword } from './PaymentActions';
 
 const VALID_TABS = ['profile', 'payments', 'notifications', 'security'];
