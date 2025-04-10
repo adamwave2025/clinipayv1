@@ -125,7 +125,7 @@ export function useAuthActions() {
       // by trying to find them by email
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, verified, clinic_id')
+        .select('id, verified, clinic_id, role')
         .eq('email', email)
         .maybeSingle();
       
@@ -185,9 +185,28 @@ export function useAuthActions() {
         return { error: new Error('Email not verified') };
       }
       
-      // Show success message here
+      // Get the user's role from our database
+      const { data: roleData, error: roleError } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+      
+      if (roleError) {
+        console.error('Error fetching user role:', roleError);
+      }
+      
+      // Show success message
       toast.success('Signed in successfully');
-      navigate('/dashboard');
+      
+      // Redirect based on role
+      const role = roleData?.role || 'clinic'; // Default to clinic if no role
+      if (role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
+      
       return { error: null };
     } catch (error: any) {
       console.error('Error during sign in:', error);

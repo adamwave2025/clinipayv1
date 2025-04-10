@@ -1,3 +1,4 @@
+
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -37,8 +38,9 @@ import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
 // Auth callback page
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 
-// Protected Route Component
+// Protected Route Components
 import ProtectedRoute from "./components/common/ProtectedRoute";
+import RoleBasedRoute from "./components/common/RoleBasedRoute";
 
 const queryClient = new QueryClient();
 
@@ -69,51 +71,51 @@ const App = () => (
             
             {/* Protected Clinic Dashboard Routes */}
             <Route path="/dashboard" element={
-              <ProtectedRoute>
+              <RoleBasedRoute allowedRoles={['clinic']}>
                 <DashboardPage />
-              </ProtectedRoute>
+              </RoleBasedRoute>
             } />
             <Route path="/dashboard/create-link" element={
-              <ProtectedRoute>
+              <RoleBasedRoute allowedRoles={['clinic']}>
                 <CreateLinkPage />
-              </ProtectedRoute>
+              </RoleBasedRoute>
             } />
             <Route path="/dashboard/send-link" element={
-              <ProtectedRoute>
+              <RoleBasedRoute allowedRoles={['clinic']}>
                 <SendLinkPage />
-              </ProtectedRoute>
+              </RoleBasedRoute>
             } />
             <Route path="/dashboard/settings" element={
-              <ProtectedRoute>
+              <RoleBasedRoute allowedRoles={['clinic']}>
                 <SettingsPage />
-              </ProtectedRoute>
+              </RoleBasedRoute>
             } />
             <Route path="/dashboard/payment-history" element={
-              <ProtectedRoute>
+              <RoleBasedRoute allowedRoles={['clinic']}>
                 <PaymentHistoryPage />
-              </ProtectedRoute>
+              </RoleBasedRoute>
             } />
             
             {/* Protected Admin Routes */}
             <Route path="/admin" element={
-              <ProtectedRoute>
+              <RoleBasedRoute allowedRoles={['admin']} redirectTo="/dashboard">
                 <AdminDashboardPage />
-              </ProtectedRoute>
+              </RoleBasedRoute>
             } />
             <Route path="/admin/clinics" element={
-              <ProtectedRoute>
+              <RoleBasedRoute allowedRoles={['admin']} redirectTo="/dashboard">
                 <ClinicsPage />
-              </ProtectedRoute>
+              </RoleBasedRoute>
             } />
             <Route path="/admin/clinics/:clinicId" element={
-              <ProtectedRoute>
+              <RoleBasedRoute allowedRoles={['admin']} redirectTo="/dashboard">
                 <ClinicProfilePage />
-              </ProtectedRoute>
+              </RoleBasedRoute>
             } />
             <Route path="/admin/settings" element={
-              <ProtectedRoute>
+              <RoleBasedRoute allowedRoles={['admin']} redirectTo="/dashboard">
                 <AdminSettingsPage />
-              </ProtectedRoute>
+              </RoleBasedRoute>
             } />
             
             {/* Catch-all Route */}
