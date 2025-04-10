@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import StripeCardElement from './StripeCardElement';
-import { useStripe, useElements } from '@stripe/react-stripe-js';
 
 interface PaymentDetailsSectionProps {
   control: Control<PaymentFormValues>;

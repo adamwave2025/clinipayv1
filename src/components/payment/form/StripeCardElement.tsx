@@ -25,11 +25,10 @@ const StripeCardElement = ({ onChange, isLoading = false }: StripeCardElementPro
   };
 
   return (
-    <div className="stripe-card-element">
+    <div className={`stripe-card-element ${isLoading ? 'opacity-50' : ''}`}>
       <CardElement 
         options={cardElementOptions} 
         onChange={onChange} 
-        disabled={isLoading}
       />
     </div>
   );
