@@ -26,7 +26,6 @@ const AdminSettingsPage = () => {
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [selectedClinic, setSelectedClinic] = useState<string | null>(null);
 
-  // Mock clinic data
   const clinics = [
     {
       id: '1',
@@ -82,6 +81,7 @@ const AdminSettingsPage = () => {
   const getStripeStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
+      case 'connected':
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Connected</Badge>;
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pending</Badge>;
@@ -100,7 +100,6 @@ const AdminSettingsPage = () => {
       />
       
       <div className="space-y-6">
-        {/* Platform Fees */}
         <Card className="card-shadow">
           <CardHeader>
             <CardTitle>Platform Fee</CardTitle>
@@ -131,7 +130,6 @@ const AdminSettingsPage = () => {
           </CardContent>
         </Card>
         
-        {/* Stripe Connections */}
         <Card className="card-shadow">
           <CardHeader>
             <CardTitle>Stripe Connect Management</CardTitle>
@@ -210,7 +208,6 @@ const AdminSettingsPage = () => {
         </Card>
       </div>
       
-      {/* Confirmation Dialog */}
       <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <DialogContent>
           <DialogHeader>

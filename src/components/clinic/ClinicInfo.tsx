@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Mail, Phone, MapPin, CreditCard, Calendar } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -27,6 +28,7 @@ const ClinicInfo = ({
   const getStripeStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
+      case 'connected':
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Active</Badge>;
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pending</Badge>;

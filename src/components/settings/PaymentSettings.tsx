@@ -19,7 +19,8 @@ const PaymentSettings = ({
   handleConnectStripe, 
   handleDisconnectStripe 
 }: PaymentSettingsProps) => {
-  const isConnected = stripeStatus === 'active';
+  // Update to recognize both "active" and "connected" as valid connected statuses
+  const isConnected = stripeStatus === 'active' || stripeStatus === 'connected';
   const isPending = stripeStatus === 'pending';
 
   const startStripeConnect = async () => {
