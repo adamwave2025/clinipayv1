@@ -27,3 +27,15 @@ export interface PaymentStats {
   totalReceivedMonth: number;
   totalRefundedMonth: number;
 }
+
+export interface PaymentRequest {
+  id: string;
+  patientName?: string;
+  patientEmail?: string;
+  patientPhone?: string;
+  customAmount?: number;
+  paymentLinkId?: string;
+  status: 'sent' | 'paid';
+  date: string;
+  paymentUrl: string;
+}

@@ -16,6 +16,11 @@ export interface PaymentLinkData {
     phone?: string;
     address?: string;
   };
+  isRequest?: boolean;
+  customAmount?: number;
+  patientName?: string;
+  patientEmail?: string;
+  patientPhone?: string;
 }
 
 export function usePaymentLinkData(linkId: string | undefined | null) {
@@ -35,7 +40,92 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
       setError(null);
 
       try {
-        // Fetch payment link details
+        // First, try to see if this is a payment request
+        const { data: requestData, error: requestError } = await supabase
+          .from('payment_requests')
+          .select(`
+            id, 
+            custom_amount,
+            patient_name,
+            patient_email,
+            patient_phone,
+            payment_link_id,
+            clinic_id,
+            clinics:clinic_id (
+              id, 
+              clinic_name, 
+              logo_url, 
+              email, 
+              phone, 
+              address_line_1, 
+              address_line_2, 
+              city, 
+              postcode
+            )
+          `)
+          .eq('id', linkId)
+          .single();
+
+        // If we found a payment request
+        if (requestData && !requestError) {
+          console.log('Found payment request:', requestData);
+          
+          let title = 'Payment Request';
+          let amount = requestData.custom_amount || 0;
+          let type = 'other';
+          
+          // If request is linked to a payment link, try to get its details
+          if (requestData.payment_link_id) {
+            const { data: linkData } = await supabase
+              .from('payment_links')
+              .select('title, amount, type')
+              .eq('id', requestData.payment_link_id)
+              .single();
+              
+            if (linkData) {
+              title = linkData.title || 'Payment Request';
+              if (!requestData.custom_amount) {
+                amount = linkData.amount || 0;
+              }
+              type = linkData.type || 'other';
+            }
+          }
+          
+          // Format clinic address
+          const addressParts = [
+            requestData.clinics.address_line_1,
+            requestData.clinics.address_line_2,
+            requestData.clinics.city,
+            requestData.clinics.postcode
+          ].filter(Boolean);
+          
+          const address = addressParts.join(', ');
+
+          setLinkData({
+            id: requestData.id,
+            title: title,
+            amount: amount,
+            type: type,
+            isRequest: true,
+            customAmount: requestData.custom_amount,
+            patientName: requestData.patient_name,
+            patientEmail: requestData.patient_email,
+            patientPhone: requestData.patient_phone,
+            clinic: {
+              id: requestData.clinics.id,
+              name: requestData.clinics.clinic_name || 'Clinic',
+              logo: requestData.clinics.logo_url || undefined,
+              email: requestData.clinics.email || undefined,
+              phone: requestData.clinics.phone || undefined,
+              address: address || undefined
+            }
+          });
+          
+          setIsLoading(false);
+          return;
+        }
+        
+        // If not a payment request, try to find as a regular payment link
         const { data: linkData, error: linkError } = await supabase
           .from('payment_links')
           .select(`
@@ -61,7 +151,7 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
           .single();
 
         if (linkError) {
-          throw new Error(linkError.message);
+          throw new Error('Payment link or request not found');
         }
 
         if (!linkData) {
@@ -84,6 +174,7 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
           amount: linkData.amount || 0,
           type: linkData.type || 'other',
           description: linkData.description || undefined,
+          isRequest: false,
           clinic: {
             id: linkData.clinics.id,
             name: linkData.clinics.clinic_name || 'Clinic',
@@ -94,7 +185,7 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
           }
         });
       } catch (error: any) {
-        console.error('Error fetching payment link:', error);
+        console.error('Error fetching payment link/request:', error);
         setError(error.message);
       } finally {
         setIsLoading(false);

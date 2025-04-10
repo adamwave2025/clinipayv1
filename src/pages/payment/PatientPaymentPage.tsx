@@ -11,55 +11,11 @@ import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
-interface PaymentRequest {
-  id: string;
-  patient_name: string | null;
-  patient_email: string | null;
-  patient_phone: string | null;
-  custom_amount: number | null;
-  payment_link_id: string | null;
-}
-
 const PatientPaymentPage = () => {
   const navigate = useNavigate();
   const { linkId } = useParams<{ linkId: string }>();
-  const { linkData, isLoading: isLoadingLink, error } = usePaymentLinkData(linkId);
+  const { linkData, isLoading, error } = usePaymentLinkData(linkId);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [paymentRequest, setPaymentRequest] = useState<PaymentRequest | null>(null);
-  const [isLoadingRequest, setIsLoadingRequest] = useState(true);
-
-  // Check if this is a payment request (sent link) or a regular payment link
-  useEffect(() => {
-    const checkPaymentRequest = async () => {
-      if (!linkId) return;
-      
-      try {
-        // Check if linkId is a payment request ID
-        const { data, error } = await supabase
-          .from('payment_requests')
-          .select('id, patient_name, patient_email, patient_phone, custom_amount, payment_link_id')
-          .eq('id', linkId)
-          .single();
-
-        if (error) {
-          console.log('Not a payment request, must be a regular payment link');
-          setIsLoadingRequest(false);
-          return;
-        }
-
-        if (data) {
-          console.log('Found payment request:', data);
-          setPaymentRequest(data);
-        }
-      } catch (error) {
-        console.error('Error checking payment request:', error);
-      } finally {
-        setIsLoadingRequest(false);
-      }
-    };
-
-    checkPaymentRequest();
-  }, [linkId]);
 
   const handlePaymentSubmit = async (formData: PaymentFormValues) => {
     if (!linkData) return;
@@ -75,12 +31,12 @@ const PatientPaymentPage = () => {
         .from('payments')
         .insert({
           clinic_id: linkData.clinic.id,
-          payment_link_id: paymentRequest?.payment_link_id || linkData.id,
+          payment_link_id: linkData.isRequest ? null : linkData.id,
           patient_name: formData.name,
           patient_email: formData.email,
           patient_phone: phoneNumber,
           status: 'paid',
-          amount_paid: paymentRequest?.custom_amount || linkData.amount,
+          amount_paid: linkData.amount,
           paid_at: new Date().toISOString()
         })
         .select();
@@ -88,7 +44,7 @@ const PatientPaymentPage = () => {
       if (error) throw error;
 
       // If this was a payment request, update its status and paid_at
-      if (paymentRequest) {
+      if (linkData.isRequest) {
         await supabase
           .from('payment_requests')
           .update({
@@ -96,7 +52,7 @@ const PatientPaymentPage = () => {
             paid_at: new Date().toISOString(),
             payment_id: data[0].id
           })
-          .eq('id', paymentRequest.id);
+          .eq('id', linkData.id);
       }
       
       // Navigate to success page with the link_id parameter
@@ -109,21 +65,18 @@ const PatientPaymentPage = () => {
     }
   };
 
-  // Wait for both the link data and request check to complete
-  const isLoading = isLoadingLink || isLoadingRequest;
-
   // Redirect if link not found
   useEffect(() => {
-    if (!isLoading && (error || (!linkData && !paymentRequest))) {
+    if (!isLoading && (error || !linkData)) {
       navigate('/payment/failed');
     }
-  }, [isLoading, error, linkData, paymentRequest, navigate]);
+  }, [isLoading, error, linkData, navigate]);
 
-  // Prepare default values if this is a payment request
-  const defaultValues = paymentRequest ? {
-    name: paymentRequest.patient_name || '',
-    email: paymentRequest.patient_email || '',
-    phone: paymentRequest.patient_phone || '',
+  // Prepare default values from payment request patient info
+  const defaultValues = linkData?.isRequest ? {
+    name: linkData.patientName || '',
+    email: linkData.patientEmail || '',
+    phone: linkData.patientPhone || '',
   } : undefined;
 
   if (isLoading) {
@@ -137,15 +90,13 @@ const PatientPaymentPage = () => {
     );
   }
 
-  // At this point, either linkData or paymentRequest must be available
-  if (!linkData && !paymentRequest) {
+  // At this point, linkData should be available if it exists
+  if (!linkData) {
     return null; // Will redirect via useEffect
   }
 
-  // For payment requests with custom amount
-  const amount = paymentRequest?.custom_amount || linkData?.amount || 0;
-  const clinicData = linkData?.clinic;
-  const paymentType = linkData?.title || 'Payment';
+  const clinicData = linkData.clinic;
+  const paymentType = linkData.title || 'Payment';
 
   return (
     <PaymentLayout isSplitView={true} hideHeaderFooter={true}>
@@ -159,7 +110,7 @@ const PatientPaymentPage = () => {
             phone: clinicData.phone,
             address: clinicData.address,
             paymentType: paymentType,
-            amount: amount
+            amount: linkData.amount
           }} />
         )}
         <CliniPaySecuritySection />
