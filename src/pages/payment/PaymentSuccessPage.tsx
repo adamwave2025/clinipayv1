@@ -11,6 +11,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 const PaymentSuccessPage = () => {
   const [searchParams] = useSearchParams();
   const linkId = searchParams.get('link_id');
+  const paymentId = searchParams.get('payment_id');
   const { linkData, isLoading, error } = usePaymentLinkData(linkId);
   const [paymentDetails, setPaymentDetails] = useState<Array<{ label: string; value: string | number; colSpan?: number }>>([]);
   
@@ -21,10 +22,10 @@ const PaymentSuccessPage = () => {
         { label: 'Date', value: new Date().toLocaleDateString() },
         { label: 'Clinic', value: linkData.clinic.name },
         { label: 'Payment Type', value: linkData.type.charAt(0).toUpperCase() + linkData.type.slice(1) },
-        { label: 'Reference', value: linkId || 'Unknown', colSpan: 2 },
+        { label: 'Reference', value: paymentId || linkId || 'Unknown', colSpan: 2 },
       ]);
     }
-  }, [linkData, linkId]);
+  }, [linkData, linkId, paymentId]);
 
   if (isLoading) {
     return (

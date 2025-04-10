@@ -39,10 +39,13 @@ const PatientPaymentPage = () => {
       
       if (error) throw error;
       
-      navigate('/payment/success');
+      // Navigate to success page with the link_id parameter
+      navigate(`/payment/success?link_id=${linkId}&payment_id=${data[0].id}`);
     } catch (error) {
       console.error('Payment error:', error);
       navigate('/payment/failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
