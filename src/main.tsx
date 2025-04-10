@@ -4,6 +4,14 @@ import App from './App.tsx'
 import './index.css'
 import { supabase } from '@/integrations/supabase/client';
 
+// Expose ENV variables to window for Stripe
+if (!window.ENV) {
+  window.ENV = {
+    PUBLISHABLE_KEY: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
+    SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || '',
+  };
+}
+
 // Initialize the auth trigger setup
 const setupAuthTrigger = async () => {
   try {

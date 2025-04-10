@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { toast } from 'sonner';
@@ -9,9 +9,9 @@ interface StripeProviderProps {
 }
 
 const StripeProvider = ({ children }: StripeProviderProps) => {
-  const [stripePromise, setStripePromise] = React.useState(null);
+  const [stripePromise, setStripePromise] = useState<any>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     // Get the Stripe publishable key from window.ENV
     const publishableKey = window.ENV?.PUBLISHABLE_KEY;
     
@@ -23,8 +23,8 @@ const StripeProvider = ({ children }: StripeProviderProps) => {
     
     // Initialize Stripe with the publishable key
     try {
-      const stripePromise = loadStripe(publishableKey);
-      setStripePromise(stripePromise);
+      const promise = loadStripe(publishableKey);
+      setStripePromise(promise);
     } catch (error) {
       console.error('Error initializing Stripe:', error);
       toast.error('Failed to initialize payment system');

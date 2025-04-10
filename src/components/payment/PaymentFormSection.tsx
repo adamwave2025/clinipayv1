@@ -12,7 +12,7 @@ interface PaymentFormSectionProps {
   processingPayment: boolean;
   isSubmitting: boolean;
   defaultValues?: Partial<PaymentFormValues>;
-  onSubmit: (data: PaymentFormValues) => void;
+  onSubmit: (data: PaymentFormValues, isCardComplete: boolean) => void;
 }
 
 const PaymentFormSection = ({

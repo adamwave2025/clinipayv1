@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form } from '@/components/ui/form';
@@ -11,46 +11,35 @@ import { Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PaymentFormProps {
-  onSubmit: (data: PaymentFormValues) => void;
+  onSubmit: (data: PaymentFormValues, isCardComplete: boolean) => void;
   isLoading: boolean;
   defaultValues?: Partial<PaymentFormValues>;
 }
 
 const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) => {
+  const [isCardComplete, setIsCardComplete] = useState(false);
+  
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
       name: defaultValues?.name || '',
       email: defaultValues?.email || '',
       phone: defaultValues?.phone || '',
-      cardNumber: '',
-      cardExpiry: '',
-      cardCvc: '',
     }
   });
 
   const handleSubmitForm = async (data: PaymentFormValues) => {
-    // Simple validation for card number (Luhn algorithm can be added for production)
-    if (data.cardNumber.replace(/\s/g, '').length < 16) {
-      toast.error("Please enter a valid card number");
+    if (!isCardComplete) {
+      toast.error("Please complete the card details");
       return;
     }
     
-    // Simple validation for expiry date
-    const expiryPattern = /^(0[1-9]|1[0-2])\/[0-9]{2}$/;
-    if (!expiryPattern.test(data.cardExpiry)) {
-      toast.error("Please enter a valid expiry date (MM/YY)");
-      return;
-    }
-    
-    // Simple validation for CVC
-    if (data.cardCvc.length < 3) {
-      toast.error("Please enter a valid CVC code");
-      return;
-    }
-    
-    // Pass the form data to the parent component for payment processing
-    onSubmit(data);
+    // Pass both form data and card completion status to parent
+    onSubmit(data, isCardComplete);
+  };
+
+  const handleCardChange = (complete: boolean) => {
+    setIsCardComplete(complete);
   };
 
   return (
@@ -64,6 +53,7 @@ const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) =
         <PaymentDetailsSection
           control={form.control}
           isLoading={isLoading}
+          onCardChange={handleCardChange}
         />
         
         <SubmitButton isLoading={isLoading} />
