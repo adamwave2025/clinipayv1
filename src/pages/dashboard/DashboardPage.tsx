@@ -1,6 +1,5 @@
 
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import DashboardActions from '@/components/dashboard/DashboardActions';
@@ -9,18 +8,10 @@ import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvi
 import { useUserRole } from '@/hooks/useUserRole';
 
 const DashboardPage = () => {
-  const { role, loading } = useUserRole();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    // If user is an admin, redirect to admin dashboard
-    if (!loading && role === 'admin') {
-      navigate('/admin');
-    }
-  }, [role, loading, navigate]);
+  const { role } = useUserRole();
 
   return (
-    <DashboardLayout userType="clinic">
+    <DashboardLayout userType={role === 'admin' ? 'admin' : 'clinic'}>
       <PageHeader 
         title="Dashboard" 
         description="View and manage your payments"

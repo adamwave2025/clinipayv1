@@ -20,6 +20,16 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
   const { role, loading: roleLoading } = useUserRole();
   const location = useLocation();
   
+  // Add debug logging
+  console.log('RoleBasedRoute:', { 
+    path: location.pathname,
+    user: user?.id, 
+    role, 
+    allowedRoles,
+    authLoading,
+    roleLoading
+  });
+  
   // Show loading while checking auth state or role
   if (authLoading || roleLoading) {
     return (
@@ -35,7 +45,9 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
   }
 
   // If user's role is not allowed, redirect to the specified route
-  if (!allowedRoles.includes(role || '')) {
+  // Only redirect if we're not already on the redirectTo path (prevents loops)
+  if (!allowedRoles.includes(role || '') && location.pathname !== redirectTo) {
+    console.log(`Role ${role} not allowed, redirecting to ${redirectTo}`);
     return <Navigate to={redirectTo} replace />;
   }
 

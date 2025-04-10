@@ -69,12 +69,14 @@ const App = () => (
             <Route path="/payment/failed" element={<PaymentFailedPage />} />
             <Route path="/payment/:linkId" element={<PatientPaymentPage />} />
             
-            {/* Protected Clinic Dashboard Routes */}
+            {/* Protected Dashboard Route - accessible to all authenticated users */}
             <Route path="/dashboard" element={
-              <RoleBasedRoute allowedRoles={['clinic']}>
+              <ProtectedRoute>
                 <DashboardPage />
-              </RoleBasedRoute>
+              </ProtectedRoute>
             } />
+            
+            {/* Protected Clinic Routes */}
             <Route path="/dashboard/create-link" element={
               <RoleBasedRoute allowedRoles={['clinic']}>
                 <CreateLinkPage />
