@@ -31,8 +31,10 @@ const PaymentFormSection = ({
   onSubmit
 }: PaymentFormSectionProps) => {
   // Options for Stripe Elements - only pass clientSecret when we have it
-  const options = clientSecret ? { 
-    clientSecret,
+  const options = clientSecret ? {
+    // Use clientSecret as part of payment_intent_client_secret instead of directly
+    // This matches the expected Stripe type
+    payment_intent_client_secret: clientSecret,
     appearance: { theme: 'stripe' }
   } : undefined;
 

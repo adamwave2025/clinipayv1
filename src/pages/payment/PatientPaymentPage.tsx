@@ -63,7 +63,6 @@ const PatientPaymentPage = () => {
       <PaymentFormContainer 
         linkId={linkId}
         linkData={linkData}
-        clinicData={clinicData}
         isStripeConnected={isStripeConnected}
         defaultValues={defaultValues}
       />
