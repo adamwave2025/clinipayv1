@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -8,6 +9,12 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useClinicData, ClinicData } from '@/hooks/useClinicData';
 import { NotificationService } from '@/services/NotificationService';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+
+// Import the component files
+import ProfileSettings from '@/components/settings/ProfileSettings';
+import PaymentSettings from '@/components/settings/PaymentSettings';
+import NotificationSettings from '@/components/settings/NotificationSettings';
+import SecuritySettings from '@/components/settings/SecuritySettings';
 
 const VALID_TABS = ['profile', 'payments', 'notifications', 'security'];
 
