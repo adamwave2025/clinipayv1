@@ -39,8 +39,8 @@ const AdminSettingsPage = () => {
   const fetchPlatformFee = async () => {
     try {
       const { data, error } = await supabase
-        .from('platform_settings')
-        .select('value')
+        .from('system_settings')
+        .select('*')
         .eq('key', 'platform_fee_percent')
         .single();
       
@@ -76,7 +76,7 @@ const AdminSettingsPage = () => {
   const handleSaveFee = async () => {
     try {
       const { error } = await supabase
-        .from('platform_settings')
+        .from('system_settings')
         .update({ value: platformFee })
         .eq('key', 'platform_fee_percent');
       

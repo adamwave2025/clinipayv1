@@ -40,11 +40,11 @@ const PaymentDetailsSection = ({ control, setValue, isLoading }: PaymentDetailsS
                           color: '#9e2146',
                         },
                       },
+                      disabled: isLoading,
                     }}
                     onChange={(e) => {
                       setValue('cardComplete', e.complete);
                     }}
-                    disabled={isLoading}
                   />
                 </div>
               </FormControl>

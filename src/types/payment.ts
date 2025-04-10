@@ -42,12 +42,12 @@ export interface PaymentRequest {
 
 export interface PaymentAttempt {
   id: string;
-  clinicId: string;
-  paymentLinkId?: string;
-  paymentRequestId?: string;
+  clinic_id: string;
+  payment_link_id?: string;
+  payment_request_id?: string;
   amount: number;
   status: 'created' | 'succeeded' | 'failed';
-  paymentIntentId?: string;
+  payment_intent_id?: string;
   createdAt: string;
   updatedAt: string;
 }

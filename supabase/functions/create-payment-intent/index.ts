@@ -63,9 +63,9 @@ serve(async (req) => {
       throw new Error("Clinic does not have Stripe connected");
     }
 
-    // Get the platform fee percentage from platform_settings
+    // Get the platform fee percentage from system_settings
     const { data: platformFeeData, error: platformFeeError } = await supabase
-      .from("platform_settings")
+      .from("system_settings")
       .select("value")
       .eq("key", "platform_fee_percent")
       .single();
