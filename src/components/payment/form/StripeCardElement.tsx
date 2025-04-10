@@ -35,7 +35,6 @@ const StripeCardElement = ({ onChange, isLoading = false, label = "Card Details"
           <CardElement 
             options={cardElementOptions} 
             onChange={onChange} 
-            disabled={isLoading}
           />
         </FormControl>
       </div>
