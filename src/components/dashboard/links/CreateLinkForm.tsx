@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { toast } from 'sonner';
+import { PaymentLink } from '@/types/payment';
 
 export interface LinkFormData {
   paymentTitle: string;
@@ -25,9 +26,10 @@ export interface LinkFormData {
 interface CreateLinkFormProps {
   onLinkGenerated: (link: string, formData: LinkFormData) => void;
   isLoading: boolean;
+  onCreateLink?: (data: Omit<PaymentLink, 'id' | 'url' | 'createdAt'>) => Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }>;
 }
 
-const CreateLinkForm = ({ onLinkGenerated, isLoading }: CreateLinkFormProps) => {
+const CreateLinkForm = ({ onLinkGenerated, isLoading, onCreateLink }: CreateLinkFormProps) => {
   const [formData, setFormData] = useState<LinkFormData>({
     paymentTitle: '',
     amount: '',
@@ -44,7 +46,7 @@ const CreateLinkForm = ({ onLinkGenerated, isLoading }: CreateLinkFormProps) => 
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
@@ -58,13 +60,32 @@ const CreateLinkForm = ({ onLinkGenerated, isLoading }: CreateLinkFormProps) => 
       return;
     }
     
-    // Mock link generation
-    setTimeout(() => {
-      const uniqueId = Math.random().toString(36).substring(2, 10);
-      const mockLink = `https://clinipay.com/pay/${uniqueId}`;
-      
-      onLinkGenerated(mockLink, formData);
-    }, 1500);
+    if (onCreateLink) {
+      // Use Supabase to create the link
+      try {
+        const result = await onCreateLink({
+          title: formData.paymentTitle,
+          amount: Number(formData.amount),
+          type: formData.paymentType
+        });
+        
+        if (result.success && result.paymentLink) {
+          onLinkGenerated(result.paymentLink.url, formData);
+        } else {
+          toast.error(result.error || 'Failed to create payment link');
+        }
+      } catch (error: any) {
+        console.error('Error creating payment link:', error);
+        toast.error('An error occurred while creating the payment link');
+      }
+    } else {
+      // Fallback to mock link generation for development
+      setTimeout(() => {
+        const uniqueId = Math.random().toString(36).substring(2, 10);
+        const mockLink = `https://clinipay.com/pay/${uniqueId}`;
+        onLinkGenerated(mockLink, formData);
+      }, 1500);
+    }
   };
 
   return (

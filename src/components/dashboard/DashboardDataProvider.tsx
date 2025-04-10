@@ -1,7 +1,10 @@
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Payment, PaymentLink, PaymentStats } from '@/types/payment';
 import { toast } from 'sonner';
+import { usePaymentLinks } from '@/hooks/usePaymentLinks';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DashboardContextType {
   payments: Payment[];
@@ -11,6 +14,7 @@ interface DashboardContextType {
   detailDialogOpen: boolean;
   refundDialogOpen: boolean;
   paymentToRefund: string | null;
+  isLoading: boolean;
   setDetailDialogOpen: (open: boolean) => void;
   setRefundDialogOpen: (open: boolean) => void;
   handlePaymentClick: (payment: Payment) => void;
@@ -29,9 +33,10 @@ export const useDashboardData = () => {
 };
 
 export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Empty initial data
+  const { paymentLinks, isLoading: isLoadingLinks } = usePaymentLinks();
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
+  const [isLoadingPayments, setIsLoadingPayments] = useState(true);
+  const { user } = useAuth();
 
   const stats: PaymentStats = {
     totalReceivedToday: 0,
@@ -45,29 +50,123 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
 
+  // Fetch payments from Supabase
+  useEffect(() => {
+    const fetchPayments = async () => {
+      if (!user) return;
+
+      setIsLoadingPayments(true);
+      try {
+        // Get clinic_id
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('clinic_id')
+          .eq('id', user.id)
+          .single();
+
+        if (userError) throw userError;
+        if (!userData.clinic_id) return;
+
+        // Fetch payments
+        const { data, error } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('clinic_id', userData.clinic_id)
+          .order('paid_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Transform data
+        const formattedPayments: Payment[] = data.map(payment => ({
+          id: payment.id,
+          patientName: payment.patient_name || 'Unknown Patient',
+          patientEmail: payment.patient_email,
+          amount: payment.amount_paid || 0,
+          date: new Date(payment.paid_at || Date.now()).toLocaleDateString(),
+          status: payment.status as any || 'paid',
+          type: 'consultation', // Default type
+        }));
+
+        setPayments(formattedPayments);
+
+        // Calculate stats
+        // This would be better done on the server but for now we'll do it client-side
+        const today = new Date().toDateString();
+        const thisMonth = new Date().getMonth();
+        const thisYear = new Date().getFullYear();
+
+        const todayPayments = data.filter(p => 
+          p.paid_at && new Date(p.paid_at).toDateString() === today
+        );
+        
+        const monthPayments = data.filter(p => 
+          p.paid_at && 
+          new Date(p.paid_at).getMonth() === thisMonth && 
+          new Date(p.paid_at).getFullYear() === thisYear
+        );
+
+        stats.totalReceivedToday = todayPayments
+          .filter(p => p.status === 'paid')
+          .reduce((sum, p) => sum + (p.amount_paid || 0), 0);
+        
+        stats.totalPendingToday = todayPayments
+          .filter(p => p.status === 'pending')
+          .reduce((sum, p) => sum + (p.amount_paid || 0), 0);
+        
+        stats.totalReceivedMonth = monthPayments
+          .filter(p => p.status === 'paid')
+          .reduce((sum, p) => sum + (p.amount_paid || 0), 0);
+        
+        stats.totalRefundedMonth = monthPayments
+          .filter(p => p.status === 'refunded')
+          .reduce((sum, p) => sum + (p.amount_paid || 0), 0);
+
+      } catch (error) {
+        console.error('Error fetching payments:', error);
+      } finally {
+        setIsLoadingPayments(false);
+      }
+    };
+
+    fetchPayments();
+  }, [user]);
+
   const openRefundDialog = (paymentId: string) => {
     setPaymentToRefund(paymentId);
     setRefundDialogOpen(true);
   };
 
-  const handleRefund = () => {
+  const handleRefund = async () => {
     if (!paymentToRefund) return;
     
-    // Mock refund process
-    setPayments(prevPayments =>
-      prevPayments.map(payment =>
-        payment.id === paymentToRefund
-          ? { ...payment, status: 'refunded' as const }
-          : payment
-      )
-    );
-    
-    // Close both dialogs
-    setRefundDialogOpen(false);
-    setDetailDialogOpen(false);
-    
-    toast.success('Payment refunded successfully');
-    setPaymentToRefund(null);
+    try {
+      // Update payment status in Supabase
+      const { error } = await supabase
+        .from('payments')
+        .update({ status: 'refunded' })
+        .eq('id', paymentToRefund);
+
+      if (error) throw error;
+      
+      // Update UI
+      setPayments(prevPayments =>
+        prevPayments.map(payment =>
+          payment.id === paymentToRefund
+            ? { ...payment, status: 'refunded' as const }
+            : payment
+        )
+      );
+      
+      // Close both dialogs
+      setRefundDialogOpen(false);
+      setDetailDialogOpen(false);
+      
+      toast.success('Payment refunded successfully');
+      setPaymentToRefund(null);
+    } catch (error: any) {
+      console.error('Error refunding payment:', error);
+      toast.error('Failed to refund payment');
+    }
   };
 
   const handlePaymentClick = (payment: Payment) => {
@@ -83,6 +182,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
     detailDialogOpen,
     refundDialogOpen,
     paymentToRefund,
+    isLoading: isLoadingLinks || isLoadingPayments,
     setDetailDialogOpen,
     setRefundDialogOpen,
     handlePaymentClick,

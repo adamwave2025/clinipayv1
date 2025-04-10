@@ -4,12 +4,14 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import CreateLinkForm, { LinkFormData } from '@/components/dashboard/links/CreateLinkForm';
 import LinkGeneratedDialog from '@/components/dashboard/links/LinkGeneratedDialog';
+import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 
 const CreateLinkPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [formData, setFormData] = useState<LinkFormData | null>(null);
+  const { createPaymentLink } = usePaymentLinks();
 
   const handleLinkGenerated = (link: string, data: LinkFormData) => {
     setGeneratedLink(link);
@@ -23,6 +25,15 @@ const CreateLinkPage = () => {
     setFormData(null);
   };
 
+  const handleCreateLink = async (data: any) => {
+    setIsLoading(true);
+    const result = await createPaymentLink(data);
+    if (!result.success) {
+      setIsLoading(false);
+    }
+    return result;
+  };
+
   return (
     <DashboardLayout userType="clinic">
       <PageHeader 
@@ -33,6 +44,7 @@ const CreateLinkPage = () => {
       <CreateLinkForm 
         onLinkGenerated={handleLinkGenerated}
         isLoading={isLoading}
+        onCreateLink={handleCreateLink}
       />
 
       <LinkGeneratedDialog

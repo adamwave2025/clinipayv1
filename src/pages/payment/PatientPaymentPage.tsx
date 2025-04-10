@@ -1,33 +1,86 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import PaymentForm from '@/components/payment/PaymentForm';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentPageClinicCard from '@/components/payment/PaymentPageClinicCard';
 import CliniPaySecuritySection from '@/components/payment/CliniPaySecuritySection';
 import { Card, CardContent } from '@/components/ui/card';
-import { clinicDetails } from '@/data/clinicData';
+import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
+import { supabase } from '@/integrations/supabase/client';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 const PatientPaymentPage = () => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
+  const { linkId } = useParams<{ linkId: string }>();
+  const { linkData, isLoading: isLoadingLink, error } = usePaymentLinkData(linkId);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handlePaymentSubmit = (formData: PaymentFormValues) => {
-    setIsLoading(true);
+  const handlePaymentSubmit = async (formData: PaymentFormValues) => {
+    if (!linkData) return;
     
-    // Mock payment processing
-    setTimeout(() => {
-      setIsLoading(false);
+    setIsSubmitting(true);
+    
+    try {
+      // Create a payment record
+      const { data, error } = await supabase
+        .from('payments')
+        .insert({
+          clinic_id: linkData.clinic.id,
+          payment_link_id: linkData.id,
+          patient_name: formData.name,
+          patient_email: formData.email,
+          status: 'paid',
+          amount_paid: linkData.amount,
+          paid_at: new Date().toISOString()
+        })
+        .select();
+      
+      if (error) throw error;
+      
       navigate('/payment/success');
-    }, 2000);
+    } catch (error) {
+      console.error('Payment error:', error);
+      navigate('/payment/failed');
+    }
   };
+
+  // Redirect if link not found
+  useEffect(() => {
+    if (!isLoadingLink && (error || !linkData)) {
+      navigate('/payment/failed');
+    }
+  }, [isLoadingLink, error, linkData, navigate]);
+
+  if (isLoadingLink) {
+    return (
+      <PaymentLayout isSplitView={false} hideHeaderFooter={false}>
+        <div className="flex items-center justify-center h-40">
+          <LoadingSpinner size="lg" />
+          <p className="ml-3 text-gray-600">Loading payment information...</p>
+        </div>
+      </PaymentLayout>
+    );
+  }
+
+  if (!linkData) {
+    return null; // Will redirect via useEffect
+  }
 
   return (
     <PaymentLayout isSplitView={true} hideHeaderFooter={true}>
       {/* Left Column - Clinic Info & Security */}
       <div className="space-y-4">
-        <PaymentPageClinicCard clinic={clinicDetails} />
+        <PaymentPageClinicCard clinic={{
+          name: linkData.clinic.name,
+          logo: linkData.clinic.logo || '',
+          email: linkData.clinic.email,
+          phone: linkData.clinic.phone,
+          address: linkData.clinic.address,
+          paymentType: linkData.title,
+          amount: linkData.amount
+        }} />
         <CliniPaySecuritySection />
       </div>
       
@@ -40,7 +93,7 @@ const PatientPaymentPage = () => {
           
           <PaymentForm 
             onSubmit={handlePaymentSubmit}
-            isLoading={isLoading}
+            isLoading={isSubmitting}
           />
         </CardContent>
       </Card>

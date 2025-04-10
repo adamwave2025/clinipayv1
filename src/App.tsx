@@ -1,4 +1,3 @@
-
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -66,6 +65,7 @@ const App = () => (
             <Route path="/payment" element={<PatientPaymentPage />} />
             <Route path="/payment/success" element={<PaymentSuccessPage />} />
             <Route path="/payment/failed" element={<PaymentFailedPage />} />
+            <Route path="/payment/:linkId" element={<PatientPaymentPage />} />
             
             {/* Protected Clinic Dashboard Routes */}
             <Route path="/dashboard" element={
