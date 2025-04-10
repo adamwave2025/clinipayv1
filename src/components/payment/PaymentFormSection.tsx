@@ -35,7 +35,7 @@ const PaymentFormSection = ({
     // Use clientSecret as part of payment_intent_client_secret instead of directly
     // This matches the expected Stripe type
     payment_intent_client_secret: clientSecret,
-    appearance: { theme: 'stripe' }
+    appearance: { theme: 'stripe' as const }  // Type assertion to ensure theme is one of the allowed values
   } : undefined;
 
   return (
@@ -74,3 +74,4 @@ const PaymentFormSection = ({
 };
 
 export default PaymentFormSection;
+
