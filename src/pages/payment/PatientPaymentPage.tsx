@@ -10,9 +10,7 @@ import PaymentFormSection from '@/components/payment/PaymentFormSection';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
-import { toast } from 'sonner';
 import { usePaymentProcess } from '@/hooks/usePaymentProcess';
-import StripeProvider from '@/components/payment/StripeProvider';
 
 const PatientPaymentPage = () => {
   const navigate = useNavigate();
@@ -79,14 +77,12 @@ const PatientPaymentPage = () => {
       </div>
       
       {/* Right Column - Payment Form */}
-      <StripeProvider>
-        <PaymentFormContainer 
-          linkId={linkId}
-          linkData={linkData}
-          isStripeConnected={isStripeConnected}
-          defaultValues={defaultValues}
-        />
-      </StripeProvider>
+      <PaymentFormContainer 
+        linkId={linkId}
+        linkData={linkData}
+        isStripeConnected={isStripeConnected}
+        defaultValues={defaultValues}
+      />
     </PaymentLayout>
   );
 };

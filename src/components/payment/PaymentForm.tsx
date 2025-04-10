@@ -5,11 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form } from '@/components/ui/form';
 import { paymentFormSchema, PaymentFormValues } from './form/FormSchema';
 import PersonalInfoSection from './form/PersonalInfoSection';
-import StripeCardSection from './form/StripeCardSection';
+import PaymentDetailsSection from './form/PaymentDetailsSection';
 import SubmitButton from './form/SubmitButton';
 import { Lock } from 'lucide-react';
 import { toast } from 'sonner';
-import { useElements, CardElement } from '@stripe/react-stripe-js';
 
 interface PaymentFormProps {
   onSubmit: (data: PaymentFormValues) => void;
@@ -18,26 +17,35 @@ interface PaymentFormProps {
 }
 
 const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) => {
-  const elements = useElements();
-  
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
       name: defaultValues?.name || '',
       email: defaultValues?.email || '',
       phone: defaultValues?.phone || '',
-      cardComplete: false,
+      cardNumber: '',
+      cardExpiry: '',
+      cardCvc: '',
     }
   });
 
   const handleSubmitForm = async (data: PaymentFormValues) => {
-    if (!data.cardComplete) {
-      toast.error("Please complete all card information fields.");
+    // Simple validation for card number (Luhn algorithm can be added for production)
+    if (data.cardNumber.replace(/\s/g, '').length < 16) {
+      toast.error("Please enter a valid card number");
       return;
     }
     
-    if (!elements) {
-      toast.error("Payment system is not initialized. Please refresh the page.");
+    // Simple validation for expiry date
+    const expiryPattern = /^(0[1-9]|1[0-2])\/[0-9]{2}$/;
+    if (!expiryPattern.test(data.cardExpiry)) {
+      toast.error("Please enter a valid expiry date (MM/YY)");
+      return;
+    }
+    
+    // Simple validation for CVC
+    if (data.cardCvc.length < 3) {
+      toast.error("Please enter a valid CVC code");
       return;
     }
     
@@ -53,10 +61,9 @@ const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) =
           isLoading={isLoading} 
         />
         
-        <StripeCardSection
+        <PaymentDetailsSection
           control={form.control}
           isLoading={isLoading}
-          setValue={form.setValue}
         />
         
         <SubmitButton isLoading={isLoading} />

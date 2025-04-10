@@ -1,22 +1,19 @@
 
 import React from 'react';
-import { Control, UseFormSetValue } from 'react-hook-form';
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { Control } from 'react-hook-form';
 import { PaymentFormValues } from './FormSchema';
-import StripeCardSection from './StripeCardSection';
+import SimplePaymentDetailsSection from './SimplePaymentDetailsSection';
 
 interface PaymentDetailsSectionProps {
   control: Control<PaymentFormValues>;
-  setValue: UseFormSetValue<PaymentFormValues>;
   isLoading: boolean;
 }
 
-const PaymentDetailsSection = ({ control, setValue, isLoading }: PaymentDetailsSectionProps) => {
+const PaymentDetailsSection = ({ control, isLoading }: PaymentDetailsSectionProps) => {
   return (
-    <StripeCardSection
+    <SimplePaymentDetailsSection 
       control={control}
       isLoading={isLoading}
-      setValue={setValue}
     />
   );
 };
