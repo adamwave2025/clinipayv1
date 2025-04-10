@@ -37,17 +37,22 @@ const PaymentFormSection = ({
               This clinic has not set up payment processing. Please contact the clinic directly to arrange payment.
             </AlertDescription>
           </Alert>
-        ) : processingPayment ? (
-          <div className="flex items-center justify-center h-32">
-            <LoadingSpinner size="md" />
-            <p className="ml-3 text-gray-600">Processing payment...</p>
-          </div>
         ) : (
-          <PaymentForm 
-            onSubmit={onSubmit}
-            isLoading={isSubmitting}
-            defaultValues={defaultValues}
-          />
+          <>
+            {processingPayment && (
+              <div className="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center rounded-md">
+                <LoadingSpinner size="md" />
+                <p className="mt-3 text-gray-600 font-medium">Processing payment...</p>
+              </div>
+            )}
+            <div className={`relative ${processingPayment ? 'pointer-events-none' : ''}`}>
+              <PaymentForm 
+                onSubmit={onSubmit}
+                isLoading={isSubmitting}
+                defaultValues={defaultValues}
+              />
+            </div>
+          </>
         )}
       </CardContent>
     </Card>

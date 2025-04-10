@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,8 +34,8 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       return;
     }
     
+    // Set isSubmitting to true to disable form inputs
     setIsSubmitting(true);
-    setProcessingPayment(true);
     
     try {
       console.log('Initiating payment process for link ID:', linkId);
@@ -71,6 +70,9 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         console.error('Payment intent unsuccessful:', paymentIntentData);
         throw new Error(paymentIntentData.error || 'Payment processing failed');
       }
+      
+      // Now set processingPayment to true to show the overlay, but keep the form mounted
+      setProcessingPayment(true);
       
       // Confirm the card payment with Stripe
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
