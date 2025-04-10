@@ -25,6 +25,9 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
     setProcessingPayment(true);
     
     try {
+      console.log('Initiating payment process for link ID:', linkId);
+      console.log('Payment amount:', linkData.amount);
+      
       // Call the create-payment-intent edge function to get a client secret
       const { data: paymentIntentData, error: paymentIntentError } = await supabase.functions.invoke(
         'create-payment-intent', 
@@ -53,12 +56,16 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       );
       
       if (paymentIntentError) {
+        console.error('Payment intent error:', paymentIntentError);
         throw new Error(paymentIntentError.message || 'Error creating payment intent');
       }
       
       if (!paymentIntentData.success) {
+        console.error('Payment intent unsuccessful:', paymentIntentData);
         throw new Error(paymentIntentData.error || 'Payment processing failed');
       }
+      
+      console.log('Payment successful, creating payment record in database');
       
       // Create a payment record in the database
       const { data, error } = await supabase
@@ -81,10 +88,13 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         console.error('Error creating payment record:', error);
         throw error;
       }
+      
+      console.log('Payment record created successfully:', data);
 
       // If this was a payment request, update its status and paid_at
       if (linkData.isRequest) {
-        await supabase
+        console.log('Updating payment request status to paid');
+        const { error: requestUpdateError } = await supabase
           .from('payment_requests')
           .update({
             status: 'paid',
@@ -92,6 +102,10 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
             payment_id: data[0].id
           })
           .eq('id', linkData.id);
+          
+        if (requestUpdateError) {
+          console.warn('Warning: Could not update payment request status:', requestUpdateError);
+        }
       }
       
       toast.success('Payment successful!');

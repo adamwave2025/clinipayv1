@@ -100,24 +100,7 @@ serve(async (req) => {
     // In a real application, we would process with Stripe here
     // But for a mock UI implementation, we'll just simulate success
     
-    // Log the mock payment attempt in the database
-    try {
-      await supabase
-        .from("payment_attempts")
-        .insert({
-          clinic_id: clinicId,
-          payment_link_id: paymentLinkId || null,
-          payment_request_id: requestId || null,
-          amount: amount,
-          status: "created",
-          payment_intent_id: `mock_pi_${Date.now()}`,
-        });
-      console.log("Payment attempt logged successfully");
-    } catch (logError) {
-      console.warn("Could not log payment attempt:", logError.message);
-    }
-
-    // Generate a mock payment ID
+    // Generate a mock payment ID (in production this would come from Stripe)
     const mockPaymentId = `mock_payment_${Date.now()}`;
     console.log("Mock payment created successfully:", mockPaymentId);
 
