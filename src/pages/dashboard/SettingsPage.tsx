@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -8,14 +7,19 @@ import { toast } from 'sonner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useClinicData, ClinicData } from '@/hooks/useClinicData';
 import { NotificationService } from '@/services/NotificationService';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 
-// Import the component files
-import ProfileSettings from '@/components/settings/ProfileSettings';
-import PaymentSettings from '@/components/settings/PaymentSettings';
-import NotificationSettings from '@/components/settings/NotificationSettings';
-import SecuritySettings from '@/components/settings/SecuritySettings';
+const VALID_TABS = ['profile', 'payments', 'notifications', 'security'];
 
 const SettingsPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  
+  const initialTab = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(
+    VALID_TABS.includes(initialTab as string) ? initialTab : 'profile'
+  );
+  
   const { 
     clinicData, 
     isLoading: dataLoading, 
@@ -53,6 +57,11 @@ const SettingsPage = () => {
       });
     }
   }, [clinicData]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSearchParams({ tab: value });
+  };
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -165,7 +174,7 @@ const SettingsPage = () => {
         description="Manage your clinic settings and preferences"
       />
       
-      <Tabs defaultValue="profile" className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid grid-cols-4 max-w-2xl mb-6">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
