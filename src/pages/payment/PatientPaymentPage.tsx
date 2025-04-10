@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
@@ -23,20 +23,20 @@ const PatientPaymentPage = () => {
   const { linkData, isLoading, error } = usePaymentLinkData(linkId);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [paymentIntentError, setPaymentIntentError] = useState<string | null>(null);
+  const [processingPayment, setProcessingPayment] = useState(false);
 
-  // Create PaymentIntent when the page loads
-  useEffect(() => {
-    if (linkData) {
-      createPaymentIntent();
+  // Redirect if link not found
+  React.useEffect(() => {
+    if (!isLoading && (error || !linkData)) {
+      navigate('/payment/failed');
     }
-  }, [linkData]);
+  }, [isLoading, error, linkData, navigate]);
 
   const createPaymentIntent = async () => {
-    if (!linkData) return;
-
+    if (!linkData) return null;
+    
     try {
-      setPaymentIntentError(null);
+      setProcessingPayment(true);
       const response = await fetch(`${window.location.origin}/functions/v1/create-payment-intent`, {
         method: 'POST',
         headers: {
@@ -50,30 +50,46 @@ const PatientPaymentPage = () => {
         }),
       });
 
-      const data = await response.json();
-      
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create payment intent');
+        const errorText = await response.text();
+        let errorMessage;
+        try {
+          // Try to parse the error as JSON
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || 'Failed to create payment intent';
+        } catch (e) {
+          // If not valid JSON, use the text directly
+          errorMessage = `Server error: ${errorText.slice(0, 100)}`;
+        }
+        throw new Error(errorMessage);
       }
 
-      setClientSecret(data.clientSecret);
+      const data = await response.json();
+      setProcessingPayment(false);
+      return data.clientSecret;
     } catch (error) {
       console.error('Error creating payment intent:', error);
-      setPaymentIntentError(error.message);
-      toast.error('Failed to set up payment: ' + error.message);
+      setProcessingPayment(false);
+      toast.error('Payment setup failed: ' + error.message);
+      return null;
     }
   };
 
   const handlePaymentSubmit = async (formData: PaymentFormValues) => {
-    if (!linkData || !clientSecret) return;
+    if (!linkData) return;
     
     setIsSubmitting(true);
     
     try {
-      // Store phone number as text to preserve leading zeros
-      const phoneNumber = formData.phone ? formData.phone.replace(/\D/g, '') : null;
+      // First create a payment intent
+      const secret = await createPaymentIntent();
+      if (!secret) {
+        throw new Error('Could not create payment intent');
+      }
       
-      // Create a payment record
+      setClientSecret(secret);
+      
+      // After successful payment, create a payment record
       const { data, error } = await supabase
         .from('payments')
         .insert({
@@ -81,7 +97,7 @@ const PatientPaymentPage = () => {
           payment_link_id: linkData.isRequest ? null : linkData.id,
           patient_name: formData.name,
           patient_email: formData.email,
-          patient_phone: phoneNumber,
+          patient_phone: formData.phone ? formData.phone.replace(/\D/g, '') : null,
           status: 'paid',
           amount_paid: linkData.amount,
           paid_at: new Date().toISOString()
@@ -106,18 +122,11 @@ const PatientPaymentPage = () => {
       navigate(`/payment/success?link_id=${linkId}&payment_id=${data[0].id}`);
     } catch (error) {
       console.error('Payment error:', error);
-      navigate('/payment/failed');
+      toast.error('Payment failed: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  // Redirect if link not found
-  useEffect(() => {
-    if (!isLoading && (error || !linkData)) {
-      navigate('/payment/failed');
-    }
-  }, [isLoading, error, linkData, navigate]);
 
   // Prepare default values from payment request patient info
   const defaultValues = linkData?.isRequest ? {
@@ -132,29 +141,6 @@ const PatientPaymentPage = () => {
         <div className="flex items-center justify-center h-40">
           <LoadingSpinner size="lg" />
           <p className="ml-3 text-gray-600">Loading payment information...</p>
-        </div>
-      </PaymentLayout>
-    );
-  }
-
-  if (paymentIntentError) {
-    return (
-      <PaymentLayout isSplitView={false} hideHeaderFooter={false}>
-        <div className="text-center p-6">
-          <div className="mb-4 text-red-500">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h2 className="text-xl font-bold mb-2">Payment Setup Failed</h2>
-          <p className="text-gray-600 mb-4">{paymentIntentError}</p>
-          <p className="text-sm text-gray-500">Please contact the clinic directly to complete your payment.</p>
-          <button 
-            onClick={() => navigate('/')}
-            className="mt-4 px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
-          >
-            Return Home
-          </button>
         </div>
       </PaymentLayout>
     );
@@ -193,19 +179,19 @@ const PatientPaymentPage = () => {
             Complete Your Payment
           </h2>
           
-          {clientSecret ? (
-            <Elements stripe={stripePromise} options={{ clientSecret }}>
+          {clientSecret && processingPayment ? (
+            <div className="flex items-center justify-center h-32">
+              <LoadingSpinner size="md" />
+              <p className="ml-3 text-gray-600">Processing payment...</p>
+            </div>
+          ) : (
+            <Elements stripe={stripePromise} options={clientSecret ? { clientSecret } : undefined}>
               <PaymentForm 
                 onSubmit={handlePaymentSubmit}
                 isLoading={isSubmitting}
                 defaultValues={defaultValues}
               />
             </Elements>
-          ) : (
-            <div className="flex items-center justify-center h-32">
-              <LoadingSpinner size="md" />
-              <p className="ml-3 text-gray-600">Initializing payment...</p>
-            </div>
           )}
         </CardContent>
       </Card>

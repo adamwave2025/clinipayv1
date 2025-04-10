@@ -44,24 +44,8 @@ const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) =
       return;
     }
 
-    // Confirm the card payment
-    const { error } = await stripe.confirmCardPayment(window.location.search.split('client_secret=')[1], {
-      payment_method: {
-        card: cardElement,
-        billing_details: {
-          name: data.name,
-          email: data.email,
-          phone: data.phone || undefined,
-        },
-      },
-    });
-
-    if (error) {
-      toast.error(error.message || "Payment failed. Please try again.");
-    } else {
-      // Payment succeeded, call the onSubmit callback to create payment record in database
-      onSubmit(data);
-    }
+    // Pass the form data to the parent component to create the payment intent
+    onSubmit(data);
   };
 
   return (
