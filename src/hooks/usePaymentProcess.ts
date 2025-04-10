@@ -33,7 +33,10 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       });
       
       // Use the full URL for the edge function
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`, {
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`;
+      console.log('Calling edge function at:', functionUrl);
+      
+      const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,8 +81,14 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
   };
 
   const handlePaymentSubmit = async (formData: PaymentFormValues) => {
-    if (!linkData || !stripe || !elements) {
-      toast.error('Payment system is not initialized');
+    if (!linkData) {
+      toast.error('Payment details are missing');
+      return;
+    }
+    
+    if (!stripe || !elements) {
+      console.error('Stripe not initialized:', { stripeAvailable: !!stripe, elementsAvailable: !!elements });
+      toast.error('Payment system is not initialized. Please refresh the page and try again.');
       return;
     }
     
@@ -94,10 +103,12 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
     try {
       // First create a payment intent if we don't have one already
       if (!clientSecret) {
+        console.log('No client secret available, creating payment intent...');
         const secret = await createPaymentIntent();
         if (!secret) {
           throw new Error('Could not create payment intent');
         }
+        console.log('Setting client secret...');
         setClientSecret(secret);
       }
       
