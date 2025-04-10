@@ -102,46 +102,65 @@ serve(async (req) => {
       const account = event.data.object;
       console.log(`Received account.updated event for account: ${account.id}`);
       
-      // Check if the capabilities meet the requirements for being active
-      // For Express accounts, this typically means checking if charges capability is active
-      const isAccountActive = account.charges_enabled && 
-                              account.capabilities && 
-                              account.capabilities.card_payments === 'active' &&
-                              account.capabilities.transfers === 'active';
+      // Log the entire account object to help debug (excluding sensitive data)
+      console.log("Account data:", {
+        id: account.id,
+        metadata: account.metadata,
+        details_submitted: account.details_submitted,
+        business_type: account.business_type,
+        business_profile: account.business_profile
+      });
       
-      console.log(`Account status - charges_enabled: ${account.charges_enabled}, card_payments: ${account.capabilities?.card_payments}, transfers: ${account.capabilities?.transfers}`);
-      console.log(`Account active status: ${isAccountActive}`);
-      
-      if (isAccountActive) {
-        // Find the clinic by Stripe account ID
-        const { data: clinics, error: fetchError } = await supabase
-          .from("clinics")
-          .select("id")
-          .eq("stripe_account_id", account.id);
-          
-        if (fetchError) {
-          console.error(`Error fetching clinic: ${fetchError.message}`);
-          throw fetchError;
-        }
+      // Check if details_submitted is true
+      if (account.details_submitted) {
+        console.log(`Account ${account.id} has submitted details`);
         
-        console.log(`Found ${clinics?.length || 0} clinics with Stripe account ID: ${account.id}`);
+        let clinicId;
         
-        if (clinics && clinics.length > 0) {
-          // Update the clinic's stripe_status to active
-          const { error: updateError } = await supabase
+        // Check if clinic_id is stored in metadata (preferred approach)
+        if (account.metadata && account.metadata.clinic_id) {
+          clinicId = account.metadata.clinic_id;
+          console.log(`Found clinic_id ${clinicId} in account metadata`);
+        } else {
+          // If clinic_id is not in metadata, try to find the clinic by Stripe account ID
+          console.log(`No clinic_id in metadata, falling back to finding clinic by account ID`);
+          const { data: clinics, error: fetchError } = await supabase
             .from("clinics")
-            .update({ stripe_status: "active" })
+            .select("id")
             .eq("stripe_account_id", account.id);
-          
-          if (updateError) {
-            console.error(`Error updating clinic: ${updateError.message}`);
-            throw updateError;
+            
+          if (fetchError) {
+            console.error(`Error fetching clinic: ${fetchError.message}`);
+            throw fetchError;
           }
           
-          console.log(`Updated clinic with Stripe account ${account.id} to active status`);
+          console.log(`Found ${clinics?.length || 0} clinics with Stripe account ID: ${account.id}`);
+          
+          if (clinics && clinics.length > 0) {
+            clinicId = clinics[0].id;
+          } else {
+            console.error(`No clinic found for Stripe account ID: ${account.id}`);
+            throw new Error(`No clinic found for Stripe account ID: ${account.id}`);
+          }
         }
+        
+        // Update the clinic's record
+        const { error: updateError } = await supabase
+          .from("clinics")
+          .update({ 
+            stripe_account_id: account.id,
+            stripe_status: "connected" 
+          })
+          .eq("id", clinicId);
+        
+        if (updateError) {
+          console.error(`Error updating clinic: ${updateError.message}`);
+          throw updateError;
+        }
+        
+        console.log(`Successfully updated clinic ${clinicId} to connected status`);
       } else {
-        console.log(`Account ${account.id} is not fully active yet, no status update needed`);
+        console.log(`Account ${account.id} has not submitted details yet, no update needed`);
       }
     } else {
       console.log(`Ignoring event type: ${event.type} (not handled)`);
