@@ -11,6 +11,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { toast } from 'sonner';
+import { usePaymentProcess } from '@/hooks/usePaymentProcess';
+import StripeProvider from '@/components/payment/StripeProvider';
 
 const PatientPaymentPage = () => {
   const navigate = useNavigate();
@@ -77,12 +79,14 @@ const PatientPaymentPage = () => {
       </div>
       
       {/* Right Column - Payment Form */}
-      <PaymentFormContainer 
-        linkId={linkId}
-        linkData={linkData}
-        isStripeConnected={isStripeConnected}
-        defaultValues={defaultValues}
-      />
+      <StripeProvider>
+        <PaymentFormContainer 
+          linkId={linkId}
+          linkData={linkData}
+          isStripeConnected={isStripeConnected}
+          defaultValues={defaultValues}
+        />
+      </StripeProvider>
     </PaymentLayout>
   );
 };
@@ -94,43 +98,11 @@ const PaymentFormContainer = ({
   isStripeConnected, 
   defaultValues 
 }) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [processingPayment, setProcessingPayment] = useState(false);
-  const navigate = useNavigate();
-
-  const handlePaymentSubmit = async (data: PaymentFormValues) => {
-    if (!linkData) {
-      toast.error('Payment details are missing');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
-    try {
-      // Simulate processing
-      setProcessingPayment(true);
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // For testing, always consider payment successful
-      toast.success('Payment successful!');
-      
-      // Store a simple payment record
-      const mockPaymentId = 'mock-' + Date.now().toString();
-      
-      // Navigate to success page
-      navigate(`/payment/success?link_id=${linkId}&payment_id=${mockPaymentId}`);
-      
-    } catch (error: any) {
-      console.error('Payment error:', error);
-      toast.error('Payment failed: ' + error.message);
-      navigate('/payment/failed');
-    } finally {
-      setProcessingPayment(false);
-      setIsSubmitting(false);
-    }
-  };
+  const {
+    isSubmitting,
+    processingPayment,
+    handlePaymentSubmit
+  } = usePaymentProcess(linkId, linkData);
 
   return (
     <PaymentFormSection 

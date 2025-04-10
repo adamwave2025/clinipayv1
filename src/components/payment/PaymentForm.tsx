@@ -5,10 +5,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form } from '@/components/ui/form';
 import { paymentFormSchema, PaymentFormValues } from './form/FormSchema';
 import PersonalInfoSection from './form/PersonalInfoSection';
-import SimplePaymentDetailsSection from './form/SimplePaymentDetailsSection';
+import StripeCardSection from './form/StripeCardSection';
 import SubmitButton from './form/SubmitButton';
 import { Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import { useElements, CardElement } from '@stripe/react-stripe-js';
 
 interface PaymentFormProps {
   onSubmit: (data: PaymentFormValues) => void;
@@ -17,25 +18,29 @@ interface PaymentFormProps {
 }
 
 const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) => {
+  const elements = useElements();
+  
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
       name: defaultValues?.name || '',
       email: defaultValues?.email || '',
       phone: defaultValues?.phone || '',
-      cardNumber: '',
-      cardExpiry: '',
-      cardCvc: '',
       cardComplete: false,
     }
   });
 
   const handleSubmitForm = async (data: PaymentFormValues) => {
-    if (!data.cardNumber || !data.cardExpiry || !data.cardCvc) {
+    if (!data.cardComplete) {
       toast.error("Please complete all card information fields.");
       return;
     }
-
+    
+    if (!elements) {
+      toast.error("Payment system is not initialized. Please refresh the page.");
+      return;
+    }
+    
     // Pass the form data to the parent component for payment processing
     onSubmit(data);
   };
@@ -48,9 +53,10 @@ const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) =
           isLoading={isLoading} 
         />
         
-        <SimplePaymentDetailsSection 
+        <StripeCardSection
           control={form.control}
-          isLoading={isLoading} 
+          isLoading={isLoading}
+          setValue={form.setValue}
         />
         
         <SubmitButton isLoading={isLoading} />
