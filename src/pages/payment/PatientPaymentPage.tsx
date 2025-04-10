@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PaymentForm from '@/components/payment/PaymentForm';
@@ -23,6 +22,9 @@ const PatientPaymentPage = () => {
     setIsSubmitting(true);
     
     try {
+      // Convert phone to number if provided (but keep as null if not)
+      const phoneNumber = formData.phone ? formData.phone.replace(/\D/g, '') : null;
+      
       // Create a payment record
       const { data, error } = await supabase
         .from('payments')
@@ -31,6 +33,7 @@ const PatientPaymentPage = () => {
           payment_link_id: linkData.id,
           patient_name: formData.name,
           patient_email: formData.email,
+          patient_phone: phoneNumber,
           status: 'paid',
           amount_paid: linkData.amount,
           paid_at: new Date().toISOString()
