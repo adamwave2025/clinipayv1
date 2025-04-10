@@ -5,48 +5,33 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form } from '@/components/ui/form';
 import { paymentFormSchema, PaymentFormValues } from './form/FormSchema';
 import PersonalInfoSection from './form/PersonalInfoSection';
-import PaymentDetailsSection from './form/PaymentDetailsSection';
+import SimplePaymentDetailsSection from './form/SimplePaymentDetailsSection';
 import SubmitButton from './form/SubmitButton';
 import { Lock } from 'lucide-react';
-import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
 
 interface PaymentFormProps {
-  onSubmit: (data: PaymentFormValues, paymentMethod?: { id: string }) => void;
+  onSubmit: (data: PaymentFormValues) => void;
   isLoading: boolean;
   defaultValues?: Partial<PaymentFormValues>;
-  clientSecret?: string | null;
 }
 
-const PaymentForm = ({ onSubmit, isLoading, defaultValues, clientSecret }: PaymentFormProps) => {
-  const stripe = useStripe();
-  const elements = useElements();
-
+const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) => {
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
       name: defaultValues?.name || '',
       email: defaultValues?.email || '',
       phone: defaultValues?.phone || '',
-      cardComplete: false,
+      cardNumber: '',
+      cardExpiry: '',
+      cardCvc: '',
     }
   });
 
   const handleSubmitForm = async (data: PaymentFormValues) => {
-    if (!stripe || !elements) {
-      // Stripe.js has not loaded yet. Make sure to disable form submission until Stripe.js has loaded.
-      toast.error("Payment processing is initializing. Please try again.");
-      return;
-    }
-
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) {
-      toast.error("There was a problem with the payment form. Please refresh and try again.");
-      return;
-    }
-
-    if (!data.cardComplete) {
-      toast.error("Please complete the card information.");
+    if (!data.cardNumber || !data.cardExpiry || !data.cardCvc) {
+      toast.error("Please complete all card information fields.");
       return;
     }
 
@@ -62,9 +47,8 @@ const PaymentForm = ({ onSubmit, isLoading, defaultValues, clientSecret }: Payme
           isLoading={isLoading} 
         />
         
-        <PaymentDetailsSection 
+        <SimplePaymentDetailsSection 
           control={form.control}
-          setValue={form.setValue} 
           isLoading={isLoading} 
         />
         

@@ -1,15 +1,16 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentPageClinicCard from '@/components/payment/PaymentPageClinicCard';
 import CliniPaySecuritySection from '@/components/payment/CliniPaySecuritySection';
 import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
-import { usePaymentProcess } from '@/hooks/usePaymentProcess';
 import PaymentPageLoading from '@/components/payment/PaymentPageLoading';
 import PaymentFormSection from '@/components/payment/PaymentFormSection';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import { PaymentFormValues } from '@/components/payment/form/FormSchema';
+import { toast } from 'sonner';
 
 const PatientPaymentPage = () => {
   const navigate = useNavigate();
@@ -17,16 +18,8 @@ const PatientPaymentPage = () => {
   const { linkData, isLoading, error } = usePaymentLinkData(linkId);
   const [initError, setInitError] = useState<string | null>(null);
 
-  // Check for environment configuration with a safety check for window.ENV
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.ENV || !window.ENV.PUBLISHABLE_KEY) {
-      console.error("Missing PUBLISHABLE_KEY environment variable");
-      setInitError("Payment system configuration error. Please contact support.");
-    }
-  }, []);
-
   // Redirect if link not found
-  useEffect(() => {
+  React.useEffect(() => {
     if (!isLoading && (error || !linkData)) {
       console.error("Payment link error:", error);
       navigate('/payment/failed');
@@ -94,24 +87,54 @@ const PatientPaymentPage = () => {
   );
 };
 
-// Extract inner content to use usePaymentProcess hook correctly
+// Extract inner content to use a simplified payment process
 const PaymentFormContainer = ({ 
   linkId, 
   linkData, 
   isStripeConnected, 
   defaultValues 
 }) => {
-  const { 
-    isSubmitting,
-    clientSecret,
-    processingPayment,
-    handlePaymentSubmit 
-  } = usePaymentProcess(linkId, linkData);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const navigate = useNavigate();
+
+  const handlePaymentSubmit = async (data: PaymentFormValues) => {
+    if (!linkData) {
+      toast.error('Payment details are missing');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Simulate processing
+      setProcessingPayment(true);
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // For testing, always consider payment successful
+      toast.success('Payment successful!');
+      
+      // Store a simple payment record
+      const mockPaymentId = 'mock-' + Date.now().toString();
+      
+      // Navigate to success page
+      navigate(`/payment/success?link_id=${linkId}&payment_id=${mockPaymentId}`);
+      
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      toast.error('Payment failed: ' + error.message);
+      navigate('/payment/failed');
+    } finally {
+      setProcessingPayment(false);
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <PaymentFormSection 
       isStripeConnected={isStripeConnected}
-      clientSecret={clientSecret}
       processingPayment={processingPayment}
       isSubmitting={isSubmitting}
       defaultValues={defaultValues}
