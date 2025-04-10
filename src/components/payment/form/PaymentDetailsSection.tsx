@@ -24,24 +24,6 @@ const PaymentDetailsSection = ({
     <div className="space-y-4 mt-6">
       <h2 className="text-lg font-medium">Payment Details</h2>
       
-      <FormField
-        control={control}
-        name="name"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Name on Card</FormLabel>
-            <FormControl>
-              <Input
-                placeholder="Name as shown on card"
-                disabled={isLoading}
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      
       <div className="space-y-2">
         <FormLabel className="text-sm font-medium">Card Details</FormLabel>
         <div className="border rounded-md p-3">
