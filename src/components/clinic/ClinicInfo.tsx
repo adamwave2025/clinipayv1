@@ -27,9 +27,8 @@ const ClinicInfo = ({
 }: ClinicInfoProps) => {
   const getStripeStatusBadge = (status: string) => {
     switch (status) {
-      case 'active':
       case 'connected':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Active</Badge>;
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Connected</Badge>;
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pending</Badge>;
       case 'not_connected':

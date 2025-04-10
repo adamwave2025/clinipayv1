@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -31,13 +32,13 @@ const AdminSettingsPage = () => {
       id: '1',
       name: 'Greenfield Medical Clinic',
       email: 'contact@greenfieldclinic.com',
-      stripeStatus: 'active',
+      stripeStatus: 'connected',
     },
     {
       id: '2',
       name: 'City Dental Practice',
       email: 'info@citydental.com',
-      stripeStatus: 'active',
+      stripeStatus: 'connected',
     },
     {
       id: '3',
@@ -49,7 +50,7 @@ const AdminSettingsPage = () => {
       id: '4',
       name: 'Wellness Hub',
       email: 'info@wellnesshub.com',
-      stripeStatus: 'active',
+      stripeStatus: 'connected',
     },
     {
       id: '5',
@@ -80,7 +81,6 @@ const AdminSettingsPage = () => {
 
   const getStripeStatusBadge = (status: string) => {
     switch (status) {
-      case 'active':
       case 'connected':
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Connected</Badge>;
       case 'pending':
@@ -186,7 +186,7 @@ const AdminSettingsPage = () => {
                           {getStripeStatusBadge(clinic.stripeStatus)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {clinic.stripeStatus === 'active' && (
+                          {clinic.stripeStatus === 'connected' && (
                             <Button 
                               variant="outline" 
                               size="sm" 

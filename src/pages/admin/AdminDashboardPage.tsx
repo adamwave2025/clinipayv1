@@ -14,14 +14,14 @@ const recentClinics = [
     id: '1',
     name: 'Greenfield Medical', 
     joinDate: '2025-03-15',
-    stripeStatus: 'active',
+    stripeStatus: 'connected',
     paymentsProcessed: 28,
   },
   { 
     id: '2',
     name: 'City Dental', 
     joinDate: '2025-02-22',
-    stripeStatus: 'active',
+    stripeStatus: 'connected',
     paymentsProcessed: 42,
   },
   { 
@@ -35,7 +35,7 @@ const recentClinics = [
     id: '4',
     name: 'Wellness Hub', 
     joinDate: '2025-01-10',
-    stripeStatus: 'active',
+    stripeStatus: 'connected',
     paymentsProcessed: 65,
   },
 ];
@@ -76,12 +76,12 @@ const AdminDashboardPage = () => {
 
   const getStripeStatusBadge = (status: string) => {
     switch (status) {
-      case 'active':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Active</Badge>;
+      case 'connected':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Connected</Badge>;
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pending</Badge>;
-      case 'disabled':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Disabled</Badge>;
+      case 'not_connected':
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Not Connected</Badge>;
       default:
         return null;
     }

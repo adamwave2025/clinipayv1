@@ -15,7 +15,7 @@ interface Clinic {
   id: string;
   name: string;
   email: string;
-  status: 'active' | 'pending' | 'suspended';
+  status: 'connected' | 'pending' | 'suspended';
   joinDate: string;
   transactions: number;
 }
@@ -30,7 +30,7 @@ const ClinicsPage = () => {
       id: '1',
       name: 'Greenfield Medical Clinic',
       email: 'contact@greenfieldclinic.com',
-      status: 'active',
+      status: 'connected',
       joinDate: '2025-03-15',
       transactions: 28,
     },
@@ -38,7 +38,7 @@ const ClinicsPage = () => {
       id: '2',
       name: 'City Dental Practice',
       email: 'info@citydental.com',
-      status: 'active',
+      status: 'connected',
       joinDate: '2025-02-22',
       transactions: 42,
     },
@@ -54,7 +54,7 @@ const ClinicsPage = () => {
       id: '4',
       name: 'Wellness Hub',
       email: 'info@wellnesshub.com',
-      status: 'active',
+      status: 'connected',
       joinDate: '2025-01-10',
       transactions: 65,
     },
@@ -75,8 +75,8 @@ const ClinicsPage = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'active':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Active</Badge>;
+      case 'connected':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Connected</Badge>;
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pending</Badge>;
       case 'suspended':
