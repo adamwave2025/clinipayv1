@@ -1,55 +1,56 @@
 
 import React from 'react';
+import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Copy, ExternalLink } from 'lucide-react';
-import { capitalizeFirstLetter, formatCurrency } from '@/utils/formatters';
+import { formatCurrency } from '@/utils/formatters';
 import { PaymentLink } from '@/types/payment';
 
 interface PaymentLinkTableRowProps {
   link: PaymentLink;
   onCopyLink: (url: string) => void;
+  onLinkClick: (link: PaymentLink) => void;
 }
 
-const PaymentLinkTableRow = ({ link, onCopyLink }: PaymentLinkTableRowProps) => {
+const PaymentLinkTableRow = ({ link, onCopyLink, onLinkClick }: PaymentLinkTableRowProps) => {
   return (
-    <tr className="border-b hover:bg-gray-50 transition-colors">
-      <td className="py-4 pl-2 pr-3">
-        <div className="font-medium text-gray-900">{link.title}</div>
-      </td>
-      <td className="py-4 px-3 font-medium">
-        {formatCurrency(link.amount)}
-      </td>
-      <td className="py-4 px-3 text-gray-700">
-        {capitalizeFirstLetter(link.type)}
-      </td>
-      <td className="py-4 px-3 text-gray-500">
-        {link.createdAt}
-      </td>
-      <td className="py-4 px-3">
-        <div className="flex space-x-2">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => onCopyLink(link.url)}
-            className="h-8 w-8"
-            aria-label="Copy link"
-          >
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8"
-            aria-label="Preview link"
-            asChild
-          >
-            <a href={link.url} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          </Button>
-        </div>
-      </td>
-    </tr>
+    <TableRow 
+      className="cursor-pointer hover:bg-gray-50 transition-colors" 
+      onClick={() => onLinkClick(link)}
+    >
+      <TableCell>{link.title}</TableCell>
+      <TableCell>{formatCurrency(link.amount)}</TableCell>
+      <TableCell>
+        <span className="capitalize">{link.type}</span>
+      </TableCell>
+      <TableCell>{link.createdAt}</TableCell>
+      <TableCell className="text-right space-x-1">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={(e) => {
+            e.stopPropagation();
+            onCopyLink(link.url);
+          }}
+          aria-label="Copy link"
+          className="h-8 w-8"
+        >
+          <Copy className="h-4 w-4" />
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={(e) => {
+            e.stopPropagation();
+            window.open(link.url, '_blank');
+          }}
+          aria-label="Open link"
+          className="h-8 w-8"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </Button>
+      </TableCell>
+    </TableRow>
   );
 };
 

@@ -209,6 +209,7 @@ export type Database = {
           patient_email: string | null
           patient_name: string | null
           payment_link_id: string | null
+          reference: string | null
           status: string | null
           stripe_payment_id: string | null
         }
@@ -220,6 +221,7 @@ export type Database = {
           patient_email?: string | null
           patient_name?: string | null
           payment_link_id?: string | null
+          reference?: string | null
           status?: string | null
           stripe_payment_id?: string | null
         }
@@ -231,6 +233,7 @@ export type Database = {
           patient_email?: string | null
           patient_name?: string | null
           payment_link_id?: string | null
+          reference?: string | null
           status?: string | null
           stripe_payment_id?: string | null
         }

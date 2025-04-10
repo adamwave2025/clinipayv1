@@ -66,7 +66,8 @@ const CreateLinkForm = ({ onLinkGenerated, isLoading, onCreateLink }: CreateLink
         const result = await onCreateLink({
           title: formData.paymentTitle,
           amount: Number(formData.amount),
-          type: formData.paymentType
+          type: formData.paymentType,
+          description: formData.description
         });
         
         if (result.success && result.paymentLink) {

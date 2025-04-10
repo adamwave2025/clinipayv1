@@ -15,6 +15,7 @@ export interface PaymentLink {
   title: string;
   amount: number;
   type: string;
+  description: string;
   url: string;
   createdAt: string;
 }

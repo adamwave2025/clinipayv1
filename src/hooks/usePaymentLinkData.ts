@@ -7,6 +7,7 @@ export interface PaymentLinkData {
   title: string;
   amount: number;
   type: string;
+  description?: string;
   clinic: {
     id: string;
     name: string;
@@ -17,7 +18,7 @@ export interface PaymentLinkData {
   };
 }
 
-export function usePaymentLinkData(linkId: string | undefined) {
+export function usePaymentLinkData(linkId: string | undefined | null) {
   const [linkData, setLinkData] = useState<PaymentLinkData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +43,7 @@ export function usePaymentLinkData(linkId: string | undefined) {
             title, 
             amount, 
             type, 
+            description,
             clinic_id, 
             clinics:clinic_id (
               id, 
@@ -81,6 +83,7 @@ export function usePaymentLinkData(linkId: string | undefined) {
           title: linkData.title || '',
           amount: linkData.amount || 0,
           type: linkData.type || 'other',
+          description: linkData.description || undefined,
           clinic: {
             id: linkData.clinics.id,
             name: linkData.clinics.clinic_name || 'Clinic',

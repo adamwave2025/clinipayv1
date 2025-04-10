@@ -53,6 +53,7 @@ export function usePaymentLinks() {
         title: link.title || '',
         amount: link.amount || 0,
         type: link.type || 'other',
+        description: link.description || '',
         url: `${window.location.origin}/payment/${link.id}`,
         createdAt: new Date(link.created_at).toLocaleDateString(),
       }));
@@ -96,7 +97,7 @@ export function usePaymentLinks() {
           title: linkData.title,
           amount: linkData.amount,
           type: linkData.type,
-          description: ''
+          description: linkData.description
         })
         .select()
         .single();
@@ -115,6 +116,7 @@ export function usePaymentLinks() {
           title: data.title,
           amount: data.amount,
           type: data.type,
+          description: data.description || '',
           url: `${window.location.origin}/payment/${data.id}`,
           createdAt: new Date(data.created_at).toLocaleDateString(),
         } 

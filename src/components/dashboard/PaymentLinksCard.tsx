@@ -13,6 +13,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import PaymentLinkTable from './links/PaymentLinkTable';
+import PaymentLinkDetailsDialog from './links/PaymentLinkDetailsDialog';
 import { PaymentLink } from '@/types/payment';
 
 interface PaymentLinksCardProps {
@@ -23,10 +24,17 @@ const ITEMS_PER_PAGE = 3;
 
 const PaymentLinksCard = ({ links }: PaymentLinksCardProps) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedLink, setSelectedLink] = useState<PaymentLink | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   
   const handleCopyLink = (url: string) => {
     navigator.clipboard.writeText(url);
     toast.success('Link copied to clipboard');
+  };
+  
+  const handleLinkClick = (link: PaymentLink) => {
+    setSelectedLink(link);
+    setDetailsDialogOpen(true);
   };
   
   const totalPages = Math.ceil(links.length / ITEMS_PER_PAGE);
@@ -48,6 +56,7 @@ const PaymentLinksCard = ({ links }: PaymentLinksCardProps) => {
         <PaymentLinkTable 
           links={paginatedLinks}
           onCopyLink={handleCopyLink}
+          onLinkClick={handleLinkClick}
         />
         
         {totalPages > 1 && (
@@ -82,6 +91,12 @@ const PaymentLinksCard = ({ links }: PaymentLinksCardProps) => {
             </Pagination>
           </div>
         )}
+        
+        <PaymentLinkDetailsDialog
+          open={detailsDialogOpen}
+          onOpenChange={setDetailsDialogOpen}
+          paymentLink={selectedLink}
+        />
       </CardContent>
     </Card>
   );
