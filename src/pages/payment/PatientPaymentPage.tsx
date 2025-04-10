@@ -23,7 +23,7 @@ const PatientPaymentPage = () => {
     
     try {
       // Convert phone to number if provided (but keep as null if not)
-      const phoneNumber = formData.phone ? formData.phone.replace(/\D/g, '') : null;
+      const phoneNumber = formData.phone ? parseInt(formData.phone.replace(/\D/g, ''), 10) : null;
       
       // Create a payment record
       const { data, error } = await supabase

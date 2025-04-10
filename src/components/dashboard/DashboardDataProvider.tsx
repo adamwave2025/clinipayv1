@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Payment, PaymentLink, PaymentStats } from '@/types/payment';
 import { toast } from 'sonner';
@@ -50,14 +49,12 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
 
-  // Fetch payments from Supabase
   useEffect(() => {
     const fetchPayments = async () => {
       if (!user) return;
 
       setIsLoadingPayments(true);
       try {
-        // Get clinic_id
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('clinic_id')
@@ -67,7 +64,6 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
         if (userError) throw userError;
         if (!userData.clinic_id) return;
 
-        // Fetch payments
         const { data, error } = await supabase
           .from('payments')
           .select('*')
@@ -76,7 +72,6 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (error) throw error;
 
-        // Transform data
         const formattedPayments: Payment[] = data.map(payment => ({
           id: payment.id,
           patientName: payment.patient_name || 'Unknown Patient',
@@ -90,8 +85,6 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
         setPayments(formattedPayments);
 
-        // Calculate stats
-        // This would be better done on the server but for now we'll do it client-side
         const today = new Date().toDateString();
         const thisMonth = new Date().getMonth();
         const thisYear = new Date().getFullYear();
@@ -141,7 +134,6 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!paymentToRefund) return;
     
     try {
-      // Update payment status in Supabase
       const { error } = await supabase
         .from('payments')
         .update({ status: 'refunded' })
@@ -149,7 +141,6 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (error) throw error;
       
-      // Update UI
       setPayments(prevPayments =>
         prevPayments.map(payment =>
           payment.id === paymentToRefund
@@ -158,7 +149,6 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
         )
       );
       
-      // Close both dialogs
       setRefundDialogOpen(false);
       setDetailDialogOpen(false);
       
