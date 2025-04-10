@@ -13,6 +13,8 @@ import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { toast } from 'sonner';
+import { AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Initialize Stripe with the publishable key
 const stripePromise = loadStripe('pk_test_51OgHYeEXQXA8Yw4lPwEiRXfBg5MCGN8Ri3aELhMOgYm1YyY6SeBwsJcEvL6GZ7fhitWDIyHjRsZ4s3lw2tJgPnzq00dBEHEp2C');
@@ -34,6 +36,12 @@ const PatientPaymentPage = () => {
 
   const createPaymentIntent = async () => {
     if (!linkData) return null;
+    
+    // Check if the clinic has Stripe connected
+    if (linkData.clinic.stripeStatus !== 'connected') {
+      toast.error('This clinic does not have payment processing set up');
+      return null;
+    }
     
     try {
       setProcessingPayment(true);
@@ -77,6 +85,12 @@ const PatientPaymentPage = () => {
 
   const handlePaymentSubmit = async (formData: PaymentFormValues) => {
     if (!linkData) return;
+    
+    // Check if the clinic has Stripe connected before attempting payment
+    if (linkData.clinic.stripeStatus !== 'connected') {
+      toast.error('This clinic does not have payment processing set up');
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -153,6 +167,7 @@ const PatientPaymentPage = () => {
 
   const clinicData = linkData.clinic;
   const paymentType = linkData.title || 'Payment';
+  const isStripeConnected = clinicData.stripeStatus === 'connected';
 
   return (
     <PaymentLayout isSplitView={true} hideHeaderFooter={true}>
@@ -179,7 +194,15 @@ const PatientPaymentPage = () => {
             Complete Your Payment
           </h2>
           
-          {clientSecret && processingPayment ? (
+          {!isStripeConnected ? (
+            <Alert variant="destructive" className="mb-6">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Payment Unavailable</AlertTitle>
+              <AlertDescription>
+                This clinic has not set up payment processing. Please contact the clinic directly to arrange payment.
+              </AlertDescription>
+            </Alert>
+          ) : clientSecret && processingPayment ? (
             <div className="flex items-center justify-center h-32">
               <LoadingSpinner size="md" />
               <p className="ml-3 text-gray-600">Processing payment...</p>

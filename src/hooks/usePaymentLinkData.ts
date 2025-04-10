@@ -15,6 +15,7 @@ export interface PaymentLinkData {
     email?: string;
     phone?: string;
     address?: string;
+    stripeStatus?: string;
   };
   isRequest?: boolean;
   customAmount?: number;
@@ -60,7 +61,8 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
               address_line_1, 
               address_line_2, 
               city, 
-              postcode
+              postcode,
+              stripe_status
             )
           `)
           .eq('id', linkId)
@@ -117,7 +119,8 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
               logo: requestData.clinics.logo_url || undefined,
               email: requestData.clinics.email || undefined,
               phone: requestData.clinics.phone || undefined,
-              address: address || undefined
+              address: address || undefined,
+              stripeStatus: requestData.clinics.stripe_status || undefined
             }
           });
           
@@ -144,7 +147,8 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
               address_line_1, 
               address_line_2, 
               city, 
-              postcode
+              postcode,
+              stripe_status
             )
           `)
           .eq('id', linkId)
@@ -181,7 +185,8 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
             logo: linkData.clinics.logo_url || undefined,
             email: linkData.clinics.email || undefined,
             phone: linkData.clinics.phone || undefined,
-            address: address || undefined
+            address: address || undefined,
+            stripeStatus: linkData.clinics.stripe_status || undefined
           }
         });
       } catch (error: any) {
