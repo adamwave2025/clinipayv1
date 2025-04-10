@@ -208,7 +208,7 @@ export type Database = {
           paid_at: string | null
           patient_email: string | null
           patient_name: string | null
-          patient_phone: number | null
+          patient_phone: string | null
           payment_link_id: string | null
           reference: string | null
           status: string | null
@@ -221,7 +221,7 @@ export type Database = {
           paid_at?: string | null
           patient_email?: string | null
           patient_name?: string | null
-          patient_phone?: number | null
+          patient_phone?: string | null
           payment_link_id?: string | null
           reference?: string | null
           status?: string | null
@@ -234,7 +234,7 @@ export type Database = {
           paid_at?: string | null
           patient_email?: string | null
           patient_name?: string | null
-          patient_phone?: number | null
+          patient_phone?: string | null
           payment_link_id?: string | null
           reference?: string | null
           status?: string | null

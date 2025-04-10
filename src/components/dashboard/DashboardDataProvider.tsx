@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Payment, PaymentLink, PaymentStats } from '@/types/payment';
 import { toast } from 'sonner';
@@ -76,7 +77,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
           id: payment.id,
           patientName: payment.patient_name || 'Unknown Patient',
           patientEmail: payment.patient_email,
-          patientPhone: payment.patient_phone ? String(payment.patient_phone) : undefined,
+          patientPhone: payment.patient_phone || undefined,
           amount: payment.amount_paid || 0,
           date: new Date(payment.paid_at || Date.now()).toLocaleDateString(),
           status: payment.status as any || 'paid',

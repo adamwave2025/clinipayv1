@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PaymentForm from '@/components/payment/PaymentForm';
@@ -22,8 +23,8 @@ const PatientPaymentPage = () => {
     setIsSubmitting(true);
     
     try {
-      // Convert phone to number if provided (but keep as null if not)
-      const phoneNumber = formData.phone ? parseInt(formData.phone.replace(/\D/g, ''), 10) : null;
+      // Store phone number as text to preserve leading zeros
+      const phoneNumber = formData.phone ? formData.phone.replace(/\D/g, '') : null;
       
       // Create a payment record
       const { data, error } = await supabase
