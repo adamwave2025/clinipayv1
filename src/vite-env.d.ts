@@ -9,3 +9,11 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// Extend the Window interface to include our global ENV object
+interface Window {
+  ENV: {
+    PUBLISHABLE_KEY: string;
+    SUPABASE_URL: string;
+  };
+}

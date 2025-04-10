@@ -18,8 +18,8 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
     console.log('usePaymentProcess initialized', {
       stripeAvailable: !!stripe,
       elementsAvailable: !!elements,
-      supabaseURLAvailable: !!import.meta.env.SUPABASE_URL,
-      publishableKeyAvailable: !!import.meta.env.PUBLISHABLE_KEY
+      supabaseURLAvailable: !!window.ENV.SUPABASE_URL,
+      publishableKeyAvailable: !!window.ENV.PUBLISHABLE_KEY
     });
   }, [stripe, elements]);
 
@@ -42,8 +42,8 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         requestId: linkData.isRequest ? linkData.id : null,
       });
       
-      // Use the full URL for the edge function
-      const functionUrl = `${import.meta.env.SUPABASE_URL}/functions/v1/create-payment-intent`;
+      // Use the full URL for the edge function from window.ENV
+      const functionUrl = `${window.ENV.SUPABASE_URL}/functions/v1/create-payment-intent`;
       console.log('Calling edge function at:', functionUrl);
       
       const response = await fetch(functionUrl, {
