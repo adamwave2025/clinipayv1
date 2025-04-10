@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form } from '@/components/ui/form';
 import { paymentFormSchema, PaymentFormValues } from './form/FormSchema';
 import PersonalInfoSection from './form/PersonalInfoSection';
-import SimplePaymentDetailsSection from './form/SimplePaymentDetailsSection';
+import PaymentDetailsSection from './form/PaymentDetailsSection';
 import SubmitButton from './form/SubmitButton';
 import { Lock } from 'lucide-react';
 
@@ -22,9 +22,7 @@ const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) =
       name: defaultValues?.name || '',
       email: defaultValues?.email || '',
       phone: defaultValues?.phone || '',
-      cardNumber: '',
-      cardExpiry: '',
-      cardCvc: '',
+      stripeCard: undefined,
     }
   });
 
@@ -40,7 +38,7 @@ const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) =
           isLoading={isLoading} 
         />
         
-        <SimplePaymentDetailsSection
+        <PaymentDetailsSection
           control={form.control}
           isLoading={isLoading}
         />

@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { usePaymentProcess } from '@/hooks/usePaymentProcess';
+import StripeProvider from '@/components/payment/StripeProvider';
 
 const PatientPaymentPage = () => {
   const navigate = useNavigate();
@@ -77,17 +78,19 @@ const PatientPaymentPage = () => {
       </div>
       
       {/* Right Column - Payment Form */}
-      <PaymentFormContainer 
-        linkId={linkId}
-        linkData={linkData}
-        isStripeConnected={isStripeConnected}
-        defaultValues={defaultValues}
-      />
+      <StripeProvider>
+        <PaymentFormContainer 
+          linkId={linkId}
+          linkData={linkData}
+          isStripeConnected={isStripeConnected}
+          defaultValues={defaultValues}
+        />
+      </StripeProvider>
     </PaymentLayout>
   );
 };
 
-// Extract inner content to use a simplified payment process
+// Extract inner content to use Stripe payment process
 const PaymentFormContainer = ({ 
   linkId, 
   linkData, 
