@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -12,6 +12,15 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
   const [processingPayment, setProcessingPayment] = useState(false);
   const stripe = useStripe();
   const elements = useElements();
+
+  // On mount, log Stripe availability
+  useEffect(() => {
+    console.log('usePaymentProcess initialized', {
+      stripeAvailable: !!stripe,
+      elementsAvailable: !!elements,
+      supabaseURLAvailable: !!import.meta.env.VITE_SUPABASE_URL
+    });
+  }, [stripe, elements]);
 
   const createPaymentIntent = async () => {
     if (!linkData) return null;

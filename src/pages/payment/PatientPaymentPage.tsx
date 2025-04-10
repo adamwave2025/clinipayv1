@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentPageClinicCard from '@/components/payment/PaymentPageClinicCard';
@@ -8,21 +8,45 @@ import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
 import { usePaymentProcess } from '@/hooks/usePaymentProcess';
 import PaymentPageLoading from '@/components/payment/PaymentPageLoading';
 import PaymentFormSection from '@/components/payment/PaymentFormSection';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 const PatientPaymentPage = () => {
   const navigate = useNavigate();
   const { linkId } = useParams<{ linkId: string }>();
   const { linkData, isLoading, error } = usePaymentLinkData(linkId);
+  const [initError, setInitError] = useState<string | null>(null);
+
+  // Check for environment configuration
+  useEffect(() => {
+    if (!import.meta.env.VITE_PUBLISHABLE_KEY) {
+      console.error("Missing VITE_PUBLISHABLE_KEY environment variable");
+      setInitError("Payment system configuration error. Please contact support.");
+    }
+  }, []);
 
   // Redirect if link not found
   useEffect(() => {
     if (!isLoading && (error || !linkData)) {
+      console.error("Payment link error:", error);
       navigate('/payment/failed');
     }
   }, [isLoading, error, linkData, navigate]);
 
   if (isLoading) {
     return <PaymentPageLoading />;
+  }
+
+  if (initError) {
+    return (
+      <PaymentLayout hideHeaderFooter={true}>
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>System Error</AlertTitle>
+          <AlertDescription>{initError}</AlertDescription>
+        </Alert>
+      </PaymentLayout>
+    );
   }
 
   // At this point, linkData should be available if it exists
