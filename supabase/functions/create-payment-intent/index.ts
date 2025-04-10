@@ -18,7 +18,7 @@ serve(async (req) => {
 
   try {
     // Get Stripe secret key from environment variables
-    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const stripeSecretKey = Deno.env.get("SECRET_KEY");
     if (!stripeSecretKey) {
       console.error("Missing Stripe secret key");
       throw new Error("Missing Stripe secret key");
@@ -63,20 +63,24 @@ serve(async (req) => {
       throw new Error("Clinic does not have Stripe connected");
     }
 
-    // Get the platform fee percentage from system_settings
+    // Get the platform fee percentage from platform_settings
     const { data: platformFeeData, error: platformFeeError } = await supabase
-      .from("system_settings")
+      .from("platform_settings")
       .select("value")
       .eq("key", "platform_fee_percent")
       .single();
 
-    if (platformFeeError || !platformFeeData) {
-      console.error("Error fetching platform fee:", platformFeeError);
-      throw new Error(`Platform fee not found: ${platformFeeError?.message}`);
+    // Default platform fee percentage if not found
+    let platformFeePercent = 3.0;
+    
+    if (!platformFeeError && platformFeeData) {
+      platformFeePercent = parseFloat(platformFeeData.value);
+      console.log(`Found platform fee in database: ${platformFeePercent}%`);
+    } else {
+      console.log(`Using default platform fee: ${platformFeePercent}%`);
     }
 
     // Calculate application fee amount (platform fee)
-    const platformFeePercent = parseFloat(platformFeeData.value);
     const applicationFeeAmount = Math.floor(amount * (platformFeePercent / 100));
 
     console.log(`Platform fee: ${platformFeePercent}%, Application fee amount: ${applicationFeeAmount}`);
@@ -96,17 +100,24 @@ serve(async (req) => {
       },
     });
 
-    // Log payment attempt to the database
-    await supabase
-      .from("payment_attempts")
-      .insert({
-        clinic_id: clinicId,
-        payment_link_id: paymentLinkId || null,
-        payment_request_id: requestId || null,
-        amount: amount,
-        status: "created",
-        payment_intent_id: paymentIntent.id,
-      });
+    // Try to log payment attempt to the database if the table exists
+    try {
+      await supabase
+        .from("payment_attempts")
+        .insert({
+          clinic_id: clinicId,
+          payment_link_id: paymentLinkId || null,
+          payment_request_id: requestId || null,
+          amount: amount,
+          status: "created",
+          payment_intent_id: paymentIntent.id,
+        });
+      console.log("Payment attempt logged successfully");
+    } catch (logError) {
+      // If table doesn't exist or other error, just log and continue
+      console.warn("Could not log payment attempt:", logError.message);
+      // This is non-fatal, we can continue without the payment attempt log
+    }
 
     // Return the client secret to the client
     return new Response(

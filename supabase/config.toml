@@ -15,3 +15,6 @@ verify_jwt = true
 
 [functions.stripe-webhooks]
 verify_jwt = false
+
+[functions.create-payment-intent]
+verify_jwt = false
