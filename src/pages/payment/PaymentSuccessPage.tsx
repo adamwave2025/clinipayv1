@@ -61,10 +61,10 @@ const PaymentSuccessPage = () => {
       <ClinicInformationCard 
         clinicDetails={{
           name: linkData.clinic.name,
-          logo: linkData.clinic.logo,
-          email: linkData.clinic.email,
-          phone: linkData.clinic.phone,
-          address: linkData.clinic.address
+          email: linkData.clinic.email || '',
+          phone: linkData.clinic.phone || '',
+          address: linkData.clinic.address || '',
+          logo: linkData.clinic.logo // This is now optional in the interface
         }} 
       />
     </PaymentLayout>

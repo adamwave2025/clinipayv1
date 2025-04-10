@@ -4,6 +4,7 @@ import { Building, Mail, Phone, MapPin } from 'lucide-react';
 
 interface ClinicDetails {
   name: string;
+  logo?: string; // Add logo as optional property
   email: string;
   phone: string;
   address: string;
