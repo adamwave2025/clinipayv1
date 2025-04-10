@@ -15,7 +15,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -39,12 +38,21 @@ const AdminSettingsPage = () => {
   const fetchPlatformFee = async () => {
     try {
       const { data, error } = await supabase
-        .from('system_settings')
+        .from('platform_settings')
         .select('*')
         .eq('key', 'platform_fee_percent')
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching platform fee:', error);
+        // If no record exists, we'll create it with a default value
+        if (error.code === 'PGRST116') {
+          console.log('Platform fee setting not found, using default value');
+          return; // Keep using the default value set in state
+        }
+        throw error;
+      }
+      
       if (data) {
         setPlatformFee(data.value);
       }
@@ -75,12 +83,33 @@ const AdminSettingsPage = () => {
 
   const handleSaveFee = async () => {
     try {
-      const { error } = await supabase
-        .from('system_settings')
-        .update({ value: platformFee })
-        .eq('key', 'platform_fee_percent');
+      // Check if record exists
+      const { data: existingData, error: checkError } = await supabase
+        .from('platform_settings')
+        .select('id')
+        .eq('key', 'platform_fee_percent')
+        .single();
       
-      if (error) throw error;
+      let result;
+      
+      if (checkError && checkError.code === 'PGRST116') {
+        // Record doesn't exist, create it
+        result = await supabase
+          .from('platform_settings')
+          .insert({ 
+            key: 'platform_fee_percent', 
+            value: platformFee,
+            description: 'Platform fee percentage charged on all transactions'
+          });
+      } else {
+        // Record exists, update it
+        result = await supabase
+          .from('platform_settings')
+          .update({ value: platformFee })
+          .eq('key', 'platform_fee_percent');
+      }
+      
+      if (result.error) throw result.error;
       
       toast.success(`Platform fee updated to ${platformFee}%`);
     } catch (error) {
