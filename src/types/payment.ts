@@ -8,6 +8,7 @@ export interface Payment {
   date: string;
   status: 'paid' | 'refunded' | 'sent';
   type: 'deposit' | 'treatment' | 'consultation' | 'other';
+  paymentUrl?: string; // URL for testing payment links
 }
 
 export interface PaymentLink {

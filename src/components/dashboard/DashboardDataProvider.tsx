@@ -109,6 +109,9 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
             }
           }
 
+          // Create payment URL for testing
+          const paymentUrl = `${window.location.origin}/payment/${request.id}`;
+
           return {
             id: request.id,
             patientName: request.patient_name || 'Unknown Patient',
@@ -118,6 +121,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
             date: new Date(request.sent_at || Date.now()).toLocaleDateString(),
             status: 'sent',
             type: 'consultation', // Default type
+            paymentUrl: paymentUrl, // Add payment URL for testing
           };
         });
 
