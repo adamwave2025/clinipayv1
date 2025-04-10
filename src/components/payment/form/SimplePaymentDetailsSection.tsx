@@ -12,36 +12,95 @@ interface SimplePaymentDetailsSectionProps {
 
 const SimplePaymentDetailsSection = ({ control, isLoading }: SimplePaymentDetailsSectionProps) => {
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium">Payment Details</h3>
+    <div className="space-y-4 mt-6">
+      <h2 className="text-lg font-medium">Payment Details</h2>
       
       <div className="border rounded-md p-4">
-        <p className="text-sm text-gray-500 mb-4">
-          This component has been replaced with the Stripe Card Element for PCI compliance.
-          Please use the StripeCardElement component instead.
-        </p>
-        
         <FormField
           control={control}
-          name="stripeCard"
+          name="cardNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Card Information</FormLabel>
+              <FormLabel>Card Number</FormLabel>
               <FormControl>
                 <Input
-                  disabled={true}
-                  placeholder="This field is for demo purposes only"
-                  className="font-mono bg-gray-100"
+                  {...field}
+                  disabled={isLoading}
+                  placeholder="1234 5678 9012 3456"
+                  maxLength={19}
+                  className="font-mono"
+                  onChange={(e) => {
+                    // Format the card number with spaces after every 4 digits
+                    const value = e.target.value.replace(/\s/g, '').replace(/\D/g, '');
+                    const formattedValue = value.replace(/(.{4})/g, '$1 ').trim();
+                    field.onChange(formattedValue);
+                  }}
                 />
               </FormControl>
               <FormMessage />
-              <p className="text-xs text-amber-600 mt-1">
-                For real card processing, use the Stripe Card Element
-              </p>
             </FormItem>
           )}
         />
+        
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <FormField
+            control={control}
+            name="cardExpiry"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Expiry Date</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    disabled={isLoading}
+                    placeholder="MM/YY"
+                    maxLength={5}
+                    className="font-mono"
+                    onChange={(e) => {
+                      // Format the expiry date as MM/YY
+                      const value = e.target.value.replace(/\D/g, '');
+                      if (value.length <= 2) {
+                        field.onChange(value);
+                      } else {
+                        field.onChange(`${value.slice(0, 2)}/${value.slice(2, 4)}`);
+                      }
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={control}
+            name="cardCvc"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>CVC</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    disabled={isLoading}
+                    placeholder="123"
+                    maxLength={4}
+                    className="font-mono"
+                    onChange={(e) => {
+                      // Allow only numbers for CVC
+                      const value = e.target.value.replace(/\D/g, '');
+                      field.onChange(value);
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
       </div>
+      <p className="text-xs text-gray-500">
+        Your card details are secured with 256-bit encryption.
+      </p>
     </div>
   );
 };
