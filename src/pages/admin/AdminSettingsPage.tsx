@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,53 +20,73 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 
 const AdminSettingsPage = () => {
   const [platformFee, setPlatformFee] = useState('3.0');
   const [searchQuery, setSearchQuery] = useState('');
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [selectedClinic, setSelectedClinic] = useState<string | null>(null);
+  const [clinics, setClinics] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const clinics = [
-    {
-      id: '1',
-      name: 'Greenfield Medical Clinic',
-      email: 'contact@greenfieldclinic.com',
-      stripeStatus: 'connected',
-    },
-    {
-      id: '2',
-      name: 'City Dental Practice',
-      email: 'info@citydental.com',
-      stripeStatus: 'connected',
-    },
-    {
-      id: '3',
-      name: 'Metro Physiotherapy',
-      email: 'admin@metrophysio.com',
-      stripeStatus: 'pending',
-    },
-    {
-      id: '4',
-      name: 'Wellness Hub',
-      email: 'info@wellnesshub.com',
-      stripeStatus: 'connected',
-    },
-    {
-      id: '5',
-      name: 'Riverdale Hospital',
-      email: 'contact@riverdalehospital.com',
-      stripeStatus: 'not_connected',
-    },
-  ];
+  // Fetch platform fee and clinics on component mount
+  useEffect(() => {
+    fetchPlatformFee();
+    fetchClinics();
+  }, []);
 
-  const filteredClinics = clinics.filter(clinic => 
-    clinic.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    clinic.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const fetchPlatformFee = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'platform_fee_percent')
+        .single();
+      
+      if (error) throw error;
+      if (data) {
+        setPlatformFee(data.value);
+      }
+    } catch (error) {
+      console.error('Error fetching platform fee:', error);
+      toast.error('Failed to load platform fee setting');
+    }
+  };
 
-  const handleSaveFee = () => {
-    toast.success(`Platform fee updated to ${platformFee}%`);
+  const fetchClinics = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select('id, clinic_name, email, stripe_account_id, stripe_status');
+      
+      if (error) throw error;
+      if (data) {
+        setClinics(data);
+      }
+    } catch (error) {
+      console.error('Error fetching clinics:', error);
+      toast.error('Failed to load clinics');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveFee = async () => {
+    try {
+      const { error } = await supabase
+        .from('platform_settings')
+        .update({ value: platformFee })
+        .eq('key', 'platform_fee_percent');
+      
+      if (error) throw error;
+      
+      toast.success(`Platform fee updated to ${platformFee}%`);
+    } catch (error) {
+      console.error('Error updating platform fee:', error);
+      toast.error('Failed to update platform fee');
+    }
   };
 
   const handleDisconnectStripe = (clinicId: string) => {
@@ -74,10 +94,40 @@ const AdminSettingsPage = () => {
     setIsConfirmDialogOpen(true);
   };
 
-  const confirmDisconnect = () => {
-    toast.success(`Stripe disconnected for clinic ${selectedClinic}`);
-    setIsConfirmDialogOpen(false);
+  const confirmDisconnect = async () => {
+    if (!selectedClinic) return;
+    
+    try {
+      const { error } = await supabase
+        .from('clinics')
+        .update({
+          stripe_account_id: null,
+          stripe_status: null
+        })
+        .eq('id', selectedClinic);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setClinics(clinics.map(clinic => 
+        clinic.id === selectedClinic 
+          ? { ...clinic, stripe_account_id: null, stripe_status: null } 
+          : clinic
+      ));
+      
+      toast.success(`Stripe disconnected for clinic ${selectedClinic}`);
+    } catch (error) {
+      console.error('Error disconnecting Stripe:', error);
+      toast.error('Failed to disconnect Stripe');
+    } finally {
+      setIsConfirmDialogOpen(false);
+    }
   };
+
+  const filteredClinics = clinics.filter(clinic => 
+    clinic.clinic_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    clinic.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const getStripeStatusBadge = (status: string) => {
     switch (status) {
@@ -88,7 +138,7 @@ const AdminSettingsPage = () => {
       case 'not_connected':
         return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Not Connected</Badge>;
       default:
-        return null;
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Not Connected</Badge>;
     }
   };
 
@@ -160,7 +210,13 @@ const AdminSettingsPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredClinics.length === 0 ? (
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="py-6 text-center text-gray-500">
+                        Loading clinics...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredClinics.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={3} className="py-6 text-center text-gray-500">
                         No clinics found
@@ -173,20 +229,20 @@ const AdminSettingsPage = () => {
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
                               <AvatarFallback className="bg-gradient-primary text-white text-xs">
-                                {clinic.name.charAt(0)}
+                                {clinic.clinic_name?.charAt(0) || 'C'}
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-medium">{clinic.name}</p>
-                              <p className="text-xs text-gray-500">{clinic.email}</p>
+                              <p className="font-medium">{clinic.clinic_name || 'Unnamed Clinic'}</p>
+                              <p className="text-xs text-gray-500">{clinic.email || 'No email'}</p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          {getStripeStatusBadge(clinic.stripeStatus)}
+                          {getStripeStatusBadge(clinic.stripe_status)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {clinic.stripeStatus === 'connected' && (
+                          {clinic.stripe_status === 'connected' && (
                             <Button 
                               variant="outline" 
                               size="sm" 

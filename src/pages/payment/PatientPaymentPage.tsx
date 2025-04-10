@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import PaymentForm from '@/components/payment/PaymentForm';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
@@ -10,15 +12,57 @@ import { Card, CardContent } from '@/components/ui/card';
 import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { toast } from 'sonner';
+
+// Initialize Stripe with your publishable key
+const stripePromise = loadStripe('pk_test_REPLACE_WITH_YOUR_STRIPE_PUBLISHABLE_KEY');
 
 const PatientPaymentPage = () => {
   const navigate = useNavigate();
   const { linkId } = useParams<{ linkId: string }>();
   const { linkData, isLoading, error } = usePaymentLinkData(linkId);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+
+  // Create PaymentIntent when the page loads
+  useEffect(() => {
+    if (linkData) {
+      createPaymentIntent();
+    }
+  }, [linkData]);
+
+  const createPaymentIntent = async () => {
+    if (!linkData) return;
+
+    try {
+      const response = await fetch(`${window.location.origin}/functions/v1/create-payment-intent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: linkData.amount * 100, // Convert to pence
+          clinicId: linkData.clinic.id,
+          paymentLinkId: linkData.isRequest ? null : linkData.id,
+          requestId: linkData.isRequest ? linkData.id : null,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create payment intent');
+      }
+
+      const data = await response.json();
+      setClientSecret(data.clientSecret);
+    } catch (error) {
+      console.error('Error creating payment intent:', error);
+      toast.error('Failed to set up payment: ' + error.message);
+    }
+  };
 
   const handlePaymentSubmit = async (formData: PaymentFormValues) => {
-    if (!linkData) return;
+    if (!linkData || !clientSecret) return;
     
     setIsSubmitting(true);
     
@@ -79,7 +123,7 @@ const PatientPaymentPage = () => {
     phone: linkData.patientPhone || '',
   } : undefined;
 
-  if (isLoading) {
+  if (isLoading || !clientSecret) {
     return (
       <PaymentLayout isSplitView={false} hideHeaderFooter={false}>
         <div className="flex items-center justify-center h-40">
@@ -123,11 +167,13 @@ const PatientPaymentPage = () => {
             Complete Your Payment
           </h2>
           
-          <PaymentForm 
-            onSubmit={handlePaymentSubmit}
-            isLoading={isSubmitting}
-            defaultValues={defaultValues}
-          />
+          <Elements stripe={stripePromise} options={{ clientSecret }}>
+            <PaymentForm 
+              onSubmit={handlePaymentSubmit}
+              isLoading={isSubmitting}
+              defaultValues={defaultValues}
+            />
+          </Elements>
         </CardContent>
       </Card>
     </PaymentLayout>

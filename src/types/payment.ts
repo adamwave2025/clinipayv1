@@ -39,3 +39,15 @@ export interface PaymentRequest {
   date: string;
   paymentUrl: string;
 }
+
+export interface PaymentAttempt {
+  id: string;
+  clinicId: string;
+  paymentLinkId?: string;
+  paymentRequestId?: string;
+  amount: number;
+  status: 'created' | 'succeeded' | 'failed';
+  paymentIntentId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
