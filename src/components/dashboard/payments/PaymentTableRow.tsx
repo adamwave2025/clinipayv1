@@ -17,6 +17,9 @@ const PaymentTableRow = ({ payment, onClick }: PaymentTableRowProps) => {
     >
       <td className="py-4 pl-2 pr-3">
         <div className="font-medium text-gray-900">{payment.patientName}</div>
+        {payment.patientEmail && (
+          <div className="text-xs text-gray-500">{payment.patientEmail}</div>
+        )}
       </td>
       <td className="py-4 px-3 font-medium">
         {formatCurrency(payment.amount)}

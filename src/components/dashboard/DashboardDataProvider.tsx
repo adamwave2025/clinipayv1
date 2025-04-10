@@ -51,7 +51,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchPayments = async () => {
+    const fetchData = async () => {
       if (!user) return;
 
       setIsLoadingPayments(true);
@@ -65,15 +65,27 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
         if (userError) throw userError;
         if (!userData.clinic_id) return;
 
-        const { data, error } = await supabase
+        // Fetch completed payments
+        const { data: paymentsData, error: paymentsError } = await supabase
           .from('payments')
           .select('*')
           .eq('clinic_id', userData.clinic_id)
           .order('paid_at', { ascending: false });
 
-        if (error) throw error;
+        if (paymentsError) throw paymentsError;
 
-        const formattedPayments: Payment[] = data.map(payment => ({
+        // Fetch sent payment requests
+        const { data: requestsData, error: requestsError } = await supabase
+          .from('payment_requests')
+          .select('*')
+          .eq('clinic_id', userData.clinic_id)
+          .is('paid_at', null) // Only get unpaid/sent requests
+          .order('sent_at', { ascending: false });
+
+        if (requestsError) throw requestsError;
+
+        // Format completed payments
+        const formattedPayments: Payment[] = paymentsData.map(payment => ({
           id: payment.id,
           patientName: payment.patient_name || 'Unknown Patient',
           patientEmail: payment.patient_email,
@@ -84,17 +96,48 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
           type: 'consultation', // Default type
         }));
 
-        setPayments(formattedPayments);
+        // Format payment requests as "sent" payments
+        const formattedRequests: Payment[] = requestsData.map(request => {
+          // Determine amount - either from custom amount or linked payment link
+          let amount = 0;
+          if (request.custom_amount) {
+            amount = request.custom_amount;
+          } else if (request.payment_link_id) {
+            const paymentLink = paymentLinks.find(link => link.id === request.payment_link_id);
+            if (paymentLink) {
+              amount = paymentLink.amount;
+            }
+          }
 
+          return {
+            id: request.id,
+            patientName: request.patient_name || 'Unknown Patient',
+            patientEmail: request.patient_email,
+            patientPhone: request.patient_phone || undefined,
+            amount: amount,
+            date: new Date(request.sent_at || Date.now()).toLocaleDateString(),
+            status: 'sent',
+            type: 'consultation', // Default type
+          };
+        });
+
+        // Combine both lists
+        const allPayments = [...formattedPayments, ...formattedRequests];
+        // Sort by date (newest first)
+        allPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        setPayments(allPayments);
+
+        // Calculate stats (using only completed payments, not requests)
         const today = new Date().toDateString();
         const thisMonth = new Date().getMonth();
         const thisYear = new Date().getFullYear();
 
-        const todayPayments = data.filter(p => 
+        const todayPayments = paymentsData.filter(p => 
           p.paid_at && new Date(p.paid_at).toDateString() === today
         );
         
-        const monthPayments = data.filter(p => 
+        const monthPayments = paymentsData.filter(p => 
           p.paid_at && 
           new Date(p.paid_at).getMonth() === thisMonth && 
           new Date(p.paid_at).getFullYear() === thisYear
@@ -117,14 +160,14 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
           .reduce((sum, p) => sum + (p.amount_paid || 0), 0);
 
       } catch (error) {
-        console.error('Error fetching payments:', error);
+        console.error('Error fetching payments data:', error);
       } finally {
         setIsLoadingPayments(false);
       }
     };
 
-    fetchPayments();
-  }, [user]);
+    fetchData();
+  }, [user, paymentLinks]);
 
   const openRefundDialog = (paymentId: string) => {
     setPaymentToRefund(paymentId);

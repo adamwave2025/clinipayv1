@@ -24,18 +24,15 @@ import {
   DialogTitle,
   DialogFooter
 } from '@/components/ui/dialog';
-
-interface PaymentLink {
-  id: string;
-  title: string;
-  amount: number;
-  type: string;
-  url: string;
-}
+import { usePaymentLinks } from '@/hooks/usePaymentLinks';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const SendLinkPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const { paymentLinks, isLoading: isLoadingLinks } = usePaymentLinks();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     patientName: '',
     patientEmail: '',
@@ -44,13 +41,6 @@ const SendLinkPage = () => {
     customAmount: '',
     message: '',
   });
-
-  // Mock data for existing payment links
-  const paymentLinks: PaymentLink[] = [
-    { id: '1', title: 'Consultation Deposit', amount: 50, type: 'deposit', url: 'https://clinipay.com/pay/abc123' },
-    { id: '2', title: 'Full Treatment', amount: 200, type: 'treatment', url: 'https://clinipay.com/pay/def456' },
-    { id: '3', title: 'Follow-up Session', amount: 75, type: 'consultation', url: 'https://clinipay.com/pay/ghi789' },
-  ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -102,13 +92,52 @@ const SendLinkPage = () => {
     setShowConfirmation(true);
   };
 
-  const sendPaymentLink = () => {
+  const sendPaymentLink = async () => {
     setIsLoading(true);
     
-    // Mock sending email
-    setTimeout(() => {
-      setIsLoading(false);
-      setShowConfirmation(false);
+    try {
+      // Find user's clinic ID
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('clinic_id')
+        .eq('id', user?.id)
+        .single();
+
+      if (userError) throw userError;
+      if (!userData.clinic_id) {
+        throw new Error('No clinic associated with this user');
+      }
+
+      // Get payment link details if selected
+      let amount = 0;
+      let paymentLinkId = null;
+
+      if (formData.selectedLink) {
+        const selectedPaymentLink = paymentLinks.find(link => link.id === formData.selectedLink);
+        if (selectedPaymentLink) {
+          amount = selectedPaymentLink.amount;
+          paymentLinkId = selectedPaymentLink.id;
+        }
+      } else if (formData.customAmount) {
+        amount = Number(formData.customAmount);
+      }
+
+      // Create payment request record
+      const { data, error } = await supabase
+        .from('payment_requests')
+        .insert({
+          clinic_id: userData.clinic_id,
+          payment_link_id: paymentLinkId,
+          custom_amount: formData.selectedLink ? null : amount,
+          patient_name: formData.patientName,
+          patient_email: formData.patientEmail,
+          patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,
+          status: 'sent',
+          message: formData.message || null
+        })
+        .select();
+
+      if (error) throw error;
       
       toast.success('Payment link sent successfully');
       
@@ -121,7 +150,13 @@ const SendLinkPage = () => {
         customAmount: '',
         message: '',
       });
-    }, 1500);
+    } catch (error: any) {
+      console.error('Error sending payment link:', error);
+      toast.error('Failed to send payment link: ' + error.message);
+    } finally {
+      setIsLoading(false);
+      setShowConfirmation(false);
+    }
   };
 
   // Find the selected payment link for the preview
@@ -201,10 +236,10 @@ const SendLinkPage = () => {
                 <Select
                   value={formData.selectedLink}
                   onValueChange={handleSelectChange}
-                  disabled={isLoading}
+                  disabled={isLoading || isLoadingLinks}
                 >
                   <SelectTrigger id="selectedLink" className="input-focus">
-                    <SelectValue placeholder="Choose a payment link" />
+                    <SelectValue placeholder={isLoadingLinks ? "Loading..." : "Choose a payment link"} />
                   </SelectTrigger>
                   <SelectContent>
                     {paymentLinks.map(link => (
@@ -228,7 +263,7 @@ const SendLinkPage = () => {
                     placeholder="0.00"
                     value={formData.customAmount}
                     onChange={handleChange}
-                    disabled={isLoading}
+                    disabled={isLoading || !!formData.selectedLink}
                     className="w-full input-focus pl-8"
                   />
                 </div>
