@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -90,7 +91,7 @@ const HomePage = () => {
             Join clinics already using CliniPay to streamline their payment process and reduce no-shows.
           </p>
           <Button 
-            className="bg-white hover:bg-white btn-outline text-lg py-6 px-8 rounded-full" 
+            className="bg-white hover:bg-white btn-outline-gradient-text text-lg py-6 px-8 rounded-full" 
             asChild
           >
             <Link to="/sign-up" className="gradient-text">Get Started</Link>

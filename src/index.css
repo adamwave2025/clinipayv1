@@ -111,6 +111,17 @@
     background-clip: padding-box, border-box;
   }
   
+  /* New class specifically for CTA buttons with gradient text */
+  .btn-outline-gradient-text {
+    @apply relative border-2 border-transparent hover:shadow-md transition-all duration-300;
+    background-image: linear-gradient(white, white), linear-gradient(135deg, #ab53de 0%, #538fde 100%);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+  }
+  .btn-outline-gradient-text .gradient-text {
+    @apply text-transparent bg-clip-text bg-gradient-primary font-bold;
+  }
+  
   .card-shadow {
     @apply shadow-[0_4px_20px_rgba(0,0,0,0.08)];
   }
