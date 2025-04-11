@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Percent } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { InfoIcon } from 'lucide-react';
 
 interface PlatformFeeSettingsProps {
   initialFee: string;
@@ -76,6 +78,16 @@ const PlatformFeeSettings = ({ initialFee, onSave }: PlatformFeeSettingsProps) =
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <Alert className="mb-6 bg-blue-50 border-blue-200">
+          <InfoIcon className="h-4 w-4 text-blue-500" />
+          <AlertDescription className="text-sm text-blue-700">
+            The platform fee is taken from the payment amount, and Stripe's processing fees 
+            (1.4% + 20p for European cards, 2.9% + 20p for non-European cards) are taken from 
+            our platform fee, not from the clinic's payment. This ensures clinics receive exactly 
+            the payment amount minus our platform fee.
+          </AlertDescription>
+        </Alert>
+        
         <div className="flex items-end gap-4 max-w-md">
           <div className="flex-1">
             <Label htmlFor="platform-fee">Fee Percentage</Label>

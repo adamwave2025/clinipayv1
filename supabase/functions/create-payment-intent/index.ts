@@ -92,17 +92,18 @@ serve(async (req) => {
       console.log(`Using default platform fee: ${platformFeePercent}%`);
     }
 
-    // Calculate application fee amount (platform fee)
-    const applicationFeeAmount = Math.floor(amount * (platformFeePercent / 100));
+    // Calculate platform fee amount
+    const platformFeeAmount = Math.floor(amount * (platformFeePercent / 100));
+    
+    console.log(`Platform fee: ${platformFeePercent}%, Platform fee amount: ${platformFeeAmount}`);
 
-    console.log(`Platform fee: ${platformFeePercent}%, Application fee amount: ${applicationFeeAmount}`);
-
-    // Create a payment intent with Stripe
+    // Create a payment intent using Stripe Connect Direct Charges
+    // This ensures that Stripe's processing fees come out of our platform fee, not the clinic's portion
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amount,
       currency: "gbp",
       payment_method_types: ["card"],
-      application_fee_amount: applicationFeeAmount,
+      application_fee_amount: platformFeeAmount,
       transfer_data: {
         destination: clinicData.stripe_account_id,
       },
@@ -110,10 +111,28 @@ serve(async (req) => {
         clinicId: clinicId,
         paymentLinkId: paymentLinkId || '',
         requestId: requestId || '',
+        platformFeePercent: platformFeePercent.toString()
       },
     });
 
     console.log("Payment intent created:", paymentIntent.id);
+
+    // Track the payment attempt in the database
+    const { error: attemptError } = await supabase
+      .from('payment_attempts')
+      .insert({
+        clinic_id: clinicId,
+        payment_link_id: paymentLinkId || null,
+        payment_request_id: requestId || null,
+        amount: amount,
+        status: 'created',
+        payment_intent_id: paymentIntent.id
+      });
+      
+    if (attemptError) {
+      console.error("Error recording payment attempt:", attemptError);
+      // Continue processing even if tracking fails - this is not critical
+    }
 
     // Return the client secret to the frontend
     return new Response(
