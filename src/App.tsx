@@ -16,6 +16,8 @@ import PrivacyPage from "./pages/PrivacyPage";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound";
 
 // Clinic Dashboard Pages
@@ -64,6 +66,8 @@ const App = () => (
             <Route path="/sign-in" element={<SignInPage />} />
             <Route path="/sign-up" element={<SignUpPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             
             {/* Payment Routes (Public) */}
