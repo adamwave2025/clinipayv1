@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { supabase } from '@/integrations/supabase/client';
@@ -81,6 +80,10 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       const associatedPaymentLinkId = paymentIntentData.paymentLinkId;
       console.log('Associated payment link ID:', associatedPaymentLinkId);
       
+      // Get the payment attempt ID if provided
+      const paymentAttemptId = paymentIntentData.attemptId;
+      console.log('Payment attempt ID:', paymentAttemptId);
+      
       // Now set processingPayment to true to show the overlay, but keep the form mounted
       setProcessingPayment(true);
       
@@ -101,6 +104,19 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       
       if (stripeError) {
         console.error('Stripe payment error:', stripeError);
+        
+        // Update payment attempt status if we have an attempt ID
+        if (paymentAttemptId) {
+          try {
+            await supabase
+              .from('payment_attempts')
+              .update({ status: 'failed' })
+              .eq('id', paymentAttemptId);
+          } catch (updateError) {
+            console.error('Failed to update payment attempt status:', updateError);
+          }
+        }
+        
         throw new Error(stripeError.message || 'Payment failed');
       }
       
@@ -129,13 +145,25 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       
       if (error) {
         console.error('Error creating payment record:', error);
-        throw error;
+        toast.error('Payment successful, but we could not create a payment record');
+      } else {
+        console.log('Payment record created successfully:', data);
+        
+        // Update payment attempt status if we have an attempt ID
+        if (paymentAttemptId) {
+          try {
+            await supabase
+              .from('payment_attempts')
+              .update({ status: 'succeeded' })
+              .eq('id', paymentAttemptId);
+          } catch (updateError) {
+            console.error('Failed to update payment attempt status:', updateError);
+          }
+        }
       }
-      
-      console.log('Payment record created successfully:', data);
 
       // If this was a payment request, update its status and paid_at
-      if (linkData.isRequest) {
+      if (linkData.isRequest && data && data.length > 0) {
         console.log('Updating payment request status to paid');
         const { error: requestUpdateError } = await supabase
           .from('payment_requests')
@@ -157,7 +185,7 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       toast.success('Payment successful!');
       
       // Navigate to success page with the link_id parameter
-      window.location.href = `/payment/success?link_id=${linkId}&payment_id=${data[0].id}`;
+      window.location.href = `/payment/success?link_id=${linkId}&payment_id=${data ? data[0].id : 'unknown'}`;
     } catch (error: any) {
       console.error('Payment error:', error);
       toast.error('Payment failed: ' + error.message);

@@ -170,6 +170,15 @@ serve(async (req) => {
       // Extract metadata from the payment intent
       const metadata = paymentIntent.metadata || {};
       const requestId = metadata.requestId;
+      const clinicId = metadata.clinicId;
+      const paymentLinkId = metadata.paymentLinkId;
+      const patientName = metadata.patientName;
+      const patientEmail = metadata.patientEmail;
+      const patientPhone = metadata.patientPhone;
+      const paymentReference = metadata.paymentReference;
+      const customAmount = metadata.customAmount ? parseInt(metadata.customAmount, 10) : null;
+      
+      console.log("Payment intent metadata:", metadata);
       
       if (requestId) {
         console.log(`Found request ID in metadata: ${requestId}`);
@@ -207,20 +216,29 @@ serve(async (req) => {
             // Create a payment record for this webhook event
             console.log(`Creating payment record for request ID: ${requestId}`);
             
-            const amount = requestData.custom_amount || 0; // We'll need the actual amount from the payment intent
+            // Determine the amount - use custom amount from request, or from payment intent metadata, or from payment intent amount
+            let amount = 0;
+            if (requestData.custom_amount) {
+              amount = requestData.custom_amount;
+            } else if (customAmount) {
+              amount = customAmount;
+            } else if (paymentIntent.amount) {
+              amount = paymentIntent.amount;
+            }
             
             const { data: paymentData, error: paymentInsertError } = await supabase
               .from("payments")
               .insert({
-                clinic_id: requestData.clinic_id,
-                payment_link_id: requestData.payment_link_id,
-                patient_name: requestData.patient_name,
-                patient_email: requestData.patient_email,
-                patient_phone: requestData.patient_phone,
+                clinic_id: requestData.clinic_id || clinicId,
+                payment_link_id: requestData.payment_link_id || paymentLinkId,
+                patient_name: requestData.patient_name || patientName,
+                patient_email: requestData.patient_email || patientEmail,
+                patient_phone: requestData.patient_phone || patientPhone,
                 amount_paid: amount / 100, // Convert from cents
                 status: "paid",
                 paid_at: new Date().toISOString(),
-                stripe_payment_id: paymentIntent.id
+                stripe_payment_id: paymentIntent.id,
+                payment_ref: paymentReference
               })
               .select();
               
@@ -256,6 +274,35 @@ serve(async (req) => {
         }
       } else {
         console.log(`No request ID found in payment intent metadata`);
+      }
+      
+      // Update any payment attempts associated with this payment intent
+      try {
+        const { data: attempts, error: attemptsError } = await supabase
+          .from("payment_attempts")
+          .select("id")
+          .eq("payment_intent_id", paymentIntent.id);
+          
+        if (attemptsError) {
+          console.error(`Error fetching payment attempts: ${attemptsError.message}`);
+        } else if (attempts && attempts.length > 0) {
+          console.log(`Found ${attempts.length} payment attempts to update`);
+          
+          const { error: updateError } = await supabase
+            .from("payment_attempts")
+            .update({ status: "succeeded" })
+            .eq("payment_intent_id", paymentIntent.id);
+            
+          if (updateError) {
+            console.error(`Error updating payment attempts: ${updateError.message}`);
+          } else {
+            console.log(`Successfully updated payment attempts for intent ${paymentIntent.id}`);
+          }
+        } else {
+          console.log(`No payment attempts found for intent ${paymentIntent.id}`);
+        }
+      } catch (error) {
+        console.error(`Error processing payment attempts: ${error.message}`);
       }
     } else {
       console.log(`Ignoring event type: ${event.type} (not handled)`);
