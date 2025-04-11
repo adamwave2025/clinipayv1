@@ -64,6 +64,9 @@ const LaunchPadCard = ({ stripeConnected, paymentLinksExist, hasSentPaymentLink 
 
   // Check if at least one task is completed
   const hasAnyTaskComplete = tasks.some(task => task.completed);
+  
+  // Check if ALL tasks are completed
+  const allTasksComplete = tasks.every(task => task.completed);
 
   const dismissCard = () => {
     localStorage.setItem('launchPadDismissed', 'true');
@@ -80,34 +83,49 @@ const LaunchPadCard = ({ stripeConnected, paymentLinksExist, hasSentPaymentLink 
             <Rocket className="h-7 w-7 mr-3" />
             <div>
               <h3 className="text-xl font-bold">Launch Pad</h3>
-              <p className="text-white/80 text-sm mt-1">Complete these steps to get started with CliniPay</p>
+              {allTasksComplete ? (
+                <p className="text-white/80 text-sm mt-1">Boom! You've just unlocked CliniPay's full potential!</p>
+              ) : (
+                <p className="text-white/80 text-sm mt-1">Complete these steps to get started with CliniPay</p>
+              )}
             </div>
           </div>
           
           {hasAnyTaskComplete && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="text-white/90 hover:text-white hover:bg-white/10 rounded-full"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Dismiss Launch Pad?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to dismiss the Launch Pad? You won't see this again!
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={dismissCard}>Dismiss</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            allTasksComplete ? (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-white/90 hover:text-white hover:bg-white/10 rounded-full"
+                onClick={dismissCard}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            ) : (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-white/90 hover:text-white hover:bg-white/10 rounded-full"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Dismiss Launch Pad?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to dismiss the Launch Pad? You won't see this again!
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={dismissCard}>Dismiss</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )
           )}
         </div>
         
