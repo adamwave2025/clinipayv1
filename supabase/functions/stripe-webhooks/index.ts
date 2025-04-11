@@ -228,6 +228,10 @@ serve(async (req) => {
         }
         
         try {
+          // Convert amount from cents to pounds with precision
+          const amountInPounds = Math.round(amount) / 100;
+          console.log(`Converting amount from ${amount} cents to ${amountInPounds} pounds`);
+          
           // Create the payment record
           const { data: paymentData, error: insertError } = await supabase
             .from("payments")
@@ -237,7 +241,7 @@ serve(async (req) => {
               patient_name: patientName || 'Anonymous',
               patient_email: patientEmail || null,
               patient_phone: patientPhone || null,
-              amount_paid: Math.round(amount / 100), // Convert from cents to whole units
+              amount_paid: amountInPounds,
               status: "paid",
               paid_at: new Date().toISOString(),
               stripe_payment_id: paymentIntent.id,

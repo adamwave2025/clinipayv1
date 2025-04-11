@@ -124,7 +124,10 @@ async function handlePaymentIntentSucceeded(paymentIntent, supabaseClient) {
       return;
     }
 
-    console.log(`Payment for clinic: ${clinicId}, amount: ${paymentIntent.amount}`);
+    // Convert the amount from cents to pounds with precision
+    const amountInPounds = paymentIntent.amount / 100;
+    
+    console.log(`Payment for clinic: ${clinicId}, amount: ${amountInPounds} (original: ${paymentIntent.amount} cents)`);
     
     // Generate a payment reference if one doesn't exist
     const paymentReference = existingReference || generatePaymentReference();
@@ -135,7 +138,7 @@ async function handlePaymentIntentSucceeded(paymentIntent, supabaseClient) {
       .from("payments")
       .insert({
         clinic_id: clinicId,
-        amount_paid: paymentIntent.amount,
+        amount_paid: amountInPounds,
         paid_at: new Date().toISOString(),
         patient_name: patientName || "Unknown",
         patient_email: patientEmail || null,
