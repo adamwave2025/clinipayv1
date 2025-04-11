@@ -84,14 +84,14 @@ export function useClinicProfile(clinicId: string) {
       if (paymentsData.length > 0) {
         // Calculate payment statistics
         const totalPaymentsCount = paymentsData.length;
-        const totalAmount = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0) / 100;
+        const totalAmount = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
         
         // Calculate refund statistics
         const refundsData = paymentsData.filter(payment => 
           payment.status === 'refunded' || payment.status === 'partially_refunded'
         );
         const totalRefundsCount = refundsData.length;
-        const refundAmount = refundsData.reduce((sum, payment) => sum + (payment.refund_amount || 0), 0) / 100;
+        const refundAmount = refundsData.reduce((sum, payment) => sum + (payment.refund_amount || 0), 0);
         
         // Calculate platform fee (3% by default, should be fetched from settings in a production app)
         const platformFeePercentage = 0.03;
@@ -115,7 +115,7 @@ export function useClinicProfile(clinicId: string) {
           .map(payment => ({
             id: payment.id,
             patientName: payment.patient_name || 'Unknown Patient',
-            amount: (payment.amount_paid || 0) / 100,
+            amount: payment.amount_paid || 0,
             date: payment.paid_at || new Date().toISOString(),
             status: payment.status || 'unknown'
           }));
