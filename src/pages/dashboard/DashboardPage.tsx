@@ -3,13 +3,14 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
-import DashboardActions from '@/components/dashboard/DashboardActions';
 import DashboardContent from '@/components/dashboard/DashboardContent';
 import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
 import { useUserRole } from '@/hooks/useUserRole';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const DashboardPage = () => {
+  useDocumentTitle('Dashboard');
   const { role, loading } = useUserRole();
   const navigate = useNavigate();
   
@@ -35,7 +36,6 @@ const DashboardPage = () => {
       <PageHeader 
         title="Dashboard" 
         description="View and manage your payments"
-        action={<DashboardActions />}
       />
       
       <DashboardDataProvider>

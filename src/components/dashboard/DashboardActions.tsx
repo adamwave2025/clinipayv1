@@ -1,18 +1,9 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
 
+// This component is empty as the Create Link action has been moved to the PaymentLinksCard
 const DashboardActions = () => {
-  return (
-    <Button className="btn-gradient" asChild>
-      <Link to="/dashboard/create-link">
-        <Plus className="mr-2 h-4 w-4" />
-        Create Link
-      </Link>
-    </Button>
-  );
+  return null;
 };
 
 export default DashboardActions;
