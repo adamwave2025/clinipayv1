@@ -7,7 +7,7 @@ import StripeConnectManagement from '@/components/admin/settings/StripeConnectMa
 import { useAdminSettings } from '@/hooks/useAdminSettings';
 
 const AdminSettingsPage = () => {
-  const { platformFee, clinics, setClinics, isLoading } = useAdminSettings();
+  const { platformFee, clinics, setClinics, isLoading, fetchPlatformFee } = useAdminSettings();
 
   return (
     <DashboardLayout userType="admin">
@@ -17,7 +17,11 @@ const AdminSettingsPage = () => {
       />
       
       <div className="space-y-6">
-        <PlatformFeeSettings initialFee={platformFee} />
+        <PlatformFeeSettings 
+          initialFee={platformFee} 
+          // When the fee is updated, refresh the fee data
+          onSave={fetchPlatformFee}
+        />
         <StripeConnectManagement 
           clinics={clinics} 
           isLoading={isLoading}

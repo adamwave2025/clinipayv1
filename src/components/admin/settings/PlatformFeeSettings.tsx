@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,19 @@ import { Percent } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
-const PlatformFeeSettings = ({ initialFee }: { initialFee: string }) => {
+interface PlatformFeeSettingsProps {
+  initialFee: string;
+  onSave?: () => void;
+}
+
+const PlatformFeeSettings = ({ initialFee, onSave }: PlatformFeeSettingsProps) => {
   const [platformFee, setPlatformFee] = useState(initialFee);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Update local state when initialFee changes
+  useEffect(() => {
+    setPlatformFee(initialFee);
+  }, [initialFee]);
 
   const handleSaveFee = async () => {
     setIsSubmitting(true);
@@ -44,6 +54,11 @@ const PlatformFeeSettings = ({ initialFee }: { initialFee: string }) => {
       if (result.error) throw result.error;
       
       toast.success(`Platform fee updated to ${platformFee}%`);
+      
+      // Call the onSave callback if provided
+      if (onSave) {
+        onSave();
+      }
     } catch (error) {
       console.error('Error updating platform fee:', error);
       toast.error('Failed to update platform fee');

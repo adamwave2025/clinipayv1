@@ -6,8 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
 import { Check } from 'lucide-react';
+import { usePlatformFee } from '@/hooks/useAdminSettings';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 const FeesPage = () => {
+  const { platformFee, isLoading } = usePlatformFee();
+  
   return (
     <MainLayout>
       {/* Navigation */}
@@ -41,7 +45,13 @@ const FeesPage = () => {
             </CardHeader>
             <CardContent className="p-8">
               <div className="text-center mb-6">
-                <p className="text-5xl font-bold mb-2">3%</p>
+                {isLoading ? (
+                  <div className="flex justify-center">
+                    <LoadingSpinner size="lg" />
+                  </div>
+                ) : (
+                  <p className="text-5xl font-bold mb-2">{platformFee}%</p>
+                )}
                 <p className="text-gray-500">per successful transaction</p>
               </div>
 
@@ -73,7 +83,7 @@ const FeesPage = () => {
           <div className="mt-12 bg-gray-50 p-6 rounded-xl">
             <h2 className="text-xl font-bold mb-4">Why CliniPay's fee is valuable</h2>
             <div className="space-y-4">
-              <p>Our 3% transaction fee includes everything you need to improve patient attendance and streamline your payment process:</p>
+              <p>Our {platformFee}% transaction fee includes everything you need to improve patient attendance and streamline your payment process:</p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>Reduced no-shows through payment commitment</li>
                 <li>Improved cash flow with secure pre-payments</li>
