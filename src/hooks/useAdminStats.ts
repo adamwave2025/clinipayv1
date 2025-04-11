@@ -41,7 +41,7 @@ export function useAdminStats() {
 
       if (clinicsError) throw clinicsError;
       
-      // Fetch total payments (paid status)
+      // Fetch payments data (paid, partially_refunded, and refunded status)
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
         .select('amount_paid, status, refund_amount')
@@ -49,15 +49,19 @@ export function useAdminStats() {
 
       if (paymentsError) throw paymentsError;
       
-      // Calculate total payments (sum of all paid amounts)
+      // Calculate total payments (sum of all paid amounts minus refunded amounts)
       const totalPaymentsSum = paymentsData.reduce((sum, payment) => {
-        if (payment.status === 'paid' || payment.status === 'partially_refunded') {
+        if (payment.status === 'paid') {
           return sum + (payment.amount_paid || 0);
+        } else if (payment.status === 'partially_refunded') {
+          // For partially refunded payments, subtract the refunded amount
+          const remainingAmount = (payment.amount_paid || 0) - (payment.refund_amount || 0);
+          return sum + Math.max(0, remainingAmount); // Ensure we don't add negative values
         }
         return sum;
       }, 0);
       
-      // Calculate total refunds (sum of all refunded amounts or full payment amounts if fully refunded)
+      // Calculate total refunds (sum of all refunded amounts)
       const totalRefundsSum = paymentsData.reduce((sum, payment) => {
         if (payment.status === 'refunded') {
           return sum + (payment.amount_paid || 0);
