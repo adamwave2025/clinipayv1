@@ -11,6 +11,7 @@ interface DashboardContextType {
   refundDialogOpen: boolean;
   paymentToRefund: string | null;
   isLoading: boolean;
+  isProcessingRefund: boolean;
   setDetailDialogOpen: (open: boolean) => void;
   setRefundDialogOpen: (open: boolean) => void;
   handlePaymentClick: (payment: Payment) => void;

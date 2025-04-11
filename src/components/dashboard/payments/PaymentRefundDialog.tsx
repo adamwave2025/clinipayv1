@@ -13,6 +13,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from '@/utils/formatters';
+import { useDashboardData } from '@/components/dashboard/DashboardDataProvider';
 
 interface PaymentRefundDialogProps {
   open: boolean;
@@ -31,6 +32,7 @@ const PaymentRefundDialog = ({
 }: PaymentRefundDialogProps) => {
   const [refundAmount, setRefundAmount] = useState<number>(paymentAmount);
   const [error, setError] = useState<string>('');
+  const { isProcessingRefund } = useDashboardData();
 
   // Reset amount and error when dialog opens
   React.useEffect(() => {
@@ -64,7 +66,7 @@ const PaymentRefundDialog = ({
   const isFullRefund = refundAmount === paymentAmount;
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={isProcessingRefund ? undefined : onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Confirm Refund</AlertDialogTitle>
@@ -87,6 +89,7 @@ const PaymentRefundDialog = ({
                 value={refundAmount}
                 onChange={handleAmountChange}
                 className={error ? "border-red-300 focus-visible:ring-red-500" : ""}
+                disabled={isProcessingRefund}
               />
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
@@ -97,17 +100,21 @@ const PaymentRefundDialog = ({
                 <p>Remaining After Refund: {formatCurrency(paymentAmount - refundAmount)}</p>
               )}
             </div>
+            
+            {isProcessingRefund && (
+              <p className="text-sm text-blue-600">Processing refund, please wait...</p>
+            )}
           </div>
         </div>
         
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isProcessingRefund}>Cancel</AlertDialogCancel>
           <AlertDialogAction 
             onClick={handleConfirm} 
             className="bg-red-500 hover:bg-red-600"
-            disabled={!!error || refundAmount <= 0}
+            disabled={!!error || refundAmount <= 0 || isProcessingRefund}
           >
-            {isFullRefund ? 'Refund Full Amount' : 'Refund Partial Amount'}
+            {isProcessingRefund ? 'Processing...' : (isFullRefund ? 'Refund Full Amount' : 'Refund Partial Amount')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

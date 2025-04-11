@@ -21,6 +21,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
+  const [isProcessingRefund, setIsProcessingRefund] = useState(false);
 
   // Fetch payments with payment links when paymentLinks are ready
   useEffect(() => {
@@ -38,6 +39,8 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!paymentToRefund) return;
     
     try {
+      setIsProcessingRefund(true);
+      
       const payment = payments.find(p => p.id === paymentToRefund);
       if (!payment) throw new Error('Payment not found');
       
@@ -68,6 +71,9 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (error: any) {
       console.error('Error refunding payment:', error);
       toast.error(`Failed to refund payment: ${error.message}`);
+    } finally {
+      // Always reset the processing state to prevent UI lockups
+      setIsProcessingRefund(false);
     }
   };
 
@@ -85,6 +91,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
     refundDialogOpen,
     paymentToRefund,
     isLoading: isLoadingLinks || isLoadingPayments,
+    isProcessingRefund,
     setDetailDialogOpen,
     setRefundDialogOpen,
     handlePaymentClick,

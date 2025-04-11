@@ -11,7 +11,8 @@ export const PaymentRefundService = {
     }
     
     try {
-      toast.loading('Processing refund...');
+      // Create a specific ID for the loading toast so we can dismiss it later
+      const loadingToastId = toast.loading('Processing refund...');
       
       // Call the refund-payment edge function
       const { data, error } = await supabase.functions.invoke('refund-payment', {
@@ -22,8 +23,8 @@ export const PaymentRefundService = {
         })
       });
       
-      // Dismiss the loading toast
-      toast.dismiss();
+      // Always dismiss the loading toast to prevent UI from being blocked
+      toast.dismiss(loadingToastId);
       
       if (error || !data?.success) {
         throw new Error(error?.message || data?.error || 'Refund processing failed');
@@ -35,6 +36,8 @@ export const PaymentRefundService = {
       };
     } catch (error: any) {
       console.error('Error refunding payment:', error);
+      // Ensure any loading toasts are dismissed in case of error
+      toast.dismiss();
       return { success: false, error: error.message };
     }
   },
