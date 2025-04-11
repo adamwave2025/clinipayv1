@@ -92,10 +92,13 @@ serve(async (req) => {
     try {
       console.log(`💳 Creating Stripe refund for payment intent: ${stripePaymentId}`);
       
-      // Create refund from the main CliniPay Stripe account (no stripeAccount parameter)
+      // Create refund with reverse_transfer and refund_application_fee parameters
+      // This ensures the money is pulled from the connected account and the platform fee is refunded
       stripeRefund = await stripe.refunds.create({
         payment_intent: stripePaymentId,
         amount: fullRefund ? undefined : Math.round(refundAmount * 100), // Convert to cents for Stripe if partial refund
+        refund_application_fee: true,
+        reverse_transfer: true
       });
       
       console.log(`✅ Stripe refund created with ID: ${stripeRefund.id}`);
