@@ -212,9 +212,9 @@ export type Database = {
           payment_link_id: string | null
           reference: string | null
           refund_amount: number | null
-          refund_id: string | null
           status: string | null
           stripe_payment_id: string | null
+          stripe_refund_id: string | null
         }
         Insert: {
           amount_paid?: number | null
@@ -227,9 +227,9 @@ export type Database = {
           payment_link_id?: string | null
           reference?: string | null
           refund_amount?: number | null
-          refund_id?: string | null
           status?: string | null
           stripe_payment_id?: string | null
+          stripe_refund_id?: string | null
         }
         Update: {
           amount_paid?: number | null
@@ -242,9 +242,9 @@ export type Database = {
           payment_link_id?: string | null
           reference?: string | null
           refund_amount?: number | null
-          refund_id?: string | null
           status?: string | null
           stripe_payment_id?: string | null
+          stripe_refund_id?: string | null
         }
         Relationships: [
           {

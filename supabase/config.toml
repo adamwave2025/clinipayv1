@@ -21,3 +21,6 @@ verify_jwt = false
 
 [functions.get-stripe-public-key]
 verify_jwt = false
+
+[functions.refund-payment]
+verify_jwt = true
