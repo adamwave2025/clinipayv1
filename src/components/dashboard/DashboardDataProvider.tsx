@@ -1,10 +1,10 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Payment, PaymentLink, PaymentStats } from '@/types/payment';
 import { toast } from 'sonner';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { formatCurrency } from '@/utils/formatters';
 
 interface DashboardContextType {
   payments: Payment[];
@@ -147,21 +147,39 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
           new Date(p.paid_at).getFullYear() === thisYear
         );
 
-        stats.totalReceivedToday = todayPayments
-          .filter(p => p.status === 'paid')
-          .reduce((sum, p) => sum + (p.amount_paid || 0), 0);
-        
-        stats.totalPendingToday = todayPayments
-          .filter(p => p.status === 'pending')
-          .reduce((sum, p) => sum + (p.amount_paid || 0), 0);
-        
-        stats.totalReceivedMonth = monthPayments
-          .filter(p => p.status === 'paid')
-          .reduce((sum, p) => sum + (p.amount_paid || 0), 0);
-        
-        stats.totalRefundedMonth = monthPayments
-          .filter(p => p.status === 'refunded')
-          .reduce((sum, p) => sum + (p.amount_paid || 0), 0);
+      stats.totalReceivedToday = todayPayments
+        .filter(p => p.status === 'paid' || p.status === 'partially_refunded')
+        .reduce((sum, p) => {
+          // For partially refunded payments, only count the non-refunded portion
+          if (p.status === 'partially_refunded') {
+            return sum + ((p.amount_paid || 0) - (p.refunded_amount || 0));
+          }
+          return sum + (p.amount_paid || 0);
+        }, 0);
+      
+      stats.totalPendingToday = todayPayments
+        .filter(p => p.status === 'pending')
+        .reduce((sum, p) => sum + (p.amount_paid || 0), 0);
+      
+      stats.totalReceivedMonth = monthPayments
+        .filter(p => p.status === 'paid' || p.status === 'partially_refunded')
+        .reduce((sum, p) => {
+          if (p.status === 'partially_refunded') {
+            return sum + ((p.amount_paid || 0) - (p.refunded_amount || 0));
+          }
+          return sum + (p.amount_paid || 0);
+        }, 0);
+      
+      // Count both fully refunded and partial refund amounts
+      stats.totalRefundedMonth = monthPayments
+        .reduce((sum, p) => {
+          if (p.status === 'refunded') {
+            return sum + (p.amount_paid || 0);
+          } else if (p.status === 'partially_refunded') {
+            return sum + (p.refunded_amount || 0);
+          }
+          return sum;
+        }, 0);
 
       } catch (error) {
         console.error('Error fetching payments data:', error);
@@ -220,7 +238,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
       
       toast.success(
         isPartialRefund 
-          ? `Partial refund of ${(refundAmount).toFixed(2)} processed successfully` 
+          ? `Partial refund of ${formatCurrency(refundAmount)} processed successfully` 
           : 'Payment refunded successfully'
       );
       setPaymentToRefund(null);

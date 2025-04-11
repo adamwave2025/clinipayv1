@@ -92,6 +92,29 @@ const PaymentDetailDialog = ({
             </div>
           </div>
           
+          {/* Show refund information if payment is partially refunded */}
+          {payment.status === 'partially_refunded' && payment.refundedAmount && (
+            <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
+              <h4 className="text-sm font-medium text-blue-700 mb-1">Refund Details</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-gray-600">Refunded Amount:</span>
+                </div>
+                <div>
+                  <span className="font-medium">{formatCurrency(payment.refundedAmount)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Remaining Amount:</span>
+                </div>
+                <div>
+                  <span className="font-medium">
+                    {formatCurrency(payment.amount - payment.refundedAmount)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {payment.status === 'sent' && payment.paymentUrl && (
             <div className="bg-gray-50 p-3 rounded-md mt-4">
               <h4 className="text-sm font-medium text-gray-500 mb-2">Payment Link (for testing)</h4>
@@ -119,6 +142,7 @@ const PaymentDetailDialog = ({
             </div>
           )}
           
+          {/* Only show refund button for paid payments (not already refunded) */}
           {payment.status === 'paid' && onRefund && (
             <div className="flex justify-end">
               <Button 

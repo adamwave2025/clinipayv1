@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -115,6 +116,7 @@ const PaymentHistoryContent = () => {
                     <SelectItem value="paid">Paid</SelectItem>
                     <SelectItem value="sent">Sent</SelectItem>
                     <SelectItem value="refunded">Refunded</SelectItem>
+                    <SelectItem value="partially_refunded">Partially Refunded</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>

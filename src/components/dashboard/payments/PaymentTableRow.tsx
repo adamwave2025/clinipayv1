@@ -40,7 +40,14 @@ const PaymentTableRow = ({ payment, onClick }: PaymentTableRowProps) => {
         )}
       </td>
       <td className="py-4 px-3 font-medium">
-        {formatCurrency(payment.amount)}
+        <div>
+          {formatCurrency(payment.amount)}
+          {payment.status === 'partially_refunded' && payment.refundedAmount && (
+            <div className="text-xs text-blue-600">
+              {formatCurrency(payment.refundedAmount)} refunded
+            </div>
+          )}
+        </div>
       </td>
       <td className="py-4 px-3 text-gray-700">
         {capitalizeFirstLetter(payment.type)}
