@@ -7,42 +7,39 @@ import { Label } from '@/components/ui/label';
 import AuthLayout from '@/components/layouts/AuthLayout';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { supabase } from '@/integrations/supabase/client';
+import { requestPasswordReset } from '@/utils/password-reset';
+import { AlertCircle } from 'lucide-react';
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email) {
+      setError('Please enter your email address');
       toast.error('Please enter your email address');
       return;
     }
     
     setIsLoading(true);
+    setError(null);
     
     try {
-      // Call our custom edge function instead of the default Supabase method
-      const { data, error } = await supabase.functions.invoke('reset-password', {
-        method: 'POST',
-        body: { email }
-      });
+      const result = await requestPasswordReset(email);
       
-      if (error) {
-        throw error;
-      }
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to send reset instructions');
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to send reset instructions');
       }
       
       setIsSubmitted(true);
-      toast.success('Password reset instructions sent to your email');
+      toast.success(result.message || 'Password reset instructions sent to your email');
     } catch (error: any) {
       console.error('Error requesting password reset:', error);
+      setError(error.message || 'Failed to send reset instructions. Please try again.');
       toast.error(error.message || 'Failed to send reset instructions. Please try again.');
     } finally {
       setIsLoading(false);
@@ -72,6 +69,13 @@ const ForgotPasswordPage = () => {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-md flex items-start">
+              <AlertCircle className="text-red-500 mr-2 h-5 w-5 mt-0.5" />
+              <span className="text-red-700 text-sm">{error}</span>
+            </div>
+          )}
+          
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
