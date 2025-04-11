@@ -25,8 +25,8 @@ const DashboardContent = () => {
 
   // Determine if Stripe is connected based on payment stats
   // In a real implementation, this would be more robust
-  const stripeConnected = stats.total.amount > 0 || 
-                          (stats.thisMonth && stats.thisMonth.amount > 0);
+  const stripeConnected = stats.totalReceivedMonth > 0 || 
+                         stats.totalReceivedToday > 0;
 
   return (
     <>
