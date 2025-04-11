@@ -42,7 +42,9 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!payment) throw new Error('Payment not found');
       
       const refundAmount = amount || payment.amount; // Use provided amount or default to full payment
-      const isFullRefund = refundAmount === payment.amount;
+      // Determine if this is a full refund with epsilon for floating point comparison
+      const epsilon = 0.001;
+      const isFullRefund = Math.abs(payment.amount - refundAmount) < epsilon;
 
       const result = await PaymentRefundService.processRefund(paymentToRefund, refundAmount);
       

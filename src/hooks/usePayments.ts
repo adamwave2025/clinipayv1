@@ -56,8 +56,9 @@ export function usePayments() {
         date: new Date(payment.paid_at || Date.now()).toLocaleDateString(),
         status: payment.status as any || 'paid',
         type: 'consultation', // Default type
-        // If status is partially_refunded, include the refunded amount
-        ...(payment.status === 'partially_refunded' && { refundedAmount: payment.refund_amount || 0 })
+        // Include refundedAmount for both partially_refunded and refunded statuses
+        ...(payment.status === 'partially_refunded' && { refundedAmount: payment.refund_amount || 0 }),
+        ...(payment.status === 'refunded' && { refundedAmount: payment.refund_amount || 0 })
       }));
 
       // Format payment requests as "sent" payments
