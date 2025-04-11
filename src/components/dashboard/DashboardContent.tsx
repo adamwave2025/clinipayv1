@@ -7,6 +7,7 @@ import PaymentDetailDialog from './PaymentDetailDialog';
 import PaymentRefundDialog from './payments/PaymentRefundDialog';
 import LaunchPadCard from './LaunchPadCard';
 import { useDashboardData } from './DashboardDataProvider';
+import { useClinicData } from '@/hooks/useClinicData';
 
 const DashboardContent = () => {
   const {
@@ -23,14 +24,18 @@ const DashboardContent = () => {
     handleRefund
   } = useDashboardData();
 
-  // Determine if Stripe is connected based on payment stats
-  // In a real implementation, this would be more robust
-  const stripeConnected = stats.totalReceivedMonth > 0 || 
-                         stats.totalReceivedToday > 0;
+  // Get clinic data to determine Stripe connection status
+  const { clinicData } = useClinicData();
+  
+  // Determine if Stripe is connected based on stripe_status field
+  const stripeConnected = clinicData?.stripe_status === 'connected';
 
   return (
     <>
-      <LaunchPadCard stripeConnected={stripeConnected} />
+      <LaunchPadCard 
+        stripeConnected={stripeConnected} 
+        paymentLinksExist={paymentLinks.length > 0}
+      />
       
       <PaymentStatsCards stats={stats} />
       

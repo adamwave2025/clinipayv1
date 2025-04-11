@@ -15,7 +15,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 
 interface LaunchPadTask {
   id: string;
@@ -26,11 +25,11 @@ interface LaunchPadTask {
 
 interface LaunchPadCardProps {
   stripeConnected: boolean;
+  paymentLinksExist: boolean;
 }
 
-const LaunchPadCard = ({ stripeConnected }: LaunchPadCardProps) => {
+const LaunchPadCard = ({ stripeConnected, paymentLinksExist }: LaunchPadCardProps) => {
   const [visible, setVisible] = useState(true);
-  const { paymentLinks } = usePaymentLinks();
   
   // Check if the card has been dismissed before
   useEffect(() => {
@@ -39,11 +38,8 @@ const LaunchPadCard = ({ stripeConnected }: LaunchPadCardProps) => {
       setVisible(false);
     }
   }, []);
-
-  // Determine if they've sent a payment link (for now we'll just check if they have links)
-  const hasPaymentLinks = paymentLinks.length > 0;
   
-  // Task completion states
+  // Task completion states - we now use the props directly
   const tasks: LaunchPadTask[] = [
     {
       id: 'connect-stripe',
@@ -55,7 +51,7 @@ const LaunchPadCard = ({ stripeConnected }: LaunchPadCardProps) => {
       id: 'create-link',
       title: 'Create your first payment link',
       description: 'Create a payment link to share with patients',
-      completed: hasPaymentLinks,
+      completed: paymentLinksExist,
     },
     {
       id: 'send-link',
