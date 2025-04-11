@@ -74,6 +74,11 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       const paymentReference = paymentIntentData.paymentReference;
       console.log('Payment reference:', paymentReference);
       
+      // Get the associated payment link ID (if any) from the response
+      // This will be used when creating the payment record
+      const associatedPaymentLinkId = paymentIntentData.paymentLinkId;
+      console.log('Associated payment link ID:', associatedPaymentLinkId);
+      
       // Now set processingPayment to true to show the overlay, but keep the form mounted
       setProcessingPayment(true);
       
@@ -108,7 +113,7 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         .from('payments')
         .insert({
           clinic_id: linkData.clinic.id,
-          payment_link_id: linkData.isRequest ? null : linkData.id,
+          payment_link_id: associatedPaymentLinkId || (linkData.isRequest ? null : linkData.id),
           patient_name: formData.name,
           patient_email: formData.email,
           patient_phone: formData.phone ? formData.phone.replace(/\D/g, '') : null,

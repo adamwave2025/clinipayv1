@@ -85,6 +85,26 @@ serve(async (req) => {
       throw new Error("This clinic does not have payment processing set up.");
     }
 
+    // Check if this is a payment request and fetch the associated payment link if needed
+    let associatedPaymentLinkId = paymentLinkId; // Default to directly provided paymentLinkId
+    
+    if (requestId) {
+      console.log(`Processing payment for request ID: ${requestId}`);
+      
+      // Fetch the payment request to get its payment_link_id (if any)
+      const { data: requestData, error: requestError } = await supabase
+        .from("payment_requests")
+        .select("payment_link_id")
+        .eq("id", requestId)
+        .single();
+        
+      if (!requestError && requestData && requestData.payment_link_id) {
+        console.log(`Found associated payment link ID: ${requestData.payment_link_id} for request ID: ${requestId}`);
+        // If the request is associated with a payment link, use that ID
+        associatedPaymentLinkId = requestData.payment_link_id;
+      }
+    }
+
     // Get the platform fee percentage from platform_settings
     const { data: platformFeeData, error: platformFeeError } = await supabase
       .from("platform_settings")
@@ -123,7 +143,7 @@ serve(async (req) => {
       },
       metadata: {
         clinicId: clinicId,
-        paymentLinkId: paymentLinkId || '',
+        paymentLinkId: associatedPaymentLinkId || '',
         requestId: requestId || '',
         platformFeePercent: platformFeePercent.toString(),
         paymentReference: paymentReference
@@ -137,7 +157,7 @@ serve(async (req) => {
       .from('payment_attempts')
       .insert({
         clinic_id: clinicId,
-        payment_link_id: paymentLinkId || null,
+        payment_link_id: associatedPaymentLinkId || null,
         payment_request_id: requestId || null,
         amount: amount,
         status: 'created',
@@ -150,13 +170,14 @@ serve(async (req) => {
       // Continue processing even if tracking fails - this is not critical
     }
 
-    // Return the client secret to the frontend
+    // Return the client secret to the frontend along with the payment link id if it exists
     return new Response(
       JSON.stringify({
         success: true,
         clientSecret: paymentIntent.client_secret,
         paymentId: paymentIntent.id,
-        paymentReference: paymentReference
+        paymentReference: paymentReference,
+        paymentLinkId: associatedPaymentLinkId || null
       }),
       {
         headers: {
