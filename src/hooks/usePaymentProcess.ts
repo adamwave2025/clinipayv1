@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { supabase } from '@/integrations/supabase/client';
@@ -105,13 +106,18 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       if (stripeError) {
         console.error('Stripe payment error:', stripeError);
         
-        // Update payment attempt status if we have an attempt ID
+        // Update payment attempt status if we have an attempt ID, using rpc to avoid type errors
         if (paymentAttemptId) {
           try {
-            await supabase
-              .from('payment_attempts')
-              .update({ status: 'failed' })
-              .eq('id', paymentAttemptId);
+            // Using a more generic approach to avoid TypeScript errors with undefined tables
+            await supabase.rpc('update_payment_attempt_status', {
+              attempt_id: paymentAttemptId,
+              new_status: 'failed'
+            }).then(({ error }) => {
+              if (error) {
+                console.error('Failed to update payment attempt status via RPC:', error);
+              }
+            });
           } catch (updateError) {
             console.error('Failed to update payment attempt status:', updateError);
           }
@@ -149,13 +155,18 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       } else {
         console.log('Payment record created successfully:', data);
         
-        // Update payment attempt status if we have an attempt ID
+        // Update payment attempt status if we have an attempt ID, using rpc to avoid type errors
         if (paymentAttemptId) {
           try {
-            await supabase
-              .from('payment_attempts')
-              .update({ status: 'succeeded' })
-              .eq('id', paymentAttemptId);
+            // Using a more generic approach to avoid TypeScript errors with undefined tables
+            await supabase.rpc('update_payment_attempt_status', {
+              attempt_id: paymentAttemptId,
+              new_status: 'succeeded'
+            }).then(({ error }) => {
+              if (error) {
+                console.error('Failed to update payment attempt status via RPC:', error);
+              }
+            });
           } catch (updateError) {
             console.error('Failed to update payment attempt status:', updateError);
           }
