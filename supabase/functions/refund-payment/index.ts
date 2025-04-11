@@ -117,21 +117,44 @@ serve(async (req) => {
     // Update payment record in database
     const newStatus = fullRefund ? 'refunded' : 'partially_refunded';
     const refundAmountToStore = fullRefund ? payment.amount_paid : refundAmount;
+    const currentTimestamp = new Date().toISOString();
     
     console.log(`💾 Updating payment record to status: ${newStatus}`);
+    const updateData = {
+      status: newStatus,
+      refund_amount: refundAmountToStore,
+      refunded_at: currentTimestamp,
+      stripe_refund_id: stripeRefund.id
+    };
+
+    console.log(`📦 Update data: ${JSON.stringify(updateData)}`);
+    
     const { error: updateError } = await supabase
       .from('payments')
-      .update({
-        status: newStatus,
-        refund_amount: refundAmountToStore,
-        refunded_at: new Date().toISOString(),
-        stripe_refund_id: stripeRefund.id
-      })
+      .update(updateData)
       .eq('id', paymentId);
 
     if (updateError) {
       console.error("❌ Error updating payment record:", updateError);
-      throw new Error(`Refund was processed but database update failed: ${updateError.message}`);
+      console.error("❌ Error details:", JSON.stringify(updateError));
+      
+      // The refund was processed but the database update failed
+      // We still want to return success but with a warning
+      return new Response(
+        JSON.stringify({
+          success: true,
+          warning: `Refund was processed successfully (ID: ${stripeRefund.id}), but database update failed: ${updateError.message}`,
+          refundId: stripeRefund.id,
+          status: newStatus
+        }),
+        {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+          status: 200,
+        }
+      );
     }
 
     console.log(`✅ Refund process completed successfully`);

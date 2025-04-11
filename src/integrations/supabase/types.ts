@@ -212,6 +212,7 @@ export type Database = {
           payment_link_id: string | null
           reference: string | null
           refund_amount: number | null
+          refunded_at: string | null
           status: string | null
           stripe_payment_id: string | null
           stripe_refund_id: string | null
@@ -227,6 +228,7 @@ export type Database = {
           payment_link_id?: string | null
           reference?: string | null
           refund_amount?: number | null
+          refunded_at?: string | null
           status?: string | null
           stripe_payment_id?: string | null
           stripe_refund_id?: string | null
@@ -242,6 +244,7 @@ export type Database = {
           payment_link_id?: string | null
           reference?: string | null
           refund_amount?: number | null
+          refunded_at?: string | null
           status?: string | null
           stripe_payment_id?: string | null
           stripe_refund_id?: string | null
