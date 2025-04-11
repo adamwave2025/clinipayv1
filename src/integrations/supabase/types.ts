@@ -211,6 +211,8 @@ export type Database = {
           patient_phone: string | null
           payment_link_id: string | null
           reference: string | null
+          refund_amount: number | null
+          refund_id: string | null
           status: string | null
           stripe_payment_id: string | null
         }
@@ -224,6 +226,8 @@ export type Database = {
           patient_phone?: string | null
           payment_link_id?: string | null
           reference?: string | null
+          refund_amount?: number | null
+          refund_id?: string | null
           status?: string | null
           stripe_payment_id?: string | null
         }
@@ -237,6 +241,8 @@ export type Database = {
           patient_phone?: string | null
           payment_link_id?: string | null
           reference?: string | null
+          refund_amount?: number | null
+          refund_id?: string | null
           status?: string | null
           stripe_payment_id?: string | null
         }

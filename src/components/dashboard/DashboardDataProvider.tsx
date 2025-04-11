@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Payment, PaymentLink, PaymentStats } from '@/types/payment';
 import { toast } from 'sonner';
@@ -94,6 +95,8 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
           date: new Date(payment.paid_at || Date.now()).toLocaleDateString(),
           status: payment.status as any || 'paid',
           type: 'consultation', // Default type
+          // If status is partially_refunded, include the refunded amount
+          ...(payment.status === 'partially_refunded' && { refundedAmount: payment.refund_amount || 0 })
         }));
 
         // Format payment requests as "sent" payments
@@ -152,7 +155,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
         .reduce((sum, p) => {
           // For partially refunded payments, only count the non-refunded portion
           if (p.status === 'partially_refunded') {
-            return sum + ((p.amount_paid || 0) - (p.refunded_amount || 0));
+            return sum + ((p.amount_paid || 0) - (p.refund_amount || 0));
           }
           return sum + (p.amount_paid || 0);
         }, 0);
@@ -165,7 +168,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
         .filter(p => p.status === 'paid' || p.status === 'partially_refunded')
         .reduce((sum, p) => {
           if (p.status === 'partially_refunded') {
-            return sum + ((p.amount_paid || 0) - (p.refunded_amount || 0));
+            return sum + ((p.amount_paid || 0) - (p.refund_amount || 0));
           }
           return sum + (p.amount_paid || 0);
         }, 0);
@@ -176,7 +179,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
           if (p.status === 'refunded') {
             return sum + (p.amount_paid || 0);
           } else if (p.status === 'partially_refunded') {
-            return sum + (p.refunded_amount || 0);
+            return sum + (p.refund_amount || 0);
           }
           return sum;
         }, 0);
@@ -213,7 +216,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
         .from('payments')
         .update({ 
           status: newStatus,
-          refunded_amount: refundAmount,
+          refund_amount: refundAmount,
           refunded_at: new Date().toISOString()
         })
         .eq('id', paymentToRefund);
