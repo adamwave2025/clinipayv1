@@ -71,6 +71,9 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         throw new Error(paymentIntentData.error || 'Payment processing failed');
       }
       
+      const paymentReference = paymentIntentData.paymentReference;
+      console.log('Payment reference:', paymentReference);
+      
       // Now set processingPayment to true to show the overlay, but keep the form mounted
       setProcessingPayment(true);
       
@@ -113,7 +116,8 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
           status: 'paid',
           amount_paid: linkData.amount,
           paid_at: new Date().toISOString(),
-          stripe_payment_id: paymentIntent.id
+          stripe_payment_id: paymentIntent.id,
+          payment_ref: paymentReference // Save the payment reference
         })
         .select();
       

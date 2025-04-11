@@ -7,6 +7,7 @@ import PaymentDetailsCard from '@/components/payment/PaymentDetailsCard';
 import ClinicInformationCard from '@/components/payment/ClinicInformationCard';
 import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { supabase } from '@/integrations/supabase/client';
 
 const PaymentSuccessPage = () => {
   const [searchParams] = useSearchParams();
@@ -14,18 +15,55 @@ const PaymentSuccessPage = () => {
   const paymentId = searchParams.get('payment_id');
   const { linkData, isLoading, error } = usePaymentLinkData(linkId);
   const [paymentDetails, setPaymentDetails] = useState<Array<{ label: string; value: string | number; colSpan?: number }>>([]);
+  const [paymentReference, setPaymentReference] = useState<string>('');
+  
+  useEffect(() => {
+    // Fetch the payment reference if a payment ID is provided
+    const fetchPaymentReference = async () => {
+      if (paymentId) {
+        try {
+          const { data, error } = await supabase
+            .from('payments')
+            .select('payment_ref')
+            .eq('id', paymentId)
+            .single();
+            
+          if (error) {
+            console.error('Error fetching payment reference:', error);
+            return;
+          }
+          
+          if (data && data.payment_ref) {
+            setPaymentReference(data.payment_ref);
+          }
+        } catch (err) {
+          console.error('Error fetching payment reference:', err);
+        }
+      }
+    };
+    
+    fetchPaymentReference();
+  }, [paymentId]);
   
   useEffect(() => {
     if (linkData) {
-      setPaymentDetails([
+      const details = [
         { label: 'Amount Paid', value: `£${linkData.amount.toFixed(2)}` },
         { label: 'Date', value: new Date().toLocaleDateString() },
         { label: 'Clinic', value: linkData.clinic.name },
         { label: 'Payment Type', value: linkData.type.charAt(0).toUpperCase() + linkData.type.slice(1) },
-        { label: 'Reference', value: paymentId || linkId || 'Unknown', colSpan: 2 },
-      ]);
+      ];
+      
+      // Add payment reference if available, otherwise use payment ID or link ID
+      if (paymentReference) {
+        details.push({ label: 'Reference', value: paymentReference, colSpan: 2 });
+      } else {
+        details.push({ label: 'Reference', value: paymentId || linkId || 'Unknown', colSpan: 2 });
+      }
+      
+      setPaymentDetails(details);
     }
-  }, [linkData, linkId, paymentId]);
+  }, [linkData, linkId, paymentId, paymentReference]);
 
   if (isLoading) {
     return (

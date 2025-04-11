@@ -8,6 +8,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
 };
 
+// Generate a unique, readable payment reference
+function generatePaymentReference(prefix = "CLN", length = 6) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Avoids confusing chars
+  let code = "";
+  for (let i = 0; i < length; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `${prefix}-${code}`;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -97,6 +107,10 @@ serve(async (req) => {
     
     console.log(`Platform fee: ${platformFeePercent}%, Platform fee amount: ${platformFeeAmount}`);
 
+    // Generate a unique payment reference
+    const paymentReference = generatePaymentReference();
+    console.log(`Generated payment reference: ${paymentReference}`);
+
     // Create a payment intent using Stripe Connect Direct Charges
     // This ensures that Stripe's processing fees come out of our platform fee, not the clinic's portion
     const paymentIntent = await stripe.paymentIntents.create({
@@ -111,7 +125,8 @@ serve(async (req) => {
         clinicId: clinicId,
         paymentLinkId: paymentLinkId || '',
         requestId: requestId || '',
-        platformFeePercent: platformFeePercent.toString()
+        platformFeePercent: platformFeePercent.toString(),
+        paymentReference: paymentReference
       },
     });
 
@@ -126,7 +141,8 @@ serve(async (req) => {
         payment_request_id: requestId || null,
         amount: amount,
         status: 'created',
-        payment_intent_id: paymentIntent.id
+        payment_intent_id: paymentIntent.id,
+        payment_ref: paymentReference
       });
       
     if (attemptError) {
@@ -139,7 +155,8 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         clientSecret: paymentIntent.client_secret,
-        paymentId: paymentIntent.id
+        paymentId: paymentIntent.id,
+        paymentReference: paymentReference
       }),
       {
         headers: {
