@@ -51,17 +51,23 @@ export const useAdminSettings = () => {
   const fetchClinics = async () => {
     setIsLoading(true);
     try {
+      console.log('Fetching clinics data...');
       const { data, error } = await supabase
         .from('clinics')
         .select('id, clinic_name, email, stripe_account_id, stripe_status');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching clinics data:', error);
+        throw error;
+      }
+      
       if (data) {
+        console.log(`Successfully fetched ${data.length} clinics`);
         setClinics(data);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching clinics:', error);
-      toast.error('Failed to load clinics');
+      toast.error(`Failed to load clinics: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -73,7 +79,8 @@ export const useAdminSettings = () => {
     clinics,
     setClinics,
     isLoading,
-    fetchPlatformFee
+    fetchPlatformFee,
+    fetchClinics
   };
 };
 

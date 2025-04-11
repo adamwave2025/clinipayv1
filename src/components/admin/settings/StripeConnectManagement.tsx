@@ -30,12 +30,19 @@ interface StripeConnectManagementProps {
   clinics: Clinic[];
   isLoading: boolean;
   onUpdateClinics: (updatedClinics: Clinic[]) => void;
+  refetchClinics: () => Promise<void>;
 }
 
-const StripeConnectManagement = ({ clinics, isLoading, onUpdateClinics }: StripeConnectManagementProps) => {
+const StripeConnectManagement = ({ 
+  clinics, 
+  isLoading, 
+  onUpdateClinics, 
+  refetchClinics 
+}: StripeConnectManagementProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [selectedClinic, setSelectedClinic] = useState<string | null>(null);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
 
   const handleDisconnectStripe = (clinicId: string) => {
     setSelectedClinic(clinicId);
@@ -45,7 +52,11 @@ const StripeConnectManagement = ({ clinics, isLoading, onUpdateClinics }: Stripe
   const confirmDisconnect = async () => {
     if (!selectedClinic) return;
     
+    setIsDisconnecting(true);
+    
     try {
+      console.log(`Disconnecting Stripe for clinic ${selectedClinic}`);
+      
       const { error } = await supabase
         .from('clinics')
         .update({
@@ -54,7 +65,12 @@ const StripeConnectManagement = ({ clinics, isLoading, onUpdateClinics }: Stripe
         })
         .eq('id', selectedClinic);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Database error when disconnecting Stripe:', error);
+        throw error;
+      }
+      
+      console.log(`Successfully updated database for clinic ${selectedClinic}`);
       
       // Update local state
       const updatedClinics = clinics.map(clinic => 
@@ -64,11 +80,16 @@ const StripeConnectManagement = ({ clinics, isLoading, onUpdateClinics }: Stripe
       );
       
       onUpdateClinics(updatedClinics);
+      
+      // Refresh data from the database to ensure consistency
+      await refetchClinics();
+      
       toast.success(`Stripe disconnected for clinic ${selectedClinic}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error disconnecting Stripe:', error);
-      toast.error('Failed to disconnect Stripe');
+      toast.error(`Failed to disconnect Stripe: ${error.message || 'Unknown error'}`);
     } finally {
+      setIsDisconnecting(false);
       setIsConfirmDialogOpen(false);
     }
   };
@@ -188,14 +209,19 @@ const StripeConnectManagement = ({ clinics, isLoading, onUpdateClinics }: Stripe
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsConfirmDialogOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsConfirmDialogOpen(false)}
+              disabled={isDisconnecting}
+            >
               Cancel
             </Button>
             <Button 
               variant="destructive" 
               onClick={confirmDisconnect}
+              disabled={isDisconnecting}
             >
-              Disconnect Stripe
+              {isDisconnecting ? 'Disconnecting...' : 'Disconnect Stripe'}
             </Button>
           </DialogFooter>
         </DialogContent>

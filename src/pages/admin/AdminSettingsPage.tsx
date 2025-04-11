@@ -7,7 +7,14 @@ import StripeConnectManagement from '@/components/admin/settings/StripeConnectMa
 import { useAdminSettings } from '@/hooks/useAdminSettings';
 
 const AdminSettingsPage = () => {
-  const { platformFee, clinics, setClinics, isLoading, fetchPlatformFee } = useAdminSettings();
+  const { 
+    platformFee, 
+    clinics, 
+    setClinics, 
+    isLoading, 
+    fetchPlatformFee,
+    fetchClinics 
+  } = useAdminSettings();
 
   return (
     <DashboardLayout userType="admin">
@@ -26,6 +33,7 @@ const AdminSettingsPage = () => {
           clinics={clinics} 
           isLoading={isLoading}
           onUpdateClinics={setClinics}
+          refetchClinics={fetchClinics}
         />
       </div>
     </DashboardLayout>
