@@ -26,9 +26,10 @@ interface LaunchPadTask {
 interface LaunchPadCardProps {
   stripeConnected: boolean;
   paymentLinksExist: boolean;
+  hasSentPaymentLink: boolean;
 }
 
-const LaunchPadCard = ({ stripeConnected, paymentLinksExist }: LaunchPadCardProps) => {
+const LaunchPadCard = ({ stripeConnected, paymentLinksExist, hasSentPaymentLink }: LaunchPadCardProps) => {
   const [visible, setVisible] = useState(true);
   
   // Check if the card has been dismissed before
@@ -57,7 +58,7 @@ const LaunchPadCard = ({ stripeConnected, paymentLinksExist }: LaunchPadCardProp
       id: 'send-link',
       title: 'Send your first payment link',
       description: 'Share your payment link with a patient',
-      completed: false, // This would need more complex logic to determine
+      completed: hasSentPaymentLink,
     },
   ];
 

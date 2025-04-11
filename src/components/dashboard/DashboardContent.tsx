@@ -30,11 +30,15 @@ const DashboardContent = () => {
   // Determine if Stripe is connected based on stripe_status field
   const stripeConnected = clinicData?.stripe_status === 'connected';
 
+  // Check if any payment requests (sent links) exist in the payments array
+  const hasSentPaymentLink = payments.some(payment => payment.status === 'sent');
+
   return (
     <>
       <LaunchPadCard 
         stripeConnected={stripeConnected} 
         paymentLinksExist={paymentLinks.length > 0}
+        hasSentPaymentLink={hasSentPaymentLink}
       />
       
       <PaymentStatsCards stats={stats} />
