@@ -106,16 +106,19 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       if (stripeError) {
         console.error('Stripe payment error:', stripeError);
         
-        // Update payment attempt status if we have an attempt ID, using rpc to avoid type errors
+        // Update payment attempt status if we have an attempt ID
+        // Using a direct query to update the status instead of RPC
         if (paymentAttemptId) {
           try {
-            // Using a more generic approach to avoid TypeScript errors with undefined tables
-            await supabase.rpc('update_payment_attempt_status', {
-              attempt_id: paymentAttemptId,
-              new_status: 'failed'
+            // Direct SQL query using functions.invoke to bypass type checking
+            await supabase.functions.invoke('update-payment-status', {
+              body: JSON.stringify({
+                attemptId: paymentAttemptId,
+                status: 'failed'
+              })
             }).then(({ error }) => {
               if (error) {
-                console.error('Failed to update payment attempt status via RPC:', error);
+                console.error('Failed to update payment attempt status:', error);
               }
             });
           } catch (updateError) {
@@ -155,16 +158,18 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       } else {
         console.log('Payment record created successfully:', data);
         
-        // Update payment attempt status if we have an attempt ID, using rpc to avoid type errors
+        // Update payment attempt status if we have an attempt ID
         if (paymentAttemptId) {
           try {
-            // Using a more generic approach to avoid TypeScript errors with undefined tables
-            await supabase.rpc('update_payment_attempt_status', {
-              attempt_id: paymentAttemptId,
-              new_status: 'succeeded'
+            // Direct SQL query using functions.invoke to bypass type checking
+            await supabase.functions.invoke('update-payment-status', {
+              body: JSON.stringify({
+                attemptId: paymentAttemptId,
+                status: 'succeeded'
+              })
             }).then(({ error }) => {
               if (error) {
-                console.error('Failed to update payment attempt status via RPC:', error);
+                console.error('Failed to update payment attempt status:', error);
               }
             });
           } catch (updateError) {
