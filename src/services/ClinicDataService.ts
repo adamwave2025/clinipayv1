@@ -28,11 +28,13 @@ export const ClinicDataService = {
         .maybeSingle();
 
       if (userError) {
-        throw new Error('Failed to fetch user data: ' + userError.message);
+        console.error('Failed to fetch user data:', userError.message);
+        return null;
       }
 
       if (!userData?.clinic_id) {
-        throw new Error('User is not associated with a clinic');
+        console.log('User is not associated with a clinic yet');
+        return null;
       }
 
       // Then get the clinic data using the clinic_id
@@ -43,13 +45,14 @@ export const ClinicDataService = {
         .single();
 
       if (clinicError) {
-        throw new Error('Failed to fetch clinic data: ' + clinicError.message);
+        console.error('Failed to fetch clinic data:', clinicError.message);
+        return null;
       }
 
       return clinicData;
     } catch (error: any) {
       console.error('Error fetching clinic data:', error);
-      throw error;
+      return null;
     }
   },
 
