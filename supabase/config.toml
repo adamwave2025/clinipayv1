@@ -45,8 +45,6 @@ verify_jwt = true
 verify_jwt = true
 [functions.stripe-webhooks]
 verify_jwt = false
-[functions.update-payment-status]
-verify_jwt = true
 
 [auth]
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used

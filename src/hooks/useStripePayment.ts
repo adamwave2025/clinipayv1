@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 
 export function useStripePayment() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -53,30 +52,11 @@ export function useStripePayment() {
       
       if (stripeError) {
         console.error('Stripe payment error:', stripeError);
-        
-        // Update payment attempt status if we have an attempt ID
-        if (paymentAttemptId) {
-          try {
-            await updatePaymentAttemptStatus(paymentAttemptId, 'failed');
-          } catch (updateError) {
-            console.error('Failed to update payment attempt status:', updateError);
-          }
-        }
-        
         throw new Error(stripeError.message || 'Payment failed');
       }
       
       if (paymentIntent.status !== 'succeeded') {
         throw new Error(`Payment status: ${paymentIntent.status}`);
-      }
-      
-      // Update payment attempt status if we have an attempt ID
-      if (paymentAttemptId) {
-        try {
-          await updatePaymentAttemptStatus(paymentAttemptId, 'succeeded');
-        } catch (updateError) {
-          console.error('Failed to update payment attempt status:', updateError);
-        }
       }
 
       return { 
@@ -91,23 +71,6 @@ export function useStripePayment() {
       };
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const updatePaymentAttemptStatus = async (attemptId: string, status: string) => {
-    try {
-      await supabase.functions.invoke('update-payment-status', {
-        body: JSON.stringify({
-          attemptId,
-          status
-        })
-      }).then(({ error }) => {
-        if (error) {
-          console.error('Failed to update payment attempt status:', error);
-        }
-      });
-    } catch (error) {
-      console.error('Error updating payment attempt status:', error);
     }
   };
 
