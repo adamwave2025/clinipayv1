@@ -4,6 +4,7 @@ import { Control } from 'react-hook-form';
 import { FormField } from '@/components/ui/form';
 import StripeCardElement from './StripeCardElement';
 import { PaymentFormValues } from './FormSchema';
+import PaymentSectionContainer from '../PaymentSectionContainer';
 
 interface PaymentDetailsSectionProps {
   control: Control<PaymentFormValues>;
@@ -12,9 +13,7 @@ interface PaymentDetailsSectionProps {
 
 const PaymentDetailsSection = ({ control, isLoading }: PaymentDetailsSectionProps) => {
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium text-gray-800">Payment Details</h3>
-      
+    <PaymentSectionContainer title="Payment Details">
       <FormField
         control={control}
         name="stripeCard"
@@ -31,7 +30,7 @@ const PaymentDetailsSection = ({ control, isLoading }: PaymentDetailsSectionProp
       <div className="text-xs text-gray-500 mt-2">
         Your payment is secure and encrypted. We never store your full card details.
       </div>
-    </div>
+    </PaymentSectionContainer>
   );
 };
 

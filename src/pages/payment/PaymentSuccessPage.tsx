@@ -5,6 +5,7 @@ import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentStatusSummary from '@/components/payment/PaymentStatusSummary';
 import PaymentDetailsCard from '@/components/payment/PaymentDetailsCard';
 import ClinicInformationCard from '@/components/payment/ClinicInformationCard';
+import PaymentReferenceDisplay from '@/components/payment/PaymentReferenceDisplay';
 import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,11 +62,13 @@ const PaymentSuccessPage = () => {
         { label: 'Payment Type', value: linkData.type.charAt(0).toUpperCase() + linkData.type.slice(1) },
       ];
       
-      // Add payment reference if available, otherwise use payment ID or link ID
-      if (paymentReference) {
-        details.push({ label: 'Reference', value: paymentReference, colSpan: 2 });
-      } else {
-        details.push({ label: 'Reference', value: paymentId || linkId || 'Unknown', colSpan: 2 });
+      // Only add reference to details if there's no dedicated reference display
+      if (!paymentReference) {
+        details.push({ 
+          label: 'Reference', 
+          value: paymentId || linkId || 'Unknown', 
+          colSpan: 2 
+        });
       }
       
       setPaymentDetails(details);
@@ -103,6 +106,13 @@ const PaymentSuccessPage = () => {
       />
       
       <PaymentDetailsCard details={paymentDetails} />
+      
+      {paymentReference && (
+        <PaymentReferenceDisplay 
+          reference={paymentReference} 
+          className="mb-6"
+        />
+      )}
       
       <ClinicInformationCard 
         clinicDetails={{

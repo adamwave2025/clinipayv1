@@ -10,6 +10,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { PaymentFormValues } from './FormSchema';
+import PaymentSectionContainer from '../PaymentSectionContainer';
 
 interface PersonalInfoSectionProps {
   control: Control<PaymentFormValues>;
@@ -18,9 +19,7 @@ interface PersonalInfoSectionProps {
 
 const PersonalInfoSection = ({ control, isLoading }: PersonalInfoSectionProps) => {
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-medium">Your Information</h2>
-      
+    <PaymentSectionContainer title="Your Information">
       <FormField
         control={control}
         name="name"
@@ -75,7 +74,7 @@ const PersonalInfoSection = ({ control, isLoading }: PersonalInfoSectionProps) =
           </FormItem>
         )}
       />
-    </div>
+    </PaymentSectionContainer>
   );
 };
 

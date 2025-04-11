@@ -36,7 +36,7 @@ const PaymentFailedPage = () => {
         description="Your payment could not be processed. Please check your payment details and try again."
         primaryActionLabel={
           <>
-            <RefreshCcw className="h-4 w-4" />
+            <RefreshCcw className="h-4 w-4 mr-2" />
             Try Again
           </>
         }
