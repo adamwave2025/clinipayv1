@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -19,6 +19,7 @@ type Clinic = {
   clinic_name: string | null;
   created_at: string | null;
   stripe_status: string | null;
+  logo_url: string | null;
   payment_count?: number;
 };
 
@@ -36,9 +37,9 @@ export const RecentClinicsTable = () => {
       // Fetch the most recent clinics
       const { data: clinicsData, error: clinicsError } = await supabase
         .from('clinics')
-        .select('id, clinic_name, created_at, stripe_status')
+        .select('id, clinic_name, created_at, stripe_status, logo_url')
         .order('created_at', { ascending: false })
-        .limit(4);
+        .limit(5);
 
       if (clinicsError) throw clinicsError;
 
@@ -111,37 +112,49 @@ export const RecentClinicsTable = () => {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {clinics.map((clinic) => (
-          <TableRow
-            key={clinic.id}
-            className="hover:bg-gray-50 cursor-pointer"
-            onClick={() => handleClinicClick(clinic.id)}
-          >
-            <TableCell>
-              <div className="flex items-center gap-3">
-                <Avatar className="h-9 w-9">
-                  <AvatarFallback className="bg-gradient-primary text-white">
-                    {clinic.clinic_name?.charAt(0) || 'C'}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium">{clinic.clinic_name || 'Unnamed Clinic'}</p>
-                </div>
-              </div>
-            </TableCell>
-            <TableCell className="text-gray-500">
-              {clinic.created_at 
-                ? new Date(clinic.created_at).toLocaleDateString() 
-                : 'Unknown'}
-            </TableCell>
-            <TableCell>
-              {getStripeStatusBadge(clinic.stripe_status)}
-            </TableCell>
-            <TableCell className="text-gray-500">
-              {clinic.payment_count}
+        {clinics.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={4} className="text-center py-6 text-gray-500">
+              No clinics found
             </TableCell>
           </TableRow>
-        ))}
+        ) : (
+          clinics.map((clinic) => (
+            <TableRow
+              key={clinic.id}
+              className="hover:bg-gray-50 cursor-pointer"
+              onClick={() => handleClinicClick(clinic.id)}
+            >
+              <TableCell>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-9 w-9">
+                    {clinic.logo_url ? (
+                      <AvatarImage src={clinic.logo_url} alt={clinic.clinic_name || 'Clinic'} />
+                    ) : (
+                      <AvatarFallback className="bg-gradient-primary text-white">
+                        {clinic.clinic_name?.charAt(0) || 'C'}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{clinic.clinic_name || 'Unnamed Clinic'}</p>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell className="text-gray-500">
+                {clinic.created_at 
+                  ? new Date(clinic.created_at).toLocaleDateString() 
+                  : 'Unknown'}
+              </TableCell>
+              <TableCell>
+                {getStripeStatusBadge(clinic.stripe_status)}
+              </TableCell>
+              <TableCell className="text-gray-500">
+                {clinic.payment_count}
+              </TableCell>
+            </TableRow>
+          ))
+        )}
       </TableBody>
     </Table>
   );

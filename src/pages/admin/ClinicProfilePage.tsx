@@ -9,48 +9,107 @@ import { Link, CreditCard, RefreshCcw, DollarSign, BarChart2 } from 'lucide-reac
 import StatusBadge from '@/components/common/StatusBadge';
 import StatCard from '@/components/common/StatCard';
 import ClinicInfo from '@/components/clinic/ClinicInfo';
-
-// Mock data for the clinic profile
-const getMockClinicData = (id: string) => ({
-  id,
-  name: 'Greenfield Medical Clinic',
-  contactName: 'Dr. Sarah Johnson',
-  email: 'contact@greenfieldclinic.com',
-  phone: '+44 20 1234 5678',
-  address: '123 Health Avenue, London, UK',
-  stripeStatus: 'active',
-  joinDate: '2025-03-15',
-  logo: 'G',
-  stats: {
-    totalPayments: 28,
-    totalAmount: 4350.75,
-    totalRefunds: 2,
-    refundAmount: 320.50,
-    feesCollected: 148.62,
-    averagePayment: 155.38
-  },
-  recentPayments: [
-    { id: 'p1', patientName: 'John Smith', amount: 125.00, date: '2025-04-01', status: 'paid' },
-    { id: 'p2', patientName: 'Emma Wilson', amount: 210.50, date: '2025-03-28', status: 'paid' },
-    { id: 'p3', patientName: 'Michael Brown', amount: 75.25, date: '2025-03-24', status: 'refunded' },
-    { id: 'p4', patientName: 'Sophia Davis', amount: 180.00, date: '2025-03-20', status: 'paid' },
-    { id: 'p5', patientName: 'James Taylor', amount: 95.00, date: '2025-03-15', status: 'sent' }
-  ],
-  links: [
-    { id: 'l1', name: 'Consultation Payment', created: '2025-03-10', usageCount: 12 },
-    { id: 'l2', name: 'Follow-up Session', created: '2025-03-15', usageCount: 8 },
-    { id: 'l3', name: 'Special Treatment', created: '2025-03-20', usageCount: 5 }
-  ]
-});
+import { useClinicProfile } from '@/hooks/useClinicProfile';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ClinicProfilePage = () => {
   const { clinicId } = useParams<{ clinicId: string }>();
-  const clinic = getMockClinicData(clinicId || '');
+  const { 
+    clinic, 
+    stats, 
+    recentPayments, 
+    links, 
+    isLoading, 
+    error 
+  } = useClinicProfile(clinicId || '');
+  
+  // Format address for display
+  const formatAddress = () => {
+    if (!clinic) return '';
+    
+    const parts = [
+      clinic.address_line_1,
+      clinic.address_line_2,
+      clinic.city,
+      clinic.postcode
+    ].filter(Boolean);
+    
+    return parts.join(', ');
+  };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout userType="admin">
+        <PageHeader 
+          title="Clinic Profile" 
+          description="Loading clinic details..."
+        />
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i} className="card-shadow">
+                <CardContent className="p-6 h-[104px] flex items-center justify-center">
+                  <Skeleton className="h-12 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="card-shadow lg:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle>Clinic Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="h-5 w-5 rounded-full" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-full" />
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            
+            <Card className="card-shadow lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Recent Payments</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <LoadingSpinner size="md" />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !clinic) {
+    return (
+      <DashboardLayout userType="admin">
+        <PageHeader 
+          title="Error" 
+          description="Could not load clinic profile"
+        />
+        <Card className="card-shadow">
+          <CardContent className="p-6">
+            <p className="text-red-500">
+              {error || 'Clinic data not found. Please try again later.'}
+            </p>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout userType="admin">
       <PageHeader 
-        title={clinic.name} 
+        title={clinic.clinic_name || 'Unnamed Clinic'} 
         description="Clinic profile and details"
       />
       
@@ -58,27 +117,27 @@ const ClinicProfilePage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total Payments"
-          value={`${clinic.stats.totalPayments}`}
-          secondaryText={`£${clinic.stats.totalAmount.toFixed(2)}`}
+          value={`${stats.totalPayments}`}
+          secondaryText={`£${stats.totalAmount.toFixed(2)}`}
           icon={<CreditCard className="h-5 w-5 text-white" />}
         />
         
         <StatCard
           title="Total Refunds"
-          value={`${clinic.stats.totalRefunds}`}
-          secondaryText={`£${clinic.stats.refundAmount.toFixed(2)}`}
+          value={`${stats.totalRefunds}`}
+          secondaryText={`£${stats.refundAmount.toFixed(2)}`}
           icon={<RefreshCcw className="h-5 w-5 text-white" />}
         />
         
         <StatCard
           title="CliniPay Fees"
-          value={`£${clinic.stats.feesCollected.toFixed(2)}`}
+          value={`£${stats.feesCollected.toFixed(2)}`}
           icon={<DollarSign className="h-5 w-5 text-white" />}
         />
         
         <StatCard
           title="Average Payment"
-          value={`£${clinic.stats.averagePayment.toFixed(2)}`}
+          value={`£${stats.averagePayment.toFixed(2)}`}
           icon={<BarChart2 className="h-5 w-5 text-white" />}
         />
       </div>
@@ -92,14 +151,14 @@ const ClinicProfilePage = () => {
           </CardHeader>
           <CardContent>
             <ClinicInfo
-              name={clinic.name}
-              contactName={clinic.contactName}
-              email={clinic.email}
-              phone={clinic.phone}
-              address={clinic.address}
-              stripeStatus={clinic.stripeStatus}
-              joinDate={clinic.joinDate}
-              logo={clinic.logo}
+              name={clinic.clinic_name || 'Unnamed Clinic'}
+              contactName={clinic.clinic_name || 'No contact name'}
+              email={clinic.email || 'No email provided'}
+              phone={clinic.phone || 'No phone provided'}
+              address={formatAddress()}
+              stripeStatus={clinic.stripe_status || 'not_connected'}
+              joinDate={clinic.created_at || new Date().toISOString()}
+              logo={clinic.clinic_name?.charAt(0) || 'C'}
             />
           </CardContent>
         </Card>
@@ -110,28 +169,32 @@ const ClinicProfilePage = () => {
             <CardTitle>Recent Payments</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Patient</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clinic.recentPayments.map((payment) => (
-                  <TableRow key={payment.id}>
-                    <TableCell className="font-medium">{payment.patientName}</TableCell>
-                    <TableCell>{new Date(payment.date).toLocaleDateString()}</TableCell>
-                    <TableCell>£{payment.amount.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={payment.status as any} />
-                    </TableCell>
+            {recentPayments.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Patient</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {recentPayments.map((payment) => (
+                    <TableRow key={payment.id}>
+                      <TableCell className="font-medium">{payment.patientName}</TableCell>
+                      <TableCell>{new Date(payment.date).toLocaleDateString()}</TableCell>
+                      <TableCell>£{payment.amount.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={payment.status as any} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-gray-500 text-center py-4">No payment records found for this clinic</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -142,29 +205,33 @@ const ClinicProfilePage = () => {
           <CardTitle>Payment Links</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Link Name</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Usage</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {clinic.links.map((link) => (
-                <TableRow key={link.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center">
-                      <Link className="h-4 w-4 mr-2 text-gray-400" />
-                      {link.name}
-                    </div>
-                  </TableCell>
-                  <TableCell>{new Date(link.created).toLocaleDateString()}</TableCell>
-                  <TableCell>{link.usageCount} times</TableCell>
+          {links.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Link Name</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Usage</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {links.map((link) => (
+                  <TableRow key={link.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center">
+                        <Link className="h-4 w-4 mr-2 text-gray-400" />
+                        {link.name}
+                      </div>
+                    </TableCell>
+                    <TableCell>{new Date(link.created).toLocaleDateString()}</TableCell>
+                    <TableCell>{link.usageCount} times</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-gray-500 text-center py-4">No payment links found for this clinic</p>
+          )}
         </CardContent>
       </Card>
     </DashboardLayout>
