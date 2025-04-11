@@ -47,6 +47,8 @@ const DashboardContent = () => {
         open={refundDialogOpen}
         onOpenChange={setRefundDialogOpen}
         onConfirm={handleRefund}
+        paymentAmount={selectedPayment?.amount}
+        patientName={selectedPayment?.patientName}
       />
     </>
   );

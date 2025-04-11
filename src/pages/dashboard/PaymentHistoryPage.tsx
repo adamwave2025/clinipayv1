@@ -1,9 +1,7 @@
-
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
-import StatusBadge from '@/components/common/StatusBadge';
 import { Input } from '@/components/ui/input';
 import DateRangeFilter from '@/components/common/DateRangeFilter';
 import {
@@ -16,16 +14,7 @@ import {
 } from '@/components/ui/select';
 import { Search } from 'lucide-react';
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 import { isWithinInterval, parseISO } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { useDashboardData, DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
@@ -150,26 +139,13 @@ const PaymentHistoryContent = () => {
         onRefund={openRefundDialog}
       />
 
-      <AlertDialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Refund</AlertDialogTitle>
-            <AlertDialogDescription>
-              {selectedPayment && (
-                <>
-                  Are you sure you want to issue a refund for {formatCurrency(selectedPayment.amount)} to {selectedPayment.patientName}? This action cannot be undone.
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRefund} className="bg-red-500 hover:bg-red-600">
-              Yes, Refund Payment
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <PaymentRefundDialog
+        open={refundDialogOpen}
+        onOpenChange={setRefundDialogOpen}
+        onConfirm={handleRefund}
+        paymentAmount={selectedPayment?.amount}
+        patientName={selectedPayment?.patientName}
+      />
     </>
   );
 };

@@ -1,4 +1,3 @@
-
 export interface Payment {
   id: string;
   patientName: string;
@@ -6,9 +5,10 @@ export interface Payment {
   patientPhone?: string;
   amount: number;
   date: string;
-  status: 'paid' | 'refunded' | 'sent';
+  status: 'paid' | 'refunded' | 'sent' | 'partially_refunded';
   type: 'deposit' | 'treatment' | 'consultation' | 'other';
   paymentUrl?: string; // URL for testing payment links
+  refundedAmount?: number; // Amount that was refunded (for partial refunds)
 }
 
 export interface PaymentLink {

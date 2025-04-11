@@ -19,7 +19,7 @@ interface DashboardContextType {
   setRefundDialogOpen: (open: boolean) => void;
   handlePaymentClick: (payment: Payment) => void;
   openRefundDialog: (paymentId: string) => void;
-  handleRefund: () => void;
+  handleRefund: (amount?: number) => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -178,21 +178,39 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
     setRefundDialogOpen(true);
   };
 
-  const handleRefund = async () => {
+  const handleRefund = async (amount?: number) => {
     if (!paymentToRefund) return;
     
     try {
+      const payment = payments.find(p => p.id === paymentToRefund);
+      if (!payment) throw new Error('Payment not found');
+      
+      const refundAmount = amount || payment.amount; // Use provided amount or default to full payment
+      const isPartialRefund = refundAmount < payment.amount;
+
+      // Updated status will be 'partially_refunded' if partial, otherwise 'refunded'
+      const newStatus = isPartialRefund ? 'partially_refunded' : 'refunded';
+      
       const { error } = await supabase
         .from('payments')
-        .update({ status: 'refunded' })
+        .update({ 
+          status: newStatus,
+          refunded_amount: refundAmount,
+          refunded_at: new Date().toISOString()
+        })
         .eq('id', paymentToRefund);
 
       if (error) throw error;
       
+      // Update the payments state
       setPayments(prevPayments =>
         prevPayments.map(payment =>
           payment.id === paymentToRefund
-            ? { ...payment, status: 'refunded' as const }
+            ? { 
+                ...payment, 
+                status: newStatus as any,
+                refundedAmount: refundAmount
+              }
             : payment
         )
       );
@@ -200,7 +218,11 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
       setRefundDialogOpen(false);
       setDetailDialogOpen(false);
       
-      toast.success('Payment refunded successfully');
+      toast.success(
+        isPartialRefund 
+          ? `Partial refund of ${(refundAmount).toFixed(2)} processed successfully` 
+          : 'Payment refunded successfully'
+      );
       setPaymentToRefund(null);
     } catch (error: any) {
       console.error('Error refunding payment:', error);
