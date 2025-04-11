@@ -28,9 +28,9 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       const intentResult = await createPaymentIntent({
         linkData,
         formData: {
-          name: formData.name,     // Ensure required properties are passed
-          email: formData.email,   // Ensure required properties are passed
-          phone: formData.phone    // This is optional in the target type
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone
         }
       });
       
@@ -45,9 +45,9 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       const paymentResult = await processPayment({
         clientSecret: intentResult.clientSecret,
         formData: {
-          name: formData.name,     // Ensure required properties are passed
-          email: formData.email,   // Ensure required properties are passed
-          phone: formData.phone    // This is optional in the target type
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone
         },
         paymentAttemptId: intentResult.paymentAttemptId
       });
@@ -56,14 +56,14 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         throw new Error(paymentResult.error || 'Payment processing failed');
       }
       
-      // Step 4: Create payment record in our database
-      const recordResult = await createPaymentRecord({
+      // Step 4: Create client-side record and update UI (webhook handles DB updates)
+      await createPaymentRecord({
         paymentIntent: paymentResult.paymentIntent,
         linkData,
         formData: {
-          name: formData.name,     // Ensure required properties are passed
-          email: formData.email,   // Ensure required properties are passed
-          phone: formData.phone    // This is optional in the target type
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone
         },
         paymentReference: intentResult.paymentReference,
         associatedPaymentLinkId: intentResult.associatedPaymentLinkId
@@ -72,7 +72,7 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       toast.success('Payment successful!');
       
       // Navigate to success page with the link_id parameter
-      window.location.href = `/payment/success?link_id=${linkId}&payment_id=${recordResult.paymentId || 'unknown'}`;
+      window.location.href = `/payment/success?link_id=${linkId}&payment_id=${paymentResult.paymentIntent.id || 'unknown'}`;
     } catch (error: any) {
       console.error('Payment error:', error);
       toast.error('Payment failed: ' + error.message);

@@ -32,7 +32,7 @@ export function usePaymentIntent() {
     try {
       console.log('Initiating payment process for link ID:', linkData.id);
       console.log('Payment amount:', linkData.amount);
-      console.log('Is request payment:', linkData.isRequest);
+      console.log('Is request payment:', linkData.isRequest ? 'Yes' : 'No');
       
       // Call the create-payment-intent edge function to get a client secret
       const { data: paymentIntentData, error: paymentIntentError } = await supabase.functions.invoke(

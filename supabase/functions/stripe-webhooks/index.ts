@@ -183,7 +183,7 @@ serve(async (req) => {
       if (requestId) {
         console.log(`Found request ID in metadata: ${requestId}`);
         
-        // First check if there's a payment record for this payment intent
+        // Check if there's a payment record for this payment intent
         const { data: payments, error: paymentsError } = await supabase
           .from("payments")
           .select("id")
@@ -196,14 +196,14 @@ serve(async (req) => {
         
         let paymentId = null;
         
-        // Only proceed if we found a payment record
+        // If we found a payment record, use it
         if (payments && payments.length > 0) {
           paymentId = payments[0].id;
           console.log(`Found payment record with ID: ${paymentId}`);
         } else {
           console.log(`No payment record found for payment intent: ${paymentIntent.id}`);
           
-          // No existing payment record, let's check if the payment request exists
+          // No existing payment record, create a new one
           const { data: requestData, error: requestError } = await supabase
             .from("payment_requests")
             .select("id, clinic_id, patient_name, patient_email, patient_phone, custom_amount, payment_link_id")
