@@ -25,19 +25,21 @@ const ResetPasswordPage = () => {
   useEffect(() => {
     const checkAccess = async () => {
       try {
-        // We'll simply check if there is an access_token in the URL
+        // We'll check if there is an access_token in the URL
         // The actual token is handled by Supabase
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = hashParams.get('access_token');
         
         if (!accessToken) {
+          console.error('No access token found in URL hash');
           setError('Invalid or missing reset token. Please request a new password reset link.');
           setVerifying(false);
           return;
         }
         
-        // If we have a token, set it in the session
-        // Supabase will handle this automatically, but we'll set the UI state
+        console.log('Found access token in URL hash, validation successful');
+        
+        // If we have a token, the Supabase client will automatically handle it
         setVerifying(false);
       } catch (err) {
         console.error('Error verifying reset token:', err);
@@ -80,14 +82,17 @@ const ResetPasswordPage = () => {
     setIsLoading(true);
     
     try {
+      console.log('Attempting to update password');
       const { error } = await supabase.auth.updateUser({
         password: formData.password,
       });
       
       if (error) {
+        console.error('Error updating password:', error);
         throw error;
       }
       
+      console.log('Password updated successfully');
       toast.success('Password updated successfully');
       
       // Redirect to sign-in page after short delay

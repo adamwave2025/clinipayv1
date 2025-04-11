@@ -18,7 +18,8 @@ pop3_port = 54326
 
 [auth]
 enabled = true
-site_url = "http://localhost:3000"
+site_url = "https://clinipay.co.uk"
+additional_redirect_urls = ["https://clinipay.co.uk/reset-password", "http://localhost:3000/reset-password"]
 
 [functions.create-payment-intent]
 verify_jwt = true

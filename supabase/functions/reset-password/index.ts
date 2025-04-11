@@ -35,12 +35,21 @@ serve(async (req) => {
       }
     );
 
+    // Determine the redirect URL based on environment
+    // In production, use clinipay.co.uk, in development use localhost
+    const isProduction = Deno.env.get("SUPABASE_URL")?.includes("jbtxxlkhiubuzanegtzn");
+    const redirectUrl = isProduction
+      ? "https://clinipay.co.uk/reset-password"
+      : "http://localhost:3000/reset-password";
+
+    console.log(`Using redirect URL: ${redirectUrl} for environment: ${isProduction ? "production" : "development"}`);
+
     // Generate password reset token using Supabase Auth
     const { data, error } = await supabaseAdmin.auth.admin.generateLink({
       type: "recovery",
       email,
       options: {
-        redirectTo: "https://clinipay.co.uk/reset-password",
+        redirectTo: redirectUrl,
       }
     });
 
