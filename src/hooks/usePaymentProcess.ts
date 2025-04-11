@@ -65,7 +65,6 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
           email: formData.email,
           phone: formData.phone
         },
-        paymentReference: intentResult.paymentReference,
         associatedPaymentLinkId: intentResult.associatedPaymentLinkId
       });
       

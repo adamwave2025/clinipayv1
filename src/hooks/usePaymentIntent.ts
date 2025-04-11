@@ -1,7 +1,6 @@
 
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { PaymentLinkData } from './usePaymentLinkData';
 
 export function usePaymentIntent() {
@@ -64,14 +63,12 @@ export function usePaymentIntent() {
         throw new Error(paymentIntentData.error || 'Payment processing failed');
       }
       
-      console.log('Payment reference:', paymentIntentData.paymentReference);
       console.log('Associated payment link ID:', paymentIntentData.paymentLinkId);
       console.log('Payment attempt ID:', paymentIntentData.attemptId);
       
       return {
         success: true,
         clientSecret: paymentIntentData.clientSecret,
-        paymentReference: paymentIntentData.paymentReference,
         associatedPaymentLinkId: paymentIntentData.paymentLinkId,
         paymentAttemptId: paymentIntentData.attemptId
       };

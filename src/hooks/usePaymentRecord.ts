@@ -10,7 +10,6 @@ export function usePaymentRecord() {
     paymentIntent,
     linkData,
     formData,
-    paymentReference,
     associatedPaymentLinkId
   }: {
     paymentIntent: any;
@@ -20,7 +19,6 @@ export function usePaymentRecord() {
       email: string;
       phone?: string;
     };
-    paymentReference: string;
     associatedPaymentLinkId?: string;
   }) => {
     if (!paymentIntent || !paymentIntent.id) {
@@ -32,12 +30,11 @@ export function usePaymentRecord() {
     
     try {
       console.log('Payment was successful:', paymentIntent.id);
-      console.log('Payment reference:', paymentReference);
       
-      // Display the payment reference in the UI
-      toast.success(`Payment successful! Reference: ${paymentReference}`);
+      // Display success message in the UI
+      toast.success(`Payment successful! The payment reference will be shown on the next page.`);
       
-      // Note: The actual payment record is created by the Stripe webhook
+      // Note: The actual payment record with reference is created by the Stripe webhook
       // This function now just handles UI updates after payment
       
       return { success: true };

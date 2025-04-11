@@ -8,6 +8,23 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper function to generate a payment reference
+function generatePaymentReference() {
+  // Generate a random alphanumeric string (8 characters)
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  
+  // Add a timestamp to make it unique (last 4 digits of timestamp)
+  const timestamp = Date.now().toString();
+  const timeComponent = timestamp.substring(timestamp.length - 4);
+  
+  // Format: PAY-XXXX-YYYY where XXXX is random and YYYY is time-based
+  return `PAY-${result}-${timeComponent}`;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -96,7 +113,7 @@ async function handlePaymentIntentSucceeded(paymentIntent, supabaseClient) {
       clinicId,
       paymentLinkId,
       requestId,
-      paymentReference,
+      paymentReference: existingReference,
       patientName,
       patientEmail,
       patientPhone,
@@ -109,6 +126,10 @@ async function handlePaymentIntentSucceeded(paymentIntent, supabaseClient) {
 
     console.log(`Payment for clinic: ${clinicId}, amount: ${paymentIntent.amount}`);
     
+    // Generate a payment reference if one doesn't exist
+    const paymentReference = existingReference || generatePaymentReference();
+    console.log(`Using payment reference: ${paymentReference}`);
+    
     // Record the payment in the payments table
     const { data: paymentData, error: paymentError } = await supabaseClient
       .from("payments")
@@ -120,7 +141,7 @@ async function handlePaymentIntentSucceeded(paymentIntent, supabaseClient) {
         patient_email: patientEmail || null,
         patient_phone: patientPhone || null,
         payment_link_id: paymentLinkId || null,
-        payment_ref: paymentReference || paymentIntent.id,
+        payment_ref: paymentReference,
         status: "paid",
         stripe_payment_id: paymentIntent.id,
       })

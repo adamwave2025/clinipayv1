@@ -9,6 +9,7 @@ import PaymentReferenceDisplay from '@/components/payment/PaymentReferenceDispla
 import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 // Define interface matching PaymentDetailsCard's expected props
 interface PaymentDetail {
@@ -24,34 +25,61 @@ const PaymentSuccessPage = () => {
   const { linkData, isLoading, error } = usePaymentLinkData(linkId);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>([]);
   const [paymentReference, setPaymentReference] = useState<string>('');
+  const [isLoadingReference, setIsLoadingReference] = useState<boolean>(true);
+  const [retryCount, setRetryCount] = useState(0);
+  
+  // Function to fetch payment reference
+  const fetchPaymentReference = async () => {
+    if (!paymentId) {
+      setIsLoadingReference(false);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('payment_ref, stripe_payment_id')
+        .eq('stripe_payment_id', paymentId)
+        .maybeSingle();
+        
+      if (error) {
+        console.error('Error fetching payment reference:', error);
+        return false;
+      }
+      
+      if (data && data.payment_ref) {
+        setPaymentReference(data.payment_ref);
+        setIsLoadingReference(false);
+        return true;
+      }
+      
+      return false;
+    } catch (err) {
+      console.error('Error fetching payment reference:', err);
+      return false;
+    }
+  };
   
   useEffect(() => {
-    // Fetch the payment reference if a payment ID is provided
-    const fetchPaymentReference = async () => {
-      if (paymentId) {
-        try {
-          const { data, error } = await supabase
-            .from('payments')
-            .select('payment_ref')
-            .eq('id', paymentId)
-            .single();
-            
-          if (error) {
-            console.error('Error fetching payment reference:', error);
-            return;
-          }
-          
-          if (data && data.payment_ref) {
-            setPaymentReference(data.payment_ref);
-          }
-        } catch (err) {
-          console.error('Error fetching payment reference:', err);
-        }
+    // Initial fetch of payment reference
+    const initialFetch = async () => {
+      const found = await fetchPaymentReference();
+      
+      // If not found and we haven't exceeded retry attempts, set up retry logic
+      if (!found && retryCount < 5) {
+        const timeout = setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+        }, 2000); // Retry every 2 seconds
+        
+        return () => clearTimeout(timeout);
+      } else if (!found && retryCount >= 5) {
+        setIsLoadingReference(false);
+        toast.error("Could not retrieve payment reference. Please contact the clinic for assistance.");
       }
     };
     
-    fetchPaymentReference();
-  }, [paymentId]);
+    initialFetch();
+  }, [paymentId, retryCount]);
   
   useEffect(() => {
     if (linkData) {
@@ -62,18 +90,9 @@ const PaymentSuccessPage = () => {
         { label: 'Payment Type', value: linkData.type.charAt(0).toUpperCase() + linkData.type.slice(1) },
       ];
       
-      // Only add reference to details if there's no dedicated reference display
-      if (!paymentReference) {
-        details.push({ 
-          label: 'Reference', 
-          value: paymentId || linkId || 'Unknown', 
-          colSpan: 2 
-        });
-      }
-      
       setPaymentDetails(details);
     }
-  }, [linkData, linkId, paymentId, paymentReference]);
+  }, [linkData]);
 
   if (isLoading) {
     return (
@@ -107,11 +126,25 @@ const PaymentSuccessPage = () => {
       
       <PaymentDetailsCard details={paymentDetails} />
       
-      {paymentReference && (
+      {isLoadingReference ? (
+        <div className="mb-6 p-4 border border-gray-200 rounded-md">
+          <div className="flex items-center justify-center space-x-2">
+            <LoadingSpinner size="sm" />
+            <p className="text-sm text-gray-500">Generating payment reference...</p>
+          </div>
+        </div>
+      ) : paymentReference ? (
         <PaymentReferenceDisplay 
           reference={paymentReference} 
           className="mb-6"
         />
+      ) : (
+        <div className="mb-6 p-4 border border-orange-200 bg-orange-50 rounded-md">
+          <p className="text-sm text-orange-700">
+            Your payment was successful, but we couldn't retrieve a payment reference at this time. 
+            Please contact the clinic for your reference number if needed.
+          </p>
+        </div>
       )}
       
       <ClinicInformationCard 
