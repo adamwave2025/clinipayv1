@@ -34,6 +34,8 @@ export function useAdminStats() {
   const fetchStats = async () => {
     setLoading(true);
     try {
+      console.log('Fetching admin stats...');
+      
       // Fetch total clinics
       const { count: clinicsCount, error: clinicsError } = await supabase
         .from('clinics')
@@ -48,6 +50,8 @@ export function useAdminStats() {
         .in('status', ['paid', 'partially_refunded', 'refunded']);
 
       if (paymentsError) throw paymentsError;
+      
+      console.log('Raw payments data:', paymentsData);
       
       // Calculate total payments (sum of all paid amounts minus refunded amounts)
       const totalPaymentsSum = paymentsData.reduce((sum, payment) => {
@@ -71,18 +75,31 @@ export function useAdminStats() {
         return sum;
       }, 0);
       
+      console.log('Calculated totalPaymentsSum:', totalPaymentsSum);
+      console.log('Calculated totalRefundsSum:', totalRefundsSum);
+      
       // Calculate CliniPay revenue (platform fee percentage of total payments)
       const feePercentage = parseFloat(platformFee) / 100;
       const clinipayRevenueAmount = totalPaymentsSum * feePercentage;
+      
+      console.log('Fee percentage:', feePercentage);
+      console.log('Calculated revenue:', clinipayRevenueAmount);
 
       setStats({
         totalClinics: clinicsCount || 0,
-        totalPayments: totalPaymentsSum / 100, // Convert from cents to pounds
-        totalRefunds: totalRefundsSum / 100, // Convert from cents to pounds
-        clinipayRevenue: clinipayRevenueAmount / 100, // Convert from cents to pounds
+        totalPayments: totalPaymentsSum, // Removed division by 100 as values are already in pounds
+        totalRefunds: totalRefundsSum, // Removed division by 100
+        clinipayRevenue: clinipayRevenueAmount, // Removed division by 100
         paymentsChange: 12.5, // Placeholder values for trend
         revenueChange: 8.3,
         refundsChange: -2.1
+      });
+      
+      console.log('Final stats set:', {
+        totalClinics: clinicsCount || 0,
+        totalPayments: totalPaymentsSum,
+        totalRefunds: totalRefundsSum,
+        clinipayRevenue: clinipayRevenueAmount
       });
     } catch (error) {
       console.error('Error fetching admin stats:', error);
