@@ -35,36 +35,63 @@ serve(async (req) => {
       }
     );
 
-    // Determine the redirect URL based on environment
-    // In production, use clinipay.co.uk, in development use localhost
-    const isProduction = Deno.env.get("SUPABASE_URL")?.includes("jbtxxlkhiubuzanegtzn");
-    const redirectUrl = isProduction
-      ? "https://clinipay.co.uk/reset-password"
-      : "http://localhost:3000/reset-password";
+    // First, find the user by email
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
 
-    console.log(`Using redirect URL: ${redirectUrl} for environment: ${isProduction ? "production" : "development"}`);
-
-    // Generate password reset token using Supabase Auth
-    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-      type: "recovery",
-      email,
-      options: {
-        redirectTo: redirectUrl,
-      }
-    });
-
-    if (error) {
-      console.error("Error generating reset link:", error);
+    if (userError) {
+      console.error("Error finding user:", userError);
       return new Response(
-        JSON.stringify({ success: false, error: error.message }),
+        JSON.stringify({ success: false, error: "Error finding user account" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Get the reset token link
-    const resetLink = data.properties.action_link;
+    if (!userData) {
+      // Don't reveal if user exists or not for security
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "If an account with that email exists, a password reset link has been sent" 
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Log for debugging
+    // Generate a random token 
+    const token = crypto.randomUUID();
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24); // 24 hour expiry
+
+    // Save token to user record
+    const { error: updateError } = await supabaseAdmin
+      .from('users')
+      .update({ 
+        verification_token: token,
+        token_expires_at: expiresAt.toISOString()
+      })
+      .eq('id', userData.id);
+
+    if (updateError) {
+      console.error("Error saving reset token:", updateError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Error generating reset token" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Determine the redirect URL based on environment
+    const isProduction = Deno.env.get("SUPABASE_URL")?.includes("jbtxxlkhiubuzanegtzn");
+    const baseUrl = isProduction 
+      ? "https://clinipay.co.uk" 
+      : "http://localhost:3000";
+
+    // Create the password reset link with our custom token
+    const resetLink = `${baseUrl}/reset-password?token=${token}&userId=${userData.id}`;
+
     console.log("Generated reset link:", resetLink);
 
     // Send to GHL webhook

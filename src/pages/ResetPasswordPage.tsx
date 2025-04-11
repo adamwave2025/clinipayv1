@@ -20,26 +20,60 @@ const ResetPasswordPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
 
-  // Check for token in URL or session storage when component mounts
+  // Check for token in URL when component mounts
   useEffect(() => {
-    const checkAccess = async () => {
+    const checkToken = async () => {
       try {
-        // We'll check if there is an access_token in the URL
-        // The actual token is handled by Supabase
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
+        // Get token and userId from query parameters
+        const searchParams = new URLSearchParams(location.search);
+        const tokenParam = searchParams.get('token');
+        const userIdParam = searchParams.get('userId');
         
-        if (!accessToken) {
-          console.error('No access token found in URL hash');
+        if (!tokenParam || !userIdParam) {
+          console.error('Missing token or userId in URL parameters');
           setError('Invalid or missing reset token. Please request a new password reset link.');
           setVerifying(false);
           return;
         }
         
-        console.log('Found access token in URL hash, validation successful');
+        console.log('Found token and userId in URL parameters, validating');
         
-        // If we have a token, the Supabase client will automatically handle it
+        // Verify the token against our database
+        const { data, error: queryError } = await supabase
+          .from('users')
+          .select('verification_token, token_expires_at')
+          .eq('id', userIdParam)
+          .maybeSingle();
+        
+        if (queryError || !data) {
+          console.error('Error verifying token:', queryError);
+          setError('Invalid user ID. Please request a new password reset link.');
+          setVerifying(false);
+          return;
+        }
+        
+        if (data.verification_token !== tokenParam) {
+          console.error('Token does not match stored token');
+          setError('Invalid reset token. Please request a new password reset link.');
+          setVerifying(false);
+          return;
+        }
+        
+        if (!data.token_expires_at || new Date(data.token_expires_at) < new Date()) {
+          console.error('Token has expired');
+          setError('This reset link has expired. Please request a new password reset link.');
+          setVerifying(false);
+          return;
+        }
+        
+        console.log('Token validation successful');
+        
+        // Store the validated token and userId for password reset
+        setToken(tokenParam);
+        setUserId(userIdParam);
         setVerifying(false);
       } catch (err) {
         console.error('Error verifying reset token:', err);
@@ -48,7 +82,7 @@ const ResetPasswordPage = () => {
       }
     };
     
-    checkAccess();
+    checkToken();
   }, [location]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,17 +113,39 @@ const ResetPasswordPage = () => {
       return;
     }
     
+    if (!userId || !token) {
+      setError('Invalid reset session. Please request a new password reset link.');
+      toast.error('Invalid reset session. Please try again.');
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
       console.log('Attempting to update password');
-      const { error } = await supabase.auth.updateUser({
+      
+      // First, update the user password in auth.users (through auth API)
+      const { error: authError } = await supabase.auth.updateUser({
         password: formData.password,
       });
       
-      if (error) {
-        console.error('Error updating password:', error);
-        throw error;
+      if (authError) {
+        console.error('Error updating password:', authError);
+        throw authError;
+      }
+      
+      // Then, clear the verification token from our users table
+      const { error: clearTokenError } = await supabase
+        .from('users')
+        .update({ 
+          verification_token: null,
+          token_expires_at: null
+        })
+        .eq('id', userId);
+      
+      if (clearTokenError) {
+        console.error('Error clearing reset token:', clearTokenError);
+        // Non-critical error, continue with success flow
       }
       
       console.log('Password updated successfully');
