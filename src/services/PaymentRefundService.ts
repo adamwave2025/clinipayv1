@@ -11,9 +11,6 @@ export const PaymentRefundService = {
     }
     
     try {
-      // Create a specific ID for the loading toast so we can dismiss it later
-      const loadingToastId = toast.loading('Processing refund...');
-      
       // Call the refund-payment edge function
       const { data, error } = await supabase.functions.invoke('refund-payment', {
         body: JSON.stringify({
@@ -22,9 +19,6 @@ export const PaymentRefundService = {
           fullRefund: !amount // If no amount is provided, it's a full refund
         })
       });
-      
-      // Always dismiss the loading toast to prevent UI from being blocked
-      toast.dismiss(loadingToastId);
       
       if (error || !data?.success) {
         throw new Error(error?.message || data?.error || 'Refund processing failed');
@@ -36,8 +30,6 @@ export const PaymentRefundService = {
       };
     } catch (error: any) {
       console.error('Error refunding payment:', error);
-      // Ensure any loading toasts are dismissed in case of error
-      toast.dismiss();
       return { success: false, error: error.message };
     }
   },
@@ -73,14 +65,6 @@ export const PaymentRefundService = {
             refundedAmount: refundAmount
           }
         : p
-    );
-  },
-  
-  showRefundToast(isFullRefund: boolean, refundAmount: number) {
-    toast.success(
-      isFullRefund 
-        ? 'Payment refunded successfully' 
-        : `Partial refund of ${formatCurrency(refundAmount)} processed successfully`
     );
   }
 };

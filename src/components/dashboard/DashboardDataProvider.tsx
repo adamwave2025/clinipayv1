@@ -8,6 +8,7 @@ import DashboardContext, { useDashboardData } from '@/contexts/DashboardContext'
 import { usePayments } from '@/hooks/usePayments';
 import { usePaymentStats } from '@/hooks/usePaymentStats';
 import { PaymentRefundService } from '@/services/PaymentRefundService';
+import { formatCurrency } from '@/utils/formatters';
 
 export { useDashboardData } from '@/contexts/DashboardContext';
 
@@ -38,6 +39,9 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const handleRefund = async (amount?: number) => {
     if (!paymentToRefund) return;
     
+    // Show loading toast
+    const loadingToastId = toast.loading('Processing refund...');
+    
     try {
       setIsProcessingRefund(true);
       
@@ -51,6 +55,9 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const result = await PaymentRefundService.processRefund(paymentToRefund, refundAmount);
       
+      // Always dismiss the loading toast
+      toast.dismiss(loadingToastId);
+      
       if (!result.success) {
         throw new Error(result.error || 'Refund processing failed');
       }
@@ -62,13 +69,22 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
         refundAmount
       ));
       
+      // Show success toast
+      toast.success(
+        isFullRefund 
+          ? 'Payment refunded successfully' 
+          : `Partial refund of ${formatCurrency(refundAmount)} processed successfully`
+      );
+      
+      // Reset UI state
       setRefundDialogOpen(false);
       setDetailDialogOpen(false);
-      
-      PaymentRefundService.showRefundToast(isFullRefund, refundAmount);
-      
       setPaymentToRefund(null);
+      
     } catch (error: any) {
+      // Always dismiss the loading toast
+      toast.dismiss(loadingToastId);
+      
       console.error('Error refunding payment:', error);
       toast.error(`Failed to refund payment: ${error.message}`);
     } finally {
