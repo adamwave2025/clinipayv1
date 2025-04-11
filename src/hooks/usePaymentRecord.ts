@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 
 export function usePaymentRecord() {
   
-  // This function is now primarily for UI feedback and client-side records
+  // This function is purely for client-side records and UI feedback
   // The actual database updates are handled by the webhook
   const createPaymentRecord = async ({
     paymentIntent,
@@ -24,19 +24,16 @@ export function usePaymentRecord() {
     associatedPaymentLinkId: string | null;
   }) => {
     try {
-      console.log('Processing successful payment client-side');
+      console.log('Client-side payment success recorded');
       console.log('Payment intent ID:', paymentIntent.id);
       console.log('Payment reference:', paymentReference);
       
-      // If this was a payment request, check if we need to update some UI state
-      if (linkData.isRequest) {
-        console.log('This was a payment request. Webhook will handle payment_requests table update.');
-        return { success: true };
-      }
+      // Note: All database updates are handled by the stripe-webhooks function
+      // This function only provides client-side feedback
       
       return { success: true };
     } catch (error: any) {
-      console.error('Error in createPaymentRecord:', error);
+      console.error('Error in client-side payment recording:', error);
       return { success: false, error: error.message };
     }
   };

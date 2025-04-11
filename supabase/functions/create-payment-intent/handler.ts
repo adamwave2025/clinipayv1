@@ -27,6 +27,9 @@ export async function handleRequest(req: Request) {
   }
 
   console.log(`Creating payment for clinic ${clinicId}, amount: ${amount}`);
+  if (requestId) {
+    console.log(`This payment is for request ID: ${requestId}`);
+  }
 
   // Get the clinic's Stripe account ID
   const { data: clinicData, error: clinicError } = await supabase
@@ -67,23 +70,28 @@ export async function handleRequest(req: Request) {
     amount
   );
 
+  // Ensure the requestId is properly included in metadata
+  const metadata = {
+    clinicId,
+    paymentLinkId: associatedPaymentLinkId || '',
+    requestId: requestId || '',
+    platformFeePercent: platformFeePercent.toString(),
+    paymentReference,
+    patientName: patientInfo.name || paymentMethod.billing_details?.name || '',
+    patientEmail: patientInfo.email || paymentMethod.billing_details?.email || '',
+    patientPhone: patientInfo.phone || paymentMethod.billing_details?.phone || '',
+    customAmount: customAmount ? customAmount.toString() : ''
+  };
+
+  console.log("Payment intent metadata:", metadata);
+
   // Create a payment intent using Stripe Connect Direct Charges
   const paymentIntent = await createStripePaymentIntent(
     stripe,
     amount,
     clinicData.stripe_account_id,
     platformFeeAmount,
-    {
-      clinicId,
-      paymentLinkId: associatedPaymentLinkId || '',
-      requestId: requestId || '',
-      platformFeePercent: platformFeePercent.toString(),
-      paymentReference,
-      patientName: patientInfo.name || paymentMethod.billing_details?.name || '',
-      patientEmail: patientInfo.email || paymentMethod.billing_details?.email || '',
-      patientPhone: patientInfo.phone || paymentMethod.billing_details?.phone || '',
-      customAmount: customAmount ? customAmount.toString() : ''
-    }
+    metadata
   );
 
   // Update the payment attempt with the payment intent ID
