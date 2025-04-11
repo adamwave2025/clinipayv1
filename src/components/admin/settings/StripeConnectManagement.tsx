@@ -1,9 +1,8 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, CreditCard, AlertTriangle } from 'lucide-react';
+import { Search, CreditCard, AlertTriangle, AlertCircle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from '@/integrations/supabase/client';
 import StatusBadge from '@/components/common/StatusBadge';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 type Clinic = {
   id: string;
@@ -44,9 +44,11 @@ const StripeConnectManagement = ({
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [selectedClinic, setSelectedClinic] = useState<string | null>(null);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleDisconnectStripe = (clinicId: string) => {
     setSelectedClinic(clinicId);
+    setError(null);
     setIsConfirmDialogOpen(true);
   };
 
@@ -54,25 +56,28 @@ const StripeConnectManagement = ({
     if (!selectedClinic) return;
     
     setIsDisconnecting(true);
+    setError(null);
     
     try {
       console.log(`Disconnecting Stripe for clinic ${selectedClinic}`);
       
       // The key change: set stripe_status to "not_connected" string instead of null
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('clinics')
         .update({
           stripe_account_id: null,
           stripe_status: 'not_connected'  // Use string value instead of null
         })
-        .eq('id', selectedClinic);
+        .eq('id', selectedClinic)
+        .select();
       
       if (error) {
         console.error('Database error when disconnecting Stripe:', error);
+        setError(`Failed to disconnect: ${error.message}`);
         throw error;
       }
       
-      console.log(`Successfully updated database for clinic ${selectedClinic}`);
+      console.log(`Successfully updated database for clinic ${selectedClinic}`, data);
       
       // Update local state
       const updatedClinics = clinics.map(clinic => 
@@ -87,12 +92,13 @@ const StripeConnectManagement = ({
       await refetchClinics();
       
       toast.success(`Stripe disconnected for clinic ${selectedClinic}`);
+      setIsConfirmDialogOpen(false);
     } catch (error: any) {
       console.error('Error disconnecting Stripe:', error);
-      toast.error(`Failed to disconnect Stripe: ${error.message || 'Unknown error'}`);
+      setError(`Failed to disconnect Stripe: ${error.message || 'Unknown error'}`);
+      // Keep dialog open to show the error
     } finally {
       setIsDisconnecting(false);
-      setIsConfirmDialogOpen(false);
     }
   };
 
@@ -197,10 +203,22 @@ const StripeConnectManagement = ({
               Are you sure you want to force disconnect Stripe for this clinic? This will immediately stop payment processing for them.
             </DialogDescription>
           </DialogHeader>
+          
+          {error && (
+            <Alert variant="destructive" className="mt-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
           <DialogFooter>
             <Button 
               variant="outline" 
-              onClick={() => setIsConfirmDialogOpen(false)}
+              onClick={() => {
+                setError(null);
+                setIsConfirmDialogOpen(false);
+              }}
               disabled={isDisconnecting}
             >
               Cancel
