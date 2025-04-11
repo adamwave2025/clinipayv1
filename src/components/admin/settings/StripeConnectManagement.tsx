@@ -1,38 +1,14 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Search, CreditCard, AlertTriangle, AlertCircle } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
+import { Search } from 'lucide-react';
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { supabase } from '@/integrations/supabase/client';
-import StatusBadge from '@/components/common/StatusBadge';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-
-type Clinic = {
-  id: string;
-  clinic_name: string | null;
-  email: string | null;
-  stripe_account_id: string | null;
-  stripe_status: string | null;
-};
-
-interface StripeConnectManagementProps {
-  clinics: Clinic[];
-  isLoading: boolean;
-  onUpdateClinics: (updatedClinics: Clinic[]) => void;
-  refetchClinics: () => Promise<void>;
-}
+import { StripeConnectManagementProps, Clinic } from '@/types/admin';
+import StripeClinicRow from './StripeClinicRow';
+import DisconnectDialog from './DisconnectDialog';
 
 const StripeConnectManagement = ({ 
   clinics, 
@@ -61,12 +37,11 @@ const StripeConnectManagement = ({
     try {
       console.log(`Disconnecting Stripe for clinic ${selectedClinic}`);
       
-      // The key change: set stripe_status to "not_connected" string instead of null
       const { error, data } = await supabase
         .from('clinics')
         .update({
           stripe_account_id: null,
-          stripe_status: 'not_connected'  // Use string value instead of null
+          stripe_status: 'not_connected'
         })
         .eq('id', selectedClinic)
         .select();
@@ -96,10 +71,14 @@ const StripeConnectManagement = ({
     } catch (error: any) {
       console.error('Error disconnecting Stripe:', error);
       setError(`Failed to disconnect Stripe: ${error.message || 'Unknown error'}`);
-      // Keep dialog open to show the error
     } finally {
       setIsDisconnecting(false);
     }
+  };
+
+  const handleCloseDialog = () => {
+    setError(null);
+    setIsConfirmDialogOpen(false);
   };
 
   const filteredClinics = clinics.filter(clinic => 
@@ -153,37 +132,11 @@ const StripeConnectManagement = ({
                   </TableRow>
                 ) : (
                   filteredClinics.map((clinic) => (
-                    <TableRow key={clinic.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback className="bg-gradient-primary text-white text-xs">
-                              {clinic.clinic_name?.charAt(0) || 'C'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{clinic.clinic_name || 'Unnamed Clinic'}</p>
-                            <p className="text-xs text-gray-500">{clinic.email || 'No email'}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={clinic.stripe_status as any || 'not_connected'} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {clinic.stripe_status === 'connected' && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-red-600 hover:text-red-700 hover:border-red-200 hover:bg-red-50"
-                            onClick={() => handleDisconnectStripe(clinic.id)}
-                          >
-                            <CreditCard className="h-4 w-4 mr-2" />
-                            Disconnect
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                    <StripeClinicRow 
+                      key={clinic.id}
+                      clinic={clinic} 
+                      onDisconnect={handleDisconnectStripe} 
+                    />
                   ))
                 )}
               </TableBody>
@@ -192,47 +145,13 @@ const StripeConnectManagement = ({
         </CardContent>
       </Card>
 
-      <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
-              Confirm Stripe Disconnection
-            </DialogTitle>
-            <DialogDescription>
-              Are you sure you want to force disconnect Stripe for this clinic? This will immediately stop payment processing for them.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {error && (
-            <Alert variant="destructive" className="mt-2">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setError(null);
-                setIsConfirmDialogOpen(false);
-              }}
-              disabled={isDisconnecting}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={confirmDisconnect}
-              disabled={isDisconnecting}
-            >
-              {isDisconnecting ? 'Disconnecting...' : 'Disconnect Stripe'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DisconnectDialog
+        isOpen={isConfirmDialogOpen}
+        onClose={handleCloseDialog}
+        onConfirm={confirmDisconnect}
+        isDisconnecting={isDisconnecting}
+        error={error}
+      />
     </>
   );
 };

@@ -36,9 +36,9 @@ const AdminSettingsPage = () => {
         
         <PlatformFeeSettings 
           initialFee={platformFee} 
-          // When the fee is updated, refresh the fee data
           onSave={fetchPlatformFee}
         />
+        
         <StripeConnectManagement 
           clinics={clinics} 
           isLoading={isLoading}
