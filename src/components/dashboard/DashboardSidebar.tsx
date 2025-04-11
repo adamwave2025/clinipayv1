@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, 
   Link as LinkIcon, 
@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import Logo from '../common/Logo';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 
 interface SidebarLink {
   to: string;
@@ -30,6 +31,12 @@ interface DashboardSidebarProps {
 const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) => {
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { role } = useUserRole();
+  
+  // Use the actual user role for link determination if available
+  const actualUserType = role === 'admin' ? 'admin' : 'clinic';
+  const effectiveUserType = userType || actualUserType;
   
   const clinicLinks: SidebarLink[] = [
     { 
@@ -77,8 +84,7 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
     },
   ];
 
-  const links = userType === 'clinic' ? clinicLinks : adminLinks;
-  const baseUrl = userType === 'clinic' ? '/dashboard' : '/admin';
+  const links = effectiveUserType === 'clinic' ? clinicLinks : adminLinks;
 
   const handleSignOut = async () => {
     await signOut();

@@ -41,6 +41,7 @@ import AuthCallbackPage from "./pages/AuthCallbackPage";
 // Protected Route Components
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import RoleBasedRoute from "./components/common/RoleBasedRoute";
+import AdminRedirect from "./pages/admin/AdminRedirect";
 
 const queryClient = new QueryClient();
 
@@ -69,10 +70,10 @@ const App = () => (
             <Route path="/payment/failed" element={<PaymentFailedPage />} />
             <Route path="/payment/:linkId" element={<PatientPaymentPage />} />
             
-            {/* Protected Dashboard Route - accessible to all authenticated users */}
+            {/* Admin role check with redirect - For main dashboard */}
             <Route path="/dashboard" element={
               <ProtectedRoute>
-                <DashboardPage />
+                <AdminRedirect fallbackComponent={<DashboardPage />} />
               </ProtectedRoute>
             } />
             

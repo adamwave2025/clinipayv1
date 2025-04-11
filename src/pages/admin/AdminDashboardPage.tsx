@@ -8,9 +8,11 @@ import { useAdminStats } from '@/hooks/useAdminStats';
 import { RecentClinicsTable } from '@/components/admin/RecentClinicsTable';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { formatCurrency } from '@/utils/formatters';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AdminDashboardPage = () => {
   const { stats, loading } = useAdminStats();
+  const { loading: authLoading } = useAuth();
 
   const StatCard = ({ 
     title, 
@@ -46,6 +48,15 @@ const AdminDashboardPage = () => {
       </CardContent>
     </Card>
   );
+
+  // Show global loading while auth is loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <DashboardLayout userType="admin">
