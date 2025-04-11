@@ -85,27 +85,6 @@ serve(async (req) => {
       throw new Error("This payment does not have a Stripe payment ID.");
     }
 
-    // Get the clinic's Stripe account ID
-    console.log(`🔍 Fetching clinic data for clinic ID: ${payment.clinic_id}`);
-    const { data: clinicData, error: clinicError } = await supabase
-      .from("clinics")
-      .select("stripe_account_id")
-      .eq("id", payment.clinic_id)
-      .single();
-
-    if (clinicError) {
-      console.error("❌ Error fetching clinic data:", clinicError);
-      throw new Error(`Clinic not found: ${clinicError.message}`);
-    }
-
-    if (!clinicData?.stripe_account_id) {
-      console.error("❌ Missing Stripe account ID for clinic");
-      throw new Error("Clinic Stripe account not found.");
-    }
-
-    console.log(`✅ Clinic Stripe account found: ${clinicData.stripe_account_id}`);
-    
-    const stripeAccountId = clinicData.stripe_account_id;
     const stripePaymentId = payment.stripe_payment_id;
 
     // Process refund via Stripe
@@ -113,12 +92,10 @@ serve(async (req) => {
     try {
       console.log(`💳 Creating Stripe refund for payment intent: ${stripePaymentId}`);
       
-      // Create refund
+      // Create refund from the main CliniPay Stripe account (no stripeAccount parameter)
       stripeRefund = await stripe.refunds.create({
         payment_intent: stripePaymentId,
         amount: fullRefund ? undefined : Math.round(refundAmount * 100), // Convert to cents for Stripe if partial refund
-      }, {
-        stripeAccount: stripeAccountId, // Use the clinic's connected account
       });
       
       console.log(`✅ Stripe refund created with ID: ${stripeRefund.id}`);
