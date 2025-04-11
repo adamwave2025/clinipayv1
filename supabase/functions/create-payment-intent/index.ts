@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -151,24 +150,6 @@ serve(async (req) => {
     });
 
     console.log("Payment intent created:", paymentIntent.id);
-
-    // Track the payment attempt in the database
-    const { error: attemptError } = await supabase
-      .from('payment_attempts')
-      .insert({
-        clinic_id: clinicId,
-        payment_link_id: associatedPaymentLinkId || null,
-        payment_request_id: requestId || null,
-        amount: amount,
-        status: 'created',
-        payment_intent_id: paymentIntent.id,
-        payment_ref: paymentReference
-      });
-      
-    if (attemptError) {
-      console.error("Error recording payment attempt:", attemptError);
-      // Continue processing even if tracking fails - this is not critical
-    }
 
     // Return the client secret to the frontend along with the payment link id if it exists
     return new Response(
