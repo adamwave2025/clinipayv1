@@ -59,14 +59,15 @@ export function useStripePayment() {
         throw new Error('No payment intent returned');
       }
       
+      // Fix: Use a type-safe comparison by explicitly checking each failed status
       if (paymentIntent.status === 'requires_payment_method' || 
           paymentIntent.status === 'requires_action' ||
-          paymentIntent.status === 'canceled' ||
-          paymentIntent.status === 'failed') {
+          paymentIntent.status === 'canceled') {
         console.error('Payment intent status indicates failure:', paymentIntent.status);
         throw new Error(`Payment failed: ${paymentIntent.status}`);
       }
       
+      // Check if the payment was successful
       if (paymentIntent.status !== 'succeeded') {
         throw new Error(`Payment status: ${paymentIntent.status}`);
       }
