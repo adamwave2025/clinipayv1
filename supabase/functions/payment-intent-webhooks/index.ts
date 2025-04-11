@@ -84,6 +84,8 @@ serve(async (req) => {
     // Handle the event
     if (event.type === "payment_intent.succeeded") {
       await handlePaymentIntentSucceeded(event.data.object, supabaseClient);
+    } else if (event.type === "payment_intent.payment_failed") {
+      await handlePaymentIntentFailed(event.data.object, supabaseClient);
     } else {
       console.log(`Unhandled event type: ${event.type}`);
     }
@@ -183,5 +185,61 @@ async function handlePaymentIntentSucceeded(paymentIntent, supabaseClient) {
   } catch (error) {
     console.error("Error processing payment intent:", error);
     throw error;
+  }
+}
+
+// Function to handle payment_intent.payment_failed events
+async function handlePaymentIntentFailed(paymentIntent, supabaseClient) {
+  console.log("Processing payment_intent.payment_failed:", paymentIntent.id);
+  
+  try {
+    // Extract metadata from the payment intent
+    const metadata = paymentIntent.metadata || {};
+    const {
+      clinicId,
+      paymentLinkId,
+      requestId,
+      patientName,
+      patientEmail,
+      patientPhone,
+    } = metadata;
+
+    if (!clinicId) {
+      console.error("Missing clinicId in payment intent metadata");
+      return;
+    }
+
+    // Log the failure reason
+    const failureMessage = paymentIntent.last_payment_error?.message || "Unknown failure reason";
+    const failureCode = paymentIntent.last_payment_error?.code || "unknown";
+    
+    console.log(`Payment failed for clinic: ${clinicId}, reason: ${failureMessage}, code: ${failureCode}`);
+    
+    // Update payment attempt if exists
+    if (paymentIntent.id) {
+      const { error: attemptUpdateError } = await supabaseClient
+        .from("payment_attempts")
+        .update({
+          status: "failed",
+          updated_at: new Date().toISOString()
+        })
+        .eq("payment_intent_id", paymentIntent.id);
+
+      if (attemptUpdateError) {
+        console.error("Error updating payment attempt:", attemptUpdateError);
+      } else {
+        console.log(`Payment attempt updated to failed for intent ${paymentIntent.id}`);
+      }
+    }
+
+    // If this payment was for a payment request, we might want to update it
+    if (requestId) {
+      console.log(`Payment failed for request: ${requestId}`);
+      // You may choose to update the payment request status here if needed
+    }
+
+    console.log("Failed payment processing completed");
+  } catch (error) {
+    console.error("Error processing failed payment intent:", error);
   }
 }

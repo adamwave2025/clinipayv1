@@ -1,11 +1,11 @@
-
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentStatusSummary from '@/components/payment/PaymentStatusSummary';
 import ClinicInformationCard from '@/components/payment/ClinicInformationCard';
 import { RefreshCcw } from 'lucide-react';
-import { clinicDetails } from '@/data/clinicData';
+import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 const PaymentFailedReasons = () => (
   <div className="bg-red-50 rounded-lg p-4 mb-6 text-left">
@@ -22,11 +22,36 @@ const PaymentFailedReasons = () => (
 
 const PaymentFailedPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const linkId = searchParams.get('link_id');
+  const [loading, setLoading] = useState(!!linkId);
+  
+  const { linkData, isLoading } = usePaymentLinkData(linkId);
+  
+  useEffect(() => {
+    if (!isLoading) {
+      setLoading(false);
+    }
+  }, [isLoading]);
 
   const handleTryAgain = () => {
-    // Go back to the payment page
-    navigate('/payment');
+    if (linkId) {
+      navigate(`/payment/${linkId}`);
+    } else {
+      navigate('/payment');
+    }
   };
+  
+  if (loading) {
+    return (
+      <PaymentLayout hideHeaderFooter={true}>
+        <div className="flex flex-col items-center justify-center">
+          <LoadingSpinner size="md" />
+          <p className="mt-3 text-gray-500">Loading payment details...</p>
+        </div>
+      </PaymentLayout>
+    );
+  }
 
   return (
     <PaymentLayout hideHeaderFooter={true}>
@@ -51,7 +76,14 @@ const PaymentFailedPage = () => {
         </p>
       </div>
       
-      <ClinicInformationCard clinicDetails={clinicDetails} />
+      {linkData && linkData.clinic && (
+        <ClinicInformationCard clinicDetails={{
+          name: linkData.clinic.name,
+          email: linkData.clinic.email || '',
+          phone: linkData.clinic.phone || '',
+          address: linkData.clinic.address || ''
+        }} />
+      )}
     </PaymentLayout>
   );
 };

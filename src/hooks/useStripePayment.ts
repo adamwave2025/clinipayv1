@@ -55,6 +55,18 @@ export function useStripePayment() {
         throw new Error(stripeError.message || 'Payment failed');
       }
       
+      if (!paymentIntent) {
+        throw new Error('No payment intent returned');
+      }
+      
+      if (paymentIntent.status === 'requires_payment_method' || 
+          paymentIntent.status === 'requires_action' ||
+          paymentIntent.status === 'canceled' ||
+          paymentIntent.status === 'failed') {
+        console.error('Payment intent status indicates failure:', paymentIntent.status);
+        throw new Error(`Payment failed: ${paymentIntent.status}`);
+      }
+      
       if (paymentIntent.status !== 'succeeded') {
         throw new Error(`Payment status: ${paymentIntent.status}`);
       }
@@ -67,7 +79,8 @@ export function useStripePayment() {
       console.error('Stripe payment processing error:', error);
       return { 
         success: false, 
-        error: error.message || 'Error processing payment' 
+        error: error.message || 'Error processing payment',
+        paymentStatus: error.paymentIntent?.status
       };
     } finally {
       setIsProcessing(false);

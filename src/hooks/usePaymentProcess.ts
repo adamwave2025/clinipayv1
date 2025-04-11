@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { toast } from 'sonner';
@@ -53,6 +54,13 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       });
       
       if (!paymentResult.success) {
+        console.error('Payment processing failed:', paymentResult.error);
+        // Explicitly redirect to the failed payment page
+        let redirectUrl = `/payment/failed`;
+        if (linkId) {
+          redirectUrl += `?link_id=${linkId}`;
+        }
+        window.location.href = redirectUrl;
         throw new Error(paymentResult.error || 'Payment processing failed');
       }
       
@@ -75,6 +83,17 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
     } catch (error: any) {
       console.error('Payment error:', error);
       toast.error('Payment failed: ' + error.message);
+      
+      // If we haven't already redirected, do it now
+      if (!window.location.pathname.includes('/payment/failed')) {
+        setTimeout(() => {
+          let redirectUrl = `/payment/failed`;
+          if (linkId) {
+            redirectUrl += `?link_id=${linkId}`;
+          }
+          window.location.href = redirectUrl;
+        }, 1000); // Small delay to allow the toast to be seen
+      }
     } finally {
       setIsSubmitting(false);
       setProcessingPayment(false);
