@@ -5,6 +5,7 @@ import PaymentLinksCard from './PaymentLinksCard';
 import RecentPaymentsCard from './RecentPaymentsCard';
 import PaymentDetailDialog from './PaymentDetailDialog';
 import PaymentRefundDialog from './payments/PaymentRefundDialog';
+import LaunchPadCard from './LaunchPadCard';
 import { useDashboardData } from './DashboardDataProvider';
 
 const DashboardContent = () => {
@@ -22,8 +23,15 @@ const DashboardContent = () => {
     handleRefund
   } = useDashboardData();
 
+  // Determine if Stripe is connected based on payment stats
+  // In a real implementation, this would be more robust
+  const stripeConnected = stats.total.amount > 0 || 
+                          (stats.thisMonth && stats.thisMonth.amount > 0);
+
   return (
     <>
+      <LaunchPadCard stripeConnected={stripeConnected} />
+      
       <PaymentStatsCards stats={stats} />
       
       <div className="mb-8">
