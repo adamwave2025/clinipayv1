@@ -62,6 +62,9 @@ const LaunchPadCard = ({ stripeConnected, paymentLinksExist, hasSentPaymentLink 
     },
   ];
 
+  // Check if at least one task is completed
+  const hasAnyTaskComplete = tasks.some(task => task.completed);
+
   const dismissCard = () => {
     localStorage.setItem('launchPadDismissed', 'true');
     setVisible(false);
@@ -81,29 +84,31 @@ const LaunchPadCard = ({ stripeConnected, paymentLinksExist, hasSentPaymentLink 
             </div>
           </div>
           
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="text-white/90 hover:text-white hover:bg-white/10 rounded-full"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Dismiss Launch Pad?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to dismiss the Launch Pad? You can access these steps from the Help section later.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={dismissCard}>Dismiss</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {hasAnyTaskComplete && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-white/90 hover:text-white hover:bg-white/10 rounded-full"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Dismiss Launch Pad?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to dismiss the Launch Pad? You won't see this again!
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={dismissCard}>Dismiss</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
         
         <div className="mt-5 space-y-4">
