@@ -4,7 +4,7 @@ import React from 'react';
 interface PaymentDetail {
   label: string;
   value: string | number;
-  colSpan?: number;
+  colSpan?: number; // Added optional colSpan property
 }
 
 interface PaymentDetailsCardProps {
