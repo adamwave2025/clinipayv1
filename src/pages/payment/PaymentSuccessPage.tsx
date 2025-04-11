@@ -9,12 +9,19 @@ import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { supabase } from '@/integrations/supabase/client';
 
+// Define interface matching PaymentDetailsCard's expected props
+interface PaymentDetail {
+  label: string;
+  value: string | number;
+  colSpan?: number;
+}
+
 const PaymentSuccessPage = () => {
   const [searchParams] = useSearchParams();
   const linkId = searchParams.get('link_id');
   const paymentId = searchParams.get('payment_id');
   const { linkData, isLoading, error } = usePaymentLinkData(linkId);
-  const [paymentDetails, setPaymentDetails] = useState<Array<{ label: string; value: string | number; colSpan?: number }>>([]);
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>([]);
   const [paymentReference, setPaymentReference] = useState<string>('');
   
   useEffect(() => {
@@ -47,7 +54,7 @@ const PaymentSuccessPage = () => {
   
   useEffect(() => {
     if (linkData) {
-      const details = [
+      const details: PaymentDetail[] = [
         { label: 'Amount Paid', value: `£${linkData.amount.toFixed(2)}` },
         { label: 'Date', value: new Date().toLocaleDateString() },
         { label: 'Clinic', value: linkData.clinic.name },
