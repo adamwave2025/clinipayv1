@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,12 +12,42 @@ import { AlertCircle } from 'lucide-react';
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     password: '',
     confirmPassword: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(true);
+
+  // Check for token in URL or session storage when component mounts
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        // We'll simply check if there is an access_token in the URL
+        // The actual token is handled by Supabase
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        
+        if (!accessToken) {
+          setError('Invalid or missing reset token. Please request a new password reset link.');
+          setVerifying(false);
+          return;
+        }
+        
+        // If we have a token, set it in the session
+        // Supabase will handle this automatically, but we'll set the UI state
+        setVerifying(false);
+      } catch (err) {
+        console.error('Error verifying reset token:', err);
+        setError('Unable to verify your reset token. Please request a new password reset link.');
+        setVerifying(false);
+      }
+    };
+    
+    checkAccess();
+  }, [location]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -73,6 +103,43 @@ const ResetPasswordPage = () => {
       setIsLoading(false);
     }
   };
+
+  if (verifying) {
+    return (
+      <AuthLayout 
+        title="Verifying your request" 
+        subtitle="Please wait while we verify your reset link..."
+      >
+        <div className="flex justify-center py-8">
+          <LoadingSpinner size="lg" />
+        </div>
+      </AuthLayout>
+    );
+  }
+
+  if (error && error.includes('Invalid or missing reset token')) {
+    return (
+      <AuthLayout 
+        title="Invalid Reset Link" 
+        subtitle="We couldn't verify your password reset link"
+      >
+        <div className="p-4 bg-red-50 border border-red-200 rounded-md flex items-start mb-6">
+          <AlertCircle className="text-red-500 mr-2 h-5 w-5 mt-0.5" />
+          <span className="text-red-700 text-sm">{error}</span>
+        </div>
+        
+        <div className="text-center">
+          <p className="mb-4">Please request a new password reset link.</p>
+          <Button 
+            onClick={() => navigate('/forgot-password')}
+            className="btn-gradient"
+          >
+            Go to Forgot Password
+          </Button>
+        </div>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout 

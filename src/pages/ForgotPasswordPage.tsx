@@ -25,12 +25,18 @@ const ForgotPasswordPage = () => {
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      // Call our custom edge function instead of the default Supabase method
+      const { data, error } = await supabase.functions.invoke('reset-password', {
+        method: 'POST',
+        body: { email }
       });
       
       if (error) {
         throw error;
+      }
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to send reset instructions');
       }
       
       setIsSubmitted(true);

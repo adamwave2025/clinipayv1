@@ -38,6 +38,9 @@ verify_jwt = true
 [functions.setup-auth-trigger]
 verify_jwt = true
 
+[functions.reset-password]
+verify_jwt = false
+
 [functions.stripe-webhooks]
 verify_jwt = false
 
