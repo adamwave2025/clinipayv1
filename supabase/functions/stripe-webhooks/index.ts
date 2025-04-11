@@ -162,6 +162,56 @@ serve(async (req) => {
       } else {
         console.log(`Account ${account.id} has not submitted details yet, no update needed`);
       }
+    } else if (event.type === 'payment_intent.succeeded') {
+      // Handle payment_intent.succeeded events to update payment requests
+      const paymentIntent = event.data.object;
+      console.log(`Received payment_intent.succeeded event for payment: ${paymentIntent.id}`);
+      
+      // Extract metadata from the payment intent
+      const metadata = paymentIntent.metadata || {};
+      const requestId = metadata.requestId;
+      
+      if (requestId) {
+        console.log(`Found request ID in metadata: ${requestId}`);
+        
+        // First check if there's a payment record for this payment intent
+        const { data: payments, error: paymentsError } = await supabase
+          .from("payments")
+          .select("id")
+          .eq("stripe_payment_id", paymentIntent.id);
+          
+        if (paymentsError) {
+          console.error(`Error fetching payment record: ${paymentsError.message}`);
+          // Continue processing as this is not critical
+        }
+        
+        // Only proceed if we found a payment record
+        if (payments && payments.length > 0) {
+          const paymentId = payments[0].id;
+          console.log(`Found payment record with ID: ${paymentId}`);
+          
+          // Update the payment request with the payment ID and mark it as paid
+          const { error: updateError } = await supabase
+            .from("payment_requests")
+            .update({
+              status: "paid",
+              paid_at: new Date().toISOString(),
+              payment_id: paymentId
+            })
+            .eq("id", requestId);
+            
+          if (updateError) {
+            console.error(`Error updating payment request: ${updateError.message}`);
+            // Continue processing as this is not critical
+          } else {
+            console.log(`Successfully updated payment request ${requestId} with payment ID ${paymentId}`);
+          }
+        } else {
+          console.log(`No payment record found for payment intent: ${paymentIntent.id}`);
+        }
+      } else {
+        console.log(`No request ID found in payment intent metadata`);
+      }
     } else {
       console.log(`Ignoring event type: ${event.type} (not handled)`);
     }

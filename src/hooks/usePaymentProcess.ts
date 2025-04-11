@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { supabase } from '@/integrations/supabase/client';
@@ -140,12 +141,14 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
           .update({
             status: 'paid',
             paid_at: new Date().toISOString(),
-            payment_id: data[0].id
+            payment_id: data[0].id // Set the payment_id to link to the payment record
           })
           .eq('id', linkData.id);
           
         if (requestUpdateError) {
           console.warn('Warning: Could not update payment request status:', requestUpdateError);
+        } else {
+          console.log('Successfully updated payment request with payment_id:', data[0].id);
         }
       }
       
