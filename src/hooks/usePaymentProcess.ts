@@ -27,7 +27,11 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       // Step 1: Create payment intent
       const intentResult = await createPaymentIntent({
         linkData,
-        formData
+        formData: {
+          name: formData.name,     // Ensure required properties are passed
+          email: formData.email,   // Ensure required properties are passed
+          phone: formData.phone    // This is optional in the target type
+        }
       });
       
       if (!intentResult.success) {
@@ -40,7 +44,11 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       // Step 3: Process the payment with Stripe
       const paymentResult = await processPayment({
         clientSecret: intentResult.clientSecret,
-        formData,
+        formData: {
+          name: formData.name,     // Ensure required properties are passed
+          email: formData.email,   // Ensure required properties are passed
+          phone: formData.phone    // This is optional in the target type
+        },
         paymentAttemptId: intentResult.paymentAttemptId
       });
       
@@ -52,7 +60,11 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       const recordResult = await createPaymentRecord({
         paymentIntent: paymentResult.paymentIntent,
         linkData,
-        formData,
+        formData: {
+          name: formData.name,     // Ensure required properties are passed
+          email: formData.email,   // Ensure required properties are passed
+          phone: formData.phone    // This is optional in the target type
+        },
         paymentReference: intentResult.paymentReference,
         associatedPaymentLinkId: intentResult.associatedPaymentLinkId
       });
