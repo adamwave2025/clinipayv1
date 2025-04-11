@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -117,12 +116,26 @@ serve(async (req) => {
       throw new Error(`Stripe refund failed: ${stripeError.message}`);
     }
 
+    // Determine if this is a full refund by comparing amounts with a small epsilon
+    // for floating point comparison
+    const epsilon = 0.001; // Small value to account for floating point precision issues
+    
+    // If the fullRefund flag is explicitly set, respect it
+    // Otherwise, calculate based on amount comparison
+    let isFullRefund = fullRefund;
+    
+    if (!isFullRefund && refundAmount) {
+      // Calculate if this is a full refund by comparing amounts
+      isFullRefund = Math.abs(payment.amount_paid - refundAmount) < epsilon;
+      console.log(`🧮 Full refund calculation: Payment amount=${payment.amount_paid}, Refund amount=${refundAmount}, Difference=${Math.abs(payment.amount_paid - refundAmount)}, isFullRefund=${isFullRefund}`);
+    }
+
     // Update payment record in database
-    const newStatus = fullRefund ? 'refunded' : 'partially_refunded';
-    const refundAmountToStore = fullRefund ? payment.amount_paid : refundAmount;
+    const newStatus = isFullRefund ? 'refunded' : 'partially_refunded';
+    const refundAmountToStore = isFullRefund ? payment.amount_paid : refundAmount;
     const currentTimestamp = new Date().toISOString();
     
-    console.log(`💾 Updating payment record to status: ${newStatus}`);
+    console.log(`💾 Updating payment record to status: ${newStatus} (isFullRefund: ${isFullRefund})`);
     const updateData = {
       status: newStatus,
       refund_amount: refundAmountToStore,
