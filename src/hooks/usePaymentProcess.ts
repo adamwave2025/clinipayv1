@@ -109,7 +109,6 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         .insert({
           clinic_id: linkData.clinic.id,
           payment_link_id: linkData.isRequest ? null : linkData.id,
-          reference: linkData.isRequest ? `Request-${linkData.id}` : null, // Store request ID in reference field
           patient_name: formData.name,
           patient_email: formData.email,
           patient_phone: formData.phone ? formData.phone.replace(/\D/g, '') : null,
