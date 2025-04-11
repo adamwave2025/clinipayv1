@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -162,7 +163,7 @@ serve(async (req) => {
         console.log(`Account ${account.id} has not submitted details yet, no update needed`);
       }
     } else if (event.type === 'payment_intent.succeeded') {
-      // Handle payment_intent.succeeded events to update payment requests
+      // Handle payment_intent.succeeded events to update payment records and payment requests
       const paymentIntent = event.data.object;
       console.log(`Received payment_intent.succeeded event for payment: ${paymentIntent.id}`);
       
@@ -179,80 +180,78 @@ serve(async (req) => {
       
       console.log("Payment intent metadata:", metadata);
       
-      if (requestId) {
-        console.log(`Found request ID in metadata: ${requestId}`);
+      // Check if there's already a payment record for this payment intent
+      const { data: existingPayments, error: paymentsError } = await supabase
+        .from("payments")
+        .select("id")
+        .eq("stripe_payment_id", paymentIntent.id);
         
-        // Check if there's a payment record for this payment intent
-        const { data: payments, error: paymentsError } = await supabase
-          .from("payments")
-          .select("id")
-          .eq("stripe_payment_id", paymentIntent.id);
-          
-        if (paymentsError) {
-          console.error(`Error fetching payment record: ${paymentsError.message}`);
-          // Continue processing as this is not critical
-        }
+      if (paymentsError) {
+        console.error(`Error checking for existing payment record: ${paymentsError.message}`);
+      }
+      
+      // Only create a payment record if one doesn't already exist
+      if (!existingPayments || existingPayments.length === 0) {
+        console.log(`No existing payment record found for ${paymentIntent.id}, creating new record`);
         
-        let paymentId = null;
+        let amount = paymentIntent.amount; // Default to the payment intent amount
         
-        // If we found a payment record, use it
-        if (payments && payments.length > 0) {
-          paymentId = payments[0].id;
-          console.log(`Found payment record with ID: ${paymentId}`);
-        } else {
-          console.log(`No payment record found for payment intent: ${paymentIntent.id}`);
-          
-          // No existing payment record, create a new one
+        // If this is a payment request, try to get details from it
+        if (requestId) {
+          console.log(`Fetching payment request details for request ID: ${requestId}`);
           const { data: requestData, error: requestError } = await supabase
             .from("payment_requests")
-            .select("id, clinic_id, patient_name, patient_email, patient_phone, custom_amount, payment_link_id")
+            .select("custom_amount, patient_name, patient_email, patient_phone")
             .eq("id", requestId)
             .single();
             
-          if (requestError || !requestData) {
-            console.error(`Error or no data when fetching payment request: ${requestError?.message || "No data"}`);
-          } else {
-            // Create a payment record for this webhook event
-            console.log(`Creating payment record for request ID: ${requestId}`);
-            
-            // Determine the amount - use custom amount from request, or from payment intent metadata, or from payment intent amount
-            let amount = 0;
+          if (!requestError && requestData) {
+            console.log(`Found payment request data:`, requestData);
+            // Use custom amount from request if available
             if (requestData.custom_amount) {
-              amount = requestData.custom_amount;
-            } else if (customAmount) {
-              amount = customAmount;
-            } else if (paymentIntent.amount) {
-              amount = paymentIntent.amount;
+              amount = requestData.custom_amount * 100; // Convert to cents for consistency
+              console.log(`Using custom amount from request: ${amount}`);
             }
-            
-            const { data: paymentData, error: paymentInsertError } = await supabase
-              .from("payments")
-              .insert({
-                clinic_id: requestData.clinic_id || clinicId,
-                payment_link_id: requestData.payment_link_id || paymentLinkId,
-                patient_name: requestData.patient_name || patientName,
-                patient_email: requestData.patient_email || patientEmail,
-                patient_phone: requestData.patient_phone || patientPhone,
-                amount_paid: amount / 100, // Convert from cents
-                status: "paid",
-                paid_at: new Date().toISOString(),
-                stripe_payment_id: paymentIntent.id,
-                payment_ref: paymentReference
-              })
-              .select();
-              
-            if (paymentInsertError) {
-              console.error(`Error creating payment record: ${paymentInsertError.message}`);
-            } else if (paymentData && paymentData.length > 0) {
-              paymentId = paymentData[0].id;
-              console.log(`Created new payment record with ID: ${paymentId}`);
-            }
+          } else if (requestError) {
+            console.error(`Error fetching payment request: ${requestError.message}`);
           }
         }
         
-        // Now update the payment request with the payment ID and mark it as paid
-        if (paymentId) {
-          console.log(`Updating payment request ${requestId} with payment ID ${paymentId}`);
+        // Use customAmount from metadata if available (as a fallback)
+        if (customAmount && !amount) {
+          amount = customAmount * 100; // Convert to cents for consistency
+          console.log(`Using custom amount from metadata: ${amount}`);
+        }
+        
+        // Create the payment record
+        const { data: paymentData, error: insertError } = await supabase
+          .from("payments")
+          .insert({
+            clinic_id: clinicId,
+            payment_link_id: paymentLinkId || null,
+            patient_name: patientName || 'Anonymous',
+            patient_email: patientEmail || null,
+            patient_phone: patientPhone || null,
+            amount_paid: Math.round(amount / 100), // Convert from cents to whole units
+            status: "paid",
+            paid_at: new Date().toISOString(),
+            stripe_payment_id: paymentIntent.id,
+            payment_ref: paymentReference || null
+          })
+          .select();
+          
+        if (insertError) {
+          console.error(`Error creating payment record: ${insertError.message}`);
+          throw insertError;
+        }
+        
+        console.log(`Created payment record successfully:`, paymentData);
+        
+        // If this is a payment request, update the payment_requests table
+        if (requestId) {
+          console.log(`Updating payment request ${requestId} with payment status`);
+          
+          const paymentId = paymentData ? paymentData[0]?.id : null;
           
           const { error: updateError } = await supabase
             .from("payment_requests")
@@ -266,42 +265,11 @@ serve(async (req) => {
           if (updateError) {
             console.error(`Error updating payment request: ${updateError.message}`);
           } else {
-            console.log(`Successfully updated payment request ${requestId} with payment ID ${paymentId}`);
+            console.log(`Successfully updated payment request ${requestId}`);
           }
-        } else {
-          console.log(`No payment ID available to update payment request ${requestId}`);
         }
       } else {
-        console.log(`No request ID found in payment intent metadata`);
-      }
-      
-      // Update any payment attempts associated with this payment intent
-      try {
-        const { data: attempts, error: attemptsError } = await supabase
-          .from("payment_attempts")
-          .select("id")
-          .eq("payment_intent_id", paymentIntent.id);
-          
-        if (attemptsError) {
-          console.error(`Error fetching payment attempts: ${attemptsError.message}`);
-        } else if (attempts && attempts.length > 0) {
-          console.log(`Found ${attempts.length} payment attempts to update`);
-          
-          const { error: updateError } = await supabase
-            .from("payment_attempts")
-            .update({ status: "succeeded" })
-            .eq("payment_intent_id", paymentIntent.id);
-            
-          if (updateError) {
-            console.error(`Error updating payment attempts: ${updateError.message}`);
-          } else {
-            console.log(`Successfully updated payment attempts for intent ${paymentIntent.id}`);
-          }
-        } else {
-          console.log(`No payment attempts found for intent ${paymentIntent.id}`);
-        }
-      } catch (error) {
-        console.error(`Error processing payment attempts: ${error.message}`);
+        console.log(`Payment record already exists for payment ${paymentIntent.id}`);
       }
     } else {
       console.log(`Ignoring event type: ${event.type} (not handled)`);

@@ -61,15 +61,6 @@ export async function handleRequest(req: Request) {
   const paymentReference = generatePaymentReference();
   console.log(`Generated payment reference: ${paymentReference}`);
 
-  // Create a payment attempt record
-  const paymentAttempt = await createPaymentAttempt(
-    supabase, 
-    clinicId, 
-    associatedPaymentLinkId, 
-    requestId, 
-    amount
-  );
-
   // Ensure the requestId is properly included in metadata
   const metadata = {
     clinicId,
@@ -94,11 +85,6 @@ export async function handleRequest(req: Request) {
     metadata
   );
 
-  // Update the payment attempt with the payment intent ID
-  if (paymentAttempt) {
-    await updatePaymentAttempt(supabase, paymentAttempt.id, paymentIntent.id);
-  }
-
   // Return the client secret to the frontend
   return new Response(
     JSON.stringify({
@@ -106,8 +92,7 @@ export async function handleRequest(req: Request) {
       clientSecret: paymentIntent.client_secret,
       paymentId: paymentIntent.id,
       paymentReference: paymentReference,
-      paymentLinkId: associatedPaymentLinkId || null,
-      attemptId: paymentAttempt?.id || null
+      paymentLinkId: associatedPaymentLinkId || null
     }),
     {
       headers: {
@@ -183,34 +168,6 @@ async function getPlatformFeePercentage(supabase) {
   return platformFeePercent;
 }
 
-async function createPaymentAttempt(supabase, clinicId, paymentLinkId, requestId, amount) {
-  // Create a payment attempt record to track this payment
-  try {
-    const { data: paymentAttempt, error: paymentAttemptError } = await supabase
-      .from("payment_attempts")
-      .insert({
-        clinic_id: clinicId,
-        payment_link_id: paymentLinkId || null,
-        payment_request_id: requestId || null,
-        amount: amount,
-        status: "created"
-      })
-      .select()
-      .single();
-
-    if (paymentAttemptError) {
-      console.warn("Failed to create payment attempt record:", paymentAttemptError);
-      return null;
-    } else {
-      console.log("Created payment attempt record:", paymentAttempt.id);
-      return paymentAttempt;
-    }
-  } catch (error) {
-    console.warn("Error creating payment attempt:", error);
-    return null;
-  }
-}
-
 async function createStripePaymentIntent(stripe, amount, stripeAccountId, platformFeeAmount, metadata) {
   const paymentIntent = await stripe.paymentIntents.create({
     amount: amount,
@@ -225,24 +182,4 @@ async function createStripePaymentIntent(stripe, amount, stripeAccountId, platfo
 
   console.log("Payment intent created:", paymentIntent.id);
   return paymentIntent;
-}
-
-async function updatePaymentAttempt(supabase, attemptId, paymentIntentId) {
-  try {
-    const { error: updateAttemptError } = await supabase
-      .from("payment_attempts")
-      .update({
-        payment_intent_id: paymentIntentId,
-        status: "pending"
-      })
-      .eq("id", attemptId);
-
-    if (updateAttemptError) {
-      console.warn("Failed to update payment attempt with intent ID:", updateAttemptError);
-    } else {
-      console.log("Updated payment attempt with payment intent ID:", paymentIntentId);
-    }
-  } catch (error) {
-    console.warn("Error updating payment attempt:", error);
-  }
 }
