@@ -40,17 +40,36 @@ export const PaymentRefundService = {
   },
   
   getUpdatedPaymentAfterRefund(payments: Payment[], paymentId: string, refundAmount: number): Payment[] {
-    const isFullRefund = payments.find(p => p.id === paymentId)?.amount === refundAmount;
+    // Find the payment to be updated
+    const payment = payments.find(p => p.id === paymentId);
+    
+    if (!payment) {
+      console.warn('Payment not found for refund update:', paymentId);
+      return payments;
+    }
+    
+    // Log values for debugging
+    console.log('Refund amount:', refundAmount);
+    console.log('Payment amount:', payment.amount);
+    
+    // Determine if this is a full refund by checking if the amounts are equal
+    // Use a small epsilon to account for floating point precision issues
+    const epsilon = 0.001; // Allow for tiny differences due to floating point
+    const isFullRefund = Math.abs(payment.amount - refundAmount) < epsilon;
+    
+    console.log('Is full refund?', isFullRefund, 'Difference:', Math.abs(payment.amount - refundAmount));
+    
+    // Determine status based on full or partial refund
     const status = isFullRefund ? 'refunded' : 'partially_refunded';
     
-    return payments.map(payment =>
-      payment.id === paymentId
+    return payments.map(p =>
+      p.id === paymentId
         ? { 
-            ...payment, 
+            ...p, 
             status: status as any,
             refundedAmount: refundAmount
           }
-        : payment
+        : p
     );
   },
   

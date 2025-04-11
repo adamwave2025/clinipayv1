@@ -47,6 +47,11 @@ const PaymentTableRow = ({ payment, onClick }: PaymentTableRowProps) => {
               {formatCurrency(payment.refundedAmount)} refunded
             </div>
           )}
+          {payment.status === 'refunded' && (
+            <div className="text-xs text-blue-600">
+              Fully refunded
+            </div>
+          )}
         </div>
       </td>
       <td className="py-4 px-3 text-gray-700">
