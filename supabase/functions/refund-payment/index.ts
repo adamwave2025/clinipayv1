@@ -17,8 +17,8 @@ serve(async (req) => {
   }
 
   try {
-    // Get Stripe secret key from environment variables
-    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    // Get Stripe secret key from environment variables - UPDATED KEY NAME
+    const stripeSecretKey = Deno.env.get("SECRET_KEY");
     if (!stripeSecretKey) {
       console.error("Missing Stripe secret key");
       throw new Error("Payment processing is not configured properly. Please contact support.");
