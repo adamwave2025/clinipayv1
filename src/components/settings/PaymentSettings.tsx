@@ -1,8 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Check, X, Clock } from 'lucide-react';
+import { Check, X, Clock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -19,11 +19,13 @@ const PaymentSettings = ({
   handleConnectStripe, 
   handleDisconnectStripe 
 }: PaymentSettingsProps) => {
+  const [isConnecting, setIsConnecting] = useState(false);
   const isConnected = stripeStatus === 'connected';
   const isPending = stripeStatus === 'pending';
 
   const startStripeConnect = async () => {
     try {
+      setIsConnecting(true);
       const { data, error } = await supabase.functions.invoke('connect-onboarding', {
         body: { returnUrl: window.location.origin + '/auth/callback?type=stripe_connect' }
       });
@@ -37,10 +39,12 @@ const PaymentSettings = ({
         window.location.href = data.url;
       } else {
         toast.error('Failed to get Stripe onboarding URL');
+        setIsConnecting(false);
       }
     } catch (error: any) {
       console.error('Error connecting to Stripe:', error);
       toast.error(`Failed to connect to Stripe: ${error.message || 'Unknown error'}`);
+      setIsConnecting(false);
     }
   };
 
@@ -102,8 +106,16 @@ const PaymentSettings = ({
               <Button 
                 onClick={startStripeConnect} 
                 className="btn-gradient"
+                disabled={isConnecting}
               >
-                Connect Stripe
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  'Connect Stripe'
+                )}
               </Button>
             )}
           </div>
