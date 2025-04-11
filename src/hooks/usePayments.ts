@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Payment } from '@/types/payment';
+import { Payment, PaymentLink } from '@/types/payment';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -13,7 +13,7 @@ export function usePayments() {
     fetchPayments();
   }, [user]);
   
-  const fetchPayments = async () => {
+  const fetchPayments = async (paymentLinks: PaymentLink[] = []) => {
     if (!user) return;
 
     setIsLoadingPayments(true);
@@ -67,7 +67,7 @@ export function usePayments() {
         if (request.custom_amount) {
           amount = request.custom_amount;
         } else if (request.payment_link_id) {
-          // We'll pass paymentLinks as a parameter when calling from the provider
+          // Find the matching payment link to get its amount
           const paymentLink = paymentLinks.find(link => link.id === request.payment_link_id);
           if (paymentLink) {
             amount = paymentLink.amount;
@@ -109,11 +109,4 @@ export function usePayments() {
     isLoadingPayments,
     fetchPayments
   };
-}
-
-// This is a placeholder for the fixed version with paymentLinks parameter
-// This function will be called from the provider
-export function fetchFormattedPayments(user: any, paymentLinks: any[]) {
-  // Implementation will be the same as fetchPayments but take paymentLinks as a parameter
-  // This is just a placeholder for the refactoring
 }

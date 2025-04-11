@@ -1,10 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Payment } from '@/types/payment';
 import { toast } from 'sonner';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency } from '@/utils/formatters';
 import DashboardContext, { useDashboardData } from '@/contexts/DashboardContext';
 import { usePayments } from '@/hooks/usePayments';
 import { usePaymentStats } from '@/hooks/usePaymentStats';
@@ -14,7 +13,7 @@ export { useDashboardData } from '@/contexts/DashboardContext';
 
 export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { paymentLinks, isLoading: isLoadingLinks } = usePaymentLinks();
-  const { payments, setPayments, isLoadingPayments } = usePayments();
+  const { payments, setPayments, isLoadingPayments, fetchPayments } = usePayments();
   const { stats } = usePaymentStats();
   const { user } = useAuth();
 
@@ -22,6 +21,13 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
+
+  // Fetch payments with payment links when paymentLinks are ready
+  useEffect(() => {
+    if (paymentLinks.length > 0) {
+      fetchPayments(paymentLinks);
+    }
+  }, [paymentLinks]);
 
   const openRefundDialog = (paymentId: string) => {
     setPaymentToRefund(paymentId);
