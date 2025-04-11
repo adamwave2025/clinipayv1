@@ -111,6 +111,11 @@
     background-clip: padding-box, border-box;
   }
   
+  /* White outline version of the gradient button */
+  .btn-gradient-outline {
+    @apply bg-gradient-primary text-white border-2 border-white hover:shadow-md transition-all duration-300;
+  }
+  
   /* New class specifically for CTA buttons with gradient text */
   .btn-outline-gradient-text {
     @apply relative border-2 border-transparent hover:shadow-md transition-all duration-300;
