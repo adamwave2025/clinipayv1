@@ -1,7 +1,7 @@
 
 import React from 'react';
 
-type StatusType = 'paid' | 'refunded' | 'sent' | 'connected' | 'pending' | 'not_connected';
+type StatusType = 'paid' | 'refunded' | 'partially_refunded' | 'sent' | 'connected' | 'pending' | 'not_connected';
 
 interface StatusBadgeProps {
   status: StatusType;
@@ -15,6 +15,7 @@ const StatusBadge = ({ status, className = '' }: StatusBadgeProps) => {
       case 'connected':
         return 'bg-green-50 text-green-700 border-green-200';
       case 'refunded':
+      case 'partially_refunded':
         return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'sent':
       case 'pending':
@@ -31,6 +32,7 @@ const StatusBadge = ({ status, className = '' }: StatusBadgeProps) => {
     if (status === 'connected') return 'Connected';
     if (status === 'pending') return 'Pending';
     if (status === 'not_connected') return 'Not Connected';
+    if (status === 'partially_refunded') return 'Partially Refunded';
     
     // Standard formatting for other statuses
     return status.charAt(0).toUpperCase() + status.slice(1);
