@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from '@/integrations/supabase/client';
+import StatusBadge from '@/components/common/StatusBadge';
 
 type Clinic = {
   id: string;
@@ -57,11 +58,12 @@ const StripeConnectManagement = ({
     try {
       console.log(`Disconnecting Stripe for clinic ${selectedClinic}`);
       
+      // The key change: set stripe_status to "not_connected" string instead of null
       const { error } = await supabase
         .from('clinics')
         .update({
           stripe_account_id: null,
-          stripe_status: null
+          stripe_status: 'not_connected'  // Use string value instead of null
         })
         .eq('id', selectedClinic);
       
@@ -75,7 +77,7 @@ const StripeConnectManagement = ({
       // Update local state
       const updatedClinics = clinics.map(clinic => 
         clinic.id === selectedClinic 
-          ? { ...clinic, stripe_account_id: null, stripe_status: null } 
+          ? { ...clinic, stripe_account_id: null, stripe_status: 'not_connected' } 
           : clinic
       );
       
@@ -98,19 +100,6 @@ const StripeConnectManagement = ({
     clinic.clinic_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     clinic.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const getStripeStatusBadge = (status: string) => {
-    switch (status) {
-      case 'connected':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Connected</Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pending</Badge>;
-      case 'not_connected':
-        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Not Connected</Badge>;
-      default:
-        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Not Connected</Badge>;
-    }
-  };
 
   return (
     <>
@@ -173,7 +162,7 @@ const StripeConnectManagement = ({
                         </div>
                       </TableCell>
                       <TableCell>
-                        {getStripeStatusBadge(clinic.stripe_status)}
+                        <StatusBadge status={clinic.stripe_status as any || 'not_connected'} />
                       </TableCell>
                       <TableCell className="text-right">
                         {clinic.stripe_status === 'connected' && (

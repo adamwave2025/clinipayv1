@@ -5,6 +5,7 @@ import PageHeader from '@/components/common/PageHeader';
 import PlatformFeeSettings from '@/components/admin/settings/PlatformFeeSettings';
 import StripeConnectManagement from '@/components/admin/settings/StripeConnectManagement';
 import { useAdminSettings } from '@/hooks/useAdminSettings';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const AdminSettingsPage = () => {
   const { 
