@@ -185,12 +185,58 @@ serve(async (req) => {
           // Continue processing as this is not critical
         }
         
+        let paymentId = null;
+        
         // Only proceed if we found a payment record
         if (payments && payments.length > 0) {
-          const paymentId = payments[0].id;
+          paymentId = payments[0].id;
           console.log(`Found payment record with ID: ${paymentId}`);
+        } else {
+          console.log(`No payment record found for payment intent: ${paymentIntent.id}`);
           
-          // Update the payment request with the payment ID and mark it as paid
+          // No existing payment record, let's check if the payment request exists
+          const { data: requestData, error: requestError } = await supabase
+            .from("payment_requests")
+            .select("id, clinic_id, patient_name, patient_email, patient_phone, custom_amount, payment_link_id")
+            .eq("id", requestId)
+            .single();
+            
+          if (requestError || !requestData) {
+            console.error(`Error or no data when fetching payment request: ${requestError?.message || "No data"}`);
+          } else {
+            // Create a payment record for this webhook event
+            console.log(`Creating payment record for request ID: ${requestId}`);
+            
+            const amount = requestData.custom_amount || 0; // We'll need the actual amount from the payment intent
+            
+            const { data: paymentData, error: paymentInsertError } = await supabase
+              .from("payments")
+              .insert({
+                clinic_id: requestData.clinic_id,
+                payment_link_id: requestData.payment_link_id,
+                patient_name: requestData.patient_name,
+                patient_email: requestData.patient_email,
+                patient_phone: requestData.patient_phone,
+                amount_paid: amount / 100, // Convert from cents
+                status: "paid",
+                paid_at: new Date().toISOString(),
+                stripe_payment_id: paymentIntent.id
+              })
+              .select();
+              
+            if (paymentInsertError) {
+              console.error(`Error creating payment record: ${paymentInsertError.message}`);
+            } else if (paymentData && paymentData.length > 0) {
+              paymentId = paymentData[0].id;
+              console.log(`Created new payment record with ID: ${paymentId}`);
+            }
+          }
+        }
+        
+        // Now update the payment request with the payment ID and mark it as paid
+        if (paymentId) {
+          console.log(`Updating payment request ${requestId} with payment ID ${paymentId}`);
+          
           const { error: updateError } = await supabase
             .from("payment_requests")
             .update({
@@ -202,12 +248,11 @@ serve(async (req) => {
             
           if (updateError) {
             console.error(`Error updating payment request: ${updateError.message}`);
-            // Continue processing as this is not critical
           } else {
             console.log(`Successfully updated payment request ${requestId} with payment ID ${paymentId}`);
           }
         } else {
-          console.log(`No payment record found for payment intent: ${paymentIntent.id}`);
+          console.log(`No payment ID available to update payment request ${requestId}`);
         }
       } else {
         console.log(`No request ID found in payment intent metadata`);

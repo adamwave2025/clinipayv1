@@ -41,6 +41,7 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
     try {
       console.log('Initiating payment process for link ID:', linkId);
       console.log('Payment amount:', linkData.amount);
+      console.log('Is request payment:', linkData.isRequest);
       
       // Call the create-payment-intent edge function to get a client secret
       const { data: paymentIntentData, error: paymentIntentError } = await supabase.functions.invoke(
@@ -146,7 +147,8 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
           .eq('id', linkData.id);
           
         if (requestUpdateError) {
-          console.warn('Warning: Could not update payment request status:', requestUpdateError);
+          console.error('Error updating payment request:', requestUpdateError);
+          toast.error('Payment successful, but we could not update payment request status');
         } else {
           console.log('Successfully updated payment request with payment_id:', data[0].id);
         }
