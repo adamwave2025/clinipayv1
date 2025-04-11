@@ -17,6 +17,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Stripe webhook received at:", new Date().toISOString());
+    
     // Get Stripe secret key and webhook secret from environment variables
     const stripeSecretKey = Deno.env.get("SECRET_KEY");
     const stripeWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
@@ -96,6 +98,8 @@ serve(async (req) => {
     }
 
     console.log(`Processing Stripe event: ${event.type}`);
+    console.log(`Event ID: ${event.id}`);
+    console.log(`Event created at: ${new Date(event.created * 1000).toISOString()}`);
 
     // Handle different event types
     if (event.type === 'account.updated') {
@@ -223,50 +227,55 @@ serve(async (req) => {
           console.log(`Using custom amount from metadata: ${amount}`);
         }
         
-        // Create the payment record
-        const { data: paymentData, error: insertError } = await supabase
-          .from("payments")
-          .insert({
-            clinic_id: clinicId,
-            payment_link_id: paymentLinkId || null,
-            patient_name: patientName || 'Anonymous',
-            patient_email: patientEmail || null,
-            patient_phone: patientPhone || null,
-            amount_paid: Math.round(amount / 100), // Convert from cents to whole units
-            status: "paid",
-            paid_at: new Date().toISOString(),
-            stripe_payment_id: paymentIntent.id,
-            payment_ref: paymentReference || null
-          })
-          .select();
-          
-        if (insertError) {
-          console.error(`Error creating payment record: ${insertError.message}`);
-          throw insertError;
-        }
-        
-        console.log(`Created payment record successfully:`, paymentData);
-        
-        // If this is a payment request, update the payment_requests table
-        if (requestId) {
-          console.log(`Updating payment request ${requestId} with payment status`);
-          
-          const paymentId = paymentData ? paymentData[0]?.id : null;
-          
-          const { error: updateError } = await supabase
-            .from("payment_requests")
-            .update({
+        try {
+          // Create the payment record
+          const { data: paymentData, error: insertError } = await supabase
+            .from("payments")
+            .insert({
+              clinic_id: clinicId,
+              payment_link_id: paymentLinkId || null,
+              patient_name: patientName || 'Anonymous',
+              patient_email: patientEmail || null,
+              patient_phone: patientPhone || null,
+              amount_paid: Math.round(amount / 100), // Convert from cents to whole units
               status: "paid",
               paid_at: new Date().toISOString(),
-              payment_id: paymentId
+              stripe_payment_id: paymentIntent.id,
+              payment_ref: paymentReference || null
             })
-            .eq("id", requestId);
+            .select();
             
-          if (updateError) {
-            console.error(`Error updating payment request: ${updateError.message}`);
-          } else {
-            console.log(`Successfully updated payment request ${requestId}`);
+          if (insertError) {
+            console.error(`Error creating payment record: ${insertError.message}`);
+            throw insertError;
           }
+          
+          console.log(`Created payment record successfully:`, paymentData);
+          
+          // If this is a payment request, update the payment_requests table
+          if (requestId) {
+            console.log(`Updating payment request ${requestId} with payment status`);
+            
+            const paymentId = paymentData ? paymentData[0]?.id : null;
+            
+            const { error: updateError } = await supabase
+              .from("payment_requests")
+              .update({
+                status: "paid",
+                paid_at: new Date().toISOString(),
+                payment_id: paymentId
+              })
+              .eq("id", requestId);
+              
+            if (updateError) {
+              console.error(`Error updating payment request: ${updateError.message}`);
+            } else {
+              console.log(`Successfully updated payment request ${requestId}`);
+            }
+          }
+        } catch (error) {
+          console.error(`Error processing payment record: ${error.message}`);
+          throw error;
         }
       } else {
         console.log(`Payment record already exists for payment ${paymentIntent.id}`);

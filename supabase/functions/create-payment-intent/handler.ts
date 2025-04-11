@@ -76,32 +76,37 @@ export async function handleRequest(req: Request) {
 
   console.log("Payment intent metadata:", metadata);
 
-  // Create a payment intent using Stripe Connect Direct Charges
-  const paymentIntent = await createStripePaymentIntent(
-    stripe,
-    amount,
-    clinicData.stripe_account_id,
-    platformFeeAmount,
-    metadata
-  );
+  try {
+    // Create a payment intent using Stripe Connect Direct Charges
+    const paymentIntent = await createStripePaymentIntent(
+      stripe,
+      amount,
+      clinicData.stripe_account_id,
+      platformFeeAmount,
+      metadata
+    );
 
-  // Return the client secret to the frontend
-  return new Response(
-    JSON.stringify({
-      success: true,
-      clientSecret: paymentIntent.client_secret,
-      paymentId: paymentIntent.id,
-      paymentReference: paymentReference,
-      paymentLinkId: associatedPaymentLinkId || null
-    }),
-    {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
-      status: 200,
-    }
-  );
+    // Return the client secret to the frontend
+    return new Response(
+      JSON.stringify({
+        success: true,
+        clientSecret: paymentIntent.client_secret,
+        paymentId: paymentIntent.id,
+        paymentReference: paymentReference,
+        paymentLinkId: associatedPaymentLinkId || null
+      }),
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+        status: 200,
+      }
+    );
+  } catch (error) {
+    console.error("Error creating payment intent:", error);
+    throw new Error(`Payment processing failed: ${error.message}`);
+  }
 }
 
 // Helper functions

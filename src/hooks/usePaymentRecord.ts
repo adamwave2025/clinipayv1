@@ -1,11 +1,11 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
 import { toast } from 'sonner';
+import { PaymentLinkData } from './usePaymentLinkData';
 
 export function usePaymentRecord() {
-  
-  // This function is purely for client-side records and UI feedback
-  // The actual database updates are handled by the webhook
+  const [isCreatingRecord, setIsCreatingRecord] = useState(false);
+
   const createPaymentRecord = async ({
     paymentIntent,
     linkData,
@@ -14,31 +14,43 @@ export function usePaymentRecord() {
     associatedPaymentLinkId
   }: {
     paymentIntent: any;
-    linkData: any;
+    linkData: PaymentLinkData;
     formData: {
       name: string;
       email: string;
       phone?: string;
     };
     paymentReference: string;
-    associatedPaymentLinkId: string | null;
+    associatedPaymentLinkId?: string;
   }) => {
+    if (!paymentIntent || !paymentIntent.id) {
+      console.error('Missing payment intent data');
+      return { success: false, error: 'Invalid payment data' };
+    }
+
+    setIsCreatingRecord(true);
+    
     try {
-      console.log('Client-side payment success recorded');
-      console.log('Payment intent ID:', paymentIntent.id);
+      console.log('Payment was successful:', paymentIntent.id);
       console.log('Payment reference:', paymentReference);
       
-      // Note: All database updates are handled by the stripe-webhooks function
-      // This function only provides client-side feedback
+      // Display the payment reference in the UI
+      toast.success(`Payment reference: ${paymentReference}`);
+      
+      // Note: The actual payment record is created by the Stripe webhook
+      // This function now just handles UI updates after payment
       
       return { success: true };
     } catch (error: any) {
-      console.error('Error in client-side payment recording:', error);
+      console.error('Error recording payment:', error);
       return { success: false, error: error.message };
+    } finally {
+      setIsCreatingRecord(false);
     }
   };
 
   return {
+    isCreatingRecord,
     createPaymentRecord
   };
 }
