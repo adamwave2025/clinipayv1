@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Building, Mail, Phone, MapPin, Calendar } from 'lucide-react';
@@ -39,7 +38,6 @@ const PaymentPageClinicCard = ({ clinic }: { clinic: ClinicInfo }) => {
           </Avatar>
           <div>
             <h2 className="text-xl font-bold text-gray-800">{clinic.name}</h2>
-            <p className="text-sm text-gray-500">Healthcare Provider</p>
           </div>
         </div>
 
