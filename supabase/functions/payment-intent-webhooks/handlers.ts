@@ -41,7 +41,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
     
     // Initialize fee data variables
     let stripeFeeInCents = 0; // Store as cents for the database
-    let platformFee = 0; // This may be calculated or set elsewhere
+    let netAmountInCents = 0; // Store the net amount in cents
     
     // Fetch Stripe fee data from charge and balance transaction
     if (paymentIntent.latest_charge) {
@@ -70,9 +70,12 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
             // Extract fee data (keeping as cents for DB storage)
             stripeFeeInCents = balanceTransaction.fee || 0;
             const stripeFeeInPounds = stripeFeeInCents / 100; // Just for logging
-            const netAmount = (balanceTransaction.net || 0) / 100;
             
-            console.log(`Stripe fees: £${stripeFeeInPounds.toFixed(2)}, Net amount: £${netAmount.toFixed(2)}`);
+            // Extract and store the net amount (keeping as cents for DB storage)
+            netAmountInCents = balanceTransaction.net || 0;
+            const netAmountInPounds = netAmountInCents / 100; // For logging
+            
+            console.log(`Stripe fees: £${stripeFeeInPounds.toFixed(2)}, Net amount: £${netAmountInPounds.toFixed(2)}`);
           }
         }
       } catch (feeError) {
@@ -95,7 +98,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       status: "paid",
       stripe_payment_id: paymentIntent.id,
       stripe_fee: stripeFeeInCents, // Store as integer (cents)
-      platform_fee: platformFee, // Add platform fee (if applicable)
+      net_amount: netAmountInCents, // Store net amount as integer (cents)
     };
 
     console.log("Attempting to insert payment record:", JSON.stringify(paymentData));

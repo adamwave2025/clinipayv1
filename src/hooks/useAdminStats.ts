@@ -46,7 +46,7 @@ export function useAdminStats() {
       // Fetch payments data (paid, partially_refunded, and refunded status)
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
-        .select('amount_paid, status, refund_amount')
+        .select('amount_paid, status, refund_amount, net_amount')
         .in('status', ['paid', 'partially_refunded', 'refunded']);
 
       if (paymentsError) throw paymentsError;
