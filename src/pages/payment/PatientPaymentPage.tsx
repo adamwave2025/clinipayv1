@@ -21,7 +21,10 @@ const PatientPaymentPage = () => {
   if (initError) {
     return (
       <PaymentLayout hideHeaderFooter={true}>
-        <PaymentErrorBoundary errorMessage={initError} linkId={linkId} />
+        <PaymentErrorBoundary errorMessage={initError} linkId={linkId}>
+          {/* Empty div as children to satisfy the type requirement */}
+          <div></div>
+        </PaymentErrorBoundary>
       </PaymentLayout>
     );
   }
