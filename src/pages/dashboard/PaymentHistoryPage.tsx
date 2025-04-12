@@ -44,7 +44,8 @@ const PaymentHistoryContent = () => {
     const matchesSearch = search === '' || 
       payment.patientName.toLowerCase().includes(search.toLowerCase()) ||
       payment.patientEmail?.toLowerCase().includes(search.toLowerCase()) ||
-      payment.patientPhone?.includes(search);
+      payment.patientPhone?.includes(search) ||
+      payment.reference?.includes(search); // Include reference in search
     
     // Date range filter
     let matchesDateRange = true;
@@ -78,7 +79,7 @@ const PaymentHistoryContent = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search by patient name, email or phone..."
+                placeholder="Search by patient name, email, phone or payment reference..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 input-focus"
@@ -165,11 +166,6 @@ const PaymentHistoryPage = () => {
       </DashboardDataProvider>
     </DashboardLayout>
   );
-};
-
-// Helper function to format currency
-const formatCurrency = (amount: number) => {
-  return `£${amount.toFixed(2)}`;
 };
 
 export default PaymentHistoryPage;

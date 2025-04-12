@@ -1,3 +1,4 @@
+
 export interface Payment {
   id: string;
   patientName: string;
@@ -9,6 +10,7 @@ export interface Payment {
   type: 'deposit' | 'treatment' | 'consultation' | 'other';
   paymentUrl?: string; // URL for testing payment links
   refundedAmount?: number; // Amount that was refunded (for partial refunds)
+  reference?: string; // Payment reference (PAY-XXXX-YYYY)
 }
 
 export interface PaymentLink {

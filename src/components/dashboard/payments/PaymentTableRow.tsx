@@ -54,6 +54,9 @@ const PaymentTableRow = ({ payment, onClick }: PaymentTableRowProps) => {
           )}
         </div>
       </td>
+      <td className="py-4 px-3 font-mono text-sm text-gray-600">
+        {payment.reference || '-'}
+      </td>
       <td className="py-4 px-3 text-gray-700">
         {capitalizeFirstLetter(payment.type)}
       </td>

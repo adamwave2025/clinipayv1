@@ -16,6 +16,7 @@ const PaymentTable = ({ payments, onPaymentClick }: PaymentTableProps) => {
           <tr className="border-b">
             <th className="pb-3 pl-2 pr-3 font-medium">Patient</th>
             <th className="pb-3 px-3 font-medium">Amount</th>
+            <th className="pb-3 px-3 font-medium">Reference</th>
             <th className="pb-3 px-3 font-medium">Type</th>
             <th className="pb-3 px-3 font-medium">Date</th>
             <th className="pb-3 px-3 font-medium">Status</th>
@@ -24,7 +25,7 @@ const PaymentTable = ({ payments, onPaymentClick }: PaymentTableProps) => {
         <tbody>
           {payments.length === 0 ? (
             <tr>
-              <td colSpan={5} className="py-4 text-center text-gray-500">
+              <td colSpan={6} className="py-4 text-center text-gray-500">
                 No payments found
               </td>
             </tr>

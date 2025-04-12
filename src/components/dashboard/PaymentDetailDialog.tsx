@@ -13,6 +13,7 @@ import { Payment } from '@/types/payment';
 import { capitalizeFirstLetter, formatCurrency } from '@/utils/formatters';
 import { Copy, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import PaymentReferenceDisplay from '../payment/PaymentReferenceDisplay';
 
 interface PaymentDetailDialogProps {
   payment: Payment | null;
@@ -48,6 +49,13 @@ const PaymentDetailDialog = ({
   const handleOpenLink = () => {
     if (payment.paymentUrl) {
       window.open(payment.paymentUrl, '_blank');
+    }
+  };
+
+  const handleCopyReference = () => {
+    if (payment.reference) {
+      navigator.clipboard.writeText(payment.reference);
+      toast.success('Payment reference copied to clipboard');
     }
   };
 
@@ -91,6 +99,17 @@ const PaymentDetailDialog = ({
               <StatusBadge status={payment.status} className="mt-1" />
             </div>
           </div>
+          
+          {/* Payment Reference */}
+          {payment.reference && (
+            <div className="mt-2">
+              <PaymentReferenceDisplay 
+                reference={payment.reference} 
+                className="mt-2"
+                onCopy={handleCopyReference}
+              />
+            </div>
+          )}
           
           {/* Show refund information for both full and partial refunds */}
           {(payment.status === 'partially_refunded' || payment.status === 'refunded') && payment.refundedAmount && (
