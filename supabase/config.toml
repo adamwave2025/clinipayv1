@@ -4,46 +4,67 @@ project_id = "jbtxxlkhiubuzanegtzn"
 [api]
 enabled = true
 port = 54321
+schemas = ["public", "storage", "graphql_public"]
 
 [db]
 port = 54322
+shadow_port = 54320
+major_version = 15
 
 [studio]
+enabled = true
 port = 54323
+api_url = "http://localhost"
 
 [inbucket]
+enabled = true
 port = 54324
-smtp_port = 54325
-pop3_port = 54326
+
+[storage]
+enabled = true
 
 [auth]
 enabled = true
-site_url = "https://clinipay.co.uk"
-additional_redirect_urls = ["https://clinipay.co.uk/reset-password", "http://localhost:3000/reset-password"]
+port = 54325
 
-[functions.create-payment-intent]
-verify_jwt = true
+[realtime]
+enabled = true
+
+[analytics]
+enabled = false
+
+[vector]
+enabled = false
+
+[edge_functions]
+enabled = true
 
 [functions.connect-onboarding]
+verify_jwt = true
+
+[functions.create-payment-intent]
 verify_jwt = true
 
 [functions.get-stripe-public-key]
 verify_jwt = true
 
 [functions.handle-new-signup]
-verify_jwt = true
+verify_jwt = false
+
+[functions.payment-intent-webhooks]
+verify_jwt = false
 
 [functions.refund-payment]
-verify_jwt = true
-
-[functions.setup-auth-trigger]
 verify_jwt = true
 
 [functions.reset-password]
 verify_jwt = false
 
+[functions.setup-auth-trigger]
+verify_jwt = false
+
 [functions.stripe-webhooks]
 verify_jwt = false
 
-[functions.payment-intent-webhooks]
+[functions.patient-notifications]
 verify_jwt = false
