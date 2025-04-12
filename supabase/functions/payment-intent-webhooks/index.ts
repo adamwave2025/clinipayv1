@@ -160,6 +160,40 @@ async function handlePaymentIntentSucceeded(paymentIntent, supabaseClient) {
 
     console.log(`Payment record created with ID: ${paymentData.id}`);
 
+    // Send notification to patient-notifications function
+    try {
+      console.log(`Sending payment success notification for payment ID: ${paymentData.id}`);
+      
+      const notificationPayload = {
+        table: "payments",
+        operation: "INSERT",
+        notification_type: "payment_success",
+        record_id: paymentData.id,
+      };
+      
+      const notificationResponse = await fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/patient-notifications`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify(notificationPayload),
+        }
+      );
+      
+      if (!notificationResponse.ok) {
+        const errorText = await notificationResponse.text();
+        console.error(`Error sending payment notification: ${notificationResponse.status} - ${errorText}`);
+      } else {
+        console.log("Payment notification sent successfully");
+      }
+    } catch (notificationError) {
+      console.error("Error sending payment notification:", notificationError);
+      // Don't throw here, we still want to update the payment request if needed
+    }
+
     // If this payment was for a payment request, update the request status
     if (requestId) {
       console.log(`Updating payment request: ${requestId}`);

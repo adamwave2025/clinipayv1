@@ -40,6 +40,36 @@ interface FormattedPayload {
   };
 }
 
+// Retry configuration
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY = 1000; // 1 second
+
+// Helper function to sleep for a specified time
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Retry function with exponential backoff
+async function retryOperation<T>(
+  operation: () => Promise<T>,
+  retries = MAX_RETRIES,
+  delay = INITIAL_RETRY_DELAY,
+  errorHandler?: (error: any, attempt: number) => void
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (retries <= 0) {
+      throw error;
+    }
+    
+    if (errorHandler) {
+      errorHandler(error, MAX_RETRIES - retries + 1);
+    }
+    
+    await sleep(delay);
+    return retryOperation(operation, retries - 1, delay * 2, errorHandler);
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -47,6 +77,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Patient notification function called at:", new Date().toISOString());
+    
     // Initialize Supabase client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -71,47 +103,15 @@ serve(async (req) => {
       throw new Error("Missing record_id in notification payload");
     }
 
-    // Verify the record exists in the database
-    if (payload.notification_type === "payment_success" || payload.notification_type === "payment_refund") {
-      // Check if payment exists
-      const { data: paymentCheck, error: checkError } = await supabaseClient
-        .from("payments")
-        .select("id")
-        .eq("id", payload.record_id);
-      
-      if (checkError) {
-        console.error("Error checking payment existence:", checkError);
-      }
-      
-      if (!paymentCheck || paymentCheck.length === 0) {
-        console.error(`Payment record not found: ${payload.record_id}`);
-        console.log("Checking for payment with stripe_payment_id instead...");
-        
-        // Try to find by stripe_payment_id as fallback
-        const { data: stripePaymentCheck, error: stripeCheckError } = await supabaseClient
-          .from("payments")
-          .select("id, stripe_payment_id")
-          .eq("stripe_payment_id", payload.record_id);
-        
-        if (stripeCheckError) {
-          console.error("Error checking stripe payment ID:", stripeCheckError);
-        }
-        
-        if (stripePaymentCheck && stripePaymentCheck.length > 0) {
-          console.log(`Found payment by stripe_payment_id: ${payload.record_id}, DB ID: ${stripePaymentCheck[0].id}`);
-          // Update payload.record_id to use the database ID instead
-          payload.record_id = stripePaymentCheck[0].id;
-          console.log(`Updated record_id to use database ID: ${payload.record_id}`);
-        } else {
-          console.error(`Payment record not found by either ID or stripe_payment_id: ${payload.record_id}`);
-        }
-      } else {
-        console.log(`Payment record found in database: ${payload.record_id}`);
-      }
-    }
-
     // Format the data for the GHL webhook based on notification type
-    const formattedPayload = await formatPayloadForGHL(payload, supabaseClient);
+    const formattedPayload = await retryOperation(
+      () => formatPayloadForGHL(payload, supabaseClient),
+      MAX_RETRIES,
+      INITIAL_RETRY_DELAY,
+      (error, attempt) => {
+        console.log(`Retry attempt ${attempt} for formatting payload: ${error.message}`);
+      }
+    );
     
     if (!formattedPayload) {
       throw new Error("Failed to format payload");
@@ -205,35 +205,41 @@ async function formatPayloadForGHL(
     return formattedPayload;
   } catch (error) {
     console.error("Error formatting payload:", error);
-    return null;
+    throw error; // Re-throw the error to be caught by the retry mechanism
   }
 }
 
-async function formatPaymentSuccess(
-  paymentId: string,
-  basePayload: FormattedPayload,
-  supabaseClient: any
-): Promise<FormattedPayload> {
-  console.log(`Fetching payment details for ID: ${paymentId}`);
+async function findPaymentRecord(paymentId: string, supabaseClient: any): Promise<any> {
+  console.log(`Looking for payment with ID: ${paymentId} using different search methods`);
   
-  // First try with exact ID match
-  let { data: payment, error: paymentError } = await supabaseClient
-    .from("payments")
-    .select(`
-      *,
-      clinics:clinic_id (
-        clinic_name,
-        email,
-        phone
-      )
-    `)
-    .eq("id", paymentId)
-    .maybeSingle();
-
-  // If no results, try with stripe_payment_id
-  if (!payment && !paymentError) {
-    console.log(`No payment found with ID: ${paymentId}, trying stripe_payment_id`);
-    const { data: stripePayment, error: stripeError } = await supabaseClient
+  try {
+    // Try to find by direct ID match
+    const { data: directMatch, error: directError } = await supabaseClient
+      .from("payments")
+      .select(`
+        *,
+        clinics:clinic_id (
+          clinic_name,
+          email,
+          phone
+        )
+      `)
+      .eq("id", paymentId)
+      .maybeSingle();
+    
+    if (directError) {
+      console.error("Error in direct ID search:", directError);
+    }
+    
+    if (directMatch) {
+      console.log(`Found payment directly by ID: ${paymentId}`);
+      return directMatch;
+    }
+    
+    console.log(`No direct match found, trying stripe_payment_id search for: ${paymentId}`);
+    
+    // Try to find by stripe_payment_id
+    const { data: stripeMatch, error: stripeError } = await supabaseClient
       .from("payments")
       .select(`
         *,
@@ -245,27 +251,73 @@ async function formatPaymentSuccess(
       `)
       .eq("stripe_payment_id", paymentId)
       .maybeSingle();
-      
+    
     if (stripeError) {
-      console.error("Error fetching payment by stripe_payment_id:", stripeError);
-    } else if (stripePayment) {
-      console.log(`Found payment using stripe_payment_id: ${paymentId}`);
-      payment = stripePayment;
+      console.error("Error in stripe_payment_id search:", stripeError);
     }
-  }
-
-  if (paymentError) {
-    console.error("Error fetching payment:", paymentError);
-    throw new Error(`Failed to fetch payment: ${paymentError.message}`);
-  }
-  
-  // ADDED: Check if payment exists
-  if (!payment) {
-    console.error(`No payment found with ID: ${paymentId}`);
+    
+    if (stripeMatch) {
+      console.log(`Found payment by stripe_payment_id: ${paymentId}`);
+      return stripeMatch;
+    }
+    
+    // Try the most recently created payment as a last resort
+    console.log("No payment found by either method, checking most recent payments");
+    const { data: recentPayments, error: recentError } = await supabaseClient
+      .from("payments")
+      .select(`
+        *,
+        clinics:clinic_id (
+          clinic_name,
+          email,
+          phone
+        )
+      `)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    
+    if (recentError) {
+      console.error("Error fetching recent payments:", recentError);
+    }
+    
+    if (recentPayments && recentPayments.length > 0) {
+      console.log(`Checking ${recentPayments.length} recent payments`);
+      console.log(`Recent payment IDs: ${recentPayments.map(p => p.id).join(', ')}`);
+      console.log(`Recent payment stripe IDs: ${recentPayments.map(p => p.stripe_payment_id).join(', ')}`);
+    } else {
+      console.log("No recent payments found in the last 5 entries");
+    }
+    
+    console.error(`No payment found with ID: ${paymentId} after all search attempts`);
     throw new Error(`No payment found with ID: ${paymentId}`);
+  } catch (error) {
+    console.error(`Error finding payment record: ${error.message}`);
+    throw error;
+  }
+}
+
+async function formatPaymentSuccess(
+  paymentId: string,
+  basePayload: FormattedPayload,
+  supabaseClient: any
+): Promise<FormattedPayload> {
+  console.log(`Processing payment success notification for ID: ${paymentId}`);
+  
+  // Find the payment record with retry logic
+  const payment = await retryOperation(
+    () => findPaymentRecord(paymentId, supabaseClient),
+    MAX_RETRIES,
+    INITIAL_RETRY_DELAY,
+    (error, attempt) => {
+      console.log(`Retry attempt ${attempt} finding payment record: ${error.message}`);
+    }
+  );
+
+  if (!payment) {
+    throw new Error(`No payment record found for ID: ${paymentId} after multiple retries`);
   }
 
-  console.log(`Successfully retrieved payment: ${JSON.stringify(payment)}`);
+  console.log(`Successfully retrieved payment data for ID: ${paymentId}`);
 
   // Update notification methods based on available data
   basePayload.notification_method = {
@@ -285,7 +337,7 @@ async function formatPaymentSuccess(
     reference: payment.payment_ref || "N/A",
     amount: payment.amount_paid || 0,
     refund_amount: null,
-    payment_link: `${Deno.env.get("APP_URL") || "https://clinipay.com"}/payment-receipt/${paymentId}`,
+    payment_link: `${Deno.env.get("APP_URL") || "https://clinipay.com"}/payment-receipt/${payment.id}`,
     message: "Your payment was successful",
   };
 
@@ -306,31 +358,20 @@ async function formatPaymentRefund(
   basePayload: FormattedPayload,
   supabaseClient: any
 ): Promise<FormattedPayload> {
-  console.log(`Fetching refund payment details for ID: ${paymentId}`);
+  console.log(`Processing payment refund notification for ID: ${paymentId}`);
   
-  // Get payment details - CHANGED: using maybeSingle() instead of single()
-  const { data: payment, error: paymentError } = await supabaseClient
-    .from("payments")
-    .select(`
-      *,
-      clinics:clinic_id (
-        clinic_name,
-        email,
-        phone
-      )
-    `)
-    .eq("id", paymentId)
-    .maybeSingle();
+  // Find the payment record with retry logic
+  const payment = await retryOperation(
+    () => findPaymentRecord(paymentId, supabaseClient),
+    MAX_RETRIES,
+    INITIAL_RETRY_DELAY,
+    (error, attempt) => {
+      console.log(`Retry attempt ${attempt} finding refund payment record: ${error.message}`);
+    }
+  );
 
-  if (paymentError) {
-    console.error("Error fetching payment for refund:", paymentError);
-    throw new Error(`Failed to fetch refunded payment: ${paymentError.message}`);
-  }
-  
-  // ADDED: Check if payment exists
   if (!payment) {
-    console.error(`No payment found with ID: ${paymentId}`);
-    throw new Error(`No payment found with ID: ${paymentId}`);
+    throw new Error(`No payment record found for refund ID: ${paymentId} after multiple retries`);
   }
 
   // Update notification methods based on available data
@@ -351,7 +392,7 @@ async function formatPaymentRefund(
     reference: payment.payment_ref || "N/A",
     amount: payment.amount_paid || 0,
     refund_amount: payment.refund_amount || null,
-    payment_link: `${Deno.env.get("APP_URL") || "https://clinipay.com"}/payment-receipt/${paymentId}`,
+    payment_link: `${Deno.env.get("APP_URL") || "https://clinipay.com"}/payment-receipt/${payment.id}`,
     message: payment.status === "refunded" 
       ? "Your payment has been fully refunded" 
       : "Your payment has been partially refunded",
@@ -374,35 +415,46 @@ async function formatPaymentRequest(
   basePayload: FormattedPayload,
   supabaseClient: any
 ): Promise<FormattedPayload> {
-  console.log(`Fetching payment link details for ID: ${linkId}`);
+  console.log(`Processing payment request notification for ID: ${linkId}`);
   
-  // Get payment link details - CHANGED: using maybeSingle() instead of single()
-  const { data: paymentLink, error: linkError } = await supabaseClient
-    .from("payment_links")
-    .select(`
-      *,
-      clinics:clinic_id (
-        clinic_name,
-        email,
-        phone
-      )
-    `)
-    .eq("id", linkId)
-    .maybeSingle();
+  // Get payment link details with retry logic
+  const paymentLink = await retryOperation(
+    async () => {
+      const { data, error } = await supabaseClient
+        .from("payment_links")
+        .select(`
+          *,
+          clinics:clinic_id (
+            clinic_name,
+            email,
+            phone
+          )
+        `)
+        .eq("id", linkId)
+        .maybeSingle();
+        
+      if (error) {
+        console.error("Error fetching payment link:", error);
+        throw new Error(`Failed to fetch payment link: ${error.message}`);
+      }
+      
+      if (!data) {
+        console.error(`No payment link found with ID: ${linkId}`);
+        throw new Error(`No payment link found with ID: ${linkId}`);
+      }
+      
+      return data;
+    },
+    MAX_RETRIES,
+    INITIAL_RETRY_DELAY,
+    (error, attempt) => {
+      console.log(`Retry attempt ${attempt} finding payment link: ${error.message}`);
+    }
+  );
 
-  if (linkError) {
-    console.error("Error fetching payment link:", linkError);
-    throw new Error(`Failed to fetch payment link: ${linkError.message}`);
-  }
-  
-  // ADDED: Check if payment link exists
   if (!paymentLink) {
-    console.error(`No payment link found with ID: ${linkId}`);
-    throw new Error(`No payment link found with ID: ${linkId}`);
+    throw new Error(`No payment link found with ID: ${linkId} after multiple retries`);
   }
-
-  // We don't have patient info for a newly created payment link
-  // This would be populated when a payment request is created using this link
 
   // Update payment information
   basePayload.payment = {
