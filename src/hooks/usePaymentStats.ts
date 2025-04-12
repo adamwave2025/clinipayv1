@@ -40,6 +40,21 @@ export function usePaymentStats() {
 
       if (paymentsError) throw paymentsError;
 
+      // Fetch pending payment requests (status=sent)
+      const { data: pendingRequestsData, error: pendingRequestsError } = await supabase
+        .from('payment_requests')
+        .select(`
+          id, 
+          custom_amount,
+          payment_link_id,
+          sent_at,
+          payment_links(amount)
+        `)
+        .eq('clinic_id', userData.clinic_id)
+        .eq('status', 'sent');
+
+      if (pendingRequestsError) throw pendingRequestsError;
+
       // Calculate stats
       const today = new Date().toDateString();
       const thisMonth = new Date().getMonth();
@@ -55,6 +70,11 @@ export function usePaymentStats() {
         new Date(p.paid_at).getFullYear() === thisYear
       );
 
+      // Calculate pending amount from payment requests
+      const todayPendingRequests = pendingRequestsData.filter(pr => 
+        pr.sent_at && new Date(pr.sent_at).toDateString() === today
+      );
+
       const newStats = { ...stats };
 
       newStats.totalReceivedToday = todayPayments
@@ -67,9 +87,12 @@ export function usePaymentStats() {
           return sum + (p.amount_paid || 0);
         }, 0);
       
-      newStats.totalPendingToday = todayPayments
-        .filter(p => p.status === 'pending')
-        .reduce((sum, p) => sum + (p.amount_paid || 0), 0);
+      // Calculate total pending amount from today's pending requests
+      newStats.totalPendingToday = todayPendingRequests.reduce((sum, pr) => {
+        // Use custom_amount if available, otherwise use amount from payment_link
+        const requestAmount = pr.custom_amount || (pr.payment_links?.amount || 0);
+        return sum + requestAmount;
+      }, 0);
       
       newStats.totalReceivedMonth = monthPayments
         .filter(p => p.status === 'paid' || p.status === 'partially_refunded')
