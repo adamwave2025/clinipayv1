@@ -6,6 +6,12 @@ import { toast } from 'sonner';
 import { PaymentLinkService } from '@/services/PaymentLinkService';
 import { formatPaymentLinks } from '@/utils/paymentLinkFormatter';
 
+// Type guard to check if result has an error property
+const hasError = (result: { success: boolean } | { success: boolean; error: any }): 
+  result is { success: boolean; error: any } => {
+  return 'error' in result;
+};
+
 export function usePaymentLinks() {
   const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
   const [archivedLinks, setArchivedLinks] = useState<PaymentLink[]>([]);
@@ -50,7 +56,9 @@ export function usePaymentLinks() {
       const result = await PaymentLinkService.toggleArchiveStatus(linkId, true);
       
       if (!result.success) {
-        throw new Error(result.error);
+        // Use type guard to safely access error property
+        const errorMessage = hasError(result) ? result.error : 'Unknown error';
+        throw new Error(errorMessage);
       }
       
       toast.success('Payment link archived successfully');
@@ -75,7 +83,9 @@ export function usePaymentLinks() {
       const result = await PaymentLinkService.toggleArchiveStatus(linkId, false);
       
       if (!result.success) {
-        throw new Error(result.error);
+        // Use type guard to safely access error property
+        const errorMessage = hasError(result) ? result.error : 'Unknown error';
+        throw new Error(errorMessage);
       }
       
       toast.success('Payment link unarchived successfully');
