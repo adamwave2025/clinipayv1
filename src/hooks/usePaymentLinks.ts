@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PaymentLink } from '@/types/payment';
 import { toast } from 'sonner';
-import { PaymentLinkApi } from '@/services/PaymentLinkApi';
+import { PaymentLinkService } from '@/services/PaymentLinkService';
 import { formatPaymentLinks } from '@/utils/paymentLinkFormatter';
 
 export function usePaymentLinks() {
@@ -25,7 +25,7 @@ export function usePaymentLinks() {
     setError(null);
 
     try {
-      const { activeLinks, archivedLinks, clinicId } = await PaymentLinkApi.fetchLinks(user.id);
+      const { activeLinks, archivedLinks, clinicId } = await PaymentLinkService.fetchLinks(user.id);
       
       setPaymentLinks(formatPaymentLinks(activeLinks));
       setArchivedLinks(formatPaymentLinks(archivedLinks));
@@ -47,7 +47,7 @@ export function usePaymentLinks() {
     setIsArchiveLoading(true);
     
     try {
-      const result = await PaymentLinkApi.toggleArchiveStatus(linkId, true);
+      const result = await PaymentLinkService.toggleArchiveStatus(linkId, true);
       
       if (!result.success) {
         throw new Error(result.error);
@@ -72,7 +72,7 @@ export function usePaymentLinks() {
     setIsArchiveLoading(true);
     
     try {
-      const result = await PaymentLinkApi.toggleArchiveStatus(linkId, false);
+      const result = await PaymentLinkService.toggleArchiveStatus(linkId, false);
       
       if (!result.success) {
         throw new Error(result.error);
@@ -95,7 +95,7 @@ export function usePaymentLinks() {
     }
 
     try {
-      const result = await PaymentLinkApi.createPaymentLink(linkData, clinicId);
+      const result = await PaymentLinkService.createPaymentLink(linkData, clinicId);
       
       if (!result.success) {
         throw new Error(result.error);

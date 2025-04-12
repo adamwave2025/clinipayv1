@@ -2,9 +2,9 @@
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentLink } from '@/types/payment';
 import { PaymentLinkData, RawClinicData } from '@/types/paymentLink';
-import { toast } from 'sonner';
 
 export const PaymentLinkService = {
+  // Core data access methods
   async fetchLinks(userId: string) {
     try {
       // Get the clinic_id for the current user
@@ -105,7 +105,6 @@ export const PaymentLinkService = {
     }
   },
 
-  // Adding the missing methods
   async fetchPaymentRequest(requestId: string): Promise<PaymentLinkData | null> {
     try {
       // Fetch payment request with clinic data
