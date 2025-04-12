@@ -62,7 +62,53 @@ serve(async (req) => {
 
     // Parse the notification payload from the request
     const payload: NotificationPayload = await req.json();
-    console.log("Received notification payload:", payload);
+    console.log("Received notification payload:", JSON.stringify(payload));
+    console.log(`Processing ${payload.notification_type} for record ID: ${payload.record_id}`);
+
+    // Check if record_id exists before proceeding
+    if (!payload.record_id) {
+      console.error("Error: Missing record_id in notification payload");
+      throw new Error("Missing record_id in notification payload");
+    }
+
+    // Verify the record exists in the database
+    if (payload.notification_type === "payment_success" || payload.notification_type === "payment_refund") {
+      // Check if payment exists
+      const { data: paymentCheck, error: checkError } = await supabaseClient
+        .from("payments")
+        .select("id")
+        .eq("id", payload.record_id);
+      
+      if (checkError) {
+        console.error("Error checking payment existence:", checkError);
+      }
+      
+      if (!paymentCheck || paymentCheck.length === 0) {
+        console.error(`Payment record not found: ${payload.record_id}`);
+        console.log("Checking for payment with stripe_payment_id instead...");
+        
+        // Try to find by stripe_payment_id as fallback
+        const { data: stripePaymentCheck, error: stripeCheckError } = await supabaseClient
+          .from("payments")
+          .select("id, stripe_payment_id")
+          .eq("stripe_payment_id", payload.record_id);
+        
+        if (stripeCheckError) {
+          console.error("Error checking stripe payment ID:", stripeCheckError);
+        }
+        
+        if (stripePaymentCheck && stripePaymentCheck.length > 0) {
+          console.log(`Found payment by stripe_payment_id: ${payload.record_id}, DB ID: ${stripePaymentCheck[0].id}`);
+          // Update payload.record_id to use the database ID instead
+          payload.record_id = stripePaymentCheck[0].id;
+          console.log(`Updated record_id to use database ID: ${payload.record_id}`);
+        } else {
+          console.error(`Payment record not found by either ID or stripe_payment_id: ${payload.record_id}`);
+        }
+      } else {
+        console.log(`Payment record found in database: ${payload.record_id}`);
+      }
+    }
 
     // Format the data for the GHL webhook based on notification type
     const formattedPayload = await formatPayloadForGHL(payload, supabaseClient);
@@ -146,10 +192,13 @@ async function formatPayloadForGHL(
 
     // Process based on the notification type
     if (payload.notification_type === "payment_success") {
+      console.log(`Formatting payload for payment_success with ID: ${payload.record_id}`);
       return await formatPaymentSuccess(payload.record_id, formattedPayload, supabaseClient);
     } else if (payload.notification_type === "payment_refund") {
+      console.log(`Formatting payload for payment_refund with ID: ${payload.record_id}`);
       return await formatPaymentRefund(payload.record_id, formattedPayload, supabaseClient);
     } else if (payload.notification_type === "payment_request") {
+      console.log(`Formatting payload for payment_request with ID: ${payload.record_id}`);
       return await formatPaymentRequest(payload.record_id, formattedPayload, supabaseClient);
     }
 
@@ -165,8 +214,10 @@ async function formatPaymentSuccess(
   basePayload: FormattedPayload,
   supabaseClient: any
 ): Promise<FormattedPayload> {
-  // Get payment details - CHANGED: using maybeSingle() instead of single()
-  const { data: payment, error: paymentError } = await supabaseClient
+  console.log(`Fetching payment details for ID: ${paymentId}`);
+  
+  // First try with exact ID match
+  let { data: payment, error: paymentError } = await supabaseClient
     .from("payments")
     .select(`
       *,
@@ -179,6 +230,30 @@ async function formatPaymentSuccess(
     .eq("id", paymentId)
     .maybeSingle();
 
+  // If no results, try with stripe_payment_id
+  if (!payment && !paymentError) {
+    console.log(`No payment found with ID: ${paymentId}, trying stripe_payment_id`);
+    const { data: stripePayment, error: stripeError } = await supabaseClient
+      .from("payments")
+      .select(`
+        *,
+        clinics:clinic_id (
+          clinic_name,
+          email,
+          phone
+        )
+      `)
+      .eq("stripe_payment_id", paymentId)
+      .maybeSingle();
+      
+    if (stripeError) {
+      console.error("Error fetching payment by stripe_payment_id:", stripeError);
+    } else if (stripePayment) {
+      console.log(`Found payment using stripe_payment_id: ${paymentId}`);
+      payment = stripePayment;
+    }
+  }
+
   if (paymentError) {
     console.error("Error fetching payment:", paymentError);
     throw new Error(`Failed to fetch payment: ${paymentError.message}`);
@@ -189,6 +264,8 @@ async function formatPaymentSuccess(
     console.error(`No payment found with ID: ${paymentId}`);
     throw new Error(`No payment found with ID: ${paymentId}`);
   }
+
+  console.log(`Successfully retrieved payment: ${JSON.stringify(payment)}`);
 
   // Update notification methods based on available data
   basePayload.notification_method = {
@@ -229,6 +306,8 @@ async function formatPaymentRefund(
   basePayload: FormattedPayload,
   supabaseClient: any
 ): Promise<FormattedPayload> {
+  console.log(`Fetching refund payment details for ID: ${paymentId}`);
+  
   // Get payment details - CHANGED: using maybeSingle() instead of single()
   const { data: payment, error: paymentError } = await supabaseClient
     .from("payments")
@@ -295,6 +374,8 @@ async function formatPaymentRequest(
   basePayload: FormattedPayload,
   supabaseClient: any
 ): Promise<FormattedPayload> {
+  console.log(`Fetching payment link details for ID: ${linkId}`);
+  
   // Get payment link details - CHANGED: using maybeSingle() instead of single()
   const { data: paymentLink, error: linkError } = await supabaseClient
     .from("payment_links")
