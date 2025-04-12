@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePlatformFee } from './useAdminSettings';
 import { toast } from 'sonner';
 import { DateRange } from 'react-day-picker';
-import { format, subMonths } from 'date-fns';
 
 export interface AdminStats {
   totalClinics: number;
@@ -45,66 +44,71 @@ export function useAdminStats(dateRange?: DateRange) {
 
       if (clinicsError) throw clinicsError;
       
-      // Prepare date filters
-      let dateFilter = {};
-      let previousPeriodFilter = {};
-      
-      if (dateRange?.from && dateRange?.to) {
-        // Format dates correctly for Supabase query
-        const fromDateStr = format(dateRange.from, 'yyyy-MM-dd');
-        const toDateStr = format(dateRange.to, 'yyyy-MM-dd');
-        
-        dateFilter = {
-          paid_at: {
-            gte: fromDateStr,
-            lte: `${toDateStr} 23:59:59`
-          }
-        };
-        
-        // Calculate previous period of same length for trend calculation
-        const periodLength = dateRange.to.getTime() - dateRange.from.getTime();
-        const previousFrom = new Date(dateRange.from.getTime() - periodLength);
-        const previousTo = new Date(dateRange.from.getTime() - 86400000); // Subtract one day (in milliseconds)
-        
-        const previousFromStr = format(previousFrom, 'yyyy-MM-dd');
-        const previousToStr = format(previousTo, 'yyyy-MM-dd');
-        
-        previousPeriodFilter = {
-          paid_at: {
-            gte: previousFromStr,
-            lte: `${previousToStr} 23:59:59`
-          }
-        };
-        
-        console.log('Date filter:', dateFilter);
-        console.log('Previous period filter:', previousPeriodFilter);
-      }
-      
-      // Fetch payments data for current period
-      const { data: paymentsData, error: paymentsError } = await supabase
+      // Initialize query for payments data
+      let paymentsQuery = supabase
         .from('payments')
         .select('amount_paid, status, refund_amount, net_amount, platform_fee, stripe_fee')
-        .in('status', ['paid', 'partially_refunded', 'refunded'])
-        .match(dateFilter);
-
+        .in('status', ['paid', 'partially_refunded', 'refunded']);
+      
+      // Initialize query for previous period payments data
+      let previousPaymentsQuery = supabase
+        .from('payments')
+        .select('amount_paid, status, refund_amount, platform_fee, stripe_fee')
+        .in('status', ['paid', 'partially_refunded', 'refunded']);
+      
+      // Apply date filters if dateRange is provided
+      if (dateRange?.from && dateRange?.to) {
+        // Create ISO strings for the dates to ensure proper formatting
+        const fromDate = new Date(dateRange.from);
+        const toDate = new Date(dateRange.to);
+        
+        // Set time for toDate to end of day
+        toDate.setHours(23, 59, 59, 999);
+        
+        // Format dates as ISO strings for Supabase
+        const fromDateISO = fromDate.toISOString();
+        const toDateISO = toDate.toISOString();
+        
+        console.log('Filtering payments from', fromDateISO, 'to', toDateISO);
+        
+        // Apply current period filter using proper Supabase query methods
+        paymentsQuery = paymentsQuery
+          .gte('paid_at', fromDateISO)
+          .lte('paid_at', toDateISO);
+        
+        // Calculate previous period with same duration
+        const periodDurationMs = toDate.getTime() - fromDate.getTime();
+        const previousFromDate = new Date(fromDate.getTime() - periodDurationMs);
+        const previousToDate = new Date(fromDate.getTime() - 1); // 1ms before current period
+        
+        const previousFromDateISO = previousFromDate.toISOString();
+        const previousToDateISO = previousToDate.toISOString();
+        
+        console.log('Previous period from', previousFromDateISO, 'to', previousToDateISO);
+        
+        // Apply previous period filter
+        previousPaymentsQuery = previousPaymentsQuery
+          .gte('paid_at', previousFromDateISO)
+          .lte('paid_at', previousToDateISO);
+      }
+      
+      // Execute the queries
+      const { data: paymentsData, error: paymentsError } = await paymentsQuery;
+      
       if (paymentsError) {
         console.error('Error fetching payments:', paymentsError);
         throw paymentsError;
       }
       
-      console.log('Raw payments data:', paymentsData);
+      const { data: previousPaymentsData, error: previousPaymentsError } = await previousPaymentsQuery;
       
-      // Fetch payments data for previous period (for trend calculation)
-      const { data: previousPaymentsData, error: previousPaymentsError } = await supabase
-        .from('payments')
-        .select('amount_paid, status, refund_amount, platform_fee, stripe_fee')
-        .in('status', ['paid', 'partially_refunded', 'refunded'])
-        .match(previousPeriodFilter);
-
       if (previousPaymentsError) {
         console.error('Error fetching previous payments:', previousPaymentsError);
         throw previousPaymentsError;
       }
+      
+      console.log('Retrieved payments data:', paymentsData?.length || 0, 'records');
+      console.log('Retrieved previous period data:', previousPaymentsData?.length || 0, 'records');
       
       // Calculate total payments (sum of all paid amounts minus refunded amounts)
       const totalPaymentsSum = paymentsData.reduce((sum, payment) => {
@@ -149,14 +153,8 @@ export function useAdminStats(dateRange?: DateRange) {
         return sum;
       }, 0);
       
-      console.log('Calculated totalPaymentsSum:', totalPaymentsSum);
-      console.log('Calculated totalRefundsSum:', totalRefundsSum);
-      
-      // Calculate CliniPay revenue as platform_fee minus stripe_fee
-      // Note: Both values are stored in cents, so we need to divide by 100 for display
-      let clinipayRevenueAmount = 0;
-      
-      clinipayRevenueAmount = paymentsData.reduce((sum, payment) => {
+      // Calculate CliniPay revenue
+      let clinipayRevenueAmount = paymentsData.reduce((sum, payment) => {
         // Calculate net platform fee (platform_fee - stripe_fee)
         const platformFeeAmount = payment.platform_fee || 0;
         const stripeFeeAmount = payment.stripe_fee || 0;
@@ -174,8 +172,6 @@ export function useAdminStats(dateRange?: DateRange) {
         return sum + (paymentRevenue / 100); // Convert cents to pounds
       }, 0);
       
-      console.log('Calculated clinipayRevenueAmount:', clinipayRevenueAmount);
-      
       // Calculate trend percentages
       const calculatePercentageChange = (current: number, previous: number) => {
         if (previous === 0) return current > 0 ? 100 : 0;
@@ -186,7 +182,7 @@ export function useAdminStats(dateRange?: DateRange) {
       const revenueChange = calculatePercentageChange(clinipayRevenueAmount, previousClinicpayRevenueAmount);
       const refundsChange = calculatePercentageChange(totalRefundsSum, previousTotalRefundsSum);
       
-      setStats({
+      const updatedStats = {
         totalClinics: clinicsCount || 0,
         totalPayments: totalPaymentsSum,
         totalRefunds: totalRefundsSum,
@@ -194,17 +190,11 @@ export function useAdminStats(dateRange?: DateRange) {
         paymentsChange: !isNaN(paymentsChange) ? paymentsChange : 0,
         revenueChange: !isNaN(revenueChange) ? revenueChange : 0,
         refundsChange: !isNaN(refundsChange) ? refundsChange : 0
-      });
+      };
       
-      console.log('Final stats set:', {
-        totalClinics: clinicsCount || 0,
-        totalPayments: totalPaymentsSum,
-        totalRefunds: totalRefundsSum,
-        clinipayRevenue: clinipayRevenueAmount,
-        paymentsChange,
-        revenueChange,
-        refundsChange
-      });
+      console.log('Final stats calculated:', updatedStats);
+      setStats(updatedStats);
+      
     } catch (error) {
       console.error('Error fetching admin stats:', error);
       toast.error('Failed to load dashboard statistics');
