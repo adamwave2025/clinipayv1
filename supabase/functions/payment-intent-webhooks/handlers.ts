@@ -39,6 +39,48 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
     const paymentReference = existingReference || generatePaymentReference();
     console.log(`Using payment reference: ${paymentReference}`);
     
+    // Initialize fee data variables
+    let stripeFee = 0;
+    let platformFee = 0; // This may be calculated or set elsewhere
+    
+    // Fetch Stripe fee data from charge and balance transaction
+    if (paymentIntent.latest_charge) {
+      try {
+        console.log(`Retrieving charge data for charge ID: ${paymentIntent.latest_charge}`);
+        
+        // Initialize Stripe using the module imported in the parent file
+        const stripe = new Stripe(Deno.env.get("SECRET_KEY") ?? "", {
+          apiVersion: "2023-10-16",
+        });
+        
+        // Retrieve charge data
+        const charge = await stripe.charges.retrieve(paymentIntent.latest_charge);
+        
+        if (charge && charge.balance_transaction) {
+          console.log(`Retrieving balance transaction data for ID: ${charge.balance_transaction}`);
+          
+          // Retrieve balance transaction data
+          const balanceTransaction = await stripe.balanceTransactions.retrieve(
+            typeof charge.balance_transaction === 'string' 
+              ? charge.balance_transaction 
+              : charge.balance_transaction.id
+          );
+          
+          if (balanceTransaction) {
+            // Extract fee data (converting from cents to pounds)
+            stripeFee = (balanceTransaction.fee || 0) / 100;
+            const netAmount = (balanceTransaction.net || 0) / 100;
+            
+            console.log(`Stripe fees: £${stripeFee.toFixed(2)}, Net amount: £${netAmount.toFixed(2)}`);
+          }
+        }
+      } catch (feeError) {
+        // Log the error but don't prevent payment processing
+        console.error("Error retrieving fee data from Stripe:", feeError);
+        console.error("Continuing with payment processing without fee data");
+      }
+    }
+    
     // Prepare payment record data
     const paymentData = {
       clinic_id: clinicId,
@@ -51,6 +93,8 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       payment_ref: paymentReference,
       status: "paid",
       stripe_payment_id: paymentIntent.id,
+      stripe_fee: stripeFee, // Add the Stripe fee
+      platform_fee: platformFee, // Add platform fee (if applicable)
     };
 
     console.log("Attempting to insert payment record:", JSON.stringify(paymentData));
