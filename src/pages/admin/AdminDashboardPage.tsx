@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,10 +9,17 @@ import { RecentClinicsTable } from '@/components/admin/RecentClinicsTable';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { formatCurrency } from '@/utils/formatters';
 import { useAuth } from '@/contexts/AuthContext';
+import DateRangeFilter from '@/components/common/DateRangeFilter';
+import { DateRange } from 'react-day-picker';
 
 const AdminDashboardPage = () => {
-  const { stats, loading } = useAdminStats();
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const { stats, loading, refetchStats } = useAdminStats(dateRange);
   const { loading: authLoading } = useAuth();
+
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    setDateRange(range);
+  };
 
   const StatCard = ({ 
     title, 
@@ -64,6 +71,18 @@ const AdminDashboardPage = () => {
         title="Admin Dashboard" 
         description="Platform overview and statistics"
       />
+      
+      <Card className="card-shadow mb-6">
+        <CardContent className="p-4">
+          <div className="flex justify-end">
+            <DateRangeFilter
+              dateRange={dateRange}
+              onDateRangeChange={handleDateRangeChange}
+              className="w-full md:w-auto"
+            />
+          </div>
+        </CardContent>
+      </Card>
       
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
