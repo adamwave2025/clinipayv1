@@ -107,6 +107,12 @@ serve(async (req) => {
 // Function to handle payment_intent.succeeded events
 async function handlePaymentIntentSucceeded(paymentIntent, supabaseClient) {
   console.log("Processing payment_intent.succeeded:", paymentIntent.id);
+  console.log("Payment intent details:", JSON.stringify({
+    id: paymentIntent.id,
+    amount: paymentIntent.amount,
+    status: paymentIntent.status,
+    metadata: paymentIntent.metadata || {}
+  }));
   
   try {
     // Extract metadata from the payment intent
@@ -135,30 +141,41 @@ async function handlePaymentIntentSucceeded(paymentIntent, supabaseClient) {
     const paymentReference = existingReference || generatePaymentReference();
     console.log(`Using payment reference: ${paymentReference}`);
     
-    // Record the payment in the payments table
-    const { data: paymentData, error: paymentError } = await supabaseClient
-      .from("payments")
-      .insert({
-        clinic_id: clinicId,
-        amount_paid: amountInPounds,
-        paid_at: new Date().toISOString(),
-        patient_name: patientName || "Unknown",
-        patient_email: patientEmail || null,
-        patient_phone: patientPhone || null,
-        payment_link_id: paymentLinkId || null,
-        payment_ref: paymentReference,
-        status: "paid",
-        stripe_payment_id: paymentIntent.id,
-      })
-      .select()
-      .single();
+    // Prepare payment record data
+    const paymentData = {
+      clinic_id: clinicId,
+      amount_paid: amountInPounds,
+      paid_at: new Date().toISOString(),
+      patient_name: patientName || "Unknown",
+      patient_email: patientEmail || null,
+      patient_phone: patientPhone || null,
+      payment_link_id: paymentLinkId || null,
+      payment_ref: paymentReference,
+      status: "paid",
+      stripe_payment_id: paymentIntent.id,
+    };
 
-    if (paymentError) {
-      console.error("Error inserting payment record:", paymentError);
-      throw new Error(`Error recording payment: ${paymentError.message}`);
+    console.log("Attempting to insert payment record:", JSON.stringify(paymentData));
+    
+    // Record the payment in the payments table
+    const { data, error } = await supabaseClient
+      .from("payments")
+      .insert(paymentData)
+      .select();
+
+    if (error) {
+      console.error("Error inserting payment record:", error);
+      console.error("Error details:", JSON.stringify(error));
+      throw new Error(`Error recording payment: ${error.message}`);
     }
 
-    console.log(`Payment record created with ID: ${paymentData.id}`);
+    if (!data || data.length === 0) {
+      console.error("No data returned from payment insert operation");
+      throw new Error("Payment record was not created properly");
+    }
+
+    const paymentId = data[0].id;
+    console.log(`Payment record created with ID: ${paymentId}`);
 
     // If this payment was for a payment request, update the request status
     if (requestId) {
@@ -169,12 +186,13 @@ async function handlePaymentIntentSucceeded(paymentIntent, supabaseClient) {
         .update({
           status: "paid",
           paid_at: new Date().toISOString(),
-          payment_id: paymentData.id
+          payment_id: paymentId
         })
         .eq("id", requestId);
 
       if (requestUpdateError) {
         console.error("Error updating payment request:", requestUpdateError);
+        console.error("Error details:", JSON.stringify(requestUpdateError));
         // Don't throw error here, we already recorded the payment
       } else {
         console.log(`Payment request ${requestId} marked as paid`);
@@ -184,6 +202,7 @@ async function handlePaymentIntentSucceeded(paymentIntent, supabaseClient) {
     console.log("Payment processing completed successfully");
   } catch (error) {
     console.error("Error processing payment intent:", error);
+    console.error("Stack trace:", error.stack);
     throw error;
   }
 }
@@ -191,6 +210,12 @@ async function handlePaymentIntentSucceeded(paymentIntent, supabaseClient) {
 // Function to handle payment_intent.payment_failed events
 async function handlePaymentIntentFailed(paymentIntent, supabaseClient) {
   console.log("Processing payment_intent.payment_failed:", paymentIntent.id);
+  console.log("Failed payment intent details:", JSON.stringify({
+    id: paymentIntent.id,
+    status: paymentIntent.status,
+    error: paymentIntent.last_payment_error,
+    metadata: paymentIntent.metadata || {}
+  }));
   
   try {
     // Extract metadata from the payment intent
@@ -227,6 +252,7 @@ async function handlePaymentIntentFailed(paymentIntent, supabaseClient) {
 
       if (attemptUpdateError) {
         console.error("Error updating payment attempt:", attemptUpdateError);
+        console.error("Error details:", JSON.stringify(attemptUpdateError));
       } else {
         console.log(`Payment attempt updated to failed for intent ${paymentIntent.id}`);
       }
@@ -241,5 +267,6 @@ async function handlePaymentIntentFailed(paymentIntent, supabaseClient) {
     console.log("Failed payment processing completed");
   } catch (error) {
     console.error("Error processing failed payment intent:", error);
+    console.error("Stack trace:", error.stack);
   }
 }
