@@ -417,30 +417,36 @@ async function formatPaymentRequest(
 ): Promise<FormattedPayload> {
   console.log(`Processing payment request notification for ID: ${linkId}`);
   
-  // Get payment link details with retry logic
-  const paymentLink = await retryOperation(
+  // Get payment request details with retry logic
+  const paymentRequest = await retryOperation(
     async () => {
       const { data, error } = await supabaseClient
-        .from("payment_links")
+        .from("payment_requests")
         .select(`
           *,
           clinics:clinic_id (
             clinic_name,
             email,
             phone
+          ),
+          payment_links:payment_link_id (
+            title,
+            amount,
+            type,
+            description
           )
         `)
         .eq("id", linkId)
         .maybeSingle();
         
       if (error) {
-        console.error("Error fetching payment link:", error);
-        throw new Error(`Failed to fetch payment link: ${error.message}`);
+        console.error("Error fetching payment request:", error);
+        throw new Error(`Failed to fetch payment request: ${error.message}`);
       }
       
       if (!data) {
-        console.error(`No payment link found with ID: ${linkId}`);
-        throw new Error(`No payment link found with ID: ${linkId}`);
+        console.error(`No payment request found with ID: ${linkId}`);
+        throw new Error(`No payment request found with ID: ${linkId}`);
       }
       
       return data;
@@ -448,29 +454,59 @@ async function formatPaymentRequest(
     MAX_RETRIES,
     INITIAL_RETRY_DELAY,
     (error, attempt) => {
-      console.log(`Retry attempt ${attempt} finding payment link: ${error.message}`);
+      console.log(`Retry attempt ${attempt} finding payment request: ${error.message}`);
     }
   );
 
-  if (!paymentLink) {
-    throw new Error(`No payment link found with ID: ${linkId} after multiple retries`);
+  if (!paymentRequest) {
+    throw new Error(`No payment request found with ID: ${linkId} after multiple retries`);
+  }
+  
+  console.log("Found payment request:", JSON.stringify(paymentRequest, null, 2));
+  
+  // Update notification methods based on available data
+  basePayload.notification_method = {
+    email: !!paymentRequest.patient_email,
+    sms: !!paymentRequest.patient_phone,
+  };
+  
+  // Update patient information
+  basePayload.patient = {
+    name: paymentRequest.patient_name || "N/A",
+    email: paymentRequest.patient_email || "N/A",
+    phone: paymentRequest.patient_phone || "N/A",
+  };
+
+  // Determine amount based on payment link or custom amount
+  let amount = 0;
+  
+  if (paymentRequest.custom_amount) {
+    // If it's a custom amount request
+    amount = paymentRequest.custom_amount;
+    console.log(`Using custom amount from request: ${amount}`);
+  } else if (paymentRequest.payment_links && paymentRequest.payment_links.amount) {
+    // If it's based on a payment link
+    amount = paymentRequest.payment_links.amount;
+    console.log(`Using amount from payment link: ${amount}`);
   }
 
   // Update payment information
   basePayload.payment = {
     reference: "N/A", // Payment reference is created when paid
-    amount: paymentLink.amount || 0,
+    amount: amount,
     refund_amount: null,
     payment_link: `${Deno.env.get("APP_URL") || "https://clinipay.com"}/payment/${linkId}`,
-    message: paymentLink.description || "A payment link has been created",
+    message: paymentRequest.message || 
+             (paymentRequest.payment_links ? paymentRequest.payment_links.description : null) || 
+             "You have received a payment request",
   };
 
   // Update clinic information
-  if (paymentLink.clinics) {
+  if (paymentRequest.clinics) {
     basePayload.clinic = {
-      name: paymentLink.clinics.clinic_name || "N/A",
-      email: paymentLink.clinics.email || "N/A",
-      phone: paymentLink.clinics.phone || "N/A",
+      name: paymentRequest.clinics.clinic_name || "N/A",
+      email: paymentRequest.clinics.email || "N/A",
+      phone: paymentRequest.clinics.phone || "N/A",
     };
   }
 
