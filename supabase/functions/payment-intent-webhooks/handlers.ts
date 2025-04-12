@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { generatePaymentReference } from "./utils.ts";
@@ -41,7 +40,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
     console.log(`Using payment reference: ${paymentReference}`);
     
     // Initialize fee data variables
-    let stripeFee = 0;
+    let stripeFeeInCents = 0; // Store as cents for the database
     let platformFee = 0; // This may be calculated or set elsewhere
     
     // Fetch Stripe fee data from charge and balance transaction
@@ -68,11 +67,12 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
           );
           
           if (balanceTransaction) {
-            // Extract fee data (converting from cents to pounds)
-            stripeFee = (balanceTransaction.fee || 0) / 100;
+            // Extract fee data (keeping as cents for DB storage)
+            stripeFeeInCents = balanceTransaction.fee || 0;
+            const stripeFeeInPounds = stripeFeeInCents / 100; // Just for logging
             const netAmount = (balanceTransaction.net || 0) / 100;
             
-            console.log(`Stripe fees: £${stripeFee.toFixed(2)}, Net amount: £${netAmount.toFixed(2)}`);
+            console.log(`Stripe fees: £${stripeFeeInPounds.toFixed(2)}, Net amount: £${netAmount.toFixed(2)}`);
           }
         }
       } catch (feeError) {
@@ -94,7 +94,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       payment_ref: paymentReference,
       status: "paid",
       stripe_payment_id: paymentIntent.id,
-      stripe_fee: stripeFee, // Add the Stripe fee
+      stripe_fee: stripeFeeInCents, // Store as integer (cents)
       platform_fee: platformFee, // Add platform fee (if applicable)
     };
 
