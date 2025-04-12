@@ -212,6 +212,7 @@ export type Database = {
           patient_phone: string | null
           payment_link_id: string | null
           payment_ref: string | null
+          platform_fee: number | null
           refund_amount: number | null
           refunded_at: string | null
           status: string | null
@@ -230,6 +231,7 @@ export type Database = {
           patient_phone?: string | null
           payment_link_id?: string | null
           payment_ref?: string | null
+          platform_fee?: number | null
           refund_amount?: number | null
           refunded_at?: string | null
           status?: string | null
@@ -248,6 +250,7 @@ export type Database = {
           patient_phone?: string | null
           payment_link_id?: string | null
           payment_ref?: string | null
+          platform_fee?: number | null
           refund_amount?: number | null
           refunded_at?: string | null
           status?: string | null

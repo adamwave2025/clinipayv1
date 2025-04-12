@@ -1,3 +1,4 @@
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { generatePaymentReference } from "./utils.ts";
@@ -42,6 +43,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
     // Initialize fee data variables
     let stripeFeeInCents = 0; // Store as cents for the database
     let netAmountInCents = 0; // Store the net amount in cents
+    let platformFeeInCents = 0; // Store the platform fee in cents
     
     // Fetch Stripe fee data from charge and balance transaction
     if (paymentIntent.latest_charge) {
@@ -78,6 +80,33 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
             console.log(`Stripe fees: £${stripeFeeInPounds.toFixed(2)}, Net amount: £${netAmountInPounds.toFixed(2)}`);
           }
         }
+        
+        // Check if charge has application_fee
+        if (charge && charge.application_fee) {
+          console.log(`Retrieving application fee data for ID: ${charge.application_fee}`);
+          
+          try {
+            // Retrieve the application fee details
+            const appFee = await stripe.applicationFees.retrieve(
+              typeof charge.application_fee === 'string'
+                ? charge.application_fee
+                : charge.application_fee.id
+            );
+            
+            if (appFee) {
+              // Store platform fee as cents for DB consistency
+              platformFeeInCents = appFee.amount || 0;
+              const platformFeeInPounds = platformFeeInCents / 100; // Just for logging
+              
+              console.log(`Platform fee: £${platformFeeInPounds.toFixed(2)}`);
+            }
+          } catch (appFeeError) {
+            console.error("Error retrieving application fee data:", appFeeError);
+            console.error("Continuing without platform fee data");
+          }
+        } else {
+          console.log("No application_fee found on charge");
+        }
       } catch (feeError) {
         // Log the error but don't prevent payment processing
         console.error("Error retrieving fee data from Stripe:", feeError);
@@ -99,6 +128,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       stripe_payment_id: paymentIntent.id,
       stripe_fee: stripeFeeInCents, // Store as integer (cents)
       net_amount: netAmountInCents, // Store net amount as integer (cents)
+      platform_fee: platformFeeInCents, // Store platform fee as integer (cents)
     };
 
     console.log("Attempting to insert payment record:", JSON.stringify(paymentData));

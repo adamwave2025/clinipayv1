@@ -46,7 +46,7 @@ export function useAdminStats() {
       // Fetch payments data (paid, partially_refunded, and refunded status)
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
-        .select('amount_paid, status, refund_amount, net_amount')
+        .select('amount_paid, status, refund_amount, net_amount, platform_fee')
         .in('status', ['paid', 'partially_refunded', 'refunded']);
 
       if (paymentsError) throw paymentsError;
@@ -78,13 +78,25 @@ export function useAdminStats() {
       console.log('Calculated totalPaymentsSum:', totalPaymentsSum);
       console.log('Calculated totalRefundsSum:', totalRefundsSum);
       
-      // Calculate CliniPay revenue (platform fee percentage of total payments)
-      const feePercentage = parseFloat(platformFee) / 100;
-      const clinipayRevenueAmount = totalPaymentsSum * feePercentage;
+      // Calculate CliniPay revenue by summing all platform fees
+      let clinipayRevenueAmount = 0;
       
-      console.log('Fee percentage:', feePercentage);
-      console.log('Calculated revenue:', clinipayRevenueAmount);
-
+      // First try to use actual recorded platform fees
+      const recordedPlatformFees = paymentsData.reduce((sum, payment) => {
+        return sum + (payment.platform_fee || 0) / 100; // Convert cents to pounds
+      }, 0);
+      
+      if (recordedPlatformFees > 0) {
+        clinipayRevenueAmount = recordedPlatformFees;
+        console.log('Using recorded platform fees:', clinipayRevenueAmount);
+      } else {
+        // Fallback to calculating based on platform fee percentage
+        const feePercentage = parseFloat(platformFee) / 100;
+        clinipayRevenueAmount = totalPaymentsSum * feePercentage;
+        console.log('Fee percentage:', feePercentage);
+        console.log('Calculated revenue from percentage:', clinipayRevenueAmount);
+      }
+      
       setStats({
         totalClinics: clinicsCount || 0,
         totalPayments: totalPaymentsSum, // Removed division by 100 as values are already in pounds
