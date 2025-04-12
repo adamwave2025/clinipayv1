@@ -65,6 +65,3 @@ verify_jwt = false
 
 [functions.stripe-webhooks]
 verify_jwt = false
-
-[functions.patient-notifications]
-verify_jwt = false
