@@ -13,7 +13,7 @@ import ProfileTab from './ProfileTab';
 import PaymentSettings from '@/components/settings/PaymentSettings';
 import NotificationSettings from '@/components/settings/NotificationSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
-import { handlePaymentAction, handleUpdatePassword } from './PaymentActions';
+import { handlePaymentAction } from './PaymentActions';
 
 const VALID_TABS = ['profile', 'payments', 'notifications', 'security'];
 
@@ -105,9 +105,7 @@ const SettingsContainer = () => {
         </TabsContent>
         
         <TabsContent value="security">
-          <SecuritySettings 
-            handleUpdatePassword={handleUpdatePassword} 
-          />
+          <SecuritySettings />
         </TabsContent>
       </Tabs>
     </DashboardLayout>
