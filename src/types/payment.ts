@@ -19,6 +19,7 @@ export interface PaymentLink {
   description: string;
   url: string;
   createdAt: string;
+  isActive?: boolean;
 }
 
 export interface PaymentStats {

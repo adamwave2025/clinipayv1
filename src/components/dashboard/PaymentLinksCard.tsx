@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { Archive, ArchiveRestore } from 'lucide-react';
 import {
   Pagination,
   PaginationContent,
@@ -14,18 +15,33 @@ import {
 } from "@/components/ui/pagination";
 import PaymentLinkTable from './links/PaymentLinkTable';
 import PaymentLinkDetailsDialog from './links/PaymentLinkDetailsDialog';
+import ArchiveConfirmDialog from './links/ArchiveConfirmDialog';
 import { PaymentLink } from '@/types/payment';
+import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 
 interface PaymentLinksCardProps {
   links: PaymentLink[];
+  archivedLinks: PaymentLink[];
+  isArchiveLoading: boolean;
+  onArchiveLink: (linkId: string) => Promise<{ success: boolean; error?: string; }>;
+  onUnarchiveLink: (linkId: string) => Promise<{ success: boolean; error?: string; }>;
 }
 
 const ITEMS_PER_PAGE = 3;
 
-const PaymentLinksCard = ({ links }: PaymentLinksCardProps) => {
+const PaymentLinksCard = ({
+  links,
+  archivedLinks,
+  isArchiveLoading,
+  onArchiveLink,
+  onUnarchiveLink
+}: PaymentLinksCardProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLink, setSelectedLink] = useState<PaymentLink | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [linkToArchive, setLinkToArchive] = useState<PaymentLink | null>(null);
+  const [isArchiveView, setIsArchiveView] = useState(false);
   
   const handleCopyLink = (url: string) => {
     navigator.clipboard.writeText(url);
@@ -36,27 +52,79 @@ const PaymentLinksCard = ({ links }: PaymentLinksCardProps) => {
     setSelectedLink(link);
     setDetailsDialogOpen(true);
   };
+
+  const handleArchiveClick = (link: PaymentLink) => {
+    setLinkToArchive(link);
+    setArchiveDialogOpen(true);
+  };
   
-  const totalPages = Math.ceil(links.length / ITEMS_PER_PAGE);
+  const handleConfirmArchive = async () => {
+    if (!linkToArchive) return;
+    
+    const result = isArchiveView
+      ? await onUnarchiveLink(linkToArchive.id)
+      : await onArchiveLink(linkToArchive.id);
+    
+    if (result.success) {
+      setArchiveDialogOpen(false);
+      setLinkToArchive(null);
+    }
+  };
+
+  const toggleArchiveView = () => {
+    setIsArchiveView(!isArchiveView);
+    setCurrentPage(1); // Reset to first page on view change
+  };
+
+  const displayLinks = isArchiveView ? archivedLinks : links;
+  const totalPages = Math.ceil(displayLinks.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedLinks = links.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const paginatedLinks = displayLinks.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   return (
     <Card className="card-shadow">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Payment Links</CardTitle>
-          <CardDescription>Your recently created payment links</CardDescription>
+          <CardTitle>{isArchiveView ? 'Archived Payment Links' : 'Payment Links'}</CardTitle>
+          <CardDescription>
+            {isArchiveView 
+              ? 'Your archived payment links' 
+              : 'Your recently created payment links'}
+          </CardDescription>
         </div>
-        <Button className="btn-gradient" size="sm" asChild>
-          <Link to="/dashboard/create-link">Create New</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={toggleArchiveView}
+            className="gap-1"
+          >
+            {isArchiveView ? (
+              <>
+                <ArchiveRestore className="h-4 w-4" />
+                <span className="hidden sm:inline">View Active</span>
+              </>
+            ) : (
+              <>
+                <Archive className="h-4 w-4" />
+                <span className="hidden sm:inline">View Archive</span>
+              </>
+            )}
+          </Button>
+          {!isArchiveView && (
+            <Button className="btn-gradient" size="sm" asChild>
+              <Link to="/dashboard/create-link">Create New</Link>
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <PaymentLinkTable 
           links={paginatedLinks}
           onCopyLink={handleCopyLink}
           onLinkClick={handleLinkClick}
+          onArchiveClick={handleArchiveClick}
+          isArchiveView={isArchiveView}
         />
         
         {totalPages > 1 && (
@@ -96,6 +164,15 @@ const PaymentLinksCard = ({ links }: PaymentLinksCardProps) => {
           open={detailsDialogOpen}
           onOpenChange={setDetailsDialogOpen}
           paymentLink={selectedLink}
+        />
+
+        <ArchiveConfirmDialog
+          open={archiveDialogOpen}
+          onOpenChange={setArchiveDialogOpen}
+          onConfirm={handleConfirmArchive}
+          paymentLink={linkToArchive}
+          isLoading={isArchiveLoading}
+          isArchiveView={isArchiveView}
         />
       </CardContent>
     </Card>

@@ -8,13 +8,25 @@ interface PaymentLinkTableProps {
   links: PaymentLink[];
   onCopyLink: (url: string) => void;
   onLinkClick: (link: PaymentLink) => void;
+  onArchiveClick?: (link: PaymentLink) => void;
+  isArchiveView?: boolean;
 }
 
-const PaymentLinkTable = ({ links, onCopyLink, onLinkClick }: PaymentLinkTableProps) => {
+const PaymentLinkTable = ({ 
+  links, 
+  onCopyLink, 
+  onLinkClick,
+  onArchiveClick,
+  isArchiveView = false
+}: PaymentLinkTableProps) => {
   if (links.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
-        <p>No payment links created yet.</p>
+        <p>
+          {isArchiveView 
+            ? 'No archived payment links found.' 
+            : 'No payment links created yet.'}
+        </p>
       </div>
     );
   }
@@ -38,6 +50,7 @@ const PaymentLinkTable = ({ links, onCopyLink, onLinkClick }: PaymentLinkTablePr
               link={link} 
               onCopyLink={onCopyLink}
               onLinkClick={onLinkClick}
+              onArchiveClick={onArchiveClick}
             />
           ))}
         </TableBody>

@@ -8,6 +8,7 @@ import PaymentRefundDialog from './payments/PaymentRefundDialog';
 import LaunchPadCard from './LaunchPadCard';
 import { useDashboardData } from './DashboardDataProvider';
 import { useClinicData } from '@/hooks/useClinicData';
+import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 
 const DashboardContent = () => {
   const {
@@ -23,6 +24,14 @@ const DashboardContent = () => {
     handlePaymentClick,
     handleRefund
   } = useDashboardData();
+
+  // Get payment links with archive functionality
+  const { 
+    archivedLinks, 
+    isArchiveLoading, 
+    archivePaymentLink, 
+    unarchivePaymentLink 
+  } = usePaymentLinks();
 
   // Get clinic data to determine Stripe connection status
   const { clinicData } = useClinicData();
@@ -43,7 +52,13 @@ const DashboardContent = () => {
       <PaymentStatsCards stats={stats} />
       
       <div className="mb-8">
-        <PaymentLinksCard links={paymentLinks} />
+        <PaymentLinksCard 
+          links={paymentLinks}
+          archivedLinks={archivedLinks}
+          isArchiveLoading={isArchiveLoading}
+          onArchiveLink={archivePaymentLink}
+          onUnarchiveLink={unarchivePaymentLink}
+        />
       </div>
       
       <RecentPaymentsCard 

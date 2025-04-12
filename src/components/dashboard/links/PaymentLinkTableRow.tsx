@@ -2,7 +2,7 @@
 import React from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Copy, ExternalLink } from 'lucide-react';
+import { Copy, ExternalLink, Archive } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 import { PaymentLink } from '@/types/payment';
 
@@ -10,9 +10,15 @@ interface PaymentLinkTableRowProps {
   link: PaymentLink;
   onCopyLink: (url: string) => void;
   onLinkClick: (link: PaymentLink) => void;
+  onArchiveClick?: (link: PaymentLink) => void;
 }
 
-const PaymentLinkTableRow = ({ link, onCopyLink, onLinkClick }: PaymentLinkTableRowProps) => {
+const PaymentLinkTableRow = ({ 
+  link, 
+  onCopyLink, 
+  onLinkClick,
+  onArchiveClick 
+}: PaymentLinkTableRowProps) => {
   return (
     <TableRow 
       className="cursor-pointer hover:bg-gray-50 transition-colors" 
@@ -49,6 +55,20 @@ const PaymentLinkTableRow = ({ link, onCopyLink, onLinkClick }: PaymentLinkTable
         >
           <ExternalLink className="h-4 w-4" />
         </Button>
+        {onArchiveClick && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={(e) => {
+              e.stopPropagation();
+              onArchiveClick(link);
+            }}
+            aria-label="Archive link"
+            className="h-8 w-8"
+          >
+            <Archive className="h-4 w-4" />
+          </Button>
+        )}
       </TableCell>
     </TableRow>
   );

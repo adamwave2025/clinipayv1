@@ -7,7 +7,9 @@ import { toast } from 'sonner';
 
 export function usePaymentLinks() {
   const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
+  const [archivedLinks, setArchivedLinks] = useState<PaymentLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isArchiveLoading, setIsArchiveLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
@@ -36,19 +38,32 @@ export function usePaymentLinks() {
         throw new Error('No clinic associated with this user');
       }
 
-      // Fetch payment links for this clinic
-      const { data, error: linksError } = await supabase
+      // Fetch active payment links for this clinic
+      const { data: activeData, error: activeLinksError } = await supabase
         .from('payment_links')
         .select('*')
         .eq('clinic_id', userData.clinic_id)
+        .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (linksError) {
-        throw new Error(linksError.message);
+      if (activeLinksError) {
+        throw new Error(activeLinksError.message);
+      }
+
+      // Fetch archived payment links for this clinic
+      const { data: archivedData, error: archivedLinksError } = await supabase
+        .from('payment_links')
+        .select('*')
+        .eq('clinic_id', userData.clinic_id)
+        .eq('is_active', false)
+        .order('created_at', { ascending: false });
+
+      if (archivedLinksError) {
+        throw new Error(archivedLinksError.message);
       }
 
       // Transform data to match our PaymentLink type
-      const formattedLinks: PaymentLink[] = data.map(link => ({
+      const formatLinks = (data: any[]): PaymentLink[] => data.map(link => ({
         id: link.id,
         title: link.title || '',
         amount: link.amount || 0,
@@ -56,9 +71,11 @@ export function usePaymentLinks() {
         description: link.description || '',
         url: `${window.location.origin}/payment/${link.id}`,
         createdAt: new Date(link.created_at).toLocaleDateString(),
+        isActive: link.is_active
       }));
 
-      setPaymentLinks(formattedLinks);
+      setPaymentLinks(formatLinks(activeData || []));
+      setArchivedLinks(formatLinks(archivedData || []));
     } catch (error: any) {
       console.error('Error fetching payment links:', error);
       setError(error.message);
@@ -67,7 +84,49 @@ export function usePaymentLinks() {
     }
   };
 
-  const createPaymentLink = async (linkData: Omit<PaymentLink, 'id' | 'url' | 'createdAt'>) => {
+  const toggleArchiveStatus = async (linkId: string, archive: boolean) => {
+    if (!user) {
+      toast.error('You must be logged in to manage payment links');
+      return { success: false };
+    }
+
+    setIsArchiveLoading(true);
+
+    try {
+      const { error: updateError } = await supabase
+        .from('payment_links')
+        .update({ is_active: !archive })
+        .eq('id', linkId);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+
+      // Refresh the payment links list
+      await fetchPaymentLinks();
+
+      const action = archive ? 'archived' : 'unarchived';
+      toast.success(`Payment link ${action} successfully`);
+
+      return { success: true };
+    } catch (error: any) {
+      console.error(`Error ${archive ? 'archiving' : 'unarchiving'} payment link:`, error);
+      toast.error(`Failed to ${archive ? 'archive' : 'unarchive'} payment link: ${error.message}`);
+      return { success: false, error: error.message };
+    } finally {
+      setIsArchiveLoading(false);
+    }
+  };
+
+  const archivePaymentLink = async (linkId: string) => {
+    return toggleArchiveStatus(linkId, true);
+  };
+
+  const unarchivePaymentLink = async (linkId: string) => {
+    return toggleArchiveStatus(linkId, false);
+  };
+
+  const createPaymentLink = async (linkData: Omit<PaymentLink, 'id' | 'url' | 'createdAt' | 'isActive'>) => {
     if (!user) {
       toast.error('You must be logged in to create payment links');
       return { success: false };
@@ -97,7 +156,8 @@ export function usePaymentLinks() {
           title: linkData.title,
           amount: linkData.amount,
           type: linkData.type,
-          description: linkData.description
+          description: linkData.description,
+          is_active: true
         })
         .select()
         .single();
@@ -119,6 +179,7 @@ export function usePaymentLinks() {
           description: data.description || '',
           url: `${window.location.origin}/payment/${data.id}`,
           createdAt: new Date(data.created_at).toLocaleDateString(),
+          isActive: data.is_active
         } 
       };
     } catch (error: any) {
@@ -133,9 +194,13 @@ export function usePaymentLinks() {
 
   return {
     paymentLinks,
+    archivedLinks,
     isLoading,
+    isArchiveLoading,
     error,
     fetchPaymentLinks,
-    createPaymentLink
+    createPaymentLink,
+    archivePaymentLink,
+    unarchivePaymentLink
   };
 }
