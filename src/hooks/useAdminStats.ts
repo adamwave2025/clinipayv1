@@ -12,7 +12,8 @@ import {
 import { fetchTotalClinics, fetchPaymentData, fetchPreviousPeriodData } from '@/services/AdminStatsService';
 import { AdminStats, defaultStats } from '@/types/adminStats';
 
-export { AdminStats };
+// Change this line to use "export type" instead of just "export"
+export type { AdminStats };
 
 export function useAdminStats(dateRange?: DateRange) {
   const [stats, setStats] = useState<AdminStats>(defaultStats);
