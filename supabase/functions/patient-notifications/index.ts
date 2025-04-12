@@ -165,7 +165,7 @@ async function formatPaymentSuccess(
   basePayload: FormattedPayload,
   supabaseClient: any
 ): Promise<FormattedPayload> {
-  // Get payment details
+  // Get payment details - CHANGED: using maybeSingle() instead of single()
   const { data: payment, error: paymentError } = await supabaseClient
     .from("payments")
     .select(`
@@ -177,11 +177,17 @@ async function formatPaymentSuccess(
       )
     `)
     .eq("id", paymentId)
-    .single();
+    .maybeSingle();
 
   if (paymentError) {
     console.error("Error fetching payment:", paymentError);
     throw new Error(`Failed to fetch payment: ${paymentError.message}`);
+  }
+  
+  // ADDED: Check if payment exists
+  if (!payment) {
+    console.error(`No payment found with ID: ${paymentId}`);
+    throw new Error(`No payment found with ID: ${paymentId}`);
   }
 
   // Update notification methods based on available data
@@ -223,7 +229,7 @@ async function formatPaymentRefund(
   basePayload: FormattedPayload,
   supabaseClient: any
 ): Promise<FormattedPayload> {
-  // Get payment details
+  // Get payment details - CHANGED: using maybeSingle() instead of single()
   const { data: payment, error: paymentError } = await supabaseClient
     .from("payments")
     .select(`
@@ -235,11 +241,17 @@ async function formatPaymentRefund(
       )
     `)
     .eq("id", paymentId)
-    .single();
+    .maybeSingle();
 
   if (paymentError) {
     console.error("Error fetching payment for refund:", paymentError);
     throw new Error(`Failed to fetch refunded payment: ${paymentError.message}`);
+  }
+  
+  // ADDED: Check if payment exists
+  if (!payment) {
+    console.error(`No payment found with ID: ${paymentId}`);
+    throw new Error(`No payment found with ID: ${paymentId}`);
   }
 
   // Update notification methods based on available data
@@ -283,7 +295,7 @@ async function formatPaymentRequest(
   basePayload: FormattedPayload,
   supabaseClient: any
 ): Promise<FormattedPayload> {
-  // Get payment link details
+  // Get payment link details - CHANGED: using maybeSingle() instead of single()
   const { data: paymentLink, error: linkError } = await supabaseClient
     .from("payment_links")
     .select(`
@@ -295,11 +307,17 @@ async function formatPaymentRequest(
       )
     `)
     .eq("id", linkId)
-    .single();
+    .maybeSingle();
 
   if (linkError) {
     console.error("Error fetching payment link:", linkError);
     throw new Error(`Failed to fetch payment link: ${linkError.message}`);
+  }
+  
+  // ADDED: Check if payment link exists
+  if (!paymentLink) {
+    console.error(`No payment link found with ID: ${linkId}`);
+    throw new Error(`No payment link found with ID: ${linkId}`);
   }
 
   // We don't have patient info for a newly created payment link
