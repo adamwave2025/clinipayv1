@@ -1,5 +1,6 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 import { generatePaymentReference } from "./utils.ts";
 
 // Function to handle payment_intent.succeeded events
@@ -48,7 +49,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       try {
         console.log(`Retrieving charge data for charge ID: ${paymentIntent.latest_charge}`);
         
-        // Initialize Stripe using the module imported in the parent file
+        // Initialize Stripe with proper import
         const stripe = new Stripe(Deno.env.get("SECRET_KEY") ?? "", {
           apiVersion: "2023-10-16",
         });
