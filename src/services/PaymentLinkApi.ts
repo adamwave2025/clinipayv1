@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PaymentLink } from '@/types/payment';
 import { toast } from 'sonner';
 
-export const PaymentLinkService = {
+export const PaymentLinkApi = {
   async fetchLinks(userId: string) {
     try {
       // Get the clinic_id for the current user
