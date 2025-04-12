@@ -51,6 +51,7 @@ const PaymentLinkTable = ({
               onCopyLink={onCopyLink}
               onLinkClick={onLinkClick}
               onArchiveClick={onArchiveClick}
+              isArchiveView={isArchiveView}
             />
           ))}
         </TableBody>

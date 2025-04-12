@@ -2,7 +2,7 @@
 import React from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Copy, ExternalLink, Archive } from 'lucide-react';
+import { Copy, ExternalLink, Archive, ArchiveRestore } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 import { PaymentLink } from '@/types/payment';
 
@@ -11,13 +11,15 @@ interface PaymentLinkTableRowProps {
   onCopyLink: (url: string) => void;
   onLinkClick: (link: PaymentLink) => void;
   onArchiveClick?: (link: PaymentLink) => void;
+  isArchiveView?: boolean;
 }
 
 const PaymentLinkTableRow = ({ 
   link, 
   onCopyLink, 
   onLinkClick,
-  onArchiveClick 
+  onArchiveClick,
+  isArchiveView = false
 }: PaymentLinkTableRowProps) => {
   return (
     <TableRow 
@@ -63,10 +65,15 @@ const PaymentLinkTableRow = ({
               e.stopPropagation();
               onArchiveClick(link);
             }}
-            aria-label="Archive link"
+            aria-label={isArchiveView ? "Unarchive link" : "Archive link"}
             className="h-8 w-8"
+            title={isArchiveView ? "Unarchive link" : "Archive link"}
           >
-            <Archive className="h-4 w-4" />
+            {isArchiveView ? (
+              <ArchiveRestore className="h-4 w-4" />
+            ) : (
+              <Archive className="h-4 w-4" />
+            )}
           </Button>
         )}
       </TableCell>
