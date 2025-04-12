@@ -11,6 +11,7 @@ import { formatCurrency } from '@/utils/formatters';
 import { useAuth } from '@/contexts/AuthContext';
 import DateRangeFilter from '@/components/common/DateRangeFilter';
 import { DateRange } from 'react-day-picker';
+import StatCard from '@/components/common/StatCard';
 
 const AdminDashboardPage = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -20,41 +21,6 @@ const AdminDashboardPage = () => {
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRange(range);
   };
-
-  const StatCard = ({ 
-    title, 
-    value, 
-    change, 
-    trend, 
-    icon 
-  }: {
-    title: string;
-    value: string;
-    change: string;
-    trend: 'up' | 'down' | 'neutral';
-    icon: React.ReactNode;
-  }) => (
-    <Card className="card-shadow">
-      <CardContent className="p-6">
-        <div className="flex justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <h3 className="text-2xl font-bold">{value}</h3>
-            <span className={`text-xs font-medium ${
-              trend === 'up' ? 'text-green-500' : 
-              trend === 'down' ? 'text-red-500' : 
-              'text-gray-500'
-            }`}>
-              {change}
-            </span>
-          </div>
-          <div className="bg-gradient-primary p-2 rounded-full h-10 w-10 flex items-center justify-center">
-            {icon}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
 
   // Show global loading while auth is loading
   if (authLoading) {
@@ -72,17 +38,13 @@ const AdminDashboardPage = () => {
         description="Platform overview and statistics"
       />
       
-      <Card className="card-shadow mb-6">
-        <CardContent className="p-4">
-          <div className="flex justify-end">
-            <DateRangeFilter
-              dateRange={dateRange}
-              onDateRangeChange={handleDateRangeChange}
-              className="w-full md:w-auto"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="mb-6 flex justify-end">
+        <DateRangeFilter
+          dateRange={dateRange}
+          onDateRangeChange={handleDateRangeChange}
+          className="w-full md:w-auto"
+        />
+      </div>
       
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -99,28 +61,28 @@ const AdminDashboardPage = () => {
           <StatCard 
             title="Total Clinics" 
             value={stats.totalClinics.toString()} 
-            change={`${stats.totalClinics > 0 ? '+3 this month' : 'No new clinics'}`}
+            secondaryText={`${stats.totalClinics > 0 ? '+3 this month' : 'No new clinics'}`}
             trend="up"
             icon={<Users className="h-5 w-5 text-white" />}
           />
           <StatCard 
             title="Total Payments" 
             value={formatCurrency(stats.totalPayments)} 
-            change={`${stats.paymentsChange > 0 ? '+' : ''}${stats.paymentsChange}% from last month`}
+            secondaryText={`${stats.paymentsChange > 0 ? '+' : ''}${stats.paymentsChange}% from last period`}
             trend={stats.paymentsChange > 0 ? 'up' : 'down'}
             icon={<CreditCard className="h-5 w-5 text-white" />}
           />
           <StatCard 
             title="Total Refunds" 
             value={formatCurrency(stats.totalRefunds)} 
-            change={`${stats.refundsChange > 0 ? '+' : ''}${stats.refundsChange}% from last month`}
+            secondaryText={`${stats.refundsChange > 0 ? '+' : ''}${stats.refundsChange}% from last period`}
             trend={stats.refundsChange < 0 ? 'down' : 'up'}
             icon={<RefreshCcw className="h-5 w-5 text-white" />}
           />
           <StatCard 
             title="CliniPay Revenue" 
             value={formatCurrency(stats.clinipayRevenue)} 
-            change={`${stats.revenueChange > 0 ? '+' : ''}${stats.revenueChange}% from last month`}
+            secondaryText={`${stats.revenueChange > 0 ? '+' : ''}${stats.revenueChange}% from last period`}
             trend={stats.revenueChange > 0 ? 'up' : 'down'}
             icon={<DollarSign className="h-5 w-5 text-white" />}
           />

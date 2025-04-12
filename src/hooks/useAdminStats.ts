@@ -50,27 +50,34 @@ export function useAdminStats(dateRange?: DateRange) {
       let previousPeriodFilter = {};
       
       if (dateRange?.from && dateRange?.to) {
-        const fromDate = format(dateRange.from, 'yyyy-MM-dd');
-        const toDate = format(dateRange.to, 'yyyy-MM-dd');
+        // Format dates correctly for Supabase query
+        const fromDateStr = format(dateRange.from, 'yyyy-MM-dd');
+        const toDateStr = format(dateRange.to, 'yyyy-MM-dd');
         
         dateFilter = {
           paid_at: {
-            gte: fromDate,
-            lte: toDate + 'T23:59:59'
+            gte: fromDateStr,
+            lte: `${toDateStr} 23:59:59`
           }
         };
         
         // Calculate previous period of same length for trend calculation
         const periodLength = dateRange.to.getTime() - dateRange.from.getTime();
         const previousFrom = new Date(dateRange.from.getTime() - periodLength);
-        const previousTo = new Date(dateRange.from.getTime() - 1);
+        const previousTo = new Date(dateRange.from.getTime() - 86400000); // Subtract one day (in milliseconds)
+        
+        const previousFromStr = format(previousFrom, 'yyyy-MM-dd');
+        const previousToStr = format(previousTo, 'yyyy-MM-dd');
         
         previousPeriodFilter = {
           paid_at: {
-            gte: format(previousFrom, 'yyyy-MM-dd'),
-            lte: format(previousTo, 'yyyy-MM-dd') + 'T23:59:59'
+            gte: previousFromStr,
+            lte: `${previousToStr} 23:59:59`
           }
         };
+        
+        console.log('Date filter:', dateFilter);
+        console.log('Previous period filter:', previousPeriodFilter);
       }
       
       // Fetch payments data for current period
@@ -80,7 +87,10 @@ export function useAdminStats(dateRange?: DateRange) {
         .in('status', ['paid', 'partially_refunded', 'refunded'])
         .match(dateFilter);
 
-      if (paymentsError) throw paymentsError;
+      if (paymentsError) {
+        console.error('Error fetching payments:', paymentsError);
+        throw paymentsError;
+      }
       
       console.log('Raw payments data:', paymentsData);
       
@@ -91,7 +101,10 @@ export function useAdminStats(dateRange?: DateRange) {
         .in('status', ['paid', 'partially_refunded', 'refunded'])
         .match(previousPeriodFilter);
 
-      if (previousPaymentsError) throw previousPaymentsError;
+      if (previousPaymentsError) {
+        console.error('Error fetching previous payments:', previousPaymentsError);
+        throw previousPaymentsError;
+      }
       
       // Calculate total payments (sum of all paid amounts minus refunded amounts)
       const totalPaymentsSum = paymentsData.reduce((sum, payment) => {
