@@ -15,13 +15,13 @@ interface PaymentFormSectionProps {
   onSubmit: (data: PaymentFormValues) => void;
 }
 
-const PaymentFormSection = ({
+const PaymentFormSection: React.FC<PaymentFormSectionProps> = ({
   isStripeConnected,
   processingPayment,
   isSubmitting,
   defaultValues,
   onSubmit
-}: PaymentFormSectionProps) => {
+}) => {
   return (
     <Card className="card-shadow h-full">
       <CardContent className="p-6">
