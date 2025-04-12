@@ -5,6 +5,7 @@ import { Payment, PaymentLink, PaymentStats } from '@/types/payment';
 interface DashboardContextType {
   payments: Payment[];
   paymentLinks: PaymentLink[];
+  archivedLinks: PaymentLink[];
   stats: PaymentStats;
   selectedPayment: Payment | null;
   detailDialogOpen: boolean;
@@ -12,11 +13,14 @@ interface DashboardContextType {
   paymentToRefund: string | null;
   isLoading: boolean;
   isProcessingRefund: boolean;
+  isArchiveLoading: boolean;
   setDetailDialogOpen: (open: boolean) => void;
   setRefundDialogOpen: (open: boolean) => void;
   handlePaymentClick: (payment: Payment) => void;
   openRefundDialog: (paymentId: string) => void;
   handleRefund: (amount?: number) => void;
+  archivePaymentLink: (linkId: string) => Promise<{ success: boolean; error?: string }>;
+  unarchivePaymentLink: (linkId: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);

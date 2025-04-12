@@ -17,7 +17,6 @@ import PaymentLinkTable from './links/PaymentLinkTable';
 import PaymentLinkDetailsDialog from './links/PaymentLinkDetailsDialog';
 import ArchiveConfirmDialog from './links/ArchiveConfirmDialog';
 import { PaymentLink } from '@/types/payment';
-import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 
 interface PaymentLinksCardProps {
   links: PaymentLink[];
@@ -42,17 +41,7 @@ const PaymentLinksCard = ({
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [linkToArchive, setLinkToArchive] = useState<PaymentLink | null>(null);
   const [isArchiveView, setIsArchiveView] = useState(false);
-  
-  // Local state to manage links for immediate UI updates
-  const [localActiveLinks, setLocalActiveLinks] = useState<PaymentLink[]>(links);
-  const [localArchivedLinks, setLocalArchivedLinks] = useState<PaymentLink[]>(archivedLinks);
 
-  // Update local state when props change
-  useEffect(() => {
-    setLocalActiveLinks(links);
-    setLocalArchivedLinks(archivedLinks);
-  }, [links, archivedLinks]);
-  
   const handleCopyLink = (url: string) => {
     navigator.clipboard.writeText(url);
     toast.success('Link copied to clipboard');
@@ -72,26 +61,13 @@ const PaymentLinksCard = ({
     if (!linkToArchive) return;
     
     if (isArchiveView) {
-      const result = await onUnarchiveLink(linkToArchive.id);
-      
-      if (result.success) {
-        // Optimistic UI update - move from archived to active
-        setLocalArchivedLinks(prev => prev.filter(link => link.id !== linkToArchive.id));
-        setLocalActiveLinks(prev => [...prev, {...linkToArchive, isActive: true}]);
-        setArchiveDialogOpen(false);
-        setLinkToArchive(null);
-      }
+      await onUnarchiveLink(linkToArchive.id);
     } else {
-      const result = await onArchiveLink(linkToArchive.id);
-      
-      if (result.success) {
-        // Optimistic UI update - move from active to archived
-        setLocalActiveLinks(prev => prev.filter(link => link.id !== linkToArchive.id));
-        setLocalArchivedLinks(prev => [...prev, {...linkToArchive, isActive: false}]);
-        setArchiveDialogOpen(false);
-        setLinkToArchive(null);
-      }
+      await onArchiveLink(linkToArchive.id);
     }
+    
+    setArchiveDialogOpen(false);
+    setLinkToArchive(null);
   };
 
   const toggleArchiveView = () => {
@@ -99,7 +75,7 @@ const PaymentLinksCard = ({
     setCurrentPage(1); // Reset to first page on view change
   };
 
-  const displayLinks = isArchiveView ? localArchivedLinks : localActiveLinks;
+  const displayLinks = isArchiveView ? archivedLinks : links;
   const totalPages = Math.ceil(displayLinks.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedLinks = displayLinks.slice(startIndex, startIndex + ITEMS_PER_PAGE);

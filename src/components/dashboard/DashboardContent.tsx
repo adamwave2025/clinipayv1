@@ -8,30 +8,25 @@ import PaymentRefundDialog from './payments/PaymentRefundDialog';
 import LaunchPadCard from './LaunchPadCard';
 import { useDashboardData } from './DashboardDataProvider';
 import { useClinicData } from '@/hooks/useClinicData';
-import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 
 const DashboardContent = () => {
   const {
     payments,
     paymentLinks,
+    archivedLinks,
     stats,
     selectedPayment,
     detailDialogOpen,
     refundDialogOpen,
+    isArchiveLoading,
     setDetailDialogOpen,
     setRefundDialogOpen,
     openRefundDialog,
     handlePaymentClick,
-    handleRefund
+    handleRefund,
+    archivePaymentLink,
+    unarchivePaymentLink
   } = useDashboardData();
-
-  // Get payment links with archive functionality
-  const { 
-    archivedLinks, 
-    isArchiveLoading, 
-    archivePaymentLink, 
-    unarchivePaymentLink 
-  } = usePaymentLinks();
 
   // Get clinic data to determine Stripe connection status
   const { clinicData } = useClinicData();
