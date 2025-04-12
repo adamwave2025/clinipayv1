@@ -12,10 +12,19 @@ export function useUpdatePassword() {
     setError(null);
     
     try {
-      // First verify the current password is correct by attempting a sign-in with it
-      // Note: We don't actually complete the sign-in, just verify credentials
+      // First get the current user's email - we need to await this properly
+      const { data: userData } = await supabase.auth.getUser();
+      const userEmail = userData?.user?.email || '';
+      
+      if (!userEmail) {
+        setError('Could not retrieve user email. Please sign in again.');
+        toast.error('Authentication error. Please sign in again.');
+        return false;
+      }
+      
+      // Verify the current password is correct by attempting a sign-in with it
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: supabase.auth.getUser().then(({ data }) => data.user?.email || ''),
+        email: userEmail,
         password: currentPassword,
       });
 
