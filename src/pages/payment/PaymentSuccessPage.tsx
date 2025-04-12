@@ -87,8 +87,15 @@ const PaymentSuccessPage = () => {
         { label: 'Amount Paid', value: `£${linkData.amount.toFixed(2)}` },
         { label: 'Date', value: new Date().toLocaleDateString() },
         { label: 'Clinic', value: linkData.clinic.name },
-        { label: 'Payment Type', value: linkData.type.charAt(0).toUpperCase() + linkData.type.slice(1) },
       ];
+      
+      // Add the payment title if available
+      if (linkData.title) {
+        details.push({ label: 'Payment For', value: linkData.title });
+      }
+      
+      // Add payment type after the title
+      details.push({ label: 'Payment Type', value: linkData.type.charAt(0).toUpperCase() + linkData.type.slice(1) });
       
       setPaymentDetails(details);
     }
