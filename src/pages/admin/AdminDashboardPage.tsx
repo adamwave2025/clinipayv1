@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, CreditCard, RefreshCcw, DollarSign, AlertCircle } from 'lucide-react';
+import { Users, CreditCard, RefreshCcw, DollarSign } from 'lucide-react';
 import { useAdminStats } from '@/hooks/useAdminStats';
 import { RecentClinicsTable } from '@/components/admin/RecentClinicsTable';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -22,15 +21,12 @@ const AdminDashboardPage = () => {
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRange(range);
     if (range?.from && range?.to) {
-      // Inform user that data is being filtered
       toast.info(`Filtering data from ${range.from.toLocaleDateString()} to ${range.to.toLocaleDateString()}`);
     } else if (!range) {
-      // Inform user that filter has been cleared
       toast.info('Date filter cleared');
     }
   };
 
-  // Show global loading while auth is loading
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
