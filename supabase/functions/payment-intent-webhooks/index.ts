@@ -50,7 +50,7 @@ serve(async (req) => {
     const body = await req.text();
     console.log(`Request body received, length: ${body.length} characters`);
     
-    // First try to validate the signature right away to return a quick response
+    // Initialize Stripe client
     const stripeSecretKey = Deno.env.get("SECRET_KEY");
     if (!stripeSecretKey) {
       throw new Error("Missing Stripe secret key");
@@ -60,11 +60,12 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    // Verify webhook signature
+    // Verify webhook signature ASYNCHRONOUSLY
     let event;
     try {
-      console.log("Verifying Stripe signature...");
-      event = stripe.webhooks.constructEvent(body, signature, stripeWebhookSecret);
+      console.log("Verifying Stripe signature asynchronously...");
+      // Use constructEventAsync instead of constructEvent
+      event = await stripe.webhooks.constructEventAsync(body, signature, stripeWebhookSecret);
       console.log("Signature verification successful");
     } catch (err) {
       console.error(`Webhook signature verification failed: ${err.message}`);
@@ -75,7 +76,6 @@ serve(async (req) => {
     }
 
     // Return a success response immediately but continue processing in the background
-    // Use a more reliable approach for background processing
     const responsePromise = new Response(
       JSON.stringify({ received: true }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
