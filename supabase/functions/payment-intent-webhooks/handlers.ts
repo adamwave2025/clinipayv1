@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { generatePaymentReference } from "./utils.ts";
@@ -215,24 +214,6 @@ export async function handlePaymentIntentFailed(paymentIntent: any, supabaseClie
     const failureCode = paymentIntent.last_payment_error?.code || "unknown";
     
     console.log(`Payment failed for clinic: ${clinicId}, reason: ${failureMessage}, code: ${failureCode}`);
-    
-    // Update payment attempt if exists
-    if (paymentIntent.id) {
-      const { error: attemptUpdateError } = await supabaseClient
-        .from("payment_attempts")
-        .update({
-          status: "failed",
-          updated_at: new Date().toISOString()
-        })
-        .eq("payment_intent_id", paymentIntent.id);
-
-      if (attemptUpdateError) {
-        console.error("Error updating payment attempt:", attemptUpdateError);
-        console.error("Error details:", JSON.stringify(attemptUpdateError));
-      } else {
-        console.log(`Payment attempt updated to failed for intent ${paymentIntent.id}`);
-      }
-    }
 
     // If this payment was for a payment request, we might want to update it
     if (requestId) {

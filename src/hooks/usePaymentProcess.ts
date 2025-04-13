@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { toast } from 'sonner';
@@ -49,8 +48,7 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
           name: formData.name,
           email: formData.email,
           phone: formData.phone
-        },
-        paymentAttemptId: intentResult.paymentAttemptId
+        }
       });
       
       if (!paymentResult.success) {
