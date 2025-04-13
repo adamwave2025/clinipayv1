@@ -61,18 +61,20 @@ serve(async (req) => {
 
     console.log(`Received event: ${event.type}`);
 
+    let result;
     // Handle the event
     if (event.type === "payment_intent.succeeded") {
-      await handlePaymentIntentSucceeded(event.data.object, supabaseClient);
+      result = await handlePaymentIntentSucceeded(event.data.object, supabaseClient);
     } else if (event.type === "payment_intent.payment_failed") {
-      await handlePaymentIntentFailed(event.data.object, supabaseClient);
+      result = await handlePaymentIntentFailed(event.data.object, supabaseClient);
     } else {
       console.log(`Unhandled event type: ${event.type}`);
+      result = { received: true, message: `Event type ${event.type} not processed` };
     }
 
     // Return a response to acknowledge receipt of the event
     return new Response(
-      JSON.stringify({ received: true }),
+      JSON.stringify({ received: true, processed: true, result }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
