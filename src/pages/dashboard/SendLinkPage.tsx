@@ -28,7 +28,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
 import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
-import { processNotificationsNow, setupNotificationCron } from '@/utils/notification-cron-setup';
+import { processNotificationsNow } from '@/utils/notification-cron-setup';
 import { Json } from '@/integrations/supabase/types';
 import { addToNotificationQueue } from '@/utils/notification-queue';
 
@@ -256,10 +256,6 @@ const SendLinkPage = () => {
             console.log("Payment request notification queued successfully");
             
             try {
-              console.log("Setting up notification cron...");
-              const setupResult = await setupNotificationCron();
-              console.log("Notification cron setup result:", setupResult);
-              
               console.log("Processing notifications immediately...");
               const processResult = await processNotificationsNow();
               console.log("Process notifications result:", processResult);
