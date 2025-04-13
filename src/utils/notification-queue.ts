@@ -53,15 +53,23 @@ export async function addToNotificationQueue(
       console.error('Exception during permission check:', permErr);
     }
     
+    // Add clinic_id to the payload itself instead of as a separate column
+    // This ensures it's available for RLS policies that check payload->>'clinic_id'
+    const enrichedPayload = {
+      ...payload,
+      clinic_id: clinicId // Add clinic_id to the payload JSON
+    };
+    
+    console.log('Final payload with clinic_id:', JSON.stringify(enrichedPayload, null, 2));
+    
     // Add to notification queue - properly convert to Json type
     console.log('Attempting to insert notification...');
     const { data, error } = await supabase
       .from("notification_queue")
       .insert({
         type,
-        payload: payload as unknown as Json,
+        payload: enrichedPayload as unknown as Json,
         recipient_type: recipientType,
-        clinic_id: clinicId,
         payment_id: paymentId,
         status: 'pending'
       })

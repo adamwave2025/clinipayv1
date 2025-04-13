@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -242,13 +241,12 @@ const SendLinkPage = () => {
         console.log('Notification payload prepared:', JSON.stringify(notificationPayload, null, 2));
 
         try {
-          // Pass the clinic_id to the addToNotificationQueue function
           const { success, error } = await addToNotificationQueue(
             'payment_request',
             notificationPayload,
             'patient',
-            userData.clinic_id,  // Pass clinic_id here
-            paymentRequest.id    // This remains as the payment_id
+            userData.clinic_id,
+            paymentRequest.id
           );
 
           if (!success) {
