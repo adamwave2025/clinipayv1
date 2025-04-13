@@ -1,9 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders } from "./utils.ts";
+import { corsHeaders, initStripe, initSupabase, safeLog } from "./utils.ts";
 import { handlePaymentIntentSucceeded, handlePaymentIntentFailed } from "./handlers.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from "https://esm.sh/stripe@14.21.0";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -13,18 +11,11 @@ serve(async (req) => {
 
   try {
     // Log the request for debugging
-    console.log(`Payment webhook received at ${new Date().toISOString()}`);
+    console.log(`Payment intent webhook received at ${new Date().toISOString()}`);
     console.log(`Request method: ${req.method}`);
     
     // Initialize Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Missing Supabase credentials");
-    }
-    
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseClient = initSupabase();
 
     // Get the stripe webhook secret
     const stripeWebhookSecret = Deno.env.get("STRIPE_INTENT_SECRET");
@@ -51,14 +42,7 @@ serve(async (req) => {
     console.log(`Request body received, length: ${body.length} characters`);
     
     // Initialize Stripe client
-    const stripeSecretKey = Deno.env.get("SECRET_KEY");
-    if (!stripeSecretKey) {
-      throw new Error("Missing Stripe secret key");
-    }
-    
-    const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: "2023-10-16",
-    });
+    const stripe = initStripe();
 
     // Verify webhook signature ASYNCHRONOUSLY
     let event;
@@ -74,6 +58,10 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Log the event details
+    console.log(`Event ID: ${event.id}, Type: ${event.type}, Created: ${new Date(event.created * 1000).toISOString()}`);
+    safeLog("Event data", event.data.object);
 
     // Prepare successful response
     const responsePromise = new Response(
@@ -92,7 +80,7 @@ serve(async (req) => {
           console.log(`Event data object status: ${event.data.object.status}`);
           
           if (event.data.object.metadata) {
-            console.log(`Event metadata:`, JSON.stringify(event.data.object.metadata));
+            safeLog(`Event metadata`, event.data.object.metadata);
           }
         }
 

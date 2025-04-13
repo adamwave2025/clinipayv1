@@ -64,3 +64,26 @@ export function safeLog(label, obj) {
     );
   }
 }
+
+// Function to execute an operation with retries
+export async function retryOperation(operation, maxRetries = 3, delayMs = 1000) {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      console.log(`Attempt ${attempt}/${maxRetries} failed: ${error.message}`);
+      lastError = error;
+      
+      if (attempt < maxRetries) {
+        console.log(`Waiting ${delayMs}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        // Increase delay for next attempt (exponential backoff)
+        delayMs *= 2;
+      }
+    }
+  }
+  
+  throw lastError;
+}

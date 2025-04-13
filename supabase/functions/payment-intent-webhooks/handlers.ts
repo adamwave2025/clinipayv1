@@ -1,30 +1,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
-import { generatePaymentReference } from "./utils.ts";
-
-// Simple retry mechanism for database operations
-async function retryOperation(operation, maxRetries = 3, delayMs = 1000) {
-  let lastError;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      console.log(`Attempt ${attempt}/${maxRetries} failed: ${error.message}`);
-      lastError = error;
-      
-      if (attempt < maxRetries) {
-        console.log(`Waiting ${delayMs}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-        // Increase delay for next attempt (exponential backoff)
-        delayMs *= 2;
-      }
-    }
-  }
-  
-  throw lastError;
-}
+import { generatePaymentReference, retryOperation, convertCentsToCurrency, safeLog } from "./utils.ts";
 
 // Function to handle payment_intent.succeeded events
 export async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent, supabaseClient: any) {
@@ -38,6 +15,8 @@ export async function handlePaymentIntentSucceeded(paymentIntent: Stripe.Payment
   try {
     // Extract metadata from the payment intent
     const metadata = paymentIntent.metadata || {};
+    safeLog("Payment intent metadata", metadata);
+    
     const {
       clinicId,
       paymentLinkId,
@@ -65,7 +44,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: Stripe.Payment
     `);
     
     // Convert the amount from cents to pounds
-    const amountInPounds = (paymentIntent.amount || 0) / 100;
+    const amountInPounds = convertCentsToCurrency(paymentIntent.amount || 0);
     
     // Generate a payment reference if one doesn't exist
     const paymentReference = existingReference || generatePaymentReference();
@@ -93,37 +72,17 @@ export async function handlePaymentIntentSucceeded(paymentIntent: Stripe.Payment
       return;
     }
     
-    // Try to insert using the RPC function with careful error handling
+    // Transaction block to handle payment record insertion
+    console.log("Starting transaction for payment record insertion");
     let paymentId = null;
+    
+    // Try inserting using a direct query with error handling and retries
     try {
-      console.log("Calling insert_payment_record RPC function");
-      const { data: rpcData, error: rpcError } = await retryOperation(async () => {
-        return await supabaseClient.rpc('insert_payment_record', {
-          p_clinic_id: clinicId,
-          p_amount_paid: amountInPounds,
-          p_patient_name: patientName || "Unknown",
-          p_patient_email: patientEmail || null,
-          p_patient_phone: patientPhone || null,
-          p_payment_link_id: paymentLinkId || null,
-          p_payment_ref: paymentReference,
-          p_stripe_payment_id: paymentIntent.id
-        });
-      });
-
-      if (rpcError) {
-        throw new Error(`RPC error: ${rpcError.message}`);
-      }
-
-      paymentId = rpcData;
-      console.log(`Payment record created with ID: ${paymentId}`);
-    } catch (rpcError) {
-      console.error("RPC insertion failed with error:", rpcError);
-      console.log("Attempting direct insertion as fallback...");
-      
-      // Fallback: Direct insertion if RPC fails
-      try {
-        const { data: directData, error: directError } = await retryOperation(async () => {
-          return await supabaseClient.from("payments").insert({
+      console.log("Attempting direct insert into payments table");
+      const { data: insertData, error: insertError } = await retryOperation(async () => {
+        return await supabaseClient
+          .from("payments")
+          .insert({
             clinic_id: clinicId,
             amount_paid: amountInPounds,
             paid_at: new Date().toISOString(),
@@ -134,36 +93,47 @@ export async function handlePaymentIntentSucceeded(paymentIntent: Stripe.Payment
             payment_ref: paymentReference,
             status: 'paid',
             stripe_payment_id: paymentIntent.id
-          }).select("id").single();
-        });
-
-        if (directError) {
-          throw new Error(`Direct insertion error: ${directError.message}`);
-        }
-
-        paymentId = directData?.id;
-        console.log(`Payment record created via direct insertion with ID: ${paymentId}`);
-      } catch (directError) {
-        console.error("Both RPC and direct insertion failed:", directError);
-        console.log("Attempting minimal insertion as last resort...");
-        
-        // Last resort: Insert with minimal fields if all else fails
+          })
+          .select("id")
+          .single();
+      });
+      
+      if (insertError) {
+        throw new Error(`Direct insert error: ${insertError.message}`);
+      }
+      
+      paymentId = insertData?.id;
+      console.log(`Payment record created successfully with ID: ${paymentId}`);
+    } catch (insertError) {
+      console.error("Payment record insertion failed:", insertError);
+      console.log("Attempting minimal fallback insert...");
+      
+      // Last resort: Try with minimal fields
+      try {
         const { data: minimalData, error: minimalError } = await retryOperation(async () => {
-          return await supabaseClient.from("payments").insert({
-            clinic_id: clinicId,
-            amount_paid: amountInPounds,
-            status: 'paid',
-            stripe_payment_id: paymentIntent.id
-          }).select("id").single();
+          return await supabaseClient
+            .from("payments")
+            .insert({
+              clinic_id: clinicId,
+              amount_paid: amountInPounds,
+              status: 'paid',
+              stripe_payment_id: paymentIntent.id
+            })
+            .select("id")
+            .single();
         });
         
         if (minimalError) {
           console.error("All insertion attempts failed:", minimalError);
-          throw new Error("Could not create payment record after multiple attempts");
+          throw new Error(`Could not create payment record after multiple attempts: ${minimalError.message}`);
         }
         
         paymentId = minimalData?.id;
         console.log(`Created minimal payment record with ID: ${paymentId}`);
+      } catch (finalError) {
+        console.error("Final fallback insertion also failed:", finalError);
+        // At this point we've tried everything, log the comprehensive error
+        throw new Error(`All payment record insertion methods failed: ${finalError.message}`);
       }
     }
       
@@ -185,27 +155,6 @@ async function updatePaymentRequest(supabaseClient, requestId, paymentId) {
   try {
     console.log(`Updating payment request: ${requestId} with payment ID: ${paymentId}`);
     
-    // First try using the RPC function
-    try {
-      const { error: rpcError } = await retryOperation(async () => {
-        return await supabaseClient.rpc('update_payment_request_status', {
-          p_request_id: requestId,
-          p_payment_id: paymentId,
-          p_status: 'paid'
-        });
-      });
-      
-      if (rpcError) {
-        throw new Error(rpcError.message);
-      }
-      
-      console.log(`Payment request ${requestId} updated via RPC function`);
-      return;
-    } catch (rpcError) {
-      console.log("RPC update failed, falling back to direct update:", rpcError.message);
-    }
-    
-    // Fall back to direct update
     const { error: requestUpdateError } = await retryOperation(async () => {
       return await supabaseClient
         .from("payment_requests")
@@ -251,27 +200,6 @@ export async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentInt
     // If this was a payment request, update its status to 'failed'
     if (requestId) {
       try {
-        // First try using the RPC function
-        try {
-          const { error: rpcError } = await retryOperation(async () => {
-            return await supabaseClient.rpc('update_payment_request_status', {
-              p_request_id: requestId,
-              p_payment_id: null,
-              p_status: 'failed'
-            });
-          });
-          
-          if (rpcError) {
-            throw new Error(rpcError.message);
-          }
-          
-          console.log(`Payment request ${requestId} marked as failed via RPC function`);
-          return;
-        } catch (rpcError) {
-          console.log("RPC update failed, falling back to direct update:", rpcError.message);
-        }
-        
-        // Fall back to direct update
         const { error: requestUpdateError } = await retryOperation(async () => {
           return await supabaseClient
             .from("payment_requests")

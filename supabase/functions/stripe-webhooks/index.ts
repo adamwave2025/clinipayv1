@@ -164,89 +164,8 @@ serve(async (req) => {
           } else {
             console.log(`Account ${account.id} has not submitted details yet, no update needed`);
           }
-        } else if (event.type === 'payment_intent.succeeded') {
-          // Handle payment_intent.succeeded events to update payment records and payment requests
-          const paymentIntent = event.data.object;
-          console.log(`Received payment_intent.succeeded event for payment: ${paymentIntent.id}`);
-          
-          // Extract metadata from the payment intent
-          const metadata = paymentIntent.metadata || {};
-          const requestId = metadata.requestId;
-          const clinicId = metadata.clinicId;
-          const paymentLinkId = metadata.paymentLinkId;
-          const patientName = metadata.patientName;
-          const patientEmail = metadata.patientEmail;
-          const patientPhone = metadata.patientPhone;
-          const paymentReference = metadata.paymentReference;
-          
-          console.log("Payment intent metadata:", metadata);
-          
-          // Check if there's already a payment record for this payment intent
-          const { data: existingPayments, error: paymentsError } = await supabaseClient
-            .from("payments")
-            .select("id")
-            .eq("stripe_payment_id", paymentIntent.id);
-            
-          if (paymentsError) {
-            console.error(`Error checking for existing payment record: ${paymentsError.message}`);
-          }
-          
-          // Only create a payment record if one doesn't already exist
-          if (!existingPayments || existingPayments.length === 0) {
-            console.log(`No existing payment record found for ${paymentIntent.id}, creating new record`);
-            
-            try {
-              // Convert amount from cents to pounds with precision
-              const amountInPounds = paymentIntent.amount / 100;
-              console.log(`Converting amount from ${paymentIntent.amount} cents to ${amountInPounds} pounds`);
-              
-              // Use the stored procedure for safely inserting the payment record
-              const { data: paymentId, error: insertError } = await supabaseClient.rpc('insert_payment_record', {
-                p_clinic_id: clinicId,
-                p_amount_paid: amountInPounds,
-                p_patient_name: patientName || "Unknown",
-                p_patient_email: patientEmail || null,
-                p_patient_phone: patientPhone || null,
-                p_payment_link_id: paymentLinkId || null,
-                p_payment_ref: paymentReference || generatePaymentReference(),
-                p_stripe_payment_id: paymentIntent.id
-              });
-              
-              if (insertError) {
-                console.error(`Error creating payment record using stored function: ${insertError.message}`);
-                throw insertError;
-              }
-              
-              console.log(`Created payment record successfully with ID: ${paymentId}`);
-              
-              // If this is a payment request, update the payment_requests table
-              if (requestId) {
-                console.log(`Updating payment request ${requestId} with payment status`);
-                
-                const { error: updateError } = await supabaseClient
-                  .from("payment_requests")
-                  .update({
-                    status: "paid",
-                    paid_at: new Date().toISOString(),
-                    payment_id: paymentId
-                  })
-                  .eq("id", requestId);
-                  
-                if (updateError) {
-                  console.error(`Error updating payment request: ${updateError.message}`);
-                } else {
-                  console.log(`Successfully updated payment request ${requestId}`);
-                }
-              }
-            } catch (error) {
-              console.error(`Error processing payment record: ${error.message}`);
-              throw error;
-            }
-          } else {
-            console.log(`Payment record already exists for payment ${paymentIntent.id}`);
-          }
         } else {
-          console.log(`Ignoring event type: ${event.type} (not handled)`);
+          console.log(`Event type ${event.type} is handled by payment-intent-webhooks function`);
         }
       } catch (error) {
         console.error(`Background webhook processing error: ${error.message}`);
@@ -283,10 +202,3 @@ serve(async (req) => {
     });
   }
 });
-
-// Helper function to generate a payment reference if none exists
-function generatePaymentReference() {
-  const timestamp = Date.now().toString(36).toUpperCase();
-  const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `PAY-${timestamp.substring(timestamp.length - 4)}-${randomPart}`;
-}
