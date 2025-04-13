@@ -12,6 +12,9 @@ export interface Payment {
   reference?: string; // Payment reference (PAY-XXXX-YYYY)
   linkTitle?: string; // Title of the payment link
   message?: string; // Custom message sent with the payment request
+  description?: string; // Description from the payment link
+  isCustomAmount?: boolean; // Flag to indicate if it was a custom amount request
+  paymentLinkId?: string; // ID of the payment link used (if any)
 }
 
 export interface PaymentLink {

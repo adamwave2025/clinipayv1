@@ -13,7 +13,7 @@ import { Payment } from '@/types/payment';
 import { capitalizeFirstLetter, formatCurrency } from '@/utils/formatters';
 import PaymentReferenceDisplay from '../payment/PaymentReferenceDisplay';
 import { toast } from 'sonner';
-import { Copy, ExternalLink } from 'lucide-react';
+import { Copy, ExternalLink, LinkIcon } from 'lucide-react';
 import PaymentDetailsCard from '../payment/PaymentDetailsCard';
 
 interface PaymentDetailDialogProps {
@@ -70,12 +70,45 @@ const PaymentDetailDialog = ({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          {/* Show payment link title if available */}
-          {payment.linkTitle && (
-            <div className="text-lg font-semibold text-gray-900 mb-2">
-              {payment.linkTitle}
+          {/* Payment Source Information */}
+          <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Payment Source</h4>
+            
+            {/* Show payment link title prominently if available */}
+            {payment.linkTitle && (
+              <div className="text-lg font-semibold text-gray-900 mb-2 flex items-center">
+                {payment.isCustomAmount ? (
+                  'Custom Payment Request'
+                ) : (
+                  <>
+                    <LinkIcon className="h-4 w-4 mr-2 text-blue-500" />
+                    {payment.linkTitle}
+                  </>
+                )}
+              </div>
+            )}
+            
+            {/* Payment link description */}
+            {payment.description && (
+              <div className="text-sm text-gray-600 mb-3">{payment.description}</div>
+            )}
+            
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+              <div className="col-span-1">
+                <span className="text-gray-500">Source Type:</span>
+              </div>
+              <div className="col-span-1 font-medium">
+                {payment.isCustomAmount ? 'Custom Amount Request' : 'Payment Link'}
+              </div>
+              
+              <div className="col-span-1">
+                <span className="text-gray-500">Payment Type:</span>
+              </div>
+              <div className="col-span-1 font-medium">
+                {capitalizedType}
+              </div>
             </div>
-          )}
+          </div>
           
           <div className="grid grid-cols-2 gap-x-6 gap-y-4">
             <div className="col-span-2 sm:col-span-1">
@@ -99,10 +132,6 @@ const PaymentDetailDialog = ({
               <p className="mt-1">{payment.date}</p>
             </div>
             <div className="col-span-1">
-              <h4 className="text-sm font-medium text-gray-500">Type</h4>
-              <p className="mt-1">{capitalizedType}</p>
-            </div>
-            <div className="col-span-1">
               <h4 className="text-sm font-medium text-gray-500">Status</h4>
               <StatusBadge status={payment.status} className="mt-1" />
             </div>
@@ -110,8 +139,8 @@ const PaymentDetailDialog = ({
           
           {/* Custom message if available (for sent payment requests) */}
           {payment.message && (
-            <div className="mt-4 bg-gray-50 p-4 rounded-md border border-gray-200">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Message to Patient</h4>
+            <div className="mt-4 bg-blue-50 p-4 rounded-md border border-blue-200">
+              <h4 className="text-sm font-medium text-blue-700 mb-2">Message to Patient</h4>
               <p className="text-sm text-gray-600">{payment.message}</p>
             </div>
           )}
