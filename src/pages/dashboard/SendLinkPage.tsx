@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -31,6 +30,7 @@ import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
 import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
 import { processNotificationsNow, setupNotificationCron } from '@/utils/notification-cron-setup';
 import { Json } from '@/integrations/supabase/types';
+import { addToNotificationQueue } from '@/utils/notification-queue';
 
 const SendLinkPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -46,11 +46,9 @@ const SendLinkPage = () => {
     message: '',
   });
 
-  // Check notification system on component load
   useEffect(() => {
     const checkNotificationSystem = async () => {
       try {
-        // Check if system settings are configured for notifications
         const { data, error } = await supabase
           .from('system_settings')
           .select('*')
@@ -86,32 +84,27 @@ const SendLinkPage = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Basic validation
     if (!formData.patientName || !formData.patientEmail) {
       toast.error('Please fill in all required fields');
       return;
     }
     
-    // Validate either selectedLink or customAmount is filled
     if (!formData.selectedLink && !formData.customAmount) {
       toast.error('Please either select a payment link or enter a custom amount');
       return;
     }
     
-    // Custom amount validation
     if (formData.customAmount && (isNaN(Number(formData.customAmount)) || Number(formData.customAmount) <= 0)) {
       toast.error('Please enter a valid amount');
       return;
     }
     
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.patientEmail)) {
       toast.error('Please enter a valid email address');
       return;
     }
     
-    // Phone validation (if provided)
     if (formData.patientPhone) {
       const phoneRegex = /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/;
       if (!phoneRegex.test(formData.patientPhone)) {
@@ -120,7 +113,6 @@ const SendLinkPage = () => {
       }
     }
     
-    // Show confirmation dialog instead of proceeding directly
     setShowConfirmation(true);
   };
 
@@ -129,7 +121,6 @@ const SendLinkPage = () => {
     console.log('Starting payment link creation process...');
     
     try {
-      // Find user's clinic ID
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('clinic_id')
@@ -148,7 +139,6 @@ const SendLinkPage = () => {
       
       console.log('Found clinic_id:', userData.clinic_id);
 
-      // Get clinic data for notification
       const { data: clinicData, error: clinicError } = await supabase
         .from('clinics')
         .select('*')
@@ -162,7 +152,6 @@ const SendLinkPage = () => {
       
       console.log('Retrieved clinic data successfully');
 
-      // Get payment link details if selected
       let amount = 0;
       let paymentLinkId = null;
       let paymentTitle = '';
@@ -189,7 +178,6 @@ const SendLinkPage = () => {
         patientName: formData.patientName
       });
 
-      // Create payment request record
       const { data, error } = await supabase
         .from('payment_requests')
         .insert({
@@ -217,20 +205,16 @@ const SendLinkPage = () => {
       const paymentRequest = data[0];
       console.log('Payment request created successfully:', paymentRequest);
       
-      // Create notification method based on available patient contact info
       const notificationMethod: NotificationMethod = {
         email: !!formData.patientEmail,
         sms: !!formData.patientPhone
       };
 
-      // Format clinic address
       const formattedAddress = ClinicFormatter.formatAddress(clinicData);
       
-      // Add notification to queue with standardized structure
       if (notificationMethod.email || notificationMethod.sms) {
         console.log('Creating notification for payment request');
         
-        // Create standardized notification payload
         const notificationPayload: StandardNotificationPayload = {
           notification_type: "payment_request",
           notification_method: notificationMethod,
@@ -250,32 +234,26 @@ const SendLinkPage = () => {
             name: clinicData.clinic_name || "Your healthcare provider",
             email: clinicData.email,
             phone: clinicData.phone,
-            address: formattedAddress
+            address: formattedAddress,
+            id: userData.clinic_id
           }
         };
 
         console.log('Notification payload prepared:', JSON.stringify(notificationPayload, null, 2));
 
         try {
-          // Add to notification queue - properly convert to Json type using type assertion with unknown as intermediate step
-          const { data: notificationData, error: notifyError } = await supabase
-            .from("notification_queue")
-            .insert({
-              type: 'payment_request',
-              payload: (notificationPayload as unknown) as Json,
-              recipient_type: 'patient',
-              status: 'pending'
-            })
-            .select();
+          const { success, error } = await addToNotificationQueue(
+            'payment_request',
+            notificationPayload,
+            'patient'
+          );
 
-          if (notifyError) {
-            console.error("Error queueing notification:", notifyError);
-            console.error("Error details:", JSON.stringify(notifyError, null, 2));
-            // Don't throw error, continue with success message
+          if (!success) {
+            console.error("Failed to queue notification:", error);
+            toast.warning("Payment link was sent, but notification delivery might be delayed");
           } else {
-            console.log("Payment request notification queued successfully:", notificationData);
+            console.log("Payment request notification queued successfully");
             
-            // Trigger notification processing
             try {
               console.log("Setting up notification cron...");
               const setupResult = await setupNotificationCron();
@@ -297,7 +275,6 @@ const SendLinkPage = () => {
       
       toast.success('Payment link sent successfully');
       
-      // Reset form
       setFormData({
         patientName: '',
         patientEmail: '',
@@ -455,7 +432,6 @@ const SendLinkPage = () => {
         </CardContent>
       </Card>
 
-      {/* Confirmation Dialog */}
       <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
