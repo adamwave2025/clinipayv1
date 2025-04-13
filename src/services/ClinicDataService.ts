@@ -14,6 +14,8 @@ export type ClinicData = {
   logo_url: string | null;
   stripe_account_id: string | null;
   stripe_status: string | null;
+  email_notifications: boolean | null;
+  sms_notifications: boolean | null;
 };
 
 export const ClinicDataService = {

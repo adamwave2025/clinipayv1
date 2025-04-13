@@ -2,11 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { 
-  NotificationService,
-  NotificationSettings, 
-} from '@/services/NotificationService';
-import type { NotificationPreference } from '@/types/notification';
 import { ClinicDataService, ClinicData } from '@/services/ClinicDataService';
 import { LogoService } from '@/services/LogoService';
 
@@ -17,14 +12,6 @@ export function useClinicData() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreference[]>([]);
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
-    emailPaymentReceived: false,
-    emailRefundProcessed: false,
-    emailWeeklySummary: false,
-    smsPaymentReceived: false,
-    smsRefundProcessed: false
-  });
   const { user } = useAuth();
 
   const fetchClinicData = async () => {
@@ -39,13 +26,6 @@ export function useClinicData() {
     try {
       const clinicData = await ClinicDataService.fetchClinicDataByUserId(user.id);
       setClinicData(clinicData);
-
-      const preferences = await NotificationService.fetchNotificationPreferences(clinicData.id);
-      setNotificationPreferences(preferences);
-      
-      const settings = NotificationService.mapPreferencesToSettings(preferences);
-      setNotificationSettings(settings);
-      
     } catch (error: any) {
       console.error('Error fetching clinic data:', error);
       setError(error.message);
@@ -135,34 +115,26 @@ export function useClinicData() {
     }
   };
 
-  const updateNotificationSetting = async (setting: string, checked: boolean) => {
+  const toggleEmailNotifications = async (enabled: boolean) => {
     if (!clinicData) return false;
 
-    const mappedPreference = NotificationService.mapSettingToPreference(setting);
-    
-    if (!mappedPreference) {
-      console.error('Invalid notification setting:', setting);
+    try {
+      const success = await updateClinicData({ email_notifications: enabled });
+      return success.success;
+    } catch (error) {
+      console.error('Error updating email notifications:', error);
       return false;
     }
+  };
 
-    const { channel, type } = mappedPreference;
-
-    setNotificationSettings(prev => ({
-      ...prev,
-      [setting]: checked
-    }));
+  const toggleSmsNotifications = async (enabled: boolean) => {
+    if (!clinicData) return false;
 
     try {
-      const success = await NotificationService.updateNotificationPreference(
-        clinicData.id,
-        channel,
-        type,
-        checked
-      );
-
-      return success;
+      const success = await updateClinicData({ sms_notifications: enabled });
+      return success.success;
     } catch (error) {
-      console.error('Error updating notification setting:', error);
+      console.error('Error updating SMS notifications:', error);
       return false;
     }
   };
@@ -176,11 +148,11 @@ export function useClinicData() {
     isLoading,
     isUploading,
     error,
-    notificationSettings,
     fetchClinicData,
     updateClinicData,
     uploadLogo,
     deleteLogo,
-    updateNotificationSetting
+    toggleEmailNotifications,
+    toggleSmsNotifications
   };
 }

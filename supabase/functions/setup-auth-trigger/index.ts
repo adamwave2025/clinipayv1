@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.47.0";
 
@@ -8,7 +7,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -16,7 +14,6 @@ serve(async (req) => {
   try {
     console.log("Setup auth trigger function called");
     
-    // Create Supabase client with admin privileges
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -28,8 +25,6 @@ serve(async (req) => {
       }
     );
 
-    // First, let's create the execute_sql function if it doesn't exist
-    // This will allow us to run SQL commands from edge functions
     const { error: sqlFunctionError } = await supabaseAdmin
       .from('system_settings')
       .select('*')
@@ -38,9 +33,7 @@ serve(async (req) => {
     if (sqlFunctionError) {
       console.error("Error connecting to database:", sqlFunctionError);
       
-      // Try creating the execute_sql function via raw query
       try {
-        // Direct SQL query to create the function using fetch
         const sqlEndpoint = `${Deno.env.get("SUPABASE_URL")}/rest/v1/rpc/execute_sql`;
         
         const createFunctionResponse = await fetch(sqlEndpoint, {
@@ -82,14 +75,10 @@ serve(async (req) => {
       }
     }
 
-    // Check if the auth trigger function exists and create it if not
     console.log("Verifying handle_new_user function and trigger");
     
-    // Create or update the auth trigger regardless of previous check result
-    // This ensures we always have the latest version
     console.log("Creating/updating auth trigger...");
     
-    // Use direct SQL query instead of RPC to create trigger
     try {
       const sqlEndpoint = `${Deno.env.get("SUPABASE_URL")}/rest/v1/rpc/execute_sql`;
       
@@ -124,31 +113,12 @@ serve(async (req) => {
               SELECT id INTO clinic_id FROM public.clinics WHERE email = NEW.email LIMIT 1;
               
               IF clinic_id IS NULL THEN
-                -- Create new clinic record
-                INSERT INTO public.clinics (email, clinic_name)
-                VALUES (NEW.email, clinic_name)
+                -- Create new clinic record with default notification settings set to true
+                INSERT INTO public.clinics (email, clinic_name, email_notifications, sms_notifications)
+                VALUES (NEW.email, clinic_name, TRUE, TRUE)
                 RETURNING id INTO clinic_id;
                 
                 RAISE NOTICE 'Created new clinic with ID: % for email: % and name: %', clinic_id, NEW.email, clinic_name;
-                
-                -- Create default notification preferences for the new clinic
-                -- Explicitly log what we're about to insert
-                RAISE NOTICE 'Creating notification preferences for clinic ID: % with types: payment_received, refund_processed, weekly_summary', clinic_id;
-                
-                BEGIN
-                  -- Email notifications
-                  INSERT INTO public.notification_preferences (clinic_id, channel, type, enabled)
-                  VALUES
-                    (clinic_id, 'email', 'payment_received', TRUE),
-                    (clinic_id, 'email', 'refund_processed', TRUE),
-                    (clinic_id, 'email', 'weekly_summary', TRUE),
-                    (clinic_id, 'sms', 'payment_received', TRUE),
-                    (clinic_id, 'sms', 'refund_processed', TRUE);
-                    
-                  RAISE NOTICE 'Successfully created default notification preferences for clinic ID: %', clinic_id;
-                EXCEPTION WHEN OTHERS THEN
-                  RAISE NOTICE 'Error creating notification preferences: %', SQLERRM;
-                END;
               ELSE
                 RAISE NOTICE 'Found existing clinic with ID: % for email: %', clinic_id, NEW.email;
               END IF;
@@ -192,10 +162,8 @@ serve(async (req) => {
       throw new Error("Failed to update auth trigger: " + updateError.message);
     }
     
-    // Set up webhook URL for auth user creation
     const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/handle-new-signup`;
     
-    // Store the webhook URL in system_settings table
     const { error: settingError } = await supabaseAdmin
       .from('system_settings')
       .upsert({
@@ -209,7 +177,6 @@ serve(async (req) => {
       console.log("Successfully stored webhook URL in system_settings:", webhookUrl);
     }
     
-    // Return success
     return new Response(
       JSON.stringify({ 
         message: "Auth settings updated successfully",
