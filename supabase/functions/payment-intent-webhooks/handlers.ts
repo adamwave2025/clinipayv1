@@ -72,8 +72,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       return;
     }
     
-    // Try direct insertion if the RPC approach fails
-    // This serves as a fallback mechanism
+    // Try to insert using the RPC function
     try {
       console.log("Using RPC to insert payment record");
       const { data, error } = await retryOperation(async () => {
