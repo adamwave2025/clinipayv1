@@ -72,28 +72,19 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       return;
     }
     
-    // Prepare simplified payment record data (minimum required fields)
-    const paymentData = {
-      clinic_id: clinicId,
-      amount_paid: amountInPounds,
-      paid_at: new Date().toISOString(),
-      patient_name: patientName || "Unknown",
-      patient_email: patientEmail || null,
-      patient_phone: patientPhone || null,
-      payment_link_id: paymentLinkId || null,
-      payment_ref: paymentReference,
-      status: "paid",
-      stripe_payment_id: paymentIntent.id
-    };
-
-    console.log("Attempting to insert payment record with minimal data");
-    
-    // Insert the payment record with retry logic
+    // Use the stored function to safely insert the payment record
+    console.log("Using stored function to insert payment record");
     const { data, error } = await retryOperation(async () => {
-      return await supabaseClient
-        .from("payments")
-        .insert(paymentData)
-        .select();
+      return await supabaseClient.rpc('insert_payment_record', {
+        p_clinic_id: clinicId,
+        p_amount_paid: amountInPounds,
+        p_patient_name: patientName || "Unknown",
+        p_patient_email: patientEmail || null,
+        p_patient_phone: patientPhone || null,
+        p_payment_link_id: paymentLinkId || null,
+        p_payment_ref: paymentReference,
+        p_stripe_payment_id: paymentIntent.id
+      });
     });
 
     if (error) {
@@ -101,12 +92,12 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       throw new Error(`Error recording payment: ${error.message}`);
     }
 
-    if (!data || data.length === 0) {
+    if (!data) {
       console.error("No data returned from payment insert operation");
       throw new Error("Payment record was not created properly");
     }
 
-    const paymentId = data[0].id;
+    const paymentId = data;
     console.log(`Payment record created with ID: ${paymentId}`);
 
     // If this payment was for a payment request, update the request status

@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "./utils.ts";
 import { handlePaymentIntentSucceeded, handlePaymentIntentFailed } from "./handlers.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -39,7 +40,7 @@ serve(async (req) => {
 
     // Get the request body for webhook verification
     const body = await req.text();
-
+    
     // Process the webhook asynchronously as a background task
     // This ensures we return a response quickly to Stripe
     const processWebhook = async () => {
