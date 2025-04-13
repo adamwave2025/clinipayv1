@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Payment } from '@/types/payment';
 import { formatCurrency } from '@/utils/formatters';
+import { processNotificationsNow } from '@/utils/notification-cron-setup';
 
 export const PaymentRefundService = {
   async processRefund(paymentId: string, amount?: number): Promise<{ success: boolean; status?: string; error?: string }> {
@@ -28,6 +29,13 @@ export const PaymentRefundService = {
       
       if (error || !data?.success) {
         throw new Error(error?.message || data?.error || 'Refund processing failed');
+      }
+      
+      // After successful refund, trigger notification processing
+      try {
+        await processNotificationsNow();
+      } catch (notifyErr) {
+        console.error('Error triggering notifications after refund:', notifyErr);
       }
       
       // Show success toast

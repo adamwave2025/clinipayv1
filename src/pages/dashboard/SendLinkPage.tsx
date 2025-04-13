@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -26,6 +27,7 @@ import {
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
 
 const SendLinkPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -132,6 +134,13 @@ const SendLinkPage = () => {
         amount = Number(formData.customAmount);
       }
 
+      console.log('Creating payment request with:', {
+        clinicId: userData.clinic_id,
+        paymentLinkId,
+        amount,
+        patientName: formData.patientName
+      });
+
       // Create payment request record
       const { data, error } = await supabase
         .from('payment_requests')
@@ -154,16 +163,30 @@ const SendLinkPage = () => {
       }
 
       const paymentRequest = data[0];
+      console.log('Payment request created:', paymentRequest);
       
       // Create notification method based on available patient contact info
       const notificationMethod = {
         email: !!formData.patientEmail,
         sms: !!formData.patientPhone
       };
+
+      // Format clinic address
+      const addressParts = [
+        clinicData.address_line_1,
+        clinicData.address_line_2,
+        clinicData.city,
+        clinicData.postcode,
+        clinicData.country
+      ].filter(Boolean);
       
-      // Add notification to queue
+      const formattedAddress = addressParts.length > 0 ? addressParts.join(', ') : null;
+      
+      // Add notification to queue with standardized structure
       if (notificationMethod.email || notificationMethod.sms) {
-        // Create notification payload
+        console.log('Creating notification for payment request');
+        
+        // Create standardized notification payload
         const notificationPayload = {
           notification_type: "payment_request",
           notification_method: notificationMethod,
@@ -182,9 +205,12 @@ const SendLinkPage = () => {
           clinic: {
             name: clinicData.clinic_name || "Your healthcare provider",
             email: clinicData.email,
-            phone: clinicData.phone
+            phone: clinicData.phone,
+            address: formattedAddress
           }
         };
+
+        console.log('Notification payload:', notificationPayload);
 
         // Add to notification queue
         const { error: notifyError } = await supabase
@@ -201,6 +227,18 @@ const SendLinkPage = () => {
           // Don't throw error, continue with success message
         } else {
           console.log("Payment request notification queued successfully");
+          
+          // Trigger notification processing cron job
+          try {
+            const { data: cronData, error: cronError } = await supabase.functions.invoke('setup-notification-cron');
+            if (cronError) {
+              console.error("Error triggering notification cron:", cronError);
+            } else {
+              console.log("Notification cron triggered:", cronData);
+            }
+          } catch (cronErr) {
+            console.error("Exception triggering notification cron:", cronErr);
+          }
         }
       }
       

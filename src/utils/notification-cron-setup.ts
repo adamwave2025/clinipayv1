@@ -26,3 +26,25 @@ export async function setupNotificationCron() {
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Process any pending notifications in the queue immediately.
+ * This can be useful after adding a new notification to ensure quick delivery.
+ */
+export async function processNotificationsNow() {
+  try {
+    // Call the edge function to process notifications
+    const { data, error } = await supabase.functions.invoke('process-notification-queue');
+    
+    if (error) {
+      console.error('Error processing notifications:', error);
+      return { success: false, error };
+    }
+    
+    console.log('Notification processing result:', data);
+    return { success: true, data };
+  } catch (err: any) {
+    console.error('Exception processing notifications:', err);
+    return { success: false, error: err.message };
+  }
+}
