@@ -1,8 +1,8 @@
 
 /**
- * Interface representing the UI state for notification settings - simple version
+ * Interface representing notification settings for a clinic
  */
 export interface NotificationSettings {
-  // This is a placeholder to maintain the file structure
-  // Notification functionality has been removed
+  email_notifications: boolean;
+  sms_notifications: boolean;
 }
