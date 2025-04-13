@@ -16,15 +16,24 @@ export function generatePaymentReference() {
 
 // Initialize a Stripe client
 export function initStripe() {
-  return new Stripe(Deno.env.get("SECRET_KEY") ?? "", {
+  const secretKey = Deno.env.get("SECRET_KEY");
+  if (!secretKey) {
+    throw new Error("Missing Stripe secret key");
+  }
+  
+  return new Stripe(secretKey, {
     apiVersion: "2023-10-16",
   });
 }
 
 // Initialize a Supabase client
 export function initSupabase() {
-  return createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  );
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("Missing Supabase credentials");
+  }
+  
+  return createClient(supabaseUrl, supabaseServiceKey);
 }
