@@ -1,3 +1,4 @@
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { generatePaymentReference } from "./utils.ts";
@@ -173,6 +174,72 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
         console.log(`Payment request ${requestId} marked as paid`);
       }
     }
+    
+    // Add notifications to queue instead of trying to send them directly
+    // Queue patient notification for successful payment if we have contact details
+    if (patientEmail || patientPhone) {
+      try {
+        // Create notification payload for patient
+        const patientPayload = {
+          clinic_id: clinicId,
+          payment_id: paymentId,
+          patient_name: patientName || 'Patient',
+          patient_email: patientEmail,
+          patient_phone: patientPhone,
+          payment_amount: amountInPounds,
+          payment_ref: paymentReference,
+          payment_type: 'success',
+          notification_type: 'payment_success'
+        };
+        
+        // Add to notification queue for patient
+        const { error: notifyError } = await supabaseClient
+          .from("notification_queue")
+          .insert({
+            type: 'payment_success',
+            payload: patientPayload,
+            payment_id: paymentId,
+            recipient_type: 'patient'
+          });
+          
+        if (notifyError) {
+          console.error(`Error queueing patient notification: ${notifyError.message}`);
+          console.error("Error details:", JSON.stringify(notifyError));
+        } else {
+          console.log(`Successfully queued payment success notification for patient`);
+        }
+        
+        // Queue clinic notification as well
+        const clinicPayload = {
+          clinic_id: clinicId,
+          payment_id: paymentId,
+          patient_name: patientName || 'Anonymous',
+          payment_amount: amountInPounds,
+          payment_ref: paymentReference,
+          payment_type: 'received',
+          notification_type: 'payment_received'
+        };
+        
+        const { error: clinicNotifyError } = await supabaseClient
+          .from("notification_queue")
+          .insert({
+            type: 'payment_success',
+            payload: clinicPayload,
+            payment_id: paymentId,
+            recipient_type: 'clinic'
+          });
+          
+        if (clinicNotifyError) {
+          console.error(`Error queueing clinic notification: ${clinicNotifyError.message}`);
+          console.error("Error details:", JSON.stringify(clinicNotifyError));
+        } else {
+          console.log(`Successfully queued payment notification for clinic`);
+        }
+      } catch (notifyErr) {
+        console.error(`Error in notification processing: ${notifyErr.message}`);
+        // Don't rethrow, just log the error - this shouldn't affect the main payment processing
+      }
+    }
 
     console.log("Payment processing completed successfully");
   } catch (error) {
@@ -214,6 +281,42 @@ export async function handlePaymentIntentFailed(paymentIntent: any, supabaseClie
     const failureCode = paymentIntent.last_payment_error?.code || "unknown";
     
     console.log(`Payment failed for clinic: ${clinicId}, reason: ${failureMessage}, code: ${failureCode}`);
+
+    // If we have patient contact information, queue a failure notification
+    if (patientEmail || patientPhone) {
+      try {
+        // Create notification payload for payment failure
+        const failurePayload = {
+          clinic_id: clinicId,
+          patient_name: patientName || 'Patient',
+          patient_email: patientEmail,
+          patient_phone: patientPhone,
+          payment_type: 'failed',
+          notification_type: 'payment_failed',
+          failure_reason: failureMessage,
+          failure_code: failureCode
+        };
+        
+        // Add to notification queue
+        const { error: notifyError } = await supabaseClient
+          .from("notification_queue")
+          .insert({
+            type: 'payment_failed',
+            payload: failurePayload,
+            recipient_type: 'patient'
+          });
+          
+        if (notifyError) {
+          console.error(`Error queueing payment failure notification: ${notifyError.message}`);
+          console.error("Error details:", JSON.stringify(notifyError));
+        } else {
+          console.log(`Successfully queued payment failure notification for patient`);
+        }
+      } catch (notifyErr) {
+        console.error(`Error in notification processing: ${notifyErr.message}`);
+        // Don't rethrow, just log the error
+      }
+    }
 
     // If this payment was for a payment request, we might want to update it
     if (requestId) {

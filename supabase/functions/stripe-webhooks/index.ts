@@ -207,7 +207,7 @@ serve(async (req) => {
             .from("payment_requests")
             .select("custom_amount, patient_name, patient_email, patient_phone")
             .eq("id", requestId)
-            .single();
+            .maybeSingle();
             
           if (!requestError && requestData) {
             console.log(`Found payment request data:`, requestData);
@@ -275,6 +275,70 @@ serve(async (req) => {
               console.error(`Error updating payment request: ${updateError.message}`);
             } else {
               console.log(`Successfully updated payment request ${requestId}`);
+            }
+          }
+          
+          // Queue patient notification for successful payment
+          const paymentId = paymentData ? paymentData[0]?.id : null;
+          if (paymentId && (patientEmail || patientPhone)) {
+            try {
+              // Create notification payload for patient
+              const patientPayload = {
+                clinic_id: clinicId,
+                payment_id: paymentId,
+                patient_name: patientName || 'Patient',
+                patient_email: patientEmail,
+                patient_phone: patientPhone,
+                payment_amount: amountInPounds,
+                payment_ref: paymentReference,
+                payment_type: 'success',
+                notification_type: 'payment_success'
+              };
+              
+              // Add to notification queue for patient
+              const { error: notifyError } = await supabase
+                .from("notification_queue")
+                .insert({
+                  type: 'payment_success',
+                  payload: patientPayload,
+                  payment_id: paymentId,
+                  recipient_type: 'patient'
+                });
+                
+              if (notifyError) {
+                console.error(`Error queueing patient notification: ${notifyError.message}`);
+              } else {
+                console.log(`Successfully queued payment success notification for patient`);
+              }
+              
+              // Queue clinic notification as well
+              const clinicPayload = {
+                clinic_id: clinicId,
+                payment_id: paymentId,
+                patient_name: patientName || 'Anonymous',
+                payment_amount: amountInPounds,
+                payment_ref: paymentReference,
+                payment_type: 'received',
+                notification_type: 'payment_received'
+              };
+              
+              const { error: clinicNotifyError } = await supabase
+                .from("notification_queue")
+                .insert({
+                  type: 'payment_success',
+                  payload: clinicPayload,
+                  payment_id: paymentId,
+                  recipient_type: 'clinic'
+                });
+                
+              if (clinicNotifyError) {
+                console.error(`Error queueing clinic notification: ${clinicNotifyError.message}`);
+              } else {
+                console.log(`Successfully queued payment notification for clinic`);
+              }
+            } catch (notifyErr) {
+              console.error(`Error in notification processing: ${notifyErr.message}`);
+              // Don't rethrow, just log the error - this shouldn't affect the main payment processing
             }
           }
         } catch (error) {

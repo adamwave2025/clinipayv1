@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -171,6 +172,49 @@ serve(async (req) => {
           status: 200,
         }
       );
+    }
+    
+    // Queue refund notification if we have patient contact information
+    try {
+      // Only send notification if we have contact information
+      if (payment.patient_email || payment.patient_phone) {
+        // Create payload for refund notification
+        const refundPayload = {
+          clinic_id: payment.clinic_id,
+          payment_id: paymentId,
+          patient_name: payment.patient_name || 'Patient',
+          patient_email: payment.patient_email,
+          patient_phone: payment.patient_phone,
+          payment_amount: payment.amount_paid,
+          refund_amount: refundAmountToStore,
+          payment_ref: payment.payment_ref,
+          is_full_refund: isFullRefund,
+          payment_type: isFullRefund ? 'refund' : 'partial_refund',
+          notification_type: 'payment_refund'
+        };
+        
+        // Add to notification queue
+        const { error: notifyError } = await supabase
+          .from("notification_queue")
+          .insert({
+            type: 'payment_refund',
+            payload: refundPayload,
+            payment_id: paymentId,
+            recipient_type: 'patient'
+          });
+          
+        if (notifyError) {
+          console.error(`❌ Error queueing refund notification: ${notifyError.message}`);
+          console.error("Error details:", JSON.stringify(notifyError));
+        } else {
+          console.log(`✅ Successfully queued refund notification for patient`);
+        }
+      } else {
+        console.log("⚠️ No patient contact information available for refund notification");
+      }
+    } catch (notifyErr) {
+      console.error(`❌ Error in refund notification processing: ${notifyErr.message}`);
+      // Don't rethrow, just log the error - this shouldn't affect the main refund processing
     }
 
     console.log(`✅ Refund process completed successfully`);

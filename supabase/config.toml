@@ -54,6 +54,9 @@ verify_jwt = false
 [functions.payment-intent-webhooks]
 verify_jwt = false
 
+[functions.process-notification-queue]
+verify_jwt = false
+
 [functions.refund-payment]
 verify_jwt = true
 
@@ -65,3 +68,4 @@ verify_jwt = false
 
 [functions.stripe-webhooks]
 verify_jwt = false
+
