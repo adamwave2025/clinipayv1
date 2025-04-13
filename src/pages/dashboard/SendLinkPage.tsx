@@ -206,12 +206,12 @@ const SendLinkPage = () => {
 
         console.log('Notification payload:', JSON.stringify(notificationPayload, null, 2));
 
-        // Add to notification queue - cast the payload to Json type to satisfy TypeScript
+        // Add to notification queue - properly convert to Json type using type assertion with unknown as intermediate step
         const { error: notifyError } = await supabase
           .from("notification_queue")
           .insert({
             type: 'payment_request',
-            payload: notificationPayload as Json,
+            payload: (notificationPayload as unknown) as Json,
             recipient_type: 'patient',
             status: 'pending'
           });
