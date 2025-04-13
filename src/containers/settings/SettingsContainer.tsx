@@ -31,9 +31,7 @@ const SettingsContainer = () => {
     isUploading,
     updateClinicData,
     uploadLogo,
-    deleteLogo,
-    toggleEmailNotifications,
-    toggleSmsNotifications
+    deleteLogo
   } = useClinicData();
 
   const handleTabChange = (value: string) => {
@@ -98,12 +96,7 @@ const SettingsContainer = () => {
         </TabsContent>
         
         <TabsContent value="notifications">
-          <NotificationSettings 
-            emailNotifications={clinicData?.email_notifications ?? true}
-            smsNotifications={clinicData?.sms_notifications ?? true}
-            onToggleEmailNotifications={toggleEmailNotifications}
-            onToggleSmsNotifications={toggleSmsNotifications}
-          />
+          <NotificationSettings />
         </TabsContent>
         
         <TabsContent value="security">

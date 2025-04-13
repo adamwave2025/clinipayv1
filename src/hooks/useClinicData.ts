@@ -115,30 +115,6 @@ export function useClinicData() {
     }
   };
 
-  const toggleEmailNotifications = async (enabled: boolean) => {
-    if (!clinicData) return false;
-
-    try {
-      const success = await updateClinicData({ email_notifications: enabled });
-      return success.success;
-    } catch (error) {
-      console.error('Error updating email notifications:', error);
-      return false;
-    }
-  };
-
-  const toggleSmsNotifications = async (enabled: boolean) => {
-    if (!clinicData) return false;
-
-    try {
-      const success = await updateClinicData({ sms_notifications: enabled });
-      return success.success;
-    } catch (error) {
-      console.error('Error updating SMS notifications:', error);
-      return false;
-    }
-  };
-
   useEffect(() => {
     fetchClinicData();
   }, [user]);
@@ -151,8 +127,6 @@ export function useClinicData() {
     fetchClinicData,
     updateClinicData,
     uploadLogo,
-    deleteLogo,
-    toggleEmailNotifications,
-    toggleSmsNotifications
+    deleteLogo
   };
 }
