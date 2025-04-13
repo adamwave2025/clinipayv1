@@ -78,7 +78,7 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
     console.log("Checking if clinic was created via trigger...");
     const { data: clinicData, error: clinicError } = await supabase
       .from('clinics')
-      .select('id')
+      .select('id, email_notifications, sms_notifications')
       .eq('email', email)
       .maybeSingle();
       
@@ -86,25 +86,9 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
       console.error("Error checking clinic:", clinicError);
     } else if (clinicData) {
       console.log(`Found clinic with ID ${clinicData.id} for email ${email}`);
+      console.log(`Clinic notification settings: email=${clinicData.email_notifications}, sms=${clinicData.sms_notifications}`);
     } else {
       console.log(`No clinic found for email ${email}, the trigger may not have run yet`);
-    }
-    
-    // Check notification preferences
-    console.log("Checking notification preferences...");
-    if (clinicData?.id) {
-      const { data: prefData, error: prefError } = await supabase
-        .from('notification_preferences')
-        .select('id, channel, type, enabled')
-        .eq('clinic_id', clinicData.id);
-        
-      if (prefError) {
-        console.error("Error checking notification preferences:", prefError);
-      } else if (prefData && prefData.length > 0) {
-        console.log(`Found ${prefData.length} notification preferences:`, prefData);
-      } else {
-        console.log("No notification preferences found, the trigger may not have completed");
-      }
     }
     
     // Forward the verification URL to the NEW_SIGN_UP webhook if configured

@@ -63,41 +63,6 @@ export type Database = {
         }
         Relationships: []
       }
-      notification_preferences: {
-        Row: {
-          channel: string | null
-          clinic_id: string | null
-          created_at: string | null
-          enabled: boolean | null
-          id: string
-          type: string | null
-        }
-        Insert: {
-          channel?: string | null
-          clinic_id?: string | null
-          created_at?: string | null
-          enabled?: boolean | null
-          id?: string
-          type?: string | null
-        }
-        Update: {
-          channel?: string | null
-          clinic_id?: string | null
-          created_at?: string | null
-          enabled?: boolean | null
-          id?: string
-          type?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notification_preferences_clinic_id_fkey"
-            columns: ["clinic_id"]
-            isOneToOne: false
-            referencedRelation: "clinics"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       payment_links: {
         Row: {
           amount: number | null
