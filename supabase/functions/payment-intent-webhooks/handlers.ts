@@ -8,6 +8,16 @@ export async function handlePaymentIntentSucceeded(paymentIntent: Stripe.Payment
   console.log("Processing payment_intent.succeeded:", paymentIntent.id);
   
   try {
+    // Log the webhook event start
+    await logWebhookEvent(
+      supabaseClient,
+      paymentIntent.id,
+      "payment_intent.succeeded",
+      "processing",
+      null,
+      { metadata: paymentIntent.metadata || {} }
+    );
+    
     // Validate payment intent data
     validatePaymentIntent(paymentIntent);
     
@@ -56,6 +66,14 @@ export async function handlePaymentIntentSucceeded(paymentIntent: Stripe.Payment
     if (checkError) {
       console.error("Error checking for existing payment:", checkError);
       handleDatabaseError(checkError, "checking existing payment");
+      await logWebhookEvent(
+        supabaseClient,
+        paymentIntent.id,
+        "payment_intent.succeeded",
+        "error",
+        `Database error checking for existing payment: ${checkError.message}`,
+        { error: checkError }
+      );
       throw new Error(`Database error checking for existing payment: ${checkError.message}`);
     }
     
@@ -67,107 +85,133 @@ export async function handlePaymentIntentSucceeded(paymentIntent: Stripe.Payment
         await updatePaymentRequest(supabaseClient, requestId, existingPayments[0].id);
       }
       
+      await logWebhookEvent(
+        supabaseClient,
+        paymentIntent.id,
+        "payment_intent.succeeded",
+        "skipped",
+        "Payment record already exists",
+        { paymentId: existingPayments[0]?.id }
+      );
       return;
     }
     
-    // Transaction block to handle payment record insertion
-    console.log("Starting transaction for payment record insertion");
+    // Try the simplest approach first - minimal payment insert using RPC function
     let paymentId = null;
     
-    // Try DB function first
     try {
-      console.log("Attempting to insert payment using database function");
+      console.log("Attempting minimal payment insert using RPC function");
       
-      // Use a direct RPC call to the function we created in the SQL migration
-      const { data: fnResult, error: fnError } = await supabaseClient.rpc(
-        "insert_payment_record",
+      const { data: minimalResult, error: minimalError } = await supabaseClient.rpc(
+        "minimal_payment_insert",
         {
           p_clinic_id: clinicId,
           p_amount_paid: amountInPounds,
-          p_patient_name: patientName || "Unknown",
-          p_patient_email: patientEmail || null,
-          p_patient_phone: patientPhone || null,
-          p_payment_link_id: paymentLinkId || null,
-          p_payment_ref: paymentReference,
           p_stripe_payment_id: paymentIntent.id
         }
       );
       
-      if (fnError) {
-        handleDatabaseError(fnError, "calling insert_payment_record function");
-        throw new Error(`Database function error: ${fnError.message}`);
+      if (minimalError) {
+        console.error("Minimal insert RPC error:", minimalError);
+        await logWebhookEvent(
+          supabaseClient,
+          paymentIntent.id,
+          "payment_intent.succeeded",
+          "error",
+          `Minimal insert RPC error: ${minimalError.message}`,
+          { error: minimalError }
+        );
+        throw minimalError;
       }
       
-      if (fnResult) {
-        paymentId = fnResult;
-        console.log(`Payment record created using DB function with ID: ${paymentId}`);
-      } else {
-        throw new Error("Database function returned no payment ID");
-      }
-    } catch (fnError) {
-      console.error("Database function approach failed:", fnError);
-      
-      // Fall back to direct insert
-      try {
-        console.log("Falling back to direct insert into payments table");
-        const { data: insertData, error: insertError } = await retryOperation(async () => {
-          return await supabaseClient
+      if (minimalResult) {
+        paymentId = minimalResult;
+        console.log(`Payment record created using minimal insert with ID: ${paymentId}`);
+        
+        // Now update the payment with additional details in a separate operation
+        try {
+          const { error: updateError } = await supabaseClient
             .from("payments")
-            .insert({
-              clinic_id: clinicId,
-              amount_paid: amountInPounds,
-              paid_at: new Date().toISOString(),
+            .update({
+              payment_ref: paymentReference,
               patient_name: patientName || "Unknown",
               patient_email: patientEmail || null,
               patient_phone: patientPhone || null,
-              payment_link_id: paymentLinkId || null,
-              payment_ref: paymentReference,
-              status: 'paid',
-              stripe_payment_id: paymentIntent.id
+              payment_link_id: paymentLinkId || null
             })
-            .select("id")
-            .single();
-        });
-        
-        if (insertError) {
-          handleDatabaseError(insertError, "direct payment insert");
-          throw new Error(`Direct insert error: ${insertError.message}`);
-        }
-        
-        paymentId = insertData?.id;
-        console.log(`Payment record created successfully with ID: ${paymentId}`);
-      } catch (insertError) {
-        console.error("Payment record insertion failed:", insertError);
-        console.log("Attempting minimal fallback insert...");
-        
-        // Last resort: Try with minimal fields
-        try {
-          const { data: minimalData, error: minimalError } = await retryOperation(async () => {
-            return await supabaseClient
-              .from("payments")
-              .insert({
-                clinic_id: clinicId,
-                amount_paid: amountInPounds,
-                status: 'paid',
-                stripe_payment_id: paymentIntent.id
-              })
-              .select("id")
-              .single();
-          });
-          
-          if (minimalError) {
-            handleDatabaseError(minimalError, "minimal payment insert");
-            console.error("All insertion attempts failed:", minimalError);
-            throw new Error(`Could not create payment record after multiple attempts: ${minimalError.message}`);
+            .eq("id", paymentId);
+            
+          if (updateError) {
+            console.warn("Warning: Could not update additional payment details:", updateError);
+            // Don't throw here, we already have the minimal record created
           }
-          
-          paymentId = minimalData?.id;
-          console.log(`Created minimal payment record with ID: ${paymentId}`);
-        } catch (finalError) {
-          console.error("Final fallback insertion also failed:", finalError);
-          // At this point we've tried everything, log the comprehensive error
-          throw new Error(`All payment record insertion methods failed: ${finalError.message}`);
+        } catch (updateErr) {
+          console.warn("Warning: Error updating payment details:", updateErr);
+          // We continue since we have a basic payment record
         }
+      } else {
+        console.error("Minimal insert returned no payment ID");
+        throw new Error("Minimal insert returned no payment ID");
+      }
+    } catch (minimalInsertError) {
+      console.error("Minimal payment insert failed:", minimalInsertError);
+      
+      // Fall back to direct insert with only essential fields
+      try {
+        console.log("Falling back to direct insert with minimal fields");
+        
+        const { data: directData, error: directError } = await supabaseClient
+          .from("payments")
+          .insert({
+            clinic_id: clinicId,
+            amount_paid: amountInPounds,
+            status: 'paid',
+            stripe_payment_id: paymentIntent.id,
+            paid_at: new Date().toISOString()
+          })
+          .select("id")
+          .single();
+          
+        if (directError) {
+          console.error("Direct insert error:", directError);
+          await logWebhookEvent(
+            supabaseClient,
+            paymentIntent.id,
+            "payment_intent.succeeded",
+            "error",
+            `Direct insert error: ${directError.message}`,
+            { error: directError }
+          );
+          throw directError;
+        }
+        
+        paymentId = directData?.id;
+        console.log(`Payment record created with direct insert, ID: ${paymentId}`);
+        
+        // Update with additional details as a separate operation
+        try {
+          await supabaseClient
+            .from("payments")
+            .update({
+              payment_ref: paymentReference,
+              patient_name: patientName || "Unknown"
+            })
+            .eq("id", paymentId);
+        } catch (updateErr) {
+          console.warn("Could not update additional payment details:", updateErr);
+          // Continue since we have the basic record
+        }
+      } catch (fallbackError) {
+        console.error("All payment insert methods failed:", fallbackError);
+        await logWebhookEvent(
+          supabaseClient,
+          paymentIntent.id,
+          "payment_intent.succeeded",
+          "failed",
+          `All payment insert methods failed: ${fallbackError.message}`,
+          { error: fallbackError }
+        );
+        throw new Error(`Failed to create payment record: ${fallbackError.message}`);
       }
     }
       
@@ -177,23 +221,33 @@ export async function handlePaymentIntentSucceeded(paymentIntent: Stripe.Payment
     }
 
     console.log("Payment processing completed successfully");
-    
-    // Additional verification to ensure payment was actually recorded
-    const { data: verifyPayment, error: verifyError } = await supabaseClient
-      .from("payments")
-      .select("id")
-      .eq("id", paymentId)
-      .single();
-      
-    if (verifyError || !verifyPayment) {
-      console.error("Payment verification failed after insert:", verifyError || "No payment found");
-    } else {
-      console.log("Payment record verified successfully:", verifyPayment.id);
-    }
+    await logWebhookEvent(
+      supabaseClient,
+      paymentIntent.id,
+      "payment_intent.succeeded",
+      "success",
+      null,
+      { paymentId }
+    );
     
   } catch (error) {
     console.error("Error processing payment intent:", error);
     console.error("Stack trace:", error.stack);
+    
+    // Log final error state
+    try {
+      await logWebhookEvent(
+        supabaseClient,
+        paymentIntent.id,
+        "payment_intent.succeeded",
+        "failed",
+        error.message,
+        { stack: error.stack }
+      );
+    } catch (logError) {
+      console.error("Failed to log webhook error:", logError);
+    }
+    
     throw error;
   }
 }
@@ -256,6 +310,16 @@ export async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentInt
   console.log("Processing payment_intent.payment_failed:", paymentIntent.id);
   
   try {
+    // Log the webhook event start
+    await logWebhookEvent(
+      supabaseClient,
+      paymentIntent.id,
+      "payment_intent.payment_failed",
+      "processing",
+      null,
+      { metadata: paymentIntent.metadata || {} }
+    );
+    
     // Extract metadata from the payment intent
     const metadata = paymentIntent.metadata || {};
     const { clinicId, requestId } = metadata;
@@ -337,9 +401,85 @@ export async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentInt
       }
     }
 
+    await logWebhookEvent(
+      supabaseClient,
+      paymentIntent.id,
+      "payment_intent.payment_failed",
+      "success",
+      failureMessage,
+      { 
+        failureCode,
+        requestId
+      }
+    );
+    
     console.log("Failed payment processing completed");
   } catch (error) {
     console.error("Error processing failed payment intent:", error);
-    // This is already an error handler, so we don't rethrow
+    
+    // Log final error state
+    try {
+      await logWebhookEvent(
+        supabaseClient,
+        paymentIntent.id,
+        "payment_intent.payment_failed",
+        "error",
+        error.message,
+        { stack: error.stack }
+      );
+    } catch (logError) {
+      console.error("Failed to log webhook error:", logError);
+    }
+  }
+}
+
+// Helper function to log webhook events to the database
+async function logWebhookEvent(
+  supabaseClient: any,
+  paymentIntentId: string,
+  eventType: string,
+  status: string,
+  errorMessage: string | null = null,
+  details: any = null
+) {
+  try {
+    // Try using the RPC function first
+    const { data, error } = await supabaseClient.rpc(
+      "log_payment_webhook",
+      {
+        p_event_id: null, // No event ID in this context
+        p_event_type: eventType,
+        p_payment_intent_id: paymentIntentId,
+        p_status: status,
+        p_error_message: errorMessage,
+        p_details: details ? JSON.stringify(details) : null
+      }
+    );
+    
+    if (error) {
+      console.error("Error logging webhook event using RPC:", error);
+      
+      // Fall back to direct insert
+      try {
+        const { error: insertError } = await supabaseClient
+          .from("payment_webhook_logs")
+          .insert({
+            event_type: eventType,
+            payment_intent_id: paymentIntentId,
+            status,
+            error_message: errorMessage,
+            details: details ? JSON.stringify(details) : null
+          });
+          
+        if (insertError) {
+          console.error("Error logging webhook event with direct insert:", insertError);
+        }
+      } catch (directError) {
+        console.error("Failed to log webhook event:", directError);
+      }
+    }
+  } catch (e) {
+    console.error("Exception logging webhook event:", e);
+    // Don't throw here, just log the error to console
   }
 }

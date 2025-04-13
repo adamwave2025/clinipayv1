@@ -32,6 +32,20 @@ serve(async (req) => {
     let supabaseClient;
     try {
       supabaseClient = await initSupabase();
+      
+      // Log the connection diagnostics
+      try {
+        const { data: diagnosticResult, error: diagnosticError } = await supabaseClient.rpc('check_db_connection');
+        
+        if (diagnosticError) {
+          console.error("Database diagnostic check failed:", diagnosticError);
+        } else {
+          console.log("Database connection check:", diagnosticResult || "Completed");
+        }
+      } catch (diagError) {
+        console.error("Error running database diagnostics:", diagError);
+      }
+      
     } catch (dbError) {
       console.error("Database connection error:", dbError.message);
       return new Response(
@@ -74,17 +88,52 @@ serve(async (req) => {
     // Initialize Stripe client
     const stripe = initStripe();
 
-    // Verify webhook signature ASYNCHRONOUSLY
+    // Verify webhook signature
     let event;
     try {
-      console.log("Verifying Stripe signature asynchronously...");
+      console.log("Verifying Stripe signature...");
       // Use constructEventAsync instead of constructEvent
       event = await stripe.webhooks.constructEventAsync(body, signature, stripeWebhookSecret);
       console.log("Signature verification successful");
+      
+      // Log the successful event to the database
+      try {
+        await supabaseClient.rpc(
+          "log_payment_webhook",
+          {
+            p_event_id: event.id,
+            p_event_type: event.type,
+            p_payment_intent_id: event.data?.object?.id || null,
+            p_status: "received",
+            p_details: JSON.stringify({
+              created: event.created,
+              webhookReceived: new Date().toISOString()
+            })
+          }
+        );
+      } catch (logError) {
+        console.error("Error logging webhook event receipt:", logError);
+      }
+      
     } catch (err) {
       console.error(`Webhook signature verification failed: ${err.message}`);
       console.error("Signature provided:", signature.substring(0, 20) + "...");
       console.error("Webhook secret length:", stripeWebhookSecret.length);
+      
+      // Log the failed verification
+      try {
+        await supabaseClient.from("payment_webhook_logs").insert({
+          event_type: "verification_failed",
+          status: "error",
+          error_message: err.message,
+          details: JSON.stringify({
+            signatureLength: signature.length,
+            bodyPreview: body.substring(0, 100) + "..."
+          })
+        });
+      } catch (logError) {
+        console.error("Failed to log verification error:", logError);
+      }
       
       return new Response(
         JSON.stringify({ 
@@ -143,12 +192,45 @@ serve(async (req) => {
           }
         } else {
           console.log(`Ignoring event type: ${event.type}`);
+          
+          // Log skipped event
+          try {
+            await supabaseClient.rpc(
+              "log_payment_webhook",
+              {
+                p_event_id: event.id,
+                p_event_type: event.type,
+                p_payment_intent_id: event.data?.object?.id || null,
+                p_status: "skipped",
+                p_error_message: "Unsupported event type"
+              }
+            );
+          } catch (logError) {
+            console.error("Error logging skipped event:", logError);
+          }
         }
         
         console.log(`Webhook processing completed for event: ${event.id}`);
       } catch (error) {
         console.error(`Background webhook processing error: ${error.message}`);
         console.error("Stack trace:", error.stack);
+        
+        // Log processing error
+        try {
+          await supabaseClient.rpc(
+            "log_payment_webhook",
+            {
+              p_event_id: event.id,
+              p_event_type: event.type,
+              p_payment_intent_id: event.data?.object?.id || null,
+              p_status: "error",
+              p_error_message: error.message,
+              p_details: JSON.stringify({ stack: error.stack })
+            }
+          );
+        } catch (logError) {
+          console.error("Error logging processing error:", logError);
+        }
       }
     })();
 
@@ -165,6 +247,27 @@ serve(async (req) => {
   } catch (error) {
     console.error(`Webhook error: ${error.message}`);
     console.error(`Stack trace: ${error.stack}`);
+    
+    // Log top-level error
+    try {
+      const supabase = await initSupabase();
+      await supabase.rpc(
+        "log_payment_webhook",
+        {
+          p_event_id: null,
+          p_event_type: "webhook_error",
+          p_payment_intent_id: null,
+          p_status: "error",
+          p_error_message: error.message,
+          p_details: JSON.stringify({ 
+            stack: error.stack ? error.stack.split('\n').slice(0, 3).join('\n') : 'No stack trace available',
+            time: new Date().toISOString()
+          })
+        }
+      );
+    } catch (logError) {
+      console.error("Failed to log top-level error:", logError);
+    }
     
     // Provide detailed error response
     return new Response(
