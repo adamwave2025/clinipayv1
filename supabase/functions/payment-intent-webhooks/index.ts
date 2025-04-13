@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders, initStripe, initSupabase, safeLog } from "./utils.ts";
+import { corsHeaders, initStripe, initSupabase, safeLog, checkEnvironment } from "./utils.ts";
 import { handlePaymentIntentSucceeded, handlePaymentIntentFailed } from "./handlers.ts";
 
 serve(async (req) => {
@@ -10,19 +10,42 @@ serve(async (req) => {
   }
 
   try {
-    // Log the request for debugging
+    // Start with extensive diagnostics and environment checks
     console.log(`Payment intent webhook received at ${new Date().toISOString()}`);
     console.log(`Request method: ${req.method}`);
+    console.log(`Request URL: ${req.url}`);
+    console.log(`Request headers: ${Array.from(req.headers.keys()).join(', ')}`);
     
-    // Initialize Supabase client
-    const supabaseClient = initSupabase();
+    // Verify environment configuration
+    try {
+      checkEnvironment();
+      console.log("Environment checks passed");
+    } catch (envError) {
+      console.error("Environment configuration error:", envError.message);
+      return new Response(
+        JSON.stringify({ error: "Server configuration error", details: envError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Initialize Supabase client - this will test the connection
+    let supabaseClient;
+    try {
+      supabaseClient = await initSupabase();
+    } catch (dbError) {
+      console.error("Database connection error:", dbError.message);
+      return new Response(
+        JSON.stringify({ error: "Database connection error", details: dbError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Get the stripe webhook secret
     const stripeWebhookSecret = Deno.env.get("STRIPE_INTENT_SECRET");
     if (!stripeWebhookSecret) {
       console.error("Missing STRIPE_INTENT_SECRET");
       return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
+        JSON.stringify({ error: "Server configuration error", details: "Missing webhook secret" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -32,7 +55,7 @@ serve(async (req) => {
     if (!signature) {
       console.error("Missing stripe-signature header");
       return new Response(
-        JSON.stringify({ error: "Missing stripe signature" }),
+        JSON.stringify({ error: "Missing stripe signature", details: "The request is missing the stripe-signature header" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -40,6 +63,13 @@ serve(async (req) => {
     // Get the request body for webhook verification
     const body = await req.text();
     console.log(`Request body received, length: ${body.length} characters`);
+    if (body.length < 10) {
+      console.error("Request body is suspiciously short:", body);
+      return new Response(
+        JSON.stringify({ error: "Invalid webhook payload", details: "Request body is too short" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     // Initialize Stripe client
     const stripe = initStripe();
@@ -53,8 +83,16 @@ serve(async (req) => {
       console.log("Signature verification successful");
     } catch (err) {
       console.error(`Webhook signature verification failed: ${err.message}`);
+      console.error("Signature provided:", signature.substring(0, 20) + "...");
+      console.error("Webhook secret length:", stripeWebhookSecret.length);
+      
       return new Response(
-        JSON.stringify({ error: `Webhook signature verification failed: ${err.message}` }),
+        JSON.stringify({ 
+          error: `Webhook signature verification failed`,
+          details: err.message,
+          signatureLength: signature.length,
+          bodyPreview: body.substring(0, 100) + "..." 
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -86,11 +124,23 @@ serve(async (req) => {
 
         // Handle the event based on its type
         if (event.type === "payment_intent.succeeded") {
-          await handlePaymentIntentSucceeded(event.data.object, supabaseClient);
-          console.log(`Successfully processed payment_intent.succeeded for ${event.data.object.id}`);
+          try {
+            await handlePaymentIntentSucceeded(event.data.object, supabaseClient);
+            console.log(`Successfully processed payment_intent.succeeded for ${event.data.object.id}`);
+          } catch (handlerError) {
+            console.error(`Error in payment_intent.succeeded handler: ${handlerError.message}`);
+            console.error(handlerError.stack);
+            // We don't rethrow here to prevent retries if there's a persistent issue
+          }
         } else if (event.type === "payment_intent.payment_failed") {
-          await handlePaymentIntentFailed(event.data.object, supabaseClient);
-          console.log(`Successfully processed payment_intent.payment_failed for ${event.data.object.id}`);
+          try {
+            await handlePaymentIntentFailed(event.data.object, supabaseClient);
+            console.log(`Successfully processed payment_intent.payment_failed for ${event.data.object.id}`);
+          } catch (handlerError) {
+            console.error(`Error in payment_intent.payment_failed handler: ${handlerError.message}`);
+            console.error(handlerError.stack);
+            // We don't rethrow here to prevent retries if there's a persistent issue
+          }
         } else {
           console.log(`Ignoring event type: ${event.type}`);
         }
@@ -115,8 +165,15 @@ serve(async (req) => {
   } catch (error) {
     console.error(`Webhook error: ${error.message}`);
     console.error(`Stack trace: ${error.stack}`);
+    
+    // Provide detailed error response
     return new Response(
-      JSON.stringify({ error: `Webhook error: ${error.message}` }),
+      JSON.stringify({ 
+        error: `Webhook processing error`,
+        message: error.message,
+        stack: error.stack ? error.stack.split('\n').slice(0, 3).join('\n') : 'No stack trace available',
+        time: new Date().toISOString()
+      }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

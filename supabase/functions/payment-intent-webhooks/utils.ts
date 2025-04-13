@@ -14,33 +14,59 @@ export function generatePaymentReference() {
   return `PAY-${timestamp.substring(timestamp.length - 4)}-${randomPart}`;
 }
 
-// Initialize a Stripe client
+// Initialize a Stripe client with better error handling
 export function initStripe() {
   const secretKey = Deno.env.get("SECRET_KEY");
   if (!secretKey) {
-    throw new Error("Missing Stripe secret key");
+    const error = new Error("Missing Stripe secret key");
+    console.error(error.message);
+    throw error;
   }
   
-  return new Stripe(secretKey, {
-    apiVersion: "2023-10-16",
-  });
+  try {
+    return new Stripe(secretKey, {
+      apiVersion: "2023-10-16",
+    });
+  } catch (error) {
+    console.error("Failed to initialize Stripe client:", error);
+    throw new Error(`Stripe initialization failed: ${error.message}`);
+  }
 }
 
-// Initialize a Supabase client
-export function initSupabase() {
+// Initialize a Supabase client with connection testing
+export async function initSupabase() {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   
   if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error("Missing Supabase credentials");
+    const error = new Error("Missing Supabase credentials");
+    console.error(error.message);
+    throw error;
   }
   
-  return createClient(supabaseUrl, supabaseServiceKey);
+  try {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Test the connection
+    const { data, error } = await supabase.from("system_settings").select("key").limit(1);
+    
+    if (error) {
+      console.error("Supabase connection test failed:", error);
+      throw new Error(`Database connection error: ${error.message}`);
+    }
+    
+    console.log("Supabase connection successful:", data ? "Data returned" : "No data returned but query succeeded");
+    return supabase;
+  } catch (error) {
+    console.error("Failed to initialize Supabase client:", error);
+    throw new Error(`Supabase initialization failed: ${error.message}`);
+  }
 }
 
 // Function to safely convert amount from cents to the appropriate decimal value
 export function convertCentsToCurrency(amountInCents) {
   if (typeof amountInCents !== 'number') {
+    console.warn(`Invalid amount provided: ${amountInCents}, type: ${typeof amountInCents}`);
     return 0;
   }
   
@@ -65,7 +91,7 @@ export function safeLog(label, obj) {
   }
 }
 
-// Function to execute an operation with retries
+// Function to execute an operation with retries and exponential backoff
 export async function retryOperation(operation, maxRetries = 3, delayMs = 1000) {
   let lastError;
   
@@ -86,4 +112,63 @@ export async function retryOperation(operation, maxRetries = 3, delayMs = 1000) 
   }
   
   throw lastError;
+}
+
+// Function to validate payment intent data
+export function validatePaymentIntent(paymentIntent) {
+  if (!paymentIntent) {
+    throw new Error("Payment intent is null or undefined");
+  }
+  
+  if (!paymentIntent.id) {
+    throw new Error("Payment intent missing ID");
+  }
+  
+  if (!paymentIntent.metadata || !paymentIntent.metadata.clinicId) {
+    throw new Error("Payment intent missing required metadata: clinicId");
+  }
+  
+  if (typeof paymentIntent.amount !== 'number') {
+    throw new Error(`Invalid amount in payment intent: ${paymentIntent.amount}`);
+  }
+  
+  return true;
+}
+
+// Helper to check if environment is properly configured
+export function checkEnvironment() {
+  const requiredEnvVars = [
+    "SECRET_KEY",
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "STRIPE_INTENT_SECRET"
+  ];
+  
+  const missing = requiredEnvVars.filter(v => !Deno.env.get(v));
+  
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+  
+  return true;
+}
+
+// Function to handle database errors with detailed logging
+export function handleDatabaseError(error, context) {
+  const errorDetails = {
+    message: error.message,
+    code: error.code,
+    details: error.details,
+    hint: error.hint,
+    context
+  };
+  
+  console.error(`Database error in ${context}:`, JSON.stringify(errorDetails, null, 2));
+  
+  // Add additional diagnostic info if available
+  if (error.stack) {
+    console.error("Stack trace:", error.stack);
+  }
+  
+  return errorDetails;
 }
