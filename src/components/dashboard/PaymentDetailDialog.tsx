@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Dialog,
@@ -93,19 +92,17 @@ const PaymentDetailDialog = ({
               <div className="text-sm text-gray-600 mb-3">{payment.description}</div>
             )}
             
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-              <div className="col-span-1">
-                <span className="text-gray-500">Source Type:</span>
+            {/* Simplified source information */}
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Method:</span>
+                <span className="font-medium">
+                  {payment.isCustomAmount ? 'Custom Amount Request' : 'Payment Link'}
+                </span>
               </div>
-              <div className="col-span-1 font-medium">
-                {payment.isCustomAmount ? 'Custom Amount Request' : 'Payment Link'}
-              </div>
-              
-              <div className="col-span-1">
-                <span className="text-gray-500">Payment Type:</span>
-              </div>
-              <div className="col-span-1 font-medium">
-                {capitalizedType}
+              <div className="flex justify-between">
+                <span className="text-gray-600">Type:</span>
+                <span className="font-medium">{capitalizedType}</span>
               </div>
             </div>
           </div>
