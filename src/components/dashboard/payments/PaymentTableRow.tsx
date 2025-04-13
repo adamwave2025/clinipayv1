@@ -16,9 +16,9 @@ const PaymentTableRow = ({ payment, onClick }: PaymentTableRowProps) => {
       onClick={onClick}
     >
       <td className="py-4 pl-2 pr-3">
-        <div className="font-medium text-gray-900">{payment.patientName}</div>
+        <div className="font-medium text-gray-900 truncate max-w-[180px]">{payment.patientName}</div>
         {payment.patientEmail && (
-          <div className="text-xs text-gray-500">{payment.patientEmail}</div>
+          <div className="text-xs text-gray-500 truncate max-w-[180px]">{payment.patientEmail}</div>
         )}
       </td>
       <td className="py-4 px-3 font-medium">
@@ -36,7 +36,7 @@ const PaymentTableRow = ({ payment, onClick }: PaymentTableRowProps) => {
           )}
         </div>
       </td>
-      <td className="py-4 px-3 font-mono text-sm text-gray-600">
+      <td className="py-4 px-3 font-mono text-sm text-gray-600 truncate max-w-[140px]">
         {payment.reference || '-'}
       </td>
       <td className="py-4 px-3 text-gray-700">

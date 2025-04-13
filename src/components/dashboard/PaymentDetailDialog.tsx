@@ -47,7 +47,7 @@ const PaymentDetailDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-xl md:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Payment Details</DialogTitle>
           <DialogDescription>
@@ -55,32 +55,32 @@ const PaymentDetailDialog = ({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+            <div className="col-span-2 sm:col-span-1">
               <h4 className="text-sm font-medium text-gray-500">Patient</h4>
-              <p className="mt-1 font-medium">{payment.patientName}</p>
+              <p className="mt-1 font-medium truncate">{payment.patientName}</p>
             </div>
-            <div>
+            <div className="col-span-2 sm:col-span-1">
               <h4 className="text-sm font-medium text-gray-500">Amount</h4>
               <p className="mt-1 font-medium">{formatCurrency(payment.amount)}</p>
             </div>
-            <div>
+            <div className="col-span-2 sm:col-span-1">
               <h4 className="text-sm font-medium text-gray-500">Email</h4>
-              <p className="mt-1">{payment.patientEmail || 'Not provided'}</p>
+              <p className="mt-1 truncate">{payment.patientEmail || 'Not provided'}</p>
             </div>
-            <div>
+            <div className="col-span-2 sm:col-span-1">
               <h4 className="text-sm font-medium text-gray-500">Phone</h4>
-              <p className="mt-1">{payment.patientPhone || 'Not provided'}</p>
+              <p className="mt-1 truncate">{payment.patientPhone || 'Not provided'}</p>
             </div>
-            <div>
+            <div className="col-span-1">
               <h4 className="text-sm font-medium text-gray-500">Date</h4>
               <p className="mt-1">{payment.date}</p>
             </div>
-            <div>
+            <div className="col-span-1">
               <h4 className="text-sm font-medium text-gray-500">Type</h4>
               <p className="mt-1">{capitalizedType}</p>
             </div>
-            <div>
+            <div className="col-span-1">
               <h4 className="text-sm font-medium text-gray-500">Status</h4>
               <StatusBadge status={payment.status} className="mt-1" />
             </div>
@@ -97,16 +97,18 @@ const PaymentDetailDialog = ({
             </div>
           )}
           
-          {/* Show refund information for both full and partial refunds */}
+          {/* Show refund information for partially_refunded and refunded statuses */}
           {(payment.status === 'partially_refunded' || payment.status === 'refunded') && payment.refundedAmount && (
-            <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
-              <h4 className="text-sm font-medium text-blue-700 mb-1">Refund Details</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="mt-4 bg-blue-50 p-4 rounded-md border border-blue-200">
+              <h4 className="text-sm font-medium text-blue-700 mb-2">Refund Details</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-600">Refunded Amount:</span>
                 </div>
                 <div>
-                  <span className="font-medium">{formatCurrency(payment.refundedAmount)}</span>
+                  <span className="font-medium">
+                    {formatCurrency(payment.refundedAmount)}
+                  </span>
                 </div>
                 
                 {payment.status === 'partially_refunded' && (
@@ -127,7 +129,7 @@ const PaymentDetailDialog = ({
           
           {/* Only show refund button for paid payments (not already refunded) */}
           {payment.status === 'paid' && onRefund && (
-            <div className="flex justify-end">
+            <div className="flex justify-end mt-4">
               <Button 
                 variant="outline" 
                 onClick={handleRefund}
