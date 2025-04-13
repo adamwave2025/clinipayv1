@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Payment, PaymentLink } from '@/types/payment';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { formatDate } from '@/utils/formatters';
 
 export function usePayments() {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -47,20 +48,25 @@ export function usePayments() {
       if (requestsError) throw requestsError;
 
       // Format completed payments
-      const formattedPayments: Payment[] = paymentsData.map(payment => ({
-        id: payment.id,
-        patientName: payment.patient_name || 'Unknown Patient',
-        patientEmail: payment.patient_email,
-        patientPhone: payment.patient_phone || undefined,
-        amount: payment.amount_paid || 0,
-        date: new Date(payment.paid_at || Date.now()).toLocaleDateString(),
-        status: payment.status as any || 'paid',
-        type: 'consultation', // Default type
-        reference: payment.payment_ref || undefined, // Add payment reference
-        // Include refundedAmount for both partially_refunded and refunded statuses
-        ...(payment.status === 'partially_refunded' && { refundedAmount: payment.refund_amount || 0 }),
-        ...(payment.status === 'refunded' && { refundedAmount: payment.refund_amount || 0 })
-      }));
+      const formattedPayments: Payment[] = paymentsData.map(payment => {
+        // Format the date correctly using our utility function
+        const paidDate = payment.paid_at ? new Date(payment.paid_at) : new Date();
+        
+        return {
+          id: payment.id,
+          patientName: payment.patient_name || 'Unknown Patient',
+          patientEmail: payment.patient_email,
+          patientPhone: payment.patient_phone || undefined,
+          amount: payment.amount_paid || 0,
+          date: formatDate(paidDate),
+          status: payment.status as any || 'paid',
+          type: 'consultation', // Default type
+          reference: payment.payment_ref || undefined, // Add payment reference
+          // Include refundedAmount for both partially_refunded and refunded statuses
+          ...(payment.status === 'partially_refunded' && { refundedAmount: payment.refund_amount || 0 }),
+          ...(payment.status === 'refunded' && { refundedAmount: payment.refund_amount || 0 })
+        };
+      });
 
       // Format payment requests as "sent" payments
       const formattedRequests: Payment[] = requestsData.map(request => {
@@ -75,9 +81,9 @@ export function usePayments() {
             amount = paymentLink.amount;
           }
         }
-
-        // Create payment URL for testing
-        const paymentUrl = `${window.location.origin}/payment/${request.id}`;
+        
+        // Ensure we have a valid date for sent_at
+        const sentDate = request.sent_at ? new Date(request.sent_at) : new Date();
 
         return {
           id: request.id,
@@ -85,17 +91,20 @@ export function usePayments() {
           patientEmail: request.patient_email,
           patientPhone: request.patient_phone || undefined,
           amount: amount,
-          date: new Date(request.sent_at || Date.now()).toLocaleDateString(),
+          date: formatDate(sentDate),
           status: 'sent',
           type: 'consultation', // Default type
-          paymentUrl: paymentUrl, // Add payment URL for testing
         };
       });
 
       // Combine both lists
       const allPayments = [...formattedPayments, ...formattedRequests];
-      // Sort by date (newest first)
-      allPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      // Sort by date (newest first) - using actual Date objects for comparison
+      allPayments.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateB.getTime() - dateA.getTime();
+      });
       
       setPayments(allPayments);
     } catch (error) {

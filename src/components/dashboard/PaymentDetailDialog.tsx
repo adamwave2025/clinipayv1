@@ -11,9 +11,8 @@ import { Button } from '@/components/ui/button';
 import StatusBadge from '../common/StatusBadge';
 import { Payment } from '@/types/payment';
 import { capitalizeFirstLetter, formatCurrency } from '@/utils/formatters';
-import { Copy, ExternalLink } from 'lucide-react';
-import { toast } from 'sonner';
 import PaymentReferenceDisplay from '../payment/PaymentReferenceDisplay';
+import { toast } from 'sonner';
 
 interface PaymentDetailDialogProps {
   payment: Payment | null;
@@ -36,19 +35,6 @@ const PaymentDetailDialog = ({
   const handleRefund = () => {
     if (onRefund && payment.status === 'paid') {
       onRefund(payment.id);
-    }
-  };
-
-  const handleCopyLink = () => {
-    if (payment.paymentUrl) {
-      navigator.clipboard.writeText(payment.paymentUrl);
-      toast.success('Payment link copied to clipboard');
-    }
-  };
-
-  const handleOpenLink = () => {
-    if (payment.paymentUrl) {
-      window.open(payment.paymentUrl, '_blank');
     }
   };
 
@@ -135,33 +121,6 @@ const PaymentDetailDialog = ({
                     </div>
                   </>
                 )}
-              </div>
-            </div>
-          )}
-          
-          {payment.status === 'sent' && payment.paymentUrl && (
-            <div className="bg-gray-50 p-3 rounded-md mt-4">
-              <h4 className="text-sm font-medium text-gray-500 mb-2">Payment Link (for testing)</h4>
-              <div className="flex items-center p-2 bg-white rounded border">
-                <span className="text-sm text-gray-600 truncate flex-1">
-                  {payment.paymentUrl}
-                </span>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={handleCopyLink}
-                  className="ml-2"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={handleOpenLink}
-                  className="ml-1"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
               </div>
             </div>
           )}
