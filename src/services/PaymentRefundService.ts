@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Payment } from '@/types/payment';
 import { formatCurrency } from '@/utils/formatters';
 import { processNotificationsNow } from '@/utils/notification-cron-setup';
+import { Json } from '@/integrations/supabase/types';
 
 export const PaymentRefundService = {
   async processRefund(paymentId: string, amount?: number): Promise<{ success: boolean; status?: string; error?: string }> {

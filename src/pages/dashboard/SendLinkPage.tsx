@@ -29,6 +29,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
 import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
 import { processNotificationsNow, setupNotificationCron } from '@/utils/notification-cron-setup';
+import { Json } from '@/integrations/supabase/types';
 
 const SendLinkPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -205,12 +206,12 @@ const SendLinkPage = () => {
 
         console.log('Notification payload:', JSON.stringify(notificationPayload, null, 2));
 
-        // Add to notification queue
+        // Add to notification queue - cast the payload to Json type to satisfy TypeScript
         const { error: notifyError } = await supabase
           .from("notification_queue")
           .insert({
             type: 'payment_request',
-            payload: notificationPayload,
+            payload: notificationPayload as Json,
             recipient_type: 'patient',
             status: 'pending'
           });
