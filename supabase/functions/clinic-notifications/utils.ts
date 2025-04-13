@@ -31,6 +31,7 @@ export async function retryOperation<T>(
       attempt++;
       
       if (attempt >= maxRetries) {
+        console.error(`Max retry attempts (${maxRetries}) reached for operation.`, error);
         throw error;
       }
       
@@ -51,30 +52,36 @@ export async function findPaymentRecord(
   supabaseClient: any
 ) {
   console.log(`Finding payment record with ID: ${paymentId}`);
-  const { data, error } = await supabaseClient
-    .from("payments")
-    .select(`
-      *,
-      clinics:clinic_id (
-        clinic_name,
-        email,
-        phone,
-        email_notifications,
-        sms_notifications
-      )
-    `)
-    .eq("id", paymentId)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabaseClient
+      .from("payments")
+      .select(`
+        *,
+        clinics:clinic_id (
+          clinic_name,
+          email,
+          phone,
+          email_notifications,
+          sms_notifications
+        )
+      `)
+      .eq("id", paymentId)
+      .maybeSingle();
+      
+    if (error) {
+      console.error("Error fetching payment record:", error);
+      throw new Error(`Failed to fetch payment: ${error.message}`);
+    }
     
-  if (error) {
-    console.error("Error fetching payment record:", error);
-    throw new Error(`Failed to fetch payment: ${error.message}`);
+    if (!data) {
+      console.error(`No payment found with ID: ${paymentId}`);
+      throw new Error(`No payment found with ID: ${paymentId}`);
+    }
+    
+    console.log(`Successfully retrieved payment with ID: ${paymentId}`, data);
+    return data;
+  } catch (error) {
+    console.error(`Error in findPaymentRecord for ID ${paymentId}:`, error);
+    throw error;
   }
-  
-  if (!data) {
-    console.error(`No payment found with ID: ${paymentId}`);
-    throw new Error(`No payment found with ID: ${paymentId}`);
-  }
-  
-  return data;
 }

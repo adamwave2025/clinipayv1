@@ -4,13 +4,14 @@ import { handleNotification } from "./handlers.ts";
 import { corsHeaders } from "./config.ts";
 
 serve(async (req) => {
+  console.log("Clinic notification function called at:", new Date().toISOString());
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log("Clinic notification function called at:", new Date().toISOString());
     return await handleNotification(req);
   } catch (error) {
     console.error("Unhandled error in clinic notification function:", error);
