@@ -6,9 +6,16 @@ import { Json } from '@/integrations/supabase/types';
 /**
  * Utility function to add a notification to the queue with better error handling
  */
-export async function addToNotificationQueue(type: string, payload: StandardNotificationPayload, recipientType: string, paymentId?: string) {
+export async function addToNotificationQueue(
+  type: string, 
+  payload: StandardNotificationPayload, 
+  recipientType: string, 
+  clinicId: string,
+  paymentId?: string
+) {
   console.log(`Adding ${recipientType} notification to queue: ${type}`, payload);
   console.log(`Payload structure details:`, JSON.stringify(payload, null, 2));
+  console.log(`Using clinic_id: ${clinicId}`);
   
   try {
     // Check if system webhooks are configured 
@@ -54,6 +61,7 @@ export async function addToNotificationQueue(type: string, payload: StandardNoti
         type,
         payload: payload as unknown as Json,
         recipient_type: recipientType,
+        clinic_id: clinicId,
         payment_id: paymentId,
         status: 'pending'
       })
