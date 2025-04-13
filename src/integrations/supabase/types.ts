@@ -57,6 +57,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_queue: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          payload: Json
+          payment_id: string | null
+          processed_at: string | null
+          recipient_type: string
+          retry_count: number | null
+          status: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          payload: Json
+          payment_id?: string | null
+          processed_at?: string | null
+          recipient_type: string
+          retry_count?: number | null
+          status?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          payload?: Json
+          payment_id?: string | null
+          processed_at?: string | null
+          recipient_type?: string
+          retry_count?: number | null
+          status?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
       payment_links: {
         Row: {
           amount: number | null
