@@ -39,7 +39,7 @@ const PaymentTableRow = ({ payment, onClick }: PaymentTableRowProps) => {
       <td className="py-4 px-3 font-mono text-sm text-gray-600 truncate max-w-[140px]">
         {payment.reference || '-'}
       </td>
-      <td className="py-4 px-3 text-gray-700">
+      <td className="py-4 px-3 text-gray-700 truncate max-w-[100px]">
         {capitalizeFirstLetter(payment.type)}
       </td>
       <td className="py-4 px-3 text-gray-500">

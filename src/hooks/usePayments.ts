@@ -28,19 +28,25 @@ export function usePayments() {
       if (userError) throw userError;
       if (!userData.clinic_id) return;
 
-      // Fetch completed payments
+      // Fetch completed payments with payment_link_id
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
-        .select('*')
+        .select(`
+          *,
+          payment_links(type)
+        `)
         .eq('clinic_id', userData.clinic_id)
         .order('paid_at', { ascending: false });
 
       if (paymentsError) throw paymentsError;
 
-      // Fetch sent payment requests
+      // Fetch sent payment requests with payment_link_id
       const { data: requestsData, error: requestsError } = await supabase
         .from('payment_requests')
-        .select('*')
+        .select(`
+          *,
+          payment_links(type)
+        `)
         .eq('clinic_id', userData.clinic_id)
         .is('paid_at', null) // Only get unpaid/sent requests
         .order('sent_at', { ascending: false });
@@ -52,6 +58,18 @@ export function usePayments() {
         // Format the date correctly using our utility function
         const paidDate = payment.paid_at ? new Date(payment.paid_at) : new Date();
         
+        // Determine the payment type
+        let paymentType: Payment['type'] = 'consultation'; // Default type
+        
+        // If linked to a payment link, use that type
+        if (payment.payment_links && payment.payment_links.type) {
+          const linkType = payment.payment_links.type;
+          // Ensure type is one of the allowed values
+          if (['deposit', 'treatment', 'consultation', 'other'].includes(linkType)) {
+            paymentType = linkType as Payment['type'];
+          }
+        }
+        
         return {
           id: payment.id,
           patientName: payment.patient_name || 'Unknown Patient',
@@ -60,7 +78,7 @@ export function usePayments() {
           amount: payment.amount_paid || 0,
           date: formatDate(paidDate),
           status: payment.status as any || 'paid',
-          type: 'consultation', // Default type
+          type: paymentType,
           reference: payment.payment_ref || undefined, // Add payment reference
           // Include refundedAmount for both partially_refunded and refunded statuses
           ...(payment.status === 'partially_refunded' && { refundedAmount: payment.refund_amount || 0 }),
@@ -82,6 +100,20 @@ export function usePayments() {
           }
         }
         
+        // Determine payment type
+        let paymentType: Payment['type'] = 'other'; // Default fallback
+        
+        if (request.custom_amount && !request.payment_link_id) {
+          // It's a custom payment request
+          paymentType = 'other';
+        } else if (request.payment_links && request.payment_links.type) {
+          // It's a payment link-based request, use the link's type
+          const linkType = request.payment_links.type;
+          if (['deposit', 'treatment', 'consultation', 'other'].includes(linkType)) {
+            paymentType = linkType as Payment['type'];
+          }
+        }
+        
         // Ensure we have a valid date for sent_at
         const sentDate = request.sent_at ? new Date(request.sent_at) : new Date();
 
@@ -93,7 +125,7 @@ export function usePayments() {
           amount: amount,
           date: formatDate(sentDate),
           status: 'sent',
-          type: 'consultation', // Default type
+          type: paymentType,
         };
       });
 
