@@ -50,31 +50,41 @@ serve(async (req) => {
     const body = await req.text();
     console.log(`Request body received, length: ${body.length} characters`);
     
-    // Process the webhook asynchronously as a background task
-    // This ensures we return a response quickly to Stripe
-    const processWebhook = async () => {
+    // First try to validate the signature right away to return a quick response
+    const stripeSecretKey = Deno.env.get("SECRET_KEY");
+    if (!stripeSecretKey) {
+      throw new Error("Missing Stripe secret key");
+    }
+    
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: "2023-10-16",
+    });
+
+    // Verify webhook signature
+    let event;
+    try {
+      console.log("Verifying Stripe signature...");
+      event = stripe.webhooks.constructEvent(body, signature, stripeWebhookSecret);
+      console.log("Signature verification successful");
+    } catch (err) {
+      console.error(`Webhook signature verification failed: ${err.message}`);
+      return new Response(
+        JSON.stringify({ error: `Webhook signature verification failed: ${err.message}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Return a success response immediately but continue processing in the background
+    // Use a more reliable approach for background processing
+    const responsePromise = new Response(
+      JSON.stringify({ received: true }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+    // Process the webhook event
+    const processPromise = (async () => {
       try {
-        const stripeSecretKey = Deno.env.get("SECRET_KEY");
-        if (!stripeSecretKey) {
-          throw new Error("Missing Stripe secret key");
-        }
-        
-        const stripe = new Stripe(stripeSecretKey, {
-          apiVersion: "2023-10-16",
-        });
-
-        // Verify webhook signature
-        let event;
-        try {
-          console.log("Verifying Stripe signature...");
-          event = await stripe.webhooks.constructEventAsync(body, signature, stripeWebhookSecret);
-          console.log("Signature verification successful");
-        } catch (err) {
-          console.error(`Webhook signature verification failed: ${err.message}`);
-          return;
-        }
-
-        console.log(`Processing background webhook event: ${event.type}`);
+        console.log(`Processing webhook event: ${event.type}`);
         console.log(`Event ID: ${event.id}`);
 
         // Handle the event based on its type
@@ -91,25 +101,18 @@ serve(async (req) => {
         console.error(`Background webhook processing error: ${error.message}`);
         console.error("Stack trace:", error.stack);
       }
-    };
+    })();
 
-    // Run webhook processing in the background
+    // Use EdgeRuntime.waitUntil if available, otherwise process synchronously
     if (typeof EdgeRuntime !== 'undefined') {
       console.log("Using EdgeRuntime.waitUntil for background processing");
-      EdgeRuntime.waitUntil(processWebhook());
+      EdgeRuntime.waitUntil(processPromise);
+      return responsePromise;
     } else {
-      // Fallback for local development
-      console.log("Using fallback background processing method");
-      processWebhook().catch(error => {
-        console.error("Error in fallback background processing:", error);
-      });
+      console.log("EdgeRuntime not available, processing synchronously");
+      await processPromise;
+      return responsePromise;
     }
-
-    // Return a success response immediately
-    return new Response(
-      JSON.stringify({ received: true }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
   } catch (error) {
     console.error(`Webhook error: ${error.message}`);
     console.error(`Stack trace: ${error.stack}`);

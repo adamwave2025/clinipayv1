@@ -176,7 +176,7 @@ export async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentInt
   try {
     // Extract metadata from the payment intent
     const metadata = paymentIntent.metadata || {};
-    const { clinicId, paymentLinkId, requestId } = metadata;
+    const { clinicId, requestId } = metadata;
 
     if (!clinicId) {
       console.error("Missing clinicId in payment intent metadata");
@@ -189,28 +189,49 @@ export async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentInt
     
     console.log(`Payment failed for clinic: ${clinicId}, reason: ${failureMessage}, code: ${failureCode}`);
     
-    // Update payment attempt if exists - with minimal operation
-    if (paymentIntent.id) {
-      try {
-        const { error: attemptUpdateError } = await retryOperation(async () => {
+    // Optionally, add a record of failed payments to the payments table with status 'failed'
+    try {
+      // This is optional and can be uncommented if you want to track failed payments
+      /*
+      const { error: failedPaymentError } = await retryOperation(async () => {
+        return await supabaseClient.from("payments").insert({
+          clinic_id: clinicId,
+          amount_paid: (paymentIntent.amount || 0) / 100,
+          paid_at: new Date().toISOString(),
+          patient_name: metadata.patientName || "Unknown",
+          patient_email: metadata.patientEmail || null,
+          patient_phone: metadata.patientPhone || null,
+          payment_link_id: metadata.paymentLinkId || null,
+          payment_ref: metadata.paymentReference || generatePaymentReference(),
+          status: 'failed',
+          stripe_payment_id: paymentIntent.id
+        });
+      });
+
+      if (failedPaymentError) {
+        console.error("Error recording failed payment:", failedPaymentError);
+      }
+      */
+
+      // If this was a payment request, we could update its status to 'failed' here
+      if (requestId) {
+        const { error: requestUpdateError } = await retryOperation(async () => {
           return await supabaseClient
-            .from("payment_attempts")
+            .from("payment_requests")
             .update({
-              status: "failed",
-              updated_at: new Date().toISOString()
+              status: "failed"
             })
-            .eq("payment_intent_id", paymentIntent.id);
+            .eq("id", requestId);
         });
 
-        if (attemptUpdateError) {
-          console.error("Error updating payment attempt:", attemptUpdateError);
+        if (requestUpdateError) {
+          console.error("Error updating payment request:", requestUpdateError);
         } else {
-          console.log(`Payment attempt updated to failed for intent ${paymentIntent.id}`);
+          console.log(`Payment request ${requestId} marked as failed`);
         }
-      } catch (error) {
-        console.error("Failed to update payment attempt:", error);
-        // Non-critical error, continue execution
       }
+    } catch (error) {
+      console.error("Failed to process payment failure:", error);
     }
 
     console.log("Failed payment processing completed");
