@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { StandardNotificationPayload } from '@/types/notification';
+import { Json } from '@/integrations/supabase/types';
 
 /**
  * Utility function to add a notification to the queue with better error handling
@@ -14,7 +15,7 @@ export async function addToNotificationQueue(type: string, payload: StandardNoti
       .from("notification_queue")
       .insert({
         type,
-        payload,
+        payload: payload as unknown as Json,
         recipient_type: recipientType,
         payment_id: paymentId,
         status: 'pending'
