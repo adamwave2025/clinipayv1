@@ -10,7 +10,8 @@ export function useStripePayment() {
 
   const processPayment = async ({
     clientSecret,
-    formData
+    formData,
+    paymentAttemptId
   }: {
     clientSecret: string;
     formData: {
@@ -18,6 +19,7 @@ export function useStripePayment() {
       email: string;
       phone?: string;
     };
+    paymentAttemptId?: string;
   }) => {
     if (!stripe || !elements) {
       toast.error('Stripe has not been initialized');
