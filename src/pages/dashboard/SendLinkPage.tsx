@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,34 @@ const SendLinkPage = () => {
     customAmount: '',
     message: '',
   });
+
+  // Check notification system on component load
+  useEffect(() => {
+    const checkNotificationSystem = async () => {
+      try {
+        // Check if system settings are configured for notifications
+        const { data, error } = await supabase
+          .from('system_settings')
+          .select('*')
+          .in('key', ['patient_notification_webhook', 'clinic_notification_webhook']);
+        
+        if (error) {
+          console.error('Error checking notification settings:', error);
+          return;
+        }
+        
+        if (!data || data.length < 2) {
+          console.warn('Notification webhook URLs not fully configured in system_settings');
+        } else {
+          console.log('Notification system appears to be configured:', data);
+        }
+      } catch (err) {
+        console.error('Exception checking notification system:', err);
+      }
+    };
+    
+    checkNotificationSystem();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -97,6 +126,7 @@ const SendLinkPage = () => {
 
   const sendPaymentLink = async () => {
     setIsLoading(true);
+    console.log('Starting payment link creation process...');
     
     try {
       // Find user's clinic ID
@@ -106,10 +136,17 @@ const SendLinkPage = () => {
         .eq('id', user?.id)
         .single();
 
-      if (userError) throw userError;
+      if (userError) {
+        console.error('Error fetching user data:', userError);
+        throw userError;
+      }
+      
       if (!userData.clinic_id) {
+        console.error('No clinic_id found for user:', user?.id);
         throw new Error('No clinic associated with this user');
       }
+      
+      console.log('Found clinic_id:', userData.clinic_id);
 
       // Get clinic data for notification
       const { data: clinicData, error: clinicError } = await supabase
@@ -118,7 +155,12 @@ const SendLinkPage = () => {
         .eq('id', userData.clinic_id)
         .single();
 
-      if (clinicError) throw clinicError;
+      if (clinicError) {
+        console.error('Error fetching clinic data:', clinicError);
+        throw clinicError;
+      }
+      
+      console.log('Retrieved clinic data successfully');
 
       // Get payment link details if selected
       let amount = 0;
@@ -131,9 +173,13 @@ const SendLinkPage = () => {
           amount = selectedPaymentLink.amount;
           paymentLinkId = selectedPaymentLink.id;
           paymentTitle = selectedPaymentLink.title;
+          console.log('Using payment link:', { id: paymentLinkId, title: paymentTitle, amount });
+        } else {
+          console.error('Selected payment link not found in available links');
         }
       } else if (formData.customAmount) {
         amount = Number(formData.customAmount);
+        console.log('Using custom amount:', amount);
       }
 
       console.log('Creating payment request with:', {
@@ -158,14 +204,18 @@ const SendLinkPage = () => {
         })
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating payment request:', error);
+        throw error;
+      }
       
       if (!data || data.length === 0) {
+        console.error('No data returned from payment request creation');
         throw new Error('Failed to create payment request');
       }
 
       const paymentRequest = data[0];
-      console.log('Payment request created:', paymentRequest);
+      console.log('Payment request created successfully:', paymentRequest);
       
       // Create notification method based on available patient contact info
       const notificationMethod: NotificationMethod = {
@@ -204,36 +254,45 @@ const SendLinkPage = () => {
           }
         };
 
-        console.log('Notification payload:', JSON.stringify(notificationPayload, null, 2));
+        console.log('Notification payload prepared:', JSON.stringify(notificationPayload, null, 2));
 
-        // Add to notification queue - properly convert to Json type using type assertion with unknown as intermediate step
-        const { error: notifyError } = await supabase
-          .from("notification_queue")
-          .insert({
-            type: 'payment_request',
-            payload: (notificationPayload as unknown) as Json,
-            recipient_type: 'patient',
-            status: 'pending'
-          });
+        try {
+          // Add to notification queue - properly convert to Json type using type assertion with unknown as intermediate step
+          const { data: notificationData, error: notifyError } = await supabase
+            .from("notification_queue")
+            .insert({
+              type: 'payment_request',
+              payload: (notificationPayload as unknown) as Json,
+              recipient_type: 'patient',
+              status: 'pending'
+            })
+            .select();
 
-        if (notifyError) {
-          console.error("Error queueing notification:", notifyError);
-          // Don't throw error, continue with success message
-        } else {
-          console.log("Payment request notification queued successfully");
-          
-          // Trigger notification processing
-          try {
-            console.log("Setting up notification cron...");
-            await setupNotificationCron();
+          if (notifyError) {
+            console.error("Error queueing notification:", notifyError);
+            console.error("Error details:", JSON.stringify(notifyError, null, 2));
+            // Don't throw error, continue with success message
+          } else {
+            console.log("Payment request notification queued successfully:", notificationData);
             
-            console.log("Processing notifications immediately...");
-            const processResult = await processNotificationsNow();
-            console.log("Process notifications result:", processResult);
-          } catch (cronErr) {
-            console.error("Exception triggering notification processing:", cronErr);
+            // Trigger notification processing
+            try {
+              console.log("Setting up notification cron...");
+              const setupResult = await setupNotificationCron();
+              console.log("Notification cron setup result:", setupResult);
+              
+              console.log("Processing notifications immediately...");
+              const processResult = await processNotificationsNow();
+              console.log("Process notifications result:", processResult);
+            } catch (cronErr) {
+              console.error("Exception triggering notification processing:", cronErr);
+            }
           }
+        } catch (notifyErr) {
+          console.error("Critical error during notification queueing:", notifyErr);
         }
+      } else {
+        console.warn('No notification methods available for this patient');
       }
       
       toast.success('Payment link sent successfully');

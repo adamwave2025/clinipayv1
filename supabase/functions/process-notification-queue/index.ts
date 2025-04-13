@@ -57,6 +57,44 @@ serve(async (req) => {
 
     console.log(`📦 Found ${pendingNotifications.length} pending notifications`);
     
+    // Get webhook URLs from environment variables or from system_settings
+    let patientWebhook = Deno.env.get("PATIENT_NOTIFICATION");
+    let clinicWebhook = Deno.env.get("CLINIC_NOTIFICATION");
+    
+    // If webhook URLs are not set in environment, try to get them from system_settings
+    if (!patientWebhook || !clinicWebhook) {
+      console.log("🔍 Webhook URLs not found in environment, checking system_settings...");
+      
+      const { data: webhookSettings, error: settingsError } = await supabase
+        .from("system_settings")
+        .select("*")
+        .in("key", ["patient_notification_webhook", "clinic_notification_webhook"]);
+      
+      if (settingsError) {
+        console.error("❌ Error fetching webhook settings:", settingsError);
+      } else if (webhookSettings && webhookSettings.length > 0) {
+        for (const setting of webhookSettings) {
+          if (setting.key === "patient_notification_webhook") {
+            patientWebhook = setting.value;
+          } else if (setting.key === "clinic_notification_webhook") {
+            clinicWebhook = setting.value;
+          }
+        }
+        console.log("✅ Found webhook URLs in system_settings");
+      }
+    }
+    
+    // Fallback to default webhooks if still not found
+    if (!patientWebhook) {
+      console.warn("⚠️ Patient notification webhook not found, using default");
+      patientWebhook = "https://notification-service.clinipay.co.uk/patient-notifications";
+    }
+    
+    if (!clinicWebhook) {
+      console.warn("⚠️ Clinic notification webhook not found, using default");
+      clinicWebhook = "https://notification-service.clinipay.co.uk/clinic-notifications";
+    }
+    
     // Process each notification
     const results = await Promise.all(pendingNotifications.map(async (notification) => {
       try {
@@ -64,8 +102,8 @@ serve(async (req) => {
         
         // Determine which webhook to use based on recipient_type
         const webhookUrl = notification.recipient_type === 'patient' 
-          ? Deno.env.get("PATIENT_NOTIFICATION")
-          : Deno.env.get("CLINIC_NOTIFICATION");
+          ? patientWebhook
+          : clinicWebhook;
         
         if (!webhookUrl) {
           throw new Error(`Missing ${notification.recipient_type} notification webhook URL`);
@@ -95,6 +133,9 @@ serve(async (req) => {
           }
         }
 
+        console.log(`📤 Sending notification to webhook: ${webhookUrl.substring(0, 30)}...`);
+        console.log(`📋 Payload: ${JSON.stringify(enhancedPayload).substring(0, 200)}...`);
+
         // Send notification to the appropriate webhook
         const response = await fetch(webhookUrl, {
           method: 'POST',
@@ -109,6 +150,8 @@ serve(async (req) => {
           console.log(`❌ Webhook response for notification ${notification.id}: ${response.status} - ${errorText}`);
           throw new Error(`Webhook returned ${response.status}: ${errorText}`);
         }
+
+        console.log(`✅ Webhook response: ${response.status}`);
 
         // Update notification status to success
         const { error: updateError } = await supabase

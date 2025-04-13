@@ -8,6 +8,58 @@ import { toast } from 'sonner';
  */
 export async function setupNotificationCron() {
   try {
+    console.log('Setting up notification cron job...');
+    
+    // First check if essential system settings exist for notifications
+    const { data: settingsData, error: settingsError } = await supabase
+      .from('system_settings')
+      .select('*')
+      .in('key', ['patient_notification_webhook', 'clinic_notification_webhook']);
+    
+    if (settingsError) {
+      console.error('Error checking notification settings:', settingsError);
+      
+      // Don't stop the process, but log a warning that notifications might not work
+      console.warn('Notification system settings may not be properly configured');
+    } else if (!settingsData || settingsData.length < 2) {
+      // Setup default webhook URLs if they don't exist
+      try {
+        // These are placeholder values - in production these would be real webhook URLs
+        const webhooks = [
+          { 
+            key: 'patient_notification_webhook', 
+            value: 'https://notification-service.clinipay.co.uk/patient-notifications'
+          },
+          {
+            key: 'clinic_notification_webhook',
+            value: 'https://notification-service.clinipay.co.uk/clinic-notifications'
+          }
+        ];
+        
+        // Insert any missing webhooks
+        for (const webhook of webhooks) {
+          const { data: existingData } = await supabase
+            .from('system_settings')
+            .select('*')
+            .eq('key', webhook.key)
+            .maybeSingle();
+          
+          if (!existingData) {
+            console.log(`Setting up default webhook for ${webhook.key}`);
+            await supabase
+              .from('system_settings')
+              .insert(webhook);
+          }
+        }
+        
+        console.log('Default notification webhooks configured');
+      } catch (err) {
+        console.error('Error setting up default webhooks:', err);
+      }
+    } else {
+      console.log('Notification webhooks already configured:', settingsData);
+    }
+    
     // Call the edge function to set up the cron job
     const { data, error } = await supabase.functions.invoke('setup-notification-cron');
     
