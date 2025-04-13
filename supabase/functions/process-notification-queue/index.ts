@@ -71,13 +71,22 @@ serve(async (req) => {
           throw new Error(`Missing ${notification.recipient_type} notification webhook URL`);
         }
 
+        // Enhance the notification payload with additional data
+        let enhancedPayload = { ...notification.payload };
+        
+        // If this is a payment notification, fetch additional data
+        if (notification.payment_id && (notification.type === 'payment_success' || notification.type === 'payment_failed')) {
+          // Enrich the payload with additional data
+          enhancedPayload = await enrichPayloadWithData(supabase, notification);
+        }
+
         // Send notification to the appropriate webhook
         const response = await fetch(webhookUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(notification.payload)
+          body: JSON.stringify(enhancedPayload)
         });
 
         if (!response.ok) {
@@ -154,3 +163,126 @@ serve(async (req) => {
     });
   }
 });
+
+/**
+ * Enriches the notification payload with additional data from the database
+ */
+async function enrichPayloadWithData(supabase, notification) {
+  try {
+    const paymentId = notification.payment_id;
+    const payload = notification.payload;
+    const recipientType = notification.recipient_type;
+    
+    console.log(`🔍 Enriching payload for ${recipientType} notification with payment ID: ${paymentId}`);
+    
+    // If no payment ID, just return the original payload
+    if (!paymentId) {
+      console.log("⚠️ No payment ID found, returning original payload");
+      return payload;
+    }
+    
+    // Fetch payment details
+    const { data: payment, error: paymentError } = await supabase
+      .from("payments")
+      .select(`
+        *,
+        clinics:clinic_id (
+          id,
+          clinic_name,
+          logo_url,
+          email,
+          phone,
+          address_line_1,
+          address_line_2,
+          city,
+          postcode,
+          country
+        )
+      `)
+      .eq("id", paymentId)
+      .maybeSingle();
+    
+    if (paymentError) {
+      console.error(`❌ Error fetching payment data for ID ${paymentId}:`, paymentError);
+      return payload; // Return original payload if there's an error
+    }
+    
+    if (!payment) {
+      console.log(`⚠️ No payment found with ID ${paymentId}, returning original payload`);
+      return payload;
+    }
+    
+    console.log(`📝 Found payment data for ID ${paymentId}`);
+    
+    // Create enhanced payload based on recipient type
+    let enhancedPayload = { ...payload };
+    
+    // Add clinic data
+    if (payment.clinics) {
+      const clinic = payment.clinics;
+      
+      // Format the address
+      const addressParts = [
+        clinic.address_line_1,
+        clinic.address_line_2,
+        clinic.city,
+        clinic.postcode,
+        clinic.country
+      ].filter(Boolean);
+      
+      const formattedAddress = addressParts.length > 0 ? addressParts.join(', ') : null;
+      
+      enhancedPayload.clinic = {
+        id: clinic.id,
+        name: clinic.clinic_name || 'Unknown Clinic',
+        logo_url: clinic.logo_url,
+        email: clinic.email,
+        phone: clinic.phone,
+        address: formattedAddress
+      };
+    }
+    
+    // Common payment details for all notifications
+    enhancedPayload.payment = {
+      id: payment.id,
+      reference: payment.payment_ref,
+      amount: payment.amount_paid,
+      status: payment.status,
+      date: payment.paid_at,
+      patient_name: payment.patient_name || enhancedPayload.patient_name || 'Patient'
+    };
+    
+    // For clinic notifications, add financial details
+    if (recipientType === 'clinic') {
+      enhancedPayload.payment.financial_details = {
+        gross_amount: payment.amount_paid,
+        stripe_fee: payment.stripe_fee ? payment.stripe_fee / 100 : 0, // Convert from cents to pounds
+        platform_fee: payment.platform_fee ? payment.platform_fee / 100 : 0, // Convert from cents to pounds
+        net_amount: payment.net_amount ? payment.net_amount / 100 : 0 // Convert from cents to pounds
+      };
+    }
+    
+    // For patient notifications, simplify
+    if (recipientType === 'patient') {
+      // Make sure patient has contact details
+      enhancedPayload.patient = {
+        name: payment.patient_name || enhancedPayload.patient_name || 'Patient',
+        email: payment.patient_email || enhancedPayload.patient_email,
+        phone: payment.patient_phone || enhancedPayload.patient_phone
+      };
+    }
+    
+    // Add notification type and timestamp
+    enhancedPayload.notification = {
+      type: notification.type,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log(`✨ Successfully enriched payload for ${recipientType} notification`);
+    return enhancedPayload;
+  } catch (error) {
+    console.error("❌ Error enriching notification payload:", error);
+    // Return original payload if enrichment fails
+    return notification.payload;
+  }
+}
