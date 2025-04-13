@@ -63,10 +63,17 @@ const PaymentRefundDialog = ({
     }
   };
 
+  // Don't allow the dialog to be closed if we're in the middle of processing the refund
+  const handleOpenChange = (open: boolean) => {
+    if (!isProcessingRefund) {
+      onOpenChange(open);
+    }
+  };
+
   const isFullRefund = refundAmount === paymentAmount;
 
   return (
-    <AlertDialog open={open} onOpenChange={isProcessingRefund ? undefined : onOpenChange}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Confirm Refund</AlertDialogTitle>

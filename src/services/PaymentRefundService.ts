@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { Payment } from '@/types/payment';
 import { formatCurrency } from '@/utils/formatters';
 import { processNotificationsNow } from '@/utils/notification-cron-setup';
@@ -13,9 +12,6 @@ export const PaymentRefundService = {
     }
     
     try {
-      // Show processing toast
-      toast.loading('Processing refund...');
-      
       // Call the refund-payment edge function
       const { data, error } = await supabase.functions.invoke('refund-payment', {
         body: JSON.stringify({
@@ -24,9 +20,6 @@ export const PaymentRefundService = {
           fullRefund: !amount // If no amount is provided, it's a full refund
         })
       });
-      
-      // Dismiss loading toast
-      toast.dismiss();
       
       if (error || !data?.success) {
         throw new Error(error?.message || data?.error || 'Refund processing failed');
@@ -41,16 +34,12 @@ export const PaymentRefundService = {
         console.error('Error triggering notifications after refund:', notifyErr);
       }
       
-      // Show success toast
-      toast.success(amount ? 'Partial refund processed successfully' : 'Full refund processed successfully');
-      
       return { 
         success: true,
         status: data.status
       };
     } catch (error: any) {
       console.error('Error refunding payment:', error);
-      toast.error(`Refund failed: ${error.message}`);
       return { success: false, error: error.message };
     }
   },

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Payment, PaymentLink } from '@/types/payment';
 import { toast } from 'sonner';
@@ -105,6 +106,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const result = await PaymentRefundService.processRefund(paymentToRefund, refundAmount);
       
+      // Always dismiss the loading toast
       toast.dismiss(loadingToastId);
       
       if (!result.success) {
@@ -123,17 +125,18 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
           : `Partial refund of ${formatCurrency(refundAmount)} processed successfully`
       );
       
-      setRefundDialogOpen(false);
-      setDetailDialogOpen(false);
-      setPaymentToRefund(null);
-      
     } catch (error: any) {
+      // Always dismiss the loading toast
       toast.dismiss(loadingToastId);
       
       console.error('Error refunding payment:', error);
       toast.error(`Failed to refund payment: ${error.message}`);
     } finally {
+      // Always clean up state, regardless of success or failure
       setIsProcessingRefund(false);
+      setRefundDialogOpen(false);
+      setDetailDialogOpen(false);
+      setPaymentToRefund(null);
     }
   };
 
