@@ -33,7 +33,7 @@ export function usePayments() {
         .from('payments')
         .select(`
           *,
-          payment_links(type)
+          payment_links(id, type, title)
         `)
         .eq('clinic_id', userData.clinic_id)
         .order('paid_at', { ascending: false });
@@ -45,7 +45,7 @@ export function usePayments() {
         .from('payment_requests')
         .select(`
           *,
-          payment_links(type)
+          payment_links(id, type, title)
         `)
         .eq('clinic_id', userData.clinic_id)
         .is('paid_at', null) // Only get unpaid/sent requests
@@ -60,13 +60,20 @@ export function usePayments() {
         
         // Determine the payment type
         let paymentType: Payment['type'] = 'consultation'; // Default type
+        let linkTitle: string | undefined = undefined;
         
-        // If linked to a payment link, use that type
-        if (payment.payment_links && payment.payment_links.type) {
-          const linkType = payment.payment_links.type;
-          // Ensure type is one of the allowed values
-          if (['deposit', 'treatment', 'consultation', 'other'].includes(linkType)) {
-            paymentType = linkType as Payment['type'];
+        // If linked to a payment link, use that type and title
+        if (payment.payment_links) {
+          if (payment.payment_links.type) {
+            const linkType = payment.payment_links.type;
+            // Ensure type is one of the allowed values
+            if (['deposit', 'treatment', 'consultation', 'other'].includes(linkType)) {
+              paymentType = linkType as Payment['type'];
+            }
+          }
+          
+          if (payment.payment_links.title) {
+            linkTitle = payment.payment_links.title;
           }
         }
         
@@ -79,7 +86,8 @@ export function usePayments() {
           date: formatDate(paidDate),
           status: payment.status as any || 'paid',
           type: paymentType,
-          reference: payment.payment_ref || undefined, // Add payment reference
+          linkTitle: linkTitle,
+          reference: payment.payment_ref || undefined,
           // Include refundedAmount for both partially_refunded and refunded statuses
           ...(payment.status === 'partially_refunded' && { refundedAmount: payment.refund_amount || 0 }),
           ...(payment.status === 'refunded' && { refundedAmount: payment.refund_amount || 0 })
@@ -100,22 +108,35 @@ export function usePayments() {
           }
         }
         
-        // Determine payment type
+        // Determine payment type and get link title
         let paymentType: Payment['type'] = 'other'; // Default fallback
+        let linkTitle: string | undefined = undefined;
         
         if (request.custom_amount && !request.payment_link_id) {
           // It's a custom payment request
           paymentType = 'other';
-        } else if (request.payment_links && request.payment_links.type) {
-          // It's a payment link-based request, use the link's type
-          const linkType = request.payment_links.type;
-          if (['deposit', 'treatment', 'consultation', 'other'].includes(linkType)) {
-            paymentType = linkType as Payment['type'];
+          linkTitle = 'Custom Payment Request';
+        } else if (request.payment_links) {
+          // It's a payment link-based request, use the link's type and title
+          if (request.payment_links.type) {
+            const linkType = request.payment_links.type;
+            if (['deposit', 'treatment', 'consultation', 'other'].includes(linkType)) {
+              paymentType = linkType as Payment['type'];
+            }
+          }
+          
+          if (request.payment_links.title) {
+            linkTitle = request.payment_links.title;
           }
         }
         
         // Ensure we have a valid date for sent_at
         const sentDate = request.sent_at ? new Date(request.sent_at) : new Date();
+        
+        // Construct payment URL for sent requests
+        const paymentUrl = request.id 
+          ? `${window.location.origin}/payment/request/${request.id}`
+          : undefined;
 
         return {
           id: request.id,
@@ -126,6 +147,9 @@ export function usePayments() {
           date: formatDate(sentDate),
           status: 'sent',
           type: paymentType,
+          linkTitle: linkTitle,
+          message: request.message,
+          paymentUrl: paymentUrl
         };
       });
 

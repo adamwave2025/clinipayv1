@@ -13,6 +13,8 @@ import { Payment } from '@/types/payment';
 import { capitalizeFirstLetter, formatCurrency } from '@/utils/formatters';
 import PaymentReferenceDisplay from '../payment/PaymentReferenceDisplay';
 import { toast } from 'sonner';
+import { Copy, ExternalLink } from 'lucide-react';
+import PaymentDetailsCard from '../payment/PaymentDetailsCard';
 
 interface PaymentDetailDialogProps {
   payment: Payment | null;
@@ -44,6 +46,19 @@ const PaymentDetailDialog = ({
       toast.success('Payment reference copied to clipboard');
     }
   };
+  
+  const handleCopyLink = () => {
+    if (payment.paymentUrl) {
+      navigator.clipboard.writeText(payment.paymentUrl);
+      toast.success('Payment link copied to clipboard');
+    }
+  };
+  
+  const handleOpenLink = () => {
+    if (payment.paymentUrl) {
+      window.open(payment.paymentUrl, '_blank');
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -55,6 +70,13 @@ const PaymentDetailDialog = ({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Show payment link title if available */}
+          {payment.linkTitle && (
+            <div className="text-lg font-semibold text-gray-900 mb-2">
+              {payment.linkTitle}
+            </div>
+          )}
+          
           <div className="grid grid-cols-2 gap-x-6 gap-y-4">
             <div className="col-span-2 sm:col-span-1">
               <h4 className="text-sm font-medium text-gray-500">Patient</h4>
@@ -85,6 +107,41 @@ const PaymentDetailDialog = ({
               <StatusBadge status={payment.status} className="mt-1" />
             </div>
           </div>
+          
+          {/* Custom message if available (for sent payment requests) */}
+          {payment.message && (
+            <div className="mt-4 bg-gray-50 p-4 rounded-md border border-gray-200">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Message to Patient</h4>
+              <p className="text-sm text-gray-600">{payment.message}</p>
+            </div>
+          )}
+          
+          {/* Payment link actions for sent payments */}
+          {payment.status === 'sent' && payment.paymentUrl && (
+            <div className="mt-2">
+              <h4 className="text-sm font-medium text-gray-500 mb-2">Payment Link</h4>
+              <div className="flex items-center space-x-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleCopyLink}
+                  className="text-gray-700"
+                >
+                  <Copy className="h-4 w-4 mr-1" />
+                  Copy Link
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleOpenLink}
+                  className="text-gray-700"
+                >
+                  <ExternalLink className="h-4 w-4 mr-1" />
+                  Open Link
+                </Button>
+              </div>
+            </div>
+          )}
           
           {/* Payment Reference */}
           {payment.reference && (

@@ -1,4 +1,3 @@
-
 export interface Payment {
   id: string;
   patientName: string;
@@ -11,6 +10,8 @@ export interface Payment {
   paymentUrl?: string; // URL for testing payment links
   refundedAmount?: number; // Amount that was refunded (for partial refunds)
   reference?: string; // Payment reference (PAY-XXXX-YYYY)
+  linkTitle?: string; // Title of the payment link
+  message?: string; // Custom message sent with the payment request
 }
 
 export interface PaymentLink {
