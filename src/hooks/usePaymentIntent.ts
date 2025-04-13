@@ -64,13 +64,11 @@ export function usePaymentIntent() {
       }
       
       console.log('Associated payment link ID:', paymentIntentData.paymentLinkId);
-      console.log('Payment attempt ID:', paymentIntentData.attemptId);
       
       return {
         success: true,
         clientSecret: paymentIntentData.clientSecret,
-        associatedPaymentLinkId: paymentIntentData.paymentLinkId,
-        paymentAttemptId: paymentIntentData.attemptId
+        associatedPaymentLinkId: paymentIntentData.paymentLinkId
       };
     } catch (error: any) {
       console.error('Error creating payment intent:', error);

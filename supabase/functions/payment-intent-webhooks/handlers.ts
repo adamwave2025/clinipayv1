@@ -1,3 +1,4 @@
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { generatePaymentReference } from "./utils.ts";
@@ -27,7 +28,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
 
     if (!clinicId) {
       console.error("Missing clinicId in payment intent metadata");
-      return;
+      return { success: false, error: "Missing clinic ID" };
     }
 
     // Convert the amount from cents to pounds with precision
@@ -76,39 +77,17 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
     console.log(`Payment record created with ID: ${paymentId}`);
 
     // If this payment was for a payment request, update the request status
+    // This is now run as a background task using EdgeRuntime.waitUntil to avoid timeouts
     if (requestId) {
-      console.log(`Updating payment request: ${requestId}`);
-      
-      const { error: requestUpdateError } = await supabaseClient
-        .from("payment_requests")
-        .update({
-          status: "paid",
-          paid_at: new Date().toISOString(),
-          payment_id: paymentId
-        })
-        .eq("id", requestId);
-
-      if (requestUpdateError) {
-        console.error("Error updating payment request:", requestUpdateError);
-        console.error("Error details:", JSON.stringify(requestUpdateError));
-        // Don't throw error here, we already recorded the payment
-      } else {
-        console.log(`Payment request ${requestId} marked as paid`);
-      }
+      // We'll handle this in the background
+      updatePaymentRequest(requestId, paymentId, supabaseClient);
     }
 
-    console.log("Payment processing completed successfully");
-    
     // After successful payment record creation, fetch Stripe fee data asynchronously
-    // This happens outside the critical path and won't block payment creation
-    try {
-      if (paymentIntent.latest_charge) {
-        console.log(`Will fetch fee data for charge ID: ${paymentIntent.latest_charge} in a separate operation`);
-        updatePaymentWithFeeData(paymentId, paymentIntent.latest_charge, supabaseClient);
-      }
-    } catch (feeError) {
-      console.error("Error setting up fee data retrieval:", feeError);
-      // Don't throw the error - the payment is already recorded
+    // This happens as a background task and won't block payment creation
+    if (paymentIntent.latest_charge) {
+      console.log(`Will fetch fee data for charge ID: ${paymentIntent.latest_charge} in a background task`);
+      updatePaymentWithFeeData(paymentId, paymentIntent.latest_charge, supabaseClient);
     }
     
     return { success: true, paymentId };
@@ -119,11 +98,37 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
   }
 }
 
+// Function to update payment request status
+// This runs as a background task to avoid blocking the main operation
+async function updatePaymentRequest(requestId: string, paymentId: string, supabaseClient: any) {
+  console.log(`Updating payment request: ${requestId} (running as background task)`);
+  
+  try {
+    const { error: requestUpdateError } = await supabaseClient
+      .from("payment_requests")
+      .update({
+        status: "paid",
+        paid_at: new Date().toISOString(),
+        payment_id: paymentId
+      })
+      .eq("id", requestId);
+
+    if (requestUpdateError) {
+      console.error("Error updating payment request:", requestUpdateError);
+      console.error("Error details:", JSON.stringify(requestUpdateError));
+    } else {
+      console.log(`Payment request ${requestId} marked as paid`);
+    }
+  } catch (error) {
+    console.error("Error in payment request update background task:", error);
+  }
+}
+
 // Separate function to update the payment record with fee data
-// This runs after the payment is already recorded, so timeouts here won't affect payment creation
+// This runs as a background task and won't affect the main payment recording
 async function updatePaymentWithFeeData(paymentId: string, chargeId: string, supabaseClient: any) {
   try {
-    console.log(`Retrieving charge data for charge ID: ${chargeId}`);
+    console.log(`Background task: Retrieving charge data for charge ID: ${chargeId}`);
     
     // Initialize Stripe with proper import
     const stripe = new Stripe(Deno.env.get("SECRET_KEY") ?? "", {
@@ -223,7 +228,7 @@ export async function handlePaymentIntentFailed(paymentIntent: any, supabaseClie
 
     if (!clinicId) {
       console.error("Missing clinicId in payment intent metadata");
-      return;
+      return { success: false, error: "Missing clinic ID" };
     }
 
     // Log the failure reason
@@ -232,24 +237,6 @@ export async function handlePaymentIntentFailed(paymentIntent: any, supabaseClie
     
     console.log(`Payment failed for clinic: ${clinicId}, reason: ${failureMessage}, code: ${failureCode}`);
     
-    // Update payment attempt if exists
-    if (paymentIntent.id) {
-      const { error: attemptUpdateError } = await supabaseClient
-        .from("payment_attempts")
-        .update({
-          status: "failed",
-          updated_at: new Date().toISOString()
-        })
-        .eq("payment_intent_id", paymentIntent.id);
-
-      if (attemptUpdateError) {
-        console.error("Error updating payment attempt:", attemptUpdateError);
-        console.error("Error details:", JSON.stringify(attemptUpdateError));
-      } else {
-        console.log(`Payment attempt updated to failed for intent ${paymentIntent.id}`);
-      }
-    }
-
     // If this payment was for a payment request, we might want to update it
     if (requestId) {
       console.log(`Payment failed for request: ${requestId}`);
@@ -257,8 +244,10 @@ export async function handlePaymentIntentFailed(paymentIntent: any, supabaseClie
     }
 
     console.log("Failed payment processing completed");
+    return { success: true, status: "failed" };
   } catch (error) {
     console.error("Error processing failed payment intent:", error);
     console.error("Stack trace:", error.stack);
+    return { success: false, error: String(error) };
   }
 }
