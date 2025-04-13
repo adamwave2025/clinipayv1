@@ -234,8 +234,7 @@ const SendLinkPage = () => {
             name: clinicData.clinic_name || "Your healthcare provider",
             email: clinicData.email,
             phone: clinicData.phone,
-            address: formattedAddress,
-            id: userData.clinic_id
+            address: formattedAddress
           }
         };
 
