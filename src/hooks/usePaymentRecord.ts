@@ -32,7 +32,7 @@ export function usePaymentRecord() {
       console.log('Payment was successful:', paymentIntent.id);
       
       // Display success message in the UI
-      toast.success(`Payment successful! The payment reference will be shown on the next page.`);
+      toast.success(`Payment successful! Your payment reference will be shown on the next page.`);
       
       // Note: The actual payment record with reference is created by the Stripe webhook
       // This function now just handles UI updates after payment
