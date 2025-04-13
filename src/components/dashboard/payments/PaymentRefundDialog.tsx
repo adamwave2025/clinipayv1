@@ -63,7 +63,7 @@ const PaymentRefundDialog = ({
     }
   };
 
-  // Don't allow the dialog to be closed if we're in the middle of processing the refund
+  // Custom handler that only allows dialog to close when not processing
   const handleOpenChange = (open: boolean) => {
     if (!isProcessingRefund) {
       onOpenChange(open);

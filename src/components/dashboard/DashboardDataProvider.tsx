@@ -92,6 +92,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const handleRefund = async (amount?: number) => {
     if (!paymentToRefund) return;
     
+    // Create a unique ID for the toast to allow dismissal
     const loadingToastId = toast.loading('Processing refund...');
     
     try {
@@ -104,6 +105,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
       const epsilon = 0.001;
       const isFullRefund = Math.abs(payment.amount - refundAmount) < epsilon;
 
+      // Process the refund through the service
       const result = await PaymentRefundService.processRefund(paymentToRefund, refundAmount);
       
       // Always dismiss the loading toast
@@ -113,12 +115,14 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error(result.error || 'Refund processing failed');
       }
       
+      // Update the local state with the refunded payment
       setPayments(PaymentRefundService.getUpdatedPaymentAfterRefund(
         payments, 
         paymentToRefund, 
         refundAmount
       ));
       
+      // Show success message
       toast.success(
         isFullRefund 
           ? 'Payment refunded successfully' 
