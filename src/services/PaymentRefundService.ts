@@ -11,6 +11,9 @@ export const PaymentRefundService = {
     }
     
     try {
+      // Show processing toast
+      toast.loading('Processing refund...');
+      
       // Call the refund-payment edge function
       const { data, error } = await supabase.functions.invoke('refund-payment', {
         body: JSON.stringify({
@@ -20,9 +23,15 @@ export const PaymentRefundService = {
         })
       });
       
+      // Dismiss loading toast
+      toast.dismiss();
+      
       if (error || !data?.success) {
         throw new Error(error?.message || data?.error || 'Refund processing failed');
       }
+      
+      // Show success toast
+      toast.success(amount ? 'Partial refund processed successfully' : 'Full refund processed successfully');
       
       return { 
         success: true,
@@ -30,6 +39,7 @@ export const PaymentRefundService = {
       };
     } catch (error: any) {
       console.error('Error refunding payment:', error);
+      toast.error(`Refund failed: ${error.message}`);
       return { success: false, error: error.message };
     }
   },

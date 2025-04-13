@@ -174,23 +174,47 @@ serve(async (req) => {
       );
     }
     
+    // Get clinic data for notifications
+    const { data: clinicData, error: clinicError } = await supabase
+      .from('clinics')
+      .select('*')
+      .eq('id', payment.clinic_id)
+      .single();
+      
+    if (clinicError) {
+      console.error("❌ Error fetching clinic data:", clinicError);
+      console.error("Continuing without clinic data");
+    }
+    
     // Queue refund notification if we have patient contact information
     try {
       // Only send notification if we have contact information
       if (payment.patient_email || payment.patient_phone) {
-        // Create payload for refund notification
+        // Create standardized notification payload matching payment_success structure
         const refundPayload = {
-          clinic_id: payment.clinic_id,
-          payment_id: paymentId,
-          patient_name: payment.patient_name || 'Patient',
-          patient_email: payment.patient_email,
-          patient_phone: payment.patient_phone,
-          payment_amount: payment.amount_paid,
-          refund_amount: refundAmountToStore,
-          payment_ref: payment.payment_ref,
-          is_full_refund: isFullRefund,
-          payment_type: isFullRefund ? 'refund' : 'partial_refund',
-          notification_type: 'payment_refund'
+          notification_type: "payment_refund",
+          notification_method: {
+            email: !!payment.patient_email,
+            sms: !!payment.patient_phone
+          },
+          patient: {
+            name: payment.patient_name || 'Patient',
+            email: payment.patient_email,
+            phone: payment.patient_phone
+          },
+          payment: {
+            reference: payment.payment_ref,
+            amount: payment.amount_paid,
+            refund_amount: refundAmountToStore,
+            payment_link: `https://clinipay.co.uk/payment-receipt/${paymentId}`,
+            message: isFullRefund ? "Your payment has been fully refunded" : "Your payment has been partially refunded",
+            is_full_refund: isFullRefund
+          },
+          clinic: {
+            name: clinicData?.clinic_name || 'Your healthcare provider',
+            email: clinicData?.email,
+            phone: clinicData?.phone
+          }
         };
         
         // Add to notification queue
@@ -208,6 +232,57 @@ serve(async (req) => {
           console.error("Error details:", JSON.stringify(notifyError));
         } else {
           console.log(`✅ Successfully queued refund notification for patient`);
+        }
+        
+        // Create clinic notification with the same standardized structure
+        // but including financial details
+        const clinicPayload = {
+          notification_type: "payment_refund",
+          notification_method: {
+            email: clinicData?.email_notifications ?? true,
+            sms: clinicData?.sms_notifications ?? true
+          },
+          patient: {
+            name: payment.patient_name || 'Patient',
+            email: payment.patient_email,
+            phone: payment.patient_phone
+          },
+          payment: {
+            reference: payment.payment_ref,
+            amount: payment.amount_paid,
+            refund_amount: refundAmountToStore,
+            payment_link: `https://clinipay.co.uk/payment-receipt/${paymentId}`,
+            message: isFullRefund ? "Full payment refund processed" : "Partial payment refund processed",
+            is_full_refund: isFullRefund,
+            financial_details: {
+              gross_amount: payment.amount_paid,
+              stripe_fee: payment.stripe_fee ? payment.stripe_fee / 100 : 0, // Convert from cents to pounds
+              platform_fee: payment.platform_fee ? payment.platform_fee / 100 : 0, // Convert from cents to pounds
+              net_amount: payment.net_amount ? payment.net_amount / 100 : 0 // Convert from cents to pounds
+            }
+          },
+          clinic: {
+            name: clinicData?.clinic_name || 'Your clinic',
+            email: clinicData?.email,
+            phone: clinicData?.phone
+          }
+        };
+        
+        // Queue notification for clinic
+        const { error: clinicNotifyError } = await supabase
+          .from("notification_queue")
+          .insert({
+            type: 'payment_refund',
+            payload: clinicPayload,
+            payment_id: paymentId,
+            recipient_type: 'clinic'
+          });
+          
+        if (clinicNotifyError) {
+          console.error(`❌ Error queueing clinic refund notification: ${clinicNotifyError.message}`);
+          console.error("Error details:", JSON.stringify(clinicNotifyError));
+        } else {
+          console.log(`✅ Successfully queued refund notification for clinic`);
         }
       } else {
         console.log("⚠️ No patient contact information available for refund notification");
