@@ -1,7 +1,7 @@
 
 import { FormattedPayload, NotificationPayload } from "./config.ts";
 import { corsHeaders } from "./config.ts";
-import { createSupabaseClient, retryOperation, findPaymentRecord } from "./utils.ts";
+import { createSupabaseClient, retryOperation } from "./utils.ts";
 import { formatPaymentSuccess, formatPaymentRefund } from "./formatters.ts";
 
 // Handler for the notification request
@@ -28,7 +28,7 @@ export async function handleNotification(req: Request): Promise<Response> {
       throw new Error("Missing record_id in notification payload");
     }
 
-    // Format the data for the GHL webhook based on notification type
+    // Format the data for the webhook based on notification type
     const formattedPayload = await retryOperation(
       () => formatPayloadForGHL(payload, supabaseClient),
       undefined,
@@ -42,9 +42,9 @@ export async function handleNotification(req: Request): Promise<Response> {
       throw new Error("Failed to format payload");
     }
 
-    console.log("Sending formatted payload to GHL:", formattedPayload);
+    console.log("Sending formatted payload to webhook:", JSON.stringify(formattedPayload));
 
-    // Send the webhook to GHL
+    // Send the webhook
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: {
@@ -55,12 +55,12 @@ export async function handleNotification(req: Request): Promise<Response> {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Error from GHL webhook:", errorText);
-      throw new Error(`GHL webhook returned status ${response.status}: ${errorText}`);
+      console.error("Error from webhook:", errorText);
+      throw new Error(`Webhook returned status ${response.status}: ${errorText}`);
     }
 
     const responseData = await response.json();
-    console.log("GHL webhook response:", responseData);
+    console.log("Webhook response:", responseData);
 
     return new Response(
       JSON.stringify({ success: true, data: responseData }),
@@ -84,7 +84,7 @@ export async function handleNotification(req: Request): Promise<Response> {
   }
 }
 
-// Format payload for GoHighLevel based on notification type
+// Format payload for webhook based on notification type
 async function formatPayloadForGHL(
   payload: NotificationPayload,
   supabaseClient: any

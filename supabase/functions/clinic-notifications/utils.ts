@@ -50,6 +50,7 @@ export async function findPaymentRecord(
   paymentId: string,
   supabaseClient: any
 ) {
+  console.log(`Finding payment record with ID: ${paymentId}`);
   const { data, error } = await supabaseClient
     .from("payments")
     .select(`
