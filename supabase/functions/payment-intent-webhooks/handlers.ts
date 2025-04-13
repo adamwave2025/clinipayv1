@@ -72,57 +72,64 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       return;
     }
     
-    // Use the stored function to safely insert the payment record
-    console.log("Using stored function to insert payment record");
-    const { data, error } = await retryOperation(async () => {
-      return await supabaseClient.rpc('insert_payment_record', {
-        p_clinic_id: clinicId,
-        p_amount_paid: amountInPounds,
-        p_patient_name: patientName || "Unknown",
-        p_patient_email: patientEmail || null,
-        p_patient_phone: patientPhone || null,
-        p_payment_link_id: paymentLinkId || null,
-        p_payment_ref: paymentReference,
-        p_stripe_payment_id: paymentIntent.id
+    // Try direct insertion if the RPC approach fails
+    // This serves as a fallback mechanism
+    try {
+      console.log("Using RPC to insert payment record");
+      const { data, error } = await retryOperation(async () => {
+        return await supabaseClient.rpc('insert_payment_record', {
+          p_clinic_id: clinicId,
+          p_amount_paid: amountInPounds,
+          p_patient_name: patientName || "Unknown",
+          p_patient_email: patientEmail || null,
+          p_patient_phone: patientPhone || null,
+          p_payment_link_id: paymentLinkId || null,
+          p_payment_ref: paymentReference,
+          p_stripe_payment_id: paymentIntent.id
+        });
       });
-    });
 
-    if (error) {
-      console.error("Error inserting payment record:", error);
-      throw new Error(`Error recording payment: ${error.message}`);
-    }
+      if (error) {
+        throw new Error(`RPC error: ${error.message}`);
+      }
 
-    if (!data) {
-      console.error("No data returned from payment insert operation");
-      throw new Error("Payment record was not created properly");
-    }
+      const paymentId = data;
+      console.log(`Payment record created with ID: ${paymentId}`);
+      
+      // Update payment request if needed
+      if (requestId && paymentId) {
+        await updatePaymentRequest(supabaseClient, requestId, paymentId);
+      }
+      
+    } catch (rpcError) {
+      // Fallback: Direct insertion if RPC fails
+      console.error("RPC insertion failed, attempting direct insertion:", rpcError.message);
+      
+      const { data: directData, error: directError } = await retryOperation(async () => {
+        return await supabaseClient.from("payments").insert({
+          clinic_id: clinicId,
+          amount_paid: amountInPounds,
+          paid_at: new Date().toISOString(),
+          patient_name: patientName || "Unknown",
+          patient_email: patientEmail || null,
+          patient_phone: patientPhone || null,
+          payment_link_id: paymentLinkId || null,
+          payment_ref: paymentReference,
+          status: 'paid',
+          stripe_payment_id: paymentIntent.id
+        }).select("id").single();
+      });
 
-    const paymentId = data;
-    console.log(`Payment record created with ID: ${paymentId}`);
+      if (directError) {
+        throw new Error(`Direct insertion error: ${directError.message}`);
+      }
 
-    // If this payment was for a payment request, update the request status
-    // Do this in a separate try/catch to avoid failing the entire operation
-    if (requestId) {
-      try {
-        console.log(`Updating payment request: ${requestId}`);
-        
-        const { error: requestUpdateError } = await supabaseClient
-          .from("payment_requests")
-          .update({
-            status: "paid",
-            paid_at: new Date().toISOString(),
-            payment_id: paymentId
-          })
-          .eq("id", requestId);
-
-        if (requestUpdateError) {
-          console.error("Error updating payment request:", requestUpdateError);
-        } else {
-          console.log(`Payment request ${requestId} marked as paid`);
-        }
-      } catch (requestError) {
-        console.error("Failed to update payment request:", requestError);
-        // We don't rethrow this error as it's not critical to the payment record
+      const paymentId = directData?.id;
+      console.log(`Payment record created via direct insertion with ID: ${paymentId}`);
+      
+      // Update payment request if needed
+      if (requestId && paymentId) {
+        await updatePaymentRequest(supabaseClient, requestId, paymentId);
       }
     }
 
@@ -131,6 +138,31 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
     console.error("Error processing payment intent:", error);
     console.error("Stack trace:", error.stack);
     throw error;
+  }
+}
+
+// Helper function to update payment request
+async function updatePaymentRequest(supabaseClient, requestId, paymentId) {
+  try {
+    console.log(`Updating payment request: ${requestId}`);
+    
+    const { error: requestUpdateError } = await supabaseClient
+      .from("payment_requests")
+      .update({
+        status: "paid",
+        paid_at: new Date().toISOString(),
+        payment_id: paymentId
+      })
+      .eq("id", requestId);
+
+    if (requestUpdateError) {
+      console.error("Error updating payment request:", requestUpdateError);
+    } else {
+      console.log(`Payment request ${requestId} marked as paid`);
+    }
+  } catch (requestError) {
+    console.error("Failed to update payment request:", requestError);
+    // We don't rethrow this error as it's not critical to the payment record
   }
 }
 
