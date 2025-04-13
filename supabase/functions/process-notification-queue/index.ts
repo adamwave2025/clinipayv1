@@ -86,23 +86,12 @@ serve(async (req) => {
             enhancedPayload.payment.payment_link = `https://clinipay.co.uk/payment/${enhancedPayload.payment.payment_link}`;
           }
           
-          // Make sure notification methods are properly set based on clinic preferences
-          if (!enhancedPayload.notification_method && notification.recipient_type === 'patient') {
-            // Get clinic notification preferences if not already set
-            if (enhancedPayload.clinic?.id) {
-              const { data: clinicData } = await supabase
-                .from('clinics')
-                .select('email_notifications, sms_notifications')
-                .eq('id', enhancedPayload.clinic.id)
-                .maybeSingle();
-              
-              if (clinicData) {
-                enhancedPayload.notification_method = {
-                  email: clinicData.email_notifications,
-                  sms: clinicData.sms_notifications
-                };
-              }
-            }
+          // Make sure notification methods are based on patient contact info
+          if (enhancedPayload.patient) {
+            enhancedPayload.notification_method = {
+              email: !!enhancedPayload.patient.email,
+              sms: !!enhancedPayload.patient.phone
+            };
           }
         }
 
@@ -244,12 +233,22 @@ async function enrichPayloadWithData(supabase, notification) {
     
     // Create enhanced payload based on recipient type
     let enhancedPayload = { 
-      notification_type: notification.type === 'payment_success' ? 'payment_success' : 'payment_failed',
-      notification_method: {
+      notification_type: notification.type === 'payment_success' ? 'payment_success' : 'payment_failed'
+    };
+    
+    // Set notification_method based on available patient contact details
+    if (recipientType === 'patient') {
+      enhancedPayload.notification_method = {
+        email: !!payment.patient_email,
+        sms: !!payment.patient_phone
+      };
+    } else {
+      // For clinic notifications, use clinic preferences
+      enhancedPayload.notification_method = {
         email: payment.clinics?.email_notifications ?? true,
         sms: payment.clinics?.sms_notifications ?? true
-      }
-    };
+      };
+    }
     
     // Add clinic data
     if (payment.clinics) {

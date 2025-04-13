@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -156,15 +155,18 @@ const SendLinkPage = () => {
 
       const paymentRequest = data[0];
       
-      // Add notification to queue if email or SMS notifications are enabled
-      if (clinicData.email_notifications || clinicData.sms_notifications) {
+      // Create notification method based on available patient contact info
+      const notificationMethod = {
+        email: !!formData.patientEmail,
+        sms: !!formData.patientPhone
+      };
+      
+      // Add notification to queue
+      if (notificationMethod.email || notificationMethod.sms) {
         // Create notification payload
         const notificationPayload = {
           notification_type: "payment_request",
-          notification_method: {
-            email: clinicData.email_notifications,
-            sms: clinicData.sms_notifications
-          },
+          notification_method: notificationMethod,
           patient: {
             name: formData.patientName,
             email: formData.patientEmail,
@@ -222,12 +224,10 @@ const SendLinkPage = () => {
     }
   };
 
-  // Find the selected payment link for the preview
   const selectedPaymentLink = formData.selectedLink 
     ? paymentLinks.find(link => link.id === formData.selectedLink) 
     : null;
   
-  // Determine the payment amount for the preview
   const paymentAmount = selectedPaymentLink 
     ? `£${selectedPaymentLink.amount.toFixed(2)}` 
     : (formData.customAmount ? `£${Number(formData.customAmount).toFixed(2)}` : '');

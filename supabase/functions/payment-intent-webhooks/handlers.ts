@@ -195,8 +195,8 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
         const patientPayload = {
           notification_type: "payment_success",
           notification_method: {
-            email: clinicData?.email_notifications ?? true,
-            sms: clinicData?.sms_notifications ?? true
+            email: !!patientEmail,
+            sms: !!patientPhone
           },
           patient: {
             name: patientName || 'Patient',
@@ -347,8 +347,8 @@ export async function handlePaymentIntentFailed(paymentIntent: any, supabaseClie
         const failurePayload = {
           notification_type: "payment_failed",
           notification_method: {
-            email: clinicData?.email_notifications ?? true,
-            sms: clinicData?.sms_notifications ?? true
+            email: !!patientEmail,
+            sms: !!patientPhone
           },
           patient: {
             name: patientName || 'Patient',
