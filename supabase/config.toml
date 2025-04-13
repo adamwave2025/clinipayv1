@@ -8,11 +8,13 @@ schemas = ["public", "storage", "graphql_public"]
 
 [db]
 port = 54322
+shadow_port = 54320
+major_version = 15
 
 [studio]
 enabled = true
 port = 54323
-api_url = "http://127.0.0.1"
+api_url = "http://localhost"
 
 [inbucket]
 enabled = true
@@ -23,19 +25,49 @@ enabled = true
 
 [auth]
 enabled = true
-site_url = "http://127.0.0.1:5173"
+port = 54325
+
+[realtime]
+enabled = true
 
 [analytics]
 enabled = false
 
-[functions.payment-intent-webhooks]
-verify_jwt = false
+[vector]
+enabled = false
 
-[functions.stripe-webhooks]
-verify_jwt = false
+[edge_functions]
+enabled = true
+
+[functions.connect-onboarding]
+verify_jwt = true
 
 [functions.create-payment-intent]
+verify_jwt = true
+
+[functions.get-stripe-public-key]
+verify_jwt = true
+
+[functions.handle-new-signup]
+verify_jwt = false
+
+[functions.patient-notifications]
+verify_jwt = false
+
+[functions.clinic-notifications]
+verify_jwt = false
+
+[functions.payment-intent-webhooks]
 verify_jwt = false
 
 [functions.refund-payment]
 verify_jwt = true
+
+[functions.reset-password]
+verify_jwt = false
+
+[functions.setup-auth-trigger]
+verify_jwt = false
+
+[functions.stripe-webhooks]
+verify_jwt = false

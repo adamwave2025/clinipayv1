@@ -402,19 +402,6 @@ export type Database = {
         Args: { curlopt: string; value: string }
         Returns: boolean
       }
-      insert_payment_record: {
-        Args: {
-          p_clinic_id: string
-          p_amount_paid: number
-          p_patient_name: string
-          p_patient_email: string
-          p_patient_phone: string
-          p_payment_link_id: string
-          p_payment_ref: string
-          p_stripe_payment_id: string
-        }
-        Returns: string
-      }
       text_to_bytea: {
         Args: { data: string }
         Returns: string

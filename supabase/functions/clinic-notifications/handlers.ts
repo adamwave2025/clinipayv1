@@ -7,8 +7,6 @@ import { formatPaymentSuccess, formatPaymentRefund } from "./formatters.ts";
 // Handler for the notification request
 export async function handleNotification(req: Request): Promise<Response> {
   try {
-    console.log("Starting clinic notification handler");
-    
     // Initialize Supabase client
     const supabaseClient = createSupabaseClient();
 
@@ -32,7 +30,7 @@ export async function handleNotification(req: Request): Promise<Response> {
 
     // Format the data for the webhook based on notification type
     const formattedPayload = await retryOperation(
-      () => formatPayloadForWebhook(payload, supabaseClient),
+      () => formatPayloadForGHL(payload, supabaseClient),
       undefined,
       undefined,
       (error, attempt) => {
@@ -87,7 +85,7 @@ export async function handleNotification(req: Request): Promise<Response> {
 }
 
 // Format payload for webhook based on notification type
-async function formatPayloadForWebhook(
+async function formatPayloadForGHL(
   payload: NotificationPayload,
   supabaseClient: any
 ): Promise<FormattedPayload | null> {
@@ -101,7 +99,6 @@ async function formatPayloadForWebhook(
       return await formatPaymentRefund(payload.record_id, supabaseClient);
     }
 
-    console.log(`Unknown notification type: ${payload.notification_type}`);
     return null;
   } catch (error) {
     console.error("Error formatting payload:", error);
