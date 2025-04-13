@@ -1,18 +1,20 @@
 
-import { useEffect } from 'react';
-import { PaymentLink } from '@/types/payment';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { formatDate } from '@/utils/formatters';
+
+// Define a proper return type for the fetchPayments function
+interface PaymentFetchResult {
+  paymentsData: any[];
+  requestsData: any[];
+}
 
 export function usePaymentFetcher(
-  setIsLoadingPayments: (isLoading: boolean) => void,
-  paymentLinks: PaymentLink[] = []
+  setIsLoadingPayments: (isLoading: boolean) => void
 ) {
   const { user } = useAuth();
 
-  const fetchPayments = async () => {
-    if (!user) return [];
+  const fetchPayments = async (): Promise<PaymentFetchResult> => {
+    if (!user) return { paymentsData: [], requestsData: [] };
 
     setIsLoadingPayments(true);
     try {
@@ -23,7 +25,7 @@ export function usePaymentFetcher(
         .single();
 
       if (userError) throw userError;
-      if (!userData.clinic_id) return [];
+      if (!userData.clinic_id) return { paymentsData: [], requestsData: [] };
 
       // Fetch completed payments with payment_link_id
       const { data: paymentsData, error: paymentsError } = await supabase
@@ -50,7 +52,10 @@ export function usePaymentFetcher(
 
       if (requestsError) throw requestsError;
 
-      return { paymentsData, requestsData };
+      return { 
+        paymentsData: paymentsData || [], 
+        requestsData: requestsData || [] 
+      };
     } catch (error) {
       console.error('Error fetching payments data:', error);
       return { paymentsData: [], requestsData: [] };

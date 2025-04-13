@@ -15,16 +15,16 @@ export function usePayments() {
   const processPayments = async (paymentLinks: PaymentLink[] = []) => {
     if (!user) return;
     
-    const { paymentsData = [], requestsData = [] } = await fetchPayments();
+    const result = await fetchPayments();
     
-    if (paymentsData.length === 0 && requestsData.length === 0) {
+    if (result.paymentsData.length === 0 && result.requestsData.length === 0) {
       setPayments([]);
       return;
     }
     
     // Format the raw data into our Payment type
-    const formattedPayments = formatCompletedPayments(paymentsData);
-    const formattedRequests = formatPaymentRequests(requestsData, paymentLinks);
+    const formattedPayments = formatCompletedPayments(result.paymentsData);
+    const formattedRequests = formatPaymentRequests(result.requestsData, paymentLinks);
     
     // Combine and sort the results
     const sortedPayments = combineAndSortPayments(formattedPayments, formattedRequests);
