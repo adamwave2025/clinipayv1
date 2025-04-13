@@ -7,8 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
 };
 
-// Maximum number of notifications to process in a single batch
-const BATCH_SIZE = 10;
+// Increased batch size for testing
+const BATCH_SIZE = 20;
 // Maximum number of retries before marking a notification as failed
 const MAX_RETRIES = 3;
 
@@ -21,7 +21,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log("🔄 Starting notification queue processing");
+    console.log(`🕒 Starting notification queue processing at ${new Date().toISOString()}`);
     
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -40,7 +40,7 @@ serve(async (req) => {
       .limit(BATCH_SIZE);
     
     if (fetchError) {
-      console.error("Error fetching pending notifications:", fetchError);
+      console.error("❌ Error fetching pending notifications:", fetchError);
       throw fetchError;
     }
 
@@ -60,7 +60,7 @@ serve(async (req) => {
     // Process each notification
     const results = await Promise.all(pendingNotifications.map(async (notification) => {
       try {
-        console.log(`🔔 Processing notification ${notification.id} of type ${notification.type}`);
+        console.log(`🔔 Processing notification ${notification.id} of type ${notification.type} for ${notification.recipient_type}`);
         
         // Determine which webhook to use based on recipient_type
         const webhookUrl = notification.recipient_type === 'patient' 
@@ -82,6 +82,7 @@ serve(async (req) => {
 
         if (!response.ok) {
           const errorText = await response.text();
+          console.log(`❌ Webhook response for notification ${notification.id}: ${response.status} - ${errorText}`);
           throw new Error(`Webhook returned ${response.status}: ${errorText}`);
         }
 
@@ -95,7 +96,7 @@ serve(async (req) => {
           .eq("id", notification.id);
 
         if (updateError) {
-          console.error(`Error updating notification ${notification.id} status:`, updateError);
+          console.error(`❌ Error updating notification ${notification.id} status:`, updateError);
         }
 
         console.log(`✅ Successfully processed notification ${notification.id}`);
@@ -119,7 +120,7 @@ serve(async (req) => {
           .eq("id", notification.id);
 
         if (updateError) {
-          console.error(`Error updating notification ${notification.id} retry info:`, updateError);
+          console.error(`❌ Error updating notification ${notification.id} retry info:`, updateError);
         }
 
         return { id: notification.id, success: false, error: error.message };
@@ -130,7 +131,7 @@ serve(async (req) => {
     const successCount = results.filter(r => r.success).length;
     const failureCount = results.length - successCount;
 
-    console.log(`✅ Processed ${results.length} notifications: ${successCount} succeeded, ${failureCount} failed/retrying`);
+    console.log(`📊 Processed ${results.length} notifications: ${successCount} succeeded, ${failureCount} failed/retrying`);
     
     return new Response(JSON.stringify({ 
       success: true, 
