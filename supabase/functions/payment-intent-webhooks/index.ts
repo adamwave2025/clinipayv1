@@ -75,23 +75,34 @@ serve(async (req) => {
       );
     }
 
-    // Return a success response immediately but continue processing in the background
+    // Prepare successful response
     const responsePromise = new Response(
-      JSON.stringify({ received: true }),
+      JSON.stringify({ received: true, event_id: event.id, event_type: event.type }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
-    // Process the webhook event
+    // Process the webhook event in the background
     const processPromise = (async () => {
       try {
-        console.log(`Processing webhook event: ${event.type}`);
-        console.log(`Event ID: ${event.id}`);
+        console.log(`Processing webhook event: ${event.type} (ID: ${event.id})`);
+        
+        // Add additional logging for debugging
+        if (event.data && event.data.object) {
+          console.log(`Event data object ID: ${event.data.object.id}`);
+          console.log(`Event data object status: ${event.data.object.status}`);
+          
+          if (event.data.object.metadata) {
+            console.log(`Event metadata:`, JSON.stringify(event.data.object.metadata));
+          }
+        }
 
         // Handle the event based on its type
         if (event.type === "payment_intent.succeeded") {
           await handlePaymentIntentSucceeded(event.data.object, supabaseClient);
+          console.log(`Successfully processed payment_intent.succeeded for ${event.data.object.id}`);
         } else if (event.type === "payment_intent.payment_failed") {
           await handlePaymentIntentFailed(event.data.object, supabaseClient);
+          console.log(`Successfully processed payment_intent.payment_failed for ${event.data.object.id}`);
         } else {
           console.log(`Ignoring event type: ${event.type}`);
         }

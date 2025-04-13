@@ -37,3 +37,30 @@ export function initSupabase() {
   
   return createClient(supabaseUrl, supabaseServiceKey);
 }
+
+// Function to safely convert amount from cents to the appropriate decimal value
+export function convertCentsToCurrency(amountInCents) {
+  if (typeof amountInCents !== 'number') {
+    return 0;
+  }
+  
+  return amountInCents / 100;
+}
+
+// Utility function to safely log objects without circular references
+export function safeLog(label, obj) {
+  try {
+    console.log(`${label}:`, JSON.stringify(obj, null, 2));
+  } catch (error) {
+    console.log(`${label}: [Object could not be stringified]`, 
+      Object.keys(obj).reduce((acc, key) => {
+        try {
+          acc[key] = typeof obj[key];
+        } catch (e) {
+          acc[key] = 'unknown';
+        }
+        return acc;
+      }, {})
+    );
+  }
+}
