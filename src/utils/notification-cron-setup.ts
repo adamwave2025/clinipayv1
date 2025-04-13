@@ -33,6 +33,7 @@ export async function setupNotificationCron() {
  */
 export async function processNotificationsNow() {
   try {
+    console.log('Processing notifications immediately...');
     // Call the edge function to process notifications
     const { data, error } = await supabase.functions.invoke('process-notification-queue');
     

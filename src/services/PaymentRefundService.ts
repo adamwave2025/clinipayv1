@@ -33,7 +33,9 @@ export const PaymentRefundService = {
       
       // After successful refund, trigger notification processing
       try {
-        await processNotificationsNow();
+        console.log('Triggering notification processing after refund...');
+        const processResult = await processNotificationsNow();
+        console.log('Notification processing result:', processResult);
       } catch (notifyErr) {
         console.error('Error triggering notifications after refund:', notifyErr);
       }

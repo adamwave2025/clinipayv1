@@ -27,6 +27,23 @@ serve(async (req) => {
 
     console.log("🔧 Starting setup of notification processing cron job");
 
+    // Check if execute_sql function exists before trying to use it
+    try {
+      // Test the execute_sql function
+      const testResult = await supabase.rpc('execute_sql', { 
+        sql: 'SELECT NOW()' 
+      });
+      
+      if (testResult.error) {
+        throw new Error(`Execute SQL function test failed: ${testResult.error.message}`);
+      }
+      
+      console.log("✅ Execute SQL function test successful");
+    } catch (testError) {
+      console.error("❌ Execute SQL function test failed:", testError);
+      throw new Error(`The execute_sql function may not be available: ${testError.message}`);
+    }
+
     // Enable the pg_cron and pg_net extensions if they're not already enabled
     const { error: extensionError } = await supabase.rpc('execute_sql', {
       sql: `
@@ -131,6 +148,22 @@ serve(async (req) => {
     }
 
     console.log("✅ Notification processing cron job set up successfully");
+
+    // Run the notification processing immediately as a test
+    console.log("🔄 Processing any pending notifications immediately");
+    try {
+      const { data: processData, error: processError } = await supabase.functions.invoke('process-notification-queue');
+      
+      if (processError) {
+        console.error("⚠️ Error during immediate notification processing:", processError);
+        // Don't throw, this is just a test
+      } else {
+        console.log("✅ Immediate notification processing result:", processData);
+      }
+    } catch (processErr) {
+      console.error("⚠️ Exception during immediate notification processing:", processErr);
+      // Don't throw, this is just a test
+    }
 
     return new Response(JSON.stringify({
       success: true,
