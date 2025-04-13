@@ -1,6 +1,10 @@
-
 import { FormattedPayload } from "./config.ts";
 import { retryOperation, findPaymentRecord } from "./utils.ts";
+
+// First, add a function to get the correct base URL
+function getBaseUrl(): string {
+  return Deno.env.get("APP_URL") || "https://clinipay.co.uk";
+}
 
 // Format payment success notification
 export async function formatPaymentSuccess(
@@ -44,7 +48,7 @@ export async function formatPaymentSuccess(
     reference: payment.payment_ref || "N/A",
     amount: payment.amount_paid || 0,
     refund_amount: null,
-    payment_link: `${Deno.env.get("APP_URL") || "https://clinipay.com"}/payment-receipt/${payment.id}`,
+    payment_link: `${getBaseUrl()}/payment-receipt/${payment.id}`,
     message: "Your payment was successful",
   };
 
@@ -100,7 +104,7 @@ export async function formatPaymentRefund(
     reference: payment.payment_ref || "N/A",
     amount: payment.amount_paid || 0,
     refund_amount: payment.refund_amount || null,
-    payment_link: `${Deno.env.get("APP_URL") || "https://clinipay.com"}/payment-receipt/${payment.id}`,
+    payment_link: `${getBaseUrl()}/payment-receipt/${payment.id}`,
     message: payment.status === "refunded" 
       ? "Your payment has been fully refunded" 
       : "Your payment has been partially refunded",
@@ -204,7 +208,7 @@ export async function formatPaymentRequest(
     reference: "N/A", // Payment reference is created when paid
     amount: amount,
     refund_amount: null,
-    payment_link: `${Deno.env.get("APP_URL") || "https://clinipay.com"}/payment/${linkId}`,
+    payment_link: `${getBaseUrl()}/payment/${linkId}`,
     message: paymentRequest.message || 
              (paymentRequest.payment_links ? paymentRequest.payment_links.description : null) || 
              "You have received a payment request",
