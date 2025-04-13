@@ -103,9 +103,9 @@ export function usePaymentFormatter() {
       // Ensure we have a valid date for sent_at
       const sentDate = request.sent_at ? new Date(request.sent_at) : new Date();
       
-      // Construct payment URL for sent requests
+      // Fix: Construct payment URL without the extra '/request/' segment
       const paymentUrl = request.id 
-        ? `${window.location.origin}/payment/request/${request.id}`
+        ? `${window.location.origin}/payment/${request.id}`
         : undefined;
 
       return {
