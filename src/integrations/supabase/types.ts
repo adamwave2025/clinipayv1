@@ -18,12 +18,10 @@ export type Database = {
           country: string | null
           created_at: string | null
           email: string | null
-          email_notifications: boolean | null
           id: string
           logo_url: string | null
           phone: string | null
           postcode: string | null
-          sms_notifications: boolean | null
           stripe_account_id: string | null
           stripe_status: string | null
         }
@@ -35,12 +33,10 @@ export type Database = {
           country?: string | null
           created_at?: string | null
           email?: string | null
-          email_notifications?: boolean | null
           id?: string
           logo_url?: string | null
           phone?: string | null
           postcode?: string | null
-          sms_notifications?: boolean | null
           stripe_account_id?: string | null
           stripe_status?: string | null
         }
@@ -52,12 +48,10 @@ export type Database = {
           country?: string | null
           created_at?: string | null
           email?: string | null
-          email_notifications?: boolean | null
           id?: string
           logo_url?: string | null
           phone?: string | null
           postcode?: string | null
-          sms_notifications?: boolean | null
           stripe_account_id?: string | null
           stripe_status?: string | null
         }
