@@ -175,21 +175,46 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       }
     }
     
+    // Get clinic data for notifications
+    const { data: clinicData, error: clinicError } = await supabaseClient
+      .from('clinics')
+      .select('*')
+      .eq('id', clinicId)
+      .single();
+      
+    if (clinicError) {
+      console.error("Error fetching clinic data:", clinicError);
+      console.error("Continuing without clinic data");
+    }
+    
     // Add notifications to queue instead of trying to send them directly
     // Queue patient notification for successful payment if we have contact details
     if (patientEmail || patientPhone) {
       try {
-        // Create notification payload for patient
+        // Create notification payload for patient with new structure
         const patientPayload = {
-          clinic_id: clinicId,
-          payment_id: paymentId,
-          patient_name: patientName || 'Patient',
-          patient_email: patientEmail,
-          patient_phone: patientPhone,
-          payment_amount: amountInPounds,
-          payment_ref: paymentReference,
-          payment_type: 'success',
-          notification_type: 'payment_success'
+          notification_type: "payment_success",
+          notification_method: {
+            email: clinicData?.email_notifications ?? true,
+            sms: clinicData?.sms_notifications ?? true
+          },
+          patient: {
+            name: patientName || 'Patient',
+            email: patientEmail,
+            phone: patientPhone
+          },
+          payment: {
+            reference: paymentReference,
+            amount: amountInPounds,
+            refund_amount: null,
+            payment_link: `https://clinipay.co.uk/payment-receipt/${paymentId}`,
+            message: "Your payment was successful"
+          },
+          clinic: {
+            name: clinicData?.clinic_name || 'Your healthcare provider',
+            email: clinicData?.email,
+            phone: clinicData?.phone
+          }
         };
         
         // Add to notification queue for patient
@@ -211,13 +236,34 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
         
         // Queue clinic notification as well
         const clinicPayload = {
-          clinic_id: clinicId,
-          payment_id: paymentId,
-          patient_name: patientName || 'Anonymous',
-          payment_amount: amountInPounds,
-          payment_ref: paymentReference,
-          payment_type: 'received',
-          notification_type: 'payment_received'
+          notification_type: "payment_success",
+          notification_method: {
+            email: clinicData?.email_notifications ?? true,
+            sms: clinicData?.sms_notifications ?? true
+          },
+          patient: {
+            name: patientName || 'Anonymous',
+            email: patientEmail,
+            phone: patientPhone
+          },
+          payment: {
+            reference: paymentReference,
+            amount: amountInPounds,
+            refund_amount: null,
+            payment_link: `https://clinipay.co.uk/payment-receipt/${paymentId}`,
+            message: "Payment received successfully",
+            financial_details: {
+              gross_amount: amountInPounds,
+              stripe_fee: stripeFeeInCents / 100, // Convert from cents to pounds
+              platform_fee: platformFeeInCents / 100, // Convert from cents to pounds
+              net_amount: netAmountInCents / 100 // Convert from cents to pounds
+            }
+          },
+          clinic: {
+            name: clinicData?.clinic_name || 'Your clinic',
+            email: clinicData?.email,
+            phone: clinicData?.phone
+          }
         };
         
         const { error: clinicNotifyError } = await supabaseClient
@@ -282,19 +328,49 @@ export async function handlePaymentIntentFailed(paymentIntent: any, supabaseClie
     
     console.log(`Payment failed for clinic: ${clinicId}, reason: ${failureMessage}, code: ${failureCode}`);
 
+    // Get clinic data for notifications
+    const { data: clinicData, error: clinicError } = await supabaseClient
+      .from('clinics')
+      .select('*')
+      .eq('id', clinicId)
+      .single();
+      
+    if (clinicError) {
+      console.error("Error fetching clinic data:", clinicError);
+      console.error("Continuing without clinic data");
+    }
+
     // If we have patient contact information, queue a failure notification
     if (patientEmail || patientPhone) {
       try {
-        // Create notification payload for payment failure
+        // Create notification payload for payment failure with new structure
         const failurePayload = {
-          clinic_id: clinicId,
-          patient_name: patientName || 'Patient',
-          patient_email: patientEmail,
-          patient_phone: patientPhone,
-          payment_type: 'failed',
-          notification_type: 'payment_failed',
-          failure_reason: failureMessage,
-          failure_code: failureCode
+          notification_type: "payment_failed",
+          notification_method: {
+            email: clinicData?.email_notifications ?? true,
+            sms: clinicData?.sms_notifications ?? true
+          },
+          patient: {
+            name: patientName || 'Patient',
+            email: patientEmail,
+            phone: patientPhone
+          },
+          payment: {
+            reference: "N/A",
+            amount: paymentIntent.amount / 100,
+            refund_amount: null,
+            payment_link: paymentLinkId ? `https://clinipay.co.uk/payment/${paymentLinkId}` : null,
+            message: `Your payment has failed: ${failureMessage}`
+          },
+          clinic: {
+            name: clinicData?.clinic_name || 'Your healthcare provider',
+            email: clinicData?.email,
+            phone: clinicData?.phone
+          },
+          error: {
+            message: failureMessage,
+            code: failureCode
+          }
         };
         
         // Add to notification queue

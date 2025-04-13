@@ -108,15 +108,26 @@ const SendLinkPage = () => {
         throw new Error('No clinic associated with this user');
       }
 
+      // Get clinic data for notification
+      const { data: clinicData, error: clinicError } = await supabase
+        .from('clinics')
+        .select('*')
+        .eq('id', userData.clinic_id)
+        .single();
+
+      if (clinicError) throw clinicError;
+
       // Get payment link details if selected
       let amount = 0;
       let paymentLinkId = null;
+      let paymentTitle = '';
 
       if (formData.selectedLink) {
         const selectedPaymentLink = paymentLinks.find(link => link.id === formData.selectedLink);
         if (selectedPaymentLink) {
           amount = selectedPaymentLink.amount;
           paymentLinkId = selectedPaymentLink.id;
+          paymentTitle = selectedPaymentLink.title;
         }
       } else if (formData.customAmount) {
         amount = Number(formData.customAmount);
@@ -138,6 +149,58 @@ const SendLinkPage = () => {
         .select();
 
       if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        throw new Error('Failed to create payment request');
+      }
+
+      const paymentRequest = data[0];
+      
+      // Add notification to queue if email or SMS notifications are enabled
+      if (clinicData.email_notifications || clinicData.sms_notifications) {
+        // Create notification payload
+        const notificationPayload = {
+          notification_type: "payment_request",
+          notification_method: {
+            email: clinicData.email_notifications,
+            sms: clinicData.sms_notifications
+          },
+          patient: {
+            name: formData.patientName,
+            email: formData.patientEmail,
+            phone: formData.patientPhone
+          },
+          payment: {
+            reference: "N/A",
+            amount: amount,
+            refund_amount: null,
+            payment_link: `https://clinipay.co.uk/payment/${paymentRequest.id}`,
+            message: formData.message || (paymentTitle ? `Payment for ${paymentTitle}` : "Payment request")
+          },
+          clinic: {
+            name: clinicData.clinic_name || "Your healthcare provider",
+            email: clinicData.email,
+            phone: clinicData.phone
+          }
+        };
+
+        // Add to notification queue
+        const { error: notifyError } = await supabase
+          .from("notification_queue")
+          .insert({
+            type: 'payment_request',
+            payload: notificationPayload,
+            recipient_type: 'patient',
+            status: 'pending'
+          });
+
+        if (notifyError) {
+          console.error("Error queueing notification:", notifyError);
+          // Don't throw error, continue with success message
+        } else {
+          console.log("Payment request notification queued successfully");
+        }
+      }
       
       toast.success('Payment link sent successfully');
       

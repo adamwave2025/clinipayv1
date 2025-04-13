@@ -71,13 +71,39 @@ serve(async (req) => {
           throw new Error(`Missing ${notification.recipient_type} notification webhook URL`);
         }
 
-        // Enhance the notification payload with additional data
+        // Process the notification payload based on the type
         let enhancedPayload = { ...notification.payload };
         
-        // If this is a payment notification, fetch additional data
-        if (notification.payment_id && (notification.type === 'payment_success' || notification.type === 'payment_failed')) {
-          // Enrich the payload with additional data
-          enhancedPayload = await enrichPayloadWithData(supabase, notification);
+        // Handle payment_success, payment_failed, and payment_request types
+        if (notification.type === 'payment_success' || notification.type === 'payment_failed') {
+          // If this is a payment notification with payment_id, enrich with additional data
+          if (notification.payment_id) {
+            enhancedPayload = await enrichPayloadWithData(supabase, notification);
+          }
+        } else if (notification.type === 'payment_request') {
+          // For payment requests, ensure URLs are properly formatted
+          if (enhancedPayload.payment?.payment_link && !enhancedPayload.payment.payment_link.startsWith('http')) {
+            enhancedPayload.payment.payment_link = `https://clinipay.co.uk/payment/${enhancedPayload.payment.payment_link}`;
+          }
+          
+          // Make sure notification methods are properly set based on clinic preferences
+          if (!enhancedPayload.notification_method && notification.recipient_type === 'patient') {
+            // Get clinic notification preferences if not already set
+            if (enhancedPayload.clinic?.id) {
+              const { data: clinicData } = await supabase
+                .from('clinics')
+                .select('email_notifications, sms_notifications')
+                .eq('id', enhancedPayload.clinic.id)
+                .maybeSingle();
+              
+              if (clinicData) {
+                enhancedPayload.notification_method = {
+                  email: clinicData.email_notifications,
+                  sms: clinicData.sms_notifications
+                };
+              }
+            }
+          }
         }
 
         // Send notification to the appropriate webhook
@@ -196,7 +222,9 @@ async function enrichPayloadWithData(supabase, notification) {
           address_line_2,
           city,
           postcode,
-          country
+          country,
+          email_notifications,
+          sms_notifications
         )
       `)
       .eq("id", paymentId)
@@ -215,7 +243,13 @@ async function enrichPayloadWithData(supabase, notification) {
     console.log(`📝 Found payment data for ID ${paymentId}`);
     
     // Create enhanced payload based on recipient type
-    let enhancedPayload = { ...payload };
+    let enhancedPayload = { 
+      notification_type: notification.type === 'payment_success' ? 'payment_success' : 'payment_failed',
+      notification_method: {
+        email: payment.clinics?.email_notifications ?? true,
+        sms: payment.clinics?.sms_notifications ?? true
+      }
+    };
     
     // Add clinic data
     if (payment.clinics) {
@@ -233,23 +267,29 @@ async function enrichPayloadWithData(supabase, notification) {
       const formattedAddress = addressParts.length > 0 ? addressParts.join(', ') : null;
       
       enhancedPayload.clinic = {
-        id: clinic.id,
-        name: clinic.clinic_name || 'Unknown Clinic',
-        logo_url: clinic.logo_url,
+        name: clinic.clinic_name || 'Your healthcare provider',
         email: clinic.email,
         phone: clinic.phone,
         address: formattedAddress
       };
     }
     
-    // Common payment details for all notifications
+    // Add patient data
+    enhancedPayload.patient = {
+      name: payment.patient_name || payload.patient_name || 'Patient',
+      email: payment.patient_email || payload.patient_email,
+      phone: payment.patient_phone || payload.patient_phone
+    };
+    
+    // Add payment data
     enhancedPayload.payment = {
-      id: payment.id,
-      reference: payment.payment_ref,
+      reference: payment.payment_ref || "N/A",
       amount: payment.amount_paid,
-      status: payment.status,
-      date: payment.paid_at,
-      patient_name: payment.patient_name || enhancedPayload.patient_name || 'Patient'
+      refund_amount: payment.refund_amount || null,
+      payment_link: `https://clinipay.co.uk/payment-receipt/${payment.id}`,
+      message: notification.type === 'payment_success' ? 
+        "Your payment was successful" : 
+        "Your payment has failed"
     };
     
     // For clinic notifications, add financial details
@@ -261,22 +301,6 @@ async function enrichPayloadWithData(supabase, notification) {
         net_amount: payment.net_amount ? payment.net_amount / 100 : 0 // Convert from cents to pounds
       };
     }
-    
-    // For patient notifications, simplify
-    if (recipientType === 'patient') {
-      // Make sure patient has contact details
-      enhancedPayload.patient = {
-        name: payment.patient_name || enhancedPayload.patient_name || 'Patient',
-        email: payment.patient_email || enhancedPayload.patient_email,
-        phone: payment.patient_phone || enhancedPayload.patient_phone
-      };
-    }
-    
-    // Add notification type and timestamp
-    enhancedPayload.notification = {
-      type: notification.type,
-      timestamp: new Date().toISOString()
-    };
     
     console.log(`✨ Successfully enriched payload for ${recipientType} notification`);
     return enhancedPayload;
