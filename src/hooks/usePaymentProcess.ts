@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { toast } from 'sonner';
@@ -6,11 +7,18 @@ import { useStripePayment } from './useStripePayment';
 import { usePaymentIntent } from './usePaymentIntent';
 import { usePaymentRecord } from './usePaymentRecord';
 
+interface ApplePayFormData {
+  name: string;
+  email: string;
+  phone?: string;
+  paymentMethod: any;
+}
+
 export function usePaymentProcess(linkId: string | undefined, linkData: PaymentLinkData | null) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   
-  const { isProcessing, processPayment } = useStripePayment();
+  const { isProcessing, processPayment, processApplePayPayment } = useStripePayment();
   const { isCreatingIntent, createPaymentIntent } = usePaymentIntent();
   const { createPaymentRecord } = usePaymentRecord();
 
@@ -98,9 +106,80 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
     }
   };
 
+  const handleApplePaySubmit = async (applePayData: ApplePayFormData) => {
+    if (!linkData) {
+      toast.error('Payment details are missing');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setProcessingPayment(true);
+    
+    try {
+      // Step 1: Create payment intent
+      const intentResult = await createPaymentIntent({
+        linkData,
+        formData: {
+          name: applePayData.name,
+          email: applePayData.email,
+          phone: applePayData.phone
+        }
+      });
+      
+      if (!intentResult.success) {
+        throw new Error(intentResult.error || 'Failed to create payment intent');
+      }
+      
+      // Step 2: Process the payment with Apple Pay
+      const paymentResult = await processApplePayPayment({
+        clientSecret: intentResult.clientSecret,
+        paymentMethod: applePayData.paymentMethod
+      });
+      
+      if (!paymentResult.success) {
+        console.error('Apple Pay processing failed:', paymentResult.error);
+        throw new Error(paymentResult.error || 'Apple Pay processing failed');
+      }
+      
+      // Step 3: Create client-side record and update UI
+      await createPaymentRecord({
+        paymentIntent: paymentResult.paymentIntent,
+        linkData,
+        formData: {
+          name: applePayData.name,
+          email: applePayData.email,
+          phone: applePayData.phone
+        },
+        associatedPaymentLinkId: intentResult.associatedPaymentLinkId
+      });
+      
+      toast.success('Apple Pay payment successful!');
+      
+      // Navigate to success page
+      window.location.href = `/payment/success?link_id=${linkId}&payment_id=${paymentResult.paymentIntent.id || 'unknown'}`;
+    } catch (error: any) {
+      console.error('Apple Pay error:', error);
+      toast.error('Apple Pay payment failed: ' + error.message);
+      
+      if (!window.location.pathname.includes('/payment/failed')) {
+        setTimeout(() => {
+          let redirectUrl = `/payment/failed`;
+          if (linkId) {
+            redirectUrl += `?link_id=${linkId}`;
+          }
+          window.location.href = redirectUrl;
+        }, 1000);
+      }
+    } finally {
+      setIsSubmitting(false);
+      setProcessingPayment(false);
+    }
+  };
+
   return {
     isSubmitting: isSubmitting || isCreatingIntent || isProcessing,
     processingPayment,
     handlePaymentSubmit,
+    handleApplePaySubmit
   };
 }

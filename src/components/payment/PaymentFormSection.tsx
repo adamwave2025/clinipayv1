@@ -13,6 +13,7 @@ interface PaymentFormSectionProps {
   isSubmitting: boolean;
   defaultValues?: Partial<PaymentFormValues>;
   onSubmit: (data: PaymentFormValues) => void;
+  onApplePaySuccess?: (paymentMethod: any) => void;
 }
 
 const PaymentFormSection: React.FC<PaymentFormSectionProps> = ({
@@ -20,7 +21,8 @@ const PaymentFormSection: React.FC<PaymentFormSectionProps> = ({
   processingPayment,
   isSubmitting,
   defaultValues,
-  onSubmit
+  onSubmit,
+  onApplePaySuccess
 }) => {
   return (
     <Card className="card-shadow h-full">
@@ -50,6 +52,7 @@ const PaymentFormSection: React.FC<PaymentFormSectionProps> = ({
                 onSubmit={onSubmit}
                 isLoading={isSubmitting}
                 defaultValues={defaultValues}
+                onApplePaySuccess={onApplePaySuccess}
               />
             </div>
           </>

@@ -86,8 +86,68 @@ export function useStripePayment() {
     }
   };
 
+  const processApplePayPayment = async ({
+    clientSecret,
+    paymentMethod
+  }: {
+    clientSecret: string;
+    paymentMethod: any;
+  }) => {
+    if (!stripe) {
+      toast.error('Stripe has not been initialized');
+      return { success: false, error: 'Stripe not initialized' };
+    }
+
+    setIsProcessing(true);
+    
+    try {
+      // Confirm the payment with the payment method from Apple Pay
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
+        clientSecret,
+        {
+          payment_method: paymentMethod.id
+        }
+      );
+      
+      if (stripeError) {
+        console.error('Apple Pay payment error:', stripeError);
+        throw new Error(stripeError.message || 'Apple Pay payment failed');
+      }
+      
+      if (!paymentIntent) {
+        throw new Error('No payment intent returned');
+      }
+      
+      if (paymentIntent.status === 'requires_payment_method' || 
+          paymentIntent.status === 'requires_action' ||
+          paymentIntent.status === 'canceled') {
+        console.error('Payment intent status indicates failure:', paymentIntent.status);
+        throw new Error(`Apple Pay payment failed: ${paymentIntent.status}`);
+      }
+      
+      if (paymentIntent.status !== 'succeeded') {
+        throw new Error(`Apple Pay payment status: ${paymentIntent.status}`);
+      }
+
+      return { 
+        success: true, 
+        paymentIntent,
+      };
+    } catch (error: any) {
+      console.error('Apple Pay processing error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Error processing Apple Pay payment',
+        paymentStatus: error.paymentIntent?.status
+      };
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return {
     isProcessing,
-    processPayment
+    processPayment,
+    processApplePayPayment
   };
 }

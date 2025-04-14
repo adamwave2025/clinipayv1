@@ -13,9 +13,15 @@ interface PaymentFormProps {
   onSubmit: (data: PaymentFormValues) => void;
   isLoading: boolean;
   defaultValues?: Partial<PaymentFormValues>;
+  onApplePaySuccess?: (paymentMethod: any) => void;
 }
 
-const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) => {
+const PaymentForm = ({ 
+  onSubmit, 
+  isLoading, 
+  defaultValues,
+  onApplePaySuccess
+}: PaymentFormProps) => {
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
@@ -41,6 +47,7 @@ const PaymentForm = ({ onSubmit, isLoading, defaultValues }: PaymentFormProps) =
         <PaymentDetailsSection
           control={form.control}
           isLoading={isLoading}
+          onApplePaySuccess={onApplePaySuccess}
         />
         
         <SubmitButton isLoading={isLoading} />
