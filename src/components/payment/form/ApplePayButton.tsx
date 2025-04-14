@@ -63,12 +63,12 @@ const ApplePayButton = ({ amount, isLoading, onApplePaySuccess }: ApplePayButton
     paymentRequest,
     style: {
       paymentRequestButton: {
-        type: 'buy' as const, // Using a valid literal type that Stripe accepts
-        theme: 'dark',
+        type: 'buy' as const,
+        theme: 'dark' as const, // Explicitly use a valid Stripe theme type
         height: '48px',
       },
     },
-  };
+  } as const; // Add const assertion to ensure type safety
 
   return (
     <div className="mb-4 mt-2">
