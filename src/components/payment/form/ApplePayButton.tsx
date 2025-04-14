@@ -64,18 +64,18 @@ const ApplePayButton = ({ amount, isLoading, onApplePaySuccess }: ApplePayButton
     style: {
       paymentRequestButton: {
         type: 'buy' as const,
-        theme: 'dark' as const, // Explicitly use a valid Stripe theme type
+        theme: 'dark' as const,
         height: '48px',
       },
     },
-  } as const; // Add const assertion to ensure type safety
+  };
 
   return (
     <div className="mb-4 mt-2">
       <div className="relative">
         <PaymentRequestButtonElement
           options={paymentRequestOptions}
-          disabled={isLoading}
+          className={isLoading ? "opacity-50 pointer-events-none" : ""}
         />
       </div>
       <div className="text-xs text-center text-gray-500 mt-2">
