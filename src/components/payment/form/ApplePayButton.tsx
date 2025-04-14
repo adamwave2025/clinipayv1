@@ -63,7 +63,7 @@ const ApplePayButton = ({ amount, isLoading, onApplePaySuccess }: ApplePayButton
     paymentRequest,
     style: {
       paymentRequestButton: {
-        type: 'pay',
+        type: 'pay', // Fixed: Now using a valid literal type
         theme: 'dark',
         height: '48px',
       },
