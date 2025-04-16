@@ -13,13 +13,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search } from 'lucide-react';
+import { Download, Search } from 'lucide-react';
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 import { isWithinInterval, parseISO } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { useDashboardData, DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
 import PaymentTable from '@/components/dashboard/payments/PaymentTable';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { generatePaymentsCsv, downloadCsv } from '@/utils/csvExport';
+import { format } from 'date-fns';
 
 // Wrapper component to use the DashboardDataProvider context
 const PaymentHistoryContent = () => {
@@ -71,6 +75,35 @@ const PaymentHistoryContent = () => {
     return matchesSearch && matchesDateRange && matchesType && matchesStatus;
   });
 
+  const handleDownloadReport = () => {
+    if (filteredPayments.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+
+    try {
+      // Generate CSV data from filtered payments
+      const csvData = generatePaymentsCsv(filteredPayments);
+      
+      // Create filename with date range if available
+      let filename = "payment-history";
+      if (dateRange?.from && dateRange?.to) {
+        filename += `-${format(dateRange.from, 'yyyy-MM-dd')}-to-${format(dateRange.to, 'yyyy-MM-dd')}`;
+      } else {
+        filename += `-${format(new Date(), 'yyyy-MM-dd')}`;
+      }
+      filename += ".csv";
+      
+      // Trigger download
+      downloadCsv(csvData, filename);
+      
+      toast.success("Report downloaded successfully");
+    } catch (error) {
+      console.error("Error generating CSV:", error);
+      toast.error("Failed to generate report");
+    }
+  };
+
   return (
     <>
       <Card className="card-shadow mb-8">
@@ -86,7 +119,7 @@ const PaymentHistoryContent = () => {
               />
             </div>
             
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4 items-center">
               <DateRangeFilter
                 dateRange={dateRange}
                 onDateRangeChange={setDateRange}
@@ -121,6 +154,16 @@ const PaymentHistoryContent = () => {
                   </SelectGroup>
                 </SelectContent>
               </Select>
+              
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="h-8 text-xs flex items-center gap-1"
+                onClick={handleDownloadReport}
+              >
+                <Download className="h-3 w-3" />
+                Download Report
+              </Button>
             </div>
           </div>
         </CardContent>
