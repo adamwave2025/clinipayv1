@@ -7,7 +7,6 @@ interface StatCardProps {
   value: string;
   icon: ReactNode;
   secondaryText?: string;
-  trend?: 'up' | 'down' | 'neutral';
   className?: string;
 }
 
@@ -16,7 +15,6 @@ const StatCard = ({
   value, 
   icon, 
   secondaryText, 
-  trend, 
   className = '' 
 }: StatCardProps) => {
   return (
@@ -27,11 +25,7 @@ const StatCard = ({
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
             <h3 className="text-2xl font-bold">{value}</h3>
             {secondaryText && (
-              <span className={`text-xs font-medium ${
-                trend === 'up' ? 'text-green-500' : 
-                trend === 'down' ? 'text-red-500' : 
-                'text-gray-500'
-              }`}>
+              <span className="text-xs font-medium text-gray-500">
                 {secondaryText}
               </span>
             )}
