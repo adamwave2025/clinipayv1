@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -66,28 +67,24 @@ const AdminDashboardPage = () => {
             title="Total Clinics" 
             value={stats.totalClinics.toString()} 
             secondaryText={`${stats.totalClinics > 0 ? '+3 this month' : 'No new clinics'}`}
-            trend="up"
             icon={<Users className="h-5 w-5 text-white" />}
           />
           <StatCard 
             title="Total Payments" 
             value={formatCurrency(stats.totalPayments)} 
             secondaryText={`${stats.paymentsChange > 0 ? '+' : ''}${stats.paymentsChange}% from last period`}
-            trend={stats.paymentsChange > 0 ? 'up' : 'down'}
             icon={<CreditCard className="h-5 w-5 text-white" />}
           />
           <StatCard 
             title="Total Refunds" 
             value={formatCurrency(stats.totalRefunds)} 
             secondaryText={`${stats.refundsChange > 0 ? '+' : ''}${stats.refundsChange}% from last period`}
-            trend={stats.refundsChange < 0 ? 'down' : 'up'}
             icon={<RefreshCcw className="h-5 w-5 text-white" />}
           />
           <StatCard 
             title="CliniPay Revenue" 
             value={formatCurrency(stats.clinipayRevenue)} 
             secondaryText={`${stats.revenueChange > 0 ? '+' : ''}${stats.revenueChange}% from last period`}
-            trend={stats.revenueChange > 0 ? 'up' : 'down'}
             icon={<DollarSign className="h-5 w-5 text-white" />}
           />
         </div>
