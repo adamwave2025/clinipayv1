@@ -18,6 +18,7 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
     'Patient Email',
     'Patient Phone',
     'Amount',
+    'Platform Fee',
     'Reference',
     'Type',
     'Date',
@@ -34,6 +35,12 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
     const patientEmail = payment.patientEmail ? `"${payment.patientEmail.replace(/"/g, '""')}"` : '""';
     const patientPhone = payment.patientPhone ? `"${payment.patientPhone.replace(/"/g, '""')}"` : '""';
     const amount = payment.amount ? formatCurrency(payment.amount).replace('£', '') : '0.00';
+    
+    // Format platform fee if available
+    const platformFee = payment.platformFee 
+      ? formatCurrency(payment.platformFee).replace('£', '') 
+      : '0.00';
+    
     const reference = payment.reference ? `"${payment.reference}"` : '""';
     const type = payment.linkTitle || payment.type || 'Unknown';
     const status = payment.status || 'Unknown';
@@ -44,6 +51,7 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
       patientEmail,
       patientPhone,
       amount,
+      platformFee,
       reference,
       `"${type}"`,
       `"${payment.date}"`,

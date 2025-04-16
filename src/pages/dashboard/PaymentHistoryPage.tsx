@@ -85,8 +85,8 @@ const PaymentHistoryContent = () => {
       // Generate CSV data from filtered payments
       const csvData = generatePaymentsCsv(filteredPayments);
       
-      // Create filename with date range if available
-      let filename = "payment-history";
+      // Create filename with CliniPay prefix and date range if available
+      let filename = "CliniPay-Payment-History";
       if (dateRange?.from && dateRange?.to) {
         filename += `-${format(dateRange.from, 'yyyy-MM-dd')}-to-${format(dateRange.to, 'yyyy-MM-dd')}`;
       } else {
