@@ -5,6 +5,7 @@ export interface Payment {
   patientEmail?: string;
   patientPhone?: string;
   amount: number;
+  platformFee?: number; // Added platform fee property
   date: string;
   status: 'paid' | 'refunded' | 'sent' | 'partially_refunded';
   type: 'deposit' | 'treatment' | 'consultation' | 'other';

@@ -1,4 +1,3 @@
-
 import { Payment, PaymentLink } from '@/types/payment';
 import { formatDate } from '@/utils/formatters';
 
@@ -41,6 +40,7 @@ export function usePaymentFormatter() {
         patientEmail: payment.patient_email,
         patientPhone: payment.patient_phone || undefined,
         amount: payment.amount_paid || 0,
+        platformFee: payment.platform_fee || 0, // Include the platform fee
         date: formatDate(paidDate),
         status: payment.status as any || 'paid',
         type: paymentType,
