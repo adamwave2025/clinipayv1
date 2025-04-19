@@ -48,7 +48,7 @@ const HomePage = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
               <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg">
                 <div className="flex items-start gap-6">
@@ -93,11 +93,11 @@ const HomePage = () => {
               </div>
             </div>
 
-            <div className="relative flex justify-center lg:justify-end h-[350px]">
+            <div className="flex justify-center lg:justify-end">
               <img 
                 src="https://jbtxxlkhiubuzanegtzn.supabase.co/storage/v1/object/public/clinipaywebsiteimages//clinicinfopaymentscreen.png" 
                 alt="CliniPay Payment Form Preview" 
-                className="rounded-lg shadow-xl w-full h-full object-contain animate-fade-in"
+                className="rounded-lg shadow-xl w-full max-h-[420px] object-contain animate-fade-in"
               />
             </div>
           </div>
