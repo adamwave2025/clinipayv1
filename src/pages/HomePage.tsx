@@ -48,35 +48,57 @@ const HomePage = () => {
             </p>
           </div>
 
-          <div className="flex flex-col md:flex-row justify-center gap-8 max-w-4xl mx-auto">
-            <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg text-center">
-              <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center mb-4 mx-auto">
-                <CreditCard className="text-white h-6 w-6" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg">
+                <div className="flex items-start gap-6">
+                  <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0">
+                    <CreditCard className="text-white h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">Create payment links</h3>
+                    <p className="text-gray-600">
+                      Generate branded links for treatments, consultations, or deposits in just a few clicks.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <h3 className="text-xl font-bold mb-2">Create payment links</h3>
-              <p className="text-gray-600">
-                Generate branded links for treatments, consultations, or deposits in just a few clicks.
-              </p>
+
+              <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg">
+                <div className="flex items-start gap-6">
+                  <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Check className="text-white h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">Collect payments</h3>
+                    <p className="text-gray-600">
+                      Patients pay instantly using card or Apple Pay. No accounts, no logins, no fuss.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg">
+                <div className="flex items-start gap-6">
+                  <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Shield className="text-white h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">Manage everything</h3>
+                    <p className="text-gray-600">
+                      Track patient payments, process instant refunds, and download detailed reports seamlessly.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg text-center">
-              <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center mb-4 mx-auto">
-                <Check className="text-white h-6 w-6" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Collect payments</h3>
-              <p className="text-gray-600">
-                Patients pay instantly using card or Apple Pay. No accounts, no logins, no fuss.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl card-shadow transition-all duration-300 hover:scale-105 hover:shadow-lg text-center">
-              <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center mb-4 mx-auto">
-                <Shield className="text-white h-6 w-6" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Manage everything</h3>
-              <p className="text-gray-600">
-                Track patient payments, process instant refunds, and download detailed reports seamlessly.
-              </p>
+            <div className="relative flex justify-center lg:justify-end">
+              <img 
+                src="/payment-form-preview.png" 
+                alt="CliniPay Payment Form Preview" 
+                className="rounded-lg shadow-xl max-w-full lg:max-w-[500px] w-full animate-fade-in"
+              />
             </div>
           </div>
         </div>
