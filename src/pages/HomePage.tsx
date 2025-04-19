@@ -64,7 +64,7 @@ const HomePage = () => {
               <div className="bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center mb-4 mx-auto">
                 <Check className="text-white h-6 w-6" />
               </div>
-              <h3 className="text-xl font-bold mb-2">Collect payments with ease</h3>
+              <h3 className="text-xl font-bold mb-2">Collect payments</h3>
               <p className="text-gray-600">
                 Patients pay instantly using card or Apple Pay — no accounts, no logins, no fuss.
               </p>
