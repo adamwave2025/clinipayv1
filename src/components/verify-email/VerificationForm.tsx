@@ -42,9 +42,9 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
         throw new Error(result.error || "Failed to resend verification email");
       }
       
-      // If we got a direct verification URL, display it
+      // Store verification URL but don't display it
       if (result.verificationUrl) {
-        setVerificationUrl(result.verificationUrl);
+        setVerificationUrl('');
       }
       
       setStatus('success');
@@ -63,13 +63,9 @@ export const VerificationForm: React.FC<VerificationFormProps> = ({
 
   return (
     <div className="space-y-4">
-      <input
-        type="email"
-        placeholder="Enter your email address"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+      <div className="w-full px-4 py-2 border border-gray-300 rounded bg-gray-50 text-gray-700">
+        {email}
+      </div>
       
       <Button 
         variant="outline" 

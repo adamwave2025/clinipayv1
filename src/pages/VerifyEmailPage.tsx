@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -9,7 +8,6 @@ import { verifyEmailToken } from '@/utils/auth-utils';
 import { EmailIcon } from '@/components/verify-email/EmailIcon';
 import { VerifyingEmail } from '@/components/verify-email/VerifyingEmail';
 import { VerificationStatus } from '@/components/verify-email/VerificationStatus';
-import { VerificationUrlDisplay } from '@/components/verify-email/VerificationUrlDisplay';
 import { VerificationForm } from '@/components/verify-email/VerificationForm';
 import { VerificationInfo } from '@/components/verify-email/VerificationInfo';
 
@@ -23,7 +21,6 @@ const VerifyEmailPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
-  // Check if we have a token and userId in the URL for verification
   useEffect(() => {
     const token = searchParams.get('token');
     const userId = searchParams.get('userId');
@@ -33,7 +30,6 @@ const VerifyEmailPage = () => {
     }
   }, [searchParams]);
 
-  // Check for email in URL params or in local storage
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const emailParam = params.get('email');
@@ -49,7 +45,6 @@ const VerifyEmailPage = () => {
     }
   }, [location]);
 
-  // If user is already signed in, navigate to dashboard
   useEffect(() => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
@@ -74,10 +69,8 @@ const VerifyEmailPage = () => {
         throw new Error(result.error || "Invalid verification token");
       }
       
-      // Just show success toast and redirect to sign-in page directly
       toast.success('Email verification successful! You can now sign in.');
       
-      // Redirect to sign-in page immediately
       navigate('/sign-in');
       return;
     } catch (error: any) {
@@ -108,8 +101,6 @@ const VerifyEmailPage = () => {
         </p>
 
         <VerificationStatus status={status} message={message} />
-        
-        <VerificationUrlDisplay verificationUrl={verificationUrl} />
         
         {!isVerifying && (
           <VerificationForm 
