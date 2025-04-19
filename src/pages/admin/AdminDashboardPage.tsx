@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, CreditCard, RefreshCcw, DollarSign } from 'lucide-react';
+import { Users, CreditCard, RefreshCcw, BadgePoundSterling } from 'lucide-react';
 import { useAdminStats } from '@/hooks/useAdminStats';
 import { RecentClinicsTable } from '@/components/admin/RecentClinicsTable';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -85,7 +85,7 @@ const AdminDashboardPage = () => {
             title="CliniPay Revenue" 
             value={formatCurrency(stats.clinipayRevenue)} 
             secondaryText={`${stats.revenueChange > 0 ? '+' : ''}${stats.revenueChange}% from last period`}
-            icon={<DollarSign className="h-5 w-5 text-white" />}
+            icon={<BadgePoundSterling className="h-5 w-5 text-white" />}
           />
         </div>
       )}

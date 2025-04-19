@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { DollarSign, Calendar, RefreshCcw } from 'lucide-react';
+import { BadgePoundSterling, Calendar, RefreshCcw } from 'lucide-react';
 import StatCardTrend from './StatCardTrend';
 import { PaymentStats } from '@/types/payment';
 
@@ -14,7 +14,7 @@ const PaymentStatsCards = ({ stats }: PaymentStatsCardsProps) => {
       <StatCardTrend
         title="Today's Payments"
         value={`£${stats.totalReceivedToday.toFixed(2)}`}
-        icon={<DollarSign className="h-5 w-5 text-white" />}
+        icon={<BadgePoundSterling className="h-5 w-5 text-white" />}
       />
       <StatCardTrend
         title="Pending Today"
@@ -24,7 +24,7 @@ const PaymentStatsCards = ({ stats }: PaymentStatsCardsProps) => {
       <StatCardTrend
         title="Month Total"
         value={`£${stats.totalReceivedMonth.toFixed(2)}`}
-        icon={<DollarSign className="h-5 w-5 text-white" />}
+        icon={<BadgePoundSterling className="h-5 w-5 text-white" />}
       />
       <StatCardTrend
         title="Month Refunded"
