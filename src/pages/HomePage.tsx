@@ -97,7 +97,7 @@ const HomePage = () => {
               <img 
                 src="https://jbtxxlkhiubuzanegtzn.supabase.co/storage/v1/object/public/clinipaywebsiteimages//clinicinfopaymentscreen.png" 
                 alt="CliniPay Payment Form Preview" 
-                className="w-full max-h-[420px] object-contain animate-fade-in"
+                className="w-full max-h-[630px] object-contain animate-fade-in"
               />
             </div>
           </div>
