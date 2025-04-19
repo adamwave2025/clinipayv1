@@ -99,7 +99,7 @@ const HomePage = () => {
               <div className="bg-gradient-primary w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300">
                 <TrendingUp className="text-white h-8 w-8" />
               </div>
-              <h3 className="text-xl font-bold mb-3 gradient-text">Higher payment completion rates</h3>
+              <h3 className="text-xl font-bold mb-3 gradient-text">Increase conversion rates</h3>
               <p className="text-gray-600">
                 Branded, mobile-friendly payment pages feel seamless and secure — which means fewer abandoned payments and more committed patients.
               </p>
@@ -119,7 +119,7 @@ const HomePage = () => {
               <div className="bg-gradient-primary w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300">
                 <PhoneOff className="text-white h-8 w-8" />
               </div>
-              <h3 className="text-xl font-bold mb-3 gradient-text">No more awkward phone calls</h3>
+              <h3 className="text-xl font-bold mb-3 gradient-text">No more awkward calls</h3>
               <p className="text-gray-600">
                 Forget taking card details over the phone or waiting on manual transfers. CliniPay handles it all — and keeps your team focused on patient care.
               </p>
