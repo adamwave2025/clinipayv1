@@ -29,7 +29,7 @@ const HomePage = () => {
             <span className="gradient-text">Trusted payments</span> for your clinic
           </h1>
           <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Reduce no-shows and streamline bookings with secure payment collection. CliniPay helps private clinics build trust with a professional payment experience.
+            Ditch clunky bank transfers and manual admin. CliniPay gives your clinic a faster, more professional way to collect payments and reduce no-shows — all through branded, secure payment links.
           </p>
           <div className="flex justify-center">
             <Button className="btn-gradient rounded-full text-lg py-6 px-8" asChild>
