@@ -95,34 +95,40 @@ const HomePage = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-5xl mx-auto">
-            <div className="group p-6 rounded-xl transition-all duration-300 hover:-translate-y-1">
-              <div className="bg-gradient-primary w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300">
+            <div className="group flex items-start p-6 rounded-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="bg-gradient-primary w-16 h-16 rounded-2xl flex items-center justify-center mr-6 flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-300">
                 <TrendingUp className="text-white h-8 w-8" />
               </div>
-              <h3 className="text-xl font-bold mb-3 gradient-text">Increase conversion rates</h3>
-              <p className="text-gray-600">
-                Branded, mobile-friendly payment pages feel seamless and secure — which means fewer abandoned payments and more committed patients.
-              </p>
+              <div>
+                <h3 className="text-xl font-bold mb-3 gradient-text">Increase conversion rates</h3>
+                <p className="text-gray-600">
+                  Branded, mobile-friendly payment pages feel seamless and secure — which means fewer abandoned payments and more committed patients.
+                </p>
+              </div>
             </div>
 
-            <div className="group p-6 rounded-xl transition-all duration-300 hover:-translate-y-1">
-              <div className="bg-gradient-primary w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300">
+            <div className="group flex items-start p-6 rounded-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="bg-gradient-primary w-16 h-16 rounded-2xl flex items-center justify-center mr-6 flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-300">
                 <ShieldCheck className="text-white h-8 w-8" />
               </div>
-              <h3 className="text-xl font-bold mb-3 gradient-text">Built-in trust</h3>
-              <p className="text-gray-600">
-                Patients are more likely to pay when the process feels professional. CliniPay is backed by Stripe and your clinic's branding, giving patients instant peace of mind.
-              </p>
+              <div>
+                <h3 className="text-xl font-bold mb-3 gradient-text">Built-in trust</h3>
+                <p className="text-gray-600">
+                  Patients are more likely to pay when the process feels professional. CliniPay is backed by Stripe and your clinic's branding, giving patients instant peace of mind.
+                </p>
+              </div>
             </div>
 
-            <div className="group p-6 rounded-xl transition-all duration-300 hover:-translate-y-1">
-              <div className="bg-gradient-primary w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300">
+            <div className="group flex items-start p-6 rounded-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="bg-gradient-primary w-16 h-16 rounded-2xl flex items-center justify-center mr-6 flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-300">
                 <PhoneOff className="text-white h-8 w-8" />
               </div>
-              <h3 className="text-xl font-bold mb-3 gradient-text">No more awkward calls</h3>
-              <p className="text-gray-600">
-                Forget taking card details over the phone or waiting on manual transfers. CliniPay handles it all — and keeps your team focused on patient care.
-              </p>
+              <div>
+                <h3 className="text-xl font-bold mb-3 gradient-text">No more awkward calls</h3>
+                <p className="text-gray-600">
+                  Forget taking card details over the phone or waiting on manual transfers. CliniPay handles it all — and keeps your team focused on patient care.
+                </p>
+              </div>
             </div>
           </div>
         </div>
