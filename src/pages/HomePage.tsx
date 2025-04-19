@@ -45,7 +45,7 @@ const HomePage = () => {
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4 gradient-text">How CliniPay works</h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              A simple, secure way to manage payments and reduce no-shows for your clinic
+              A simple, reliable way to take control of payments
             </p>
           </div>
 
@@ -56,7 +56,7 @@ const HomePage = () => {
               </div>
               <h3 className="text-xl font-bold mb-2">Create payment links</h3>
               <p className="text-gray-600">
-                Generate branded links for treatments, consultations, or deposits — in just a few clicks.
+                Generate branded links for treatments, consultations, or deposits in just a few clicks.
               </p>
             </div>
 
@@ -66,7 +66,7 @@ const HomePage = () => {
               </div>
               <h3 className="text-xl font-bold mb-2">Collect payments</h3>
               <p className="text-gray-600">
-                Patients pay instantly using card or Apple Pay — no accounts, no logins, no fuss.
+                Patients pay instantly using card or Apple Pay. No accounts, no logins, no fuss.
               </p>
             </div>
 
