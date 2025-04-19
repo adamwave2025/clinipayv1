@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
-import { CreditCard, Check, Shield } from 'lucide-react';
+import { CreditCard, Check, Shield, TrendingUp, ShieldCheck, PhoneOff } from 'lucide-react';
 
 const HomePage = () => {
   return (
@@ -77,6 +76,52 @@ const HomePage = () => {
               <h3 className="text-xl font-bold mb-2">Manage everything</h3>
               <p className="text-gray-600">
                 Track patient payments, process instant refunds, and download detailed reports seamlessly.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Benefits section */}
+      <section className="py-16 px-6 md:px-8 bg-white" id="benefits">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Why CliniPay Beats <span className="gradient-text">Bank Transfers & Phone Payments</span>
+            </h2>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              Old-school payments are costing you bookings. CliniPay converts more patients and saves your team hours.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-5xl mx-auto">
+            <div className="group p-6 rounded-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="bg-gradient-primary w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <TrendingUp className="text-white h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 gradient-text">Higher payment completion rates</h3>
+              <p className="text-gray-600">
+                Branded, mobile-friendly payment pages feel seamless and secure — which means fewer abandoned payments and more committed patients.
+              </p>
+            </div>
+
+            <div className="group p-6 rounded-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="bg-gradient-primary w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <ShieldCheck className="text-white h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 gradient-text">Built-in trust</h3>
+              <p className="text-gray-600">
+                Patients are more likely to pay when the process feels professional. CliniPay is backed by Stripe and your clinic's branding, giving patients instant peace of mind.
+              </p>
+            </div>
+
+            <div className="group p-6 rounded-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="bg-gradient-primary w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <PhoneOff className="text-white h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 gradient-text">No more awkward phone calls</h3>
+              <p className="text-gray-600">
+                Forget taking card details over the phone or waiting on manual transfers. CliniPay handles it all — and keeps your team focused on patient care.
               </p>
             </div>
           </div>
