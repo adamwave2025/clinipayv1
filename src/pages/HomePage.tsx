@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -95,7 +96,7 @@ const HomePage = () => {
 
             <div className="relative flex justify-center lg:justify-end">
               <img 
-                src="/payment-form-preview.png" 
+                src="https://jbtxxlkhiubuzanegtzn.supabase.co/storage/v1/object/public/clinipaywebsiteimages//clinicinfopaymentscreen.png" 
                 alt="CliniPay Payment Form Preview" 
                 className="rounded-lg shadow-xl max-w-full lg:max-w-[500px] w-full animate-fade-in"
               />
