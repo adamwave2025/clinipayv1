@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Shield, Lock, CheckCircle } from 'lucide-react';
@@ -62,7 +61,7 @@ const CliniPaySecuritySection = () => {
             
             <div className="bg-gradient-to-r from-indigo-50 to-green-50 p-2 rounded-lg text-center">
               <CheckCircle className="h-4 w-4 mx-auto mb-1 text-indigo-600" />
-              <span className="text-gray-700 font-medium">Trusted by NHS Clinics</span>
+              <span className="text-gray-700 font-medium">Trusted by UK Clinics</span>
             </div>
           </div>
         </div>
