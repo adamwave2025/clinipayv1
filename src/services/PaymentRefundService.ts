@@ -6,7 +6,7 @@ import { processNotificationsNow } from '@/utils/notification-cron-setup';
 import { Json } from '@/integrations/supabase/types';
 
 export const PaymentRefundService = {
-  async processRefund(paymentId: string, amount?: number): Promise<{ success: boolean; status?: string; error?: string }> {
+  async processRefund(paymentId: string, amount?: number): Promise<{ success: boolean; status?: string; error?: string; refundFee?: number }> {
     if (!paymentId) {
       return { success: false, error: 'Payment ID is required' };
     }
@@ -36,7 +36,8 @@ export const PaymentRefundService = {
       
       return { 
         success: true,
-        status: data.status
+        status: data.status,
+        refundFee: data.refundFee
       };
     } catch (error: any) {
       console.error('Error refunding payment:', error);

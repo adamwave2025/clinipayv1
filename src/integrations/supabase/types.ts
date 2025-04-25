@@ -228,6 +228,7 @@ export type Database = {
           status: string | null
           stripe_fee: number | null
           stripe_payment_id: string | null
+          stripe_refund_fee: number | null
           stripe_refund_id: string | null
         }
         Insert: {
@@ -247,6 +248,7 @@ export type Database = {
           status?: string | null
           stripe_fee?: number | null
           stripe_payment_id?: string | null
+          stripe_refund_fee?: number | null
           stripe_refund_id?: string | null
         }
         Update: {
@@ -266,6 +268,7 @@ export type Database = {
           status?: string | null
           stripe_fee?: number | null
           stripe_payment_id?: string | null
+          stripe_refund_fee?: number | null
           stripe_refund_id?: string | null
         }
         Relationships: [

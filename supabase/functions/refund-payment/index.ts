@@ -89,6 +89,8 @@ serve(async (req) => {
 
     // Process refund via Stripe
     let stripeRefund;
+    let refundFeeInCents = 0;  // Variable to store the refund fee
+    
     try {
       console.log(`💳 Creating Stripe refund for payment intent: ${stripePaymentId}`);
       
@@ -102,6 +104,34 @@ serve(async (req) => {
       });
       
       console.log(`✅ Stripe refund created with ID: ${stripeRefund.id}`);
+      
+      // After successful refund, try to retrieve the balance transaction to get the refund fee
+      if (stripeRefund.balance_transaction) {
+        try {
+          console.log(`🔍 Retrieving balance transaction for refund: ${stripeRefund.balance_transaction}`);
+          
+          // Get the balance transaction data
+          const balanceTransaction = await stripe.balanceTransactions.retrieve(
+            typeof stripeRefund.balance_transaction === 'string' 
+              ? stripeRefund.balance_transaction 
+              : stripeRefund.balance_transaction.id
+          );
+          
+          // Extract the fee (in cents)
+          if (balanceTransaction && balanceTransaction.fee) {
+            refundFeeInCents = balanceTransaction.fee;
+            console.log(`💰 Stripe refund fee: ${refundFeeInCents} cents (${refundFeeInCents / 100} GBP)`);
+          } else {
+            console.log(`⚠️ No fee found in balance transaction`);
+          }
+        } catch (feeError) {
+          // Log the error but continue with the refund process
+          console.error(`⚠️ Error retrieving refund fee from balance transaction:`, feeError);
+          console.error(`Continuing with refund process without fee information`);
+        }
+      } else {
+        console.log(`⚠️ No balance transaction found in refund response`);
+      }
     } catch (stripeError) {
       console.error("❌ Stripe refund error:", stripeError);
       // Log detailed Stripe error information
@@ -141,7 +171,8 @@ serve(async (req) => {
       status: newStatus,
       refund_amount: refundAmountToStore,
       refunded_at: currentTimestamp,
-      stripe_refund_id: stripeRefund.id
+      stripe_refund_id: stripeRefund.id,
+      stripe_refund_fee: refundFeeInCents  // Add the refund fee to the update data
     };
 
     console.log(`📦 Update data: ${JSON.stringify(updateData)}`);
@@ -258,7 +289,8 @@ serve(async (req) => {
               gross_amount: payment.amount_paid,
               stripe_fee: payment.stripe_fee ? payment.stripe_fee / 100 : 0, // Convert from cents to pounds
               platform_fee: payment.platform_fee ? payment.platform_fee / 100 : 0, // Convert from cents to pounds
-              net_amount: payment.net_amount ? payment.net_amount / 100 : 0 // Convert from cents to pounds
+              net_amount: payment.net_amount ? payment.net_amount / 100 : 0, // Convert from cents to pounds
+              refund_fee: refundFeeInCents / 100 // Convert from cents to pounds
             }
           },
           clinic: {
@@ -297,7 +329,8 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         refundId: stripeRefund.id,
-        status: newStatus
+        status: newStatus,
+        refundFee: refundFeeInCents // Return refund fee in response for information
       }),
       {
         headers: {
