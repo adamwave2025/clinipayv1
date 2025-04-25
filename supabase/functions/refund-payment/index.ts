@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -9,7 +8,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: corsHeaders
@@ -19,7 +17,6 @@ serve(async (req) => {
   try {
     console.log("🔄 Refund process started");
     
-    // Parse request body and log data for debugging
     let requestBody;
     try {
       requestBody = await req.json();
@@ -36,7 +33,6 @@ serve(async (req) => {
       throw new Error("Missing payment ID.");
     }
 
-    // Get Stripe secret key from environment variables
     const stripeSecretKey = Deno.env.get("SECRET_KEY");
     if (!stripeSecretKey) {
       console.error("❌ Missing Stripe secret key in environment variables");
@@ -45,12 +41,10 @@ serve(async (req) => {
 
     console.log(`🧾 Processing refund for payment ${paymentId}, amount: ${refundAmount}, fullRefund: ${fullRefund}`);
 
-    // Initialize Stripe
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16"
     });
 
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !supabaseKey) {
@@ -59,7 +53,6 @@ serve(async (req) => {
     }
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get the payment record from database
     console.log(`🔍 Fetching payment record with ID: ${paymentId}`);
     const { data: payment, error: paymentError } = await supabase
       .from("payments")
@@ -79,7 +72,6 @@ serve(async (req) => {
 
     console.log(`✅ Payment record retrieved: ${JSON.stringify(payment)}`);
 
-    // Check if payment has Stripe payment ID
     if (!payment.stripe_payment_id) {
       console.error("❌ Missing Stripe payment ID in payment record");
       throw new Error("This payment does not have a Stripe payment ID.");
@@ -87,54 +79,85 @@ serve(async (req) => {
 
     const stripePaymentId = payment.stripe_payment_id;
 
-    // Process refund via Stripe
     let stripeRefund;
-    let refundFeeInCents = 0;  // Variable to store the refund fee
-    
+    let refundFeeInCents = 0;
+    let balanceTransaction = null;
+
     try {
       console.log(`💳 Creating Stripe refund for payment intent: ${stripePaymentId}`);
       
-      // Create refund with reverse_transfer and refund_application_fee parameters
-      // This ensures the money is pulled from the connected account and the platform fee is refunded
       stripeRefund = await stripe.refunds.create({
         payment_intent: stripePaymentId,
-        amount: fullRefund ? undefined : Math.round(refundAmount * 100), // Convert to cents for Stripe if partial refund
+        amount: fullRefund ? undefined : Math.round(refundAmount * 100),
         refund_application_fee: true,
         reverse_transfer: true
       });
       
       console.log(`✅ Stripe refund created with ID: ${stripeRefund.id}`);
       
-      // After successful refund, try to retrieve the balance transaction to get the refund fee
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       if (stripeRefund.balance_transaction) {
         try {
-          console.log(`🔍 Retrieving balance transaction for refund: ${stripeRefund.balance_transaction}`);
+          const transactionId = typeof stripeRefund.balance_transaction === 'string' 
+            ? stripeRefund.balance_transaction 
+            : stripeRefund.balance_transaction.id;
+            
+          console.log(`🔍 Retrieving balance transaction with ID: ${transactionId}`);
           
-          // Get the balance transaction data
-          const balanceTransaction = await stripe.balanceTransactions.retrieve(
-            typeof stripeRefund.balance_transaction === 'string' 
-              ? stripeRefund.balance_transaction 
-              : stripeRefund.balance_transaction.id
-          );
+          balanceTransaction = await stripe.balanceTransactions.retrieve(transactionId);
           
-          // Extract the fee (in cents)
-          if (balanceTransaction && balanceTransaction.fee) {
+          console.log('📊 Balance transaction details:', JSON.stringify(balanceTransaction, null, 2));
+          
+          if (balanceTransaction.fee !== undefined) {
             refundFeeInCents = balanceTransaction.fee;
-            console.log(`💰 Stripe refund fee: ${refundFeeInCents} cents (${refundFeeInCents / 100} GBP)`);
+            console.log(`💰 Stripe refund fee found: ${refundFeeInCents} cents (${refundFeeInCents / 100} GBP)`);
+            
+            if (balanceTransaction.fee_details) {
+              console.log('📝 Fee breakdown:', JSON.stringify(balanceTransaction.fee_details, null, 2));
+            }
           } else {
-            console.log(`⚠️ No fee found in balance transaction`);
+            console.log(`⚠️ No fee found in balance transaction. Full transaction:`, JSON.stringify(balanceTransaction, null, 2));
           }
         } catch (feeError) {
-          // Log the error but continue with the refund process
-          console.error(`⚠️ Error retrieving refund fee from balance transaction:`, feeError);
-          console.error(`Continuing with refund process without fee information`);
+          console.error(`❌ Error retrieving refund fee:`, feeError);
+          console.error(`🔍 Error details:`, JSON.stringify(feeError, null, 2));
+          
+          EdgeRuntime.waitUntil((async () => {
+            try {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              
+              console.log(`🔄 Retrying balance transaction retrieval...`);
+              const retryTransaction = await stripe.balanceTransactions.retrieve(
+                typeof stripeRefund.balance_transaction === 'string'
+                  ? stripeRefund.balance_transaction
+                  : stripeRefund.balance_transaction.id
+              );
+              
+              if (retryTransaction.fee !== undefined) {
+                console.log(`✅ Successfully retrieved fee on retry: ${retryTransaction.fee} cents`);
+                
+                const { error: updateError } = await supabase
+                  .from('payments')
+                  .update({ stripe_refund_fee: retryTransaction.fee })
+                  .eq('id', paymentId);
+                  
+                if (updateError) {
+                  console.error('❌ Error updating payment with retry fee:', updateError);
+                } else {
+                  console.log('✅ Successfully updated payment with retry fee');
+                }
+              }
+            } catch (retryError) {
+              console.error('❌ Error in background fee retry:', retryError);
+            }
+          })());
         }
       } else {
-        console.log(`⚠️ No balance transaction found in refund response`);
+        console.log(`⚠️ No balance transaction ID found in refund response. Full refund:`, JSON.stringify(stripeRefund, null, 2));
       }
     } catch (stripeError) {
       console.error("❌ Stripe refund error:", stripeError);
-      // Log detailed Stripe error information
       if (stripeError.type) {
         console.error(`Stripe error type: ${stripeError.type}`);
       }
@@ -147,21 +170,14 @@ serve(async (req) => {
       throw new Error(`Stripe refund failed: ${stripeError.message}`);
     }
 
-    // Determine if this is a full refund by comparing amounts with a small epsilon
-    // for floating point comparison
-    const epsilon = 0.001; // Small value to account for floating point precision issues
-    
-    // If the fullRefund flag is explicitly set, respect it
-    // Otherwise, calculate based on amount comparison
+    const epsilon = 0.001;
     let isFullRefund = fullRefund;
     
     if (!isFullRefund && refundAmount) {
-      // Calculate if this is a full refund by comparing amounts
       isFullRefund = Math.abs(payment.amount_paid - refundAmount) < epsilon;
       console.log(`🧮 Full refund calculation: Payment amount=${payment.amount_paid}, Refund amount=${refundAmount}, Difference=${Math.abs(payment.amount_paid - refundAmount)}, isFullRefund=${isFullRefund}`);
     }
 
-    // Update payment record in database
     const newStatus = isFullRefund ? 'refunded' : 'partially_refunded';
     const refundAmountToStore = isFullRefund ? payment.amount_paid : refundAmount;
     const currentTimestamp = new Date().toISOString();
@@ -172,7 +188,7 @@ serve(async (req) => {
       refund_amount: refundAmountToStore,
       refunded_at: currentTimestamp,
       stripe_refund_id: stripeRefund.id,
-      stripe_refund_fee: refundFeeInCents  // Add the refund fee to the update data
+      stripe_refund_fee: refundFeeInCents
     };
 
     console.log(`📦 Update data: ${JSON.stringify(updateData)}`);
@@ -186,8 +202,6 @@ serve(async (req) => {
       console.error("❌ Error updating payment record:", updateError);
       console.error("❌ Error details:", JSON.stringify(updateError));
       
-      // The refund was processed but the database update failed
-      // We still want to return success but with a warning
       return new Response(
         JSON.stringify({
           success: true,
@@ -205,7 +219,6 @@ serve(async (req) => {
       );
     }
     
-    // Get clinic data for notifications
     const { data: clinicData, error: clinicError } = await supabase
       .from('clinics')
       .select('*')
@@ -217,11 +230,8 @@ serve(async (req) => {
       console.error("Continuing without clinic data");
     }
     
-    // Queue refund notification if we have patient contact information
     try {
-      // Only send notification if we have contact information
       if (payment.patient_email || payment.patient_phone) {
-        // Create standardized notification payload matching payment_success structure
         const refundPayload = {
           notification_type: "payment_refund",
           notification_method: {
@@ -248,7 +258,6 @@ serve(async (req) => {
           }
         };
         
-        // Add to notification queue
         const { error: notifyError } = await supabase
           .from("notification_queue")
           .insert({
@@ -265,8 +274,6 @@ serve(async (req) => {
           console.log(`✅ Successfully queued refund notification for patient`);
         }
         
-        // Create clinic notification with the same standardized structure
-        // but including financial details
         const clinicPayload = {
           notification_type: "payment_refund",
           notification_method: {
@@ -287,10 +294,10 @@ serve(async (req) => {
             is_full_refund: isFullRefund,
             financial_details: {
               gross_amount: payment.amount_paid,
-              stripe_fee: payment.stripe_fee ? payment.stripe_fee / 100 : 0, // Convert from cents to pounds
-              platform_fee: payment.platform_fee ? payment.platform_fee / 100 : 0, // Convert from cents to pounds
-              net_amount: payment.net_amount ? payment.net_amount / 100 : 0, // Convert from cents to pounds
-              refund_fee: refundFeeInCents / 100 // Convert from cents to pounds
+              stripe_fee: payment.stripe_fee ? payment.stripe_fee / 100 : 0,
+              platform_fee: payment.platform_fee ? payment.platform_fee / 100 : 0,
+              net_amount: payment.net_amount ? payment.net_amount / 100 : 0,
+              refund_fee: refundFeeInCents / 100
             }
           },
           clinic: {
@@ -300,7 +307,6 @@ serve(async (req) => {
           }
         };
         
-        // Queue notification for clinic
         const { error: clinicNotifyError } = await supabase
           .from("notification_queue")
           .insert({
@@ -321,7 +327,6 @@ serve(async (req) => {
       }
     } catch (notifyErr) {
       console.error(`❌ Error in refund notification processing: ${notifyErr.message}`);
-      // Don't rethrow, just log the error - this shouldn't affect the main refund processing
     }
 
     console.log(`✅ Refund process completed successfully`);
@@ -330,7 +335,7 @@ serve(async (req) => {
         success: true,
         refundId: stripeRefund.id,
         status: newStatus,
-        refundFee: refundFeeInCents // Return refund fee in response for information
+        refundFee: refundFeeInCents
       }),
       {
         headers: {
