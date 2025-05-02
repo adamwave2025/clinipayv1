@@ -55,6 +55,11 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
       icon: <Send className="w-5 h-5" /> 
     },
     { 
+      to: '/dashboard/patients', 
+      label: 'Patients', 
+      icon: <Users className="w-5 h-5" /> 
+    },
+    { 
       to: '/dashboard/payment-history', 
       label: 'Payment History', 
       icon: <Clock className="w-5 h-5" /> 
