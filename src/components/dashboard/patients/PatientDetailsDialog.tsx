@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 import { supabase } from '@/integrations/supabase/client';
 import { Patient } from '@/hooks/usePatients';
 import {
