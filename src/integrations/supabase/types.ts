@@ -102,6 +102,47 @@ export type Database = {
         }
         Relationships: []
       }
+      patients: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patients_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_links: {
         Row: {
           amount: number | null
@@ -218,6 +259,7 @@ export type Database = {
           net_amount: number | null
           paid_at: string | null
           patient_email: string | null
+          patient_id: string | null
           patient_name: string | null
           patient_phone: string | null
           payment_link_id: string | null
@@ -238,6 +280,7 @@ export type Database = {
           net_amount?: number | null
           paid_at?: string | null
           patient_email?: string | null
+          patient_id?: string | null
           patient_name?: string | null
           patient_phone?: string | null
           payment_link_id?: string | null
@@ -258,6 +301,7 @@ export type Database = {
           net_amount?: number | null
           paid_at?: string | null
           patient_email?: string | null
+          patient_id?: string | null
           patient_name?: string | null
           patient_phone?: string | null
           payment_link_id?: string | null
@@ -277,6 +321,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
           {

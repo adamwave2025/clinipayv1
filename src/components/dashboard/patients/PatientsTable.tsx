@@ -9,16 +9,7 @@ import {
   TableHead, 
   TableCell 
 } from '@/components/ui/table';
-
-interface Patient {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  paymentCount: number;
-  totalSpent: number;
-  lastPaymentDate: string;
-}
+import { Patient } from '@/hooks/usePatients';
 
 interface PatientsTableProps {
   patients: Patient[];

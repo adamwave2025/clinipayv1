@@ -1,0 +1,117 @@
+
+import { useState, useEffect, useMemo } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+
+export interface Patient {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  paymentCount?: number;
+  totalSpent?: number;
+  lastPaymentDate?: string;
+}
+
+export function usePatients() {
+  const { user } = useAuth();
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [isLoadingPatients, setIsLoadingPatients] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Fetch patients data
+  useEffect(() => {
+    const fetchPatients = async () => {
+      if (!user) {
+        setIsLoadingPatients(false);
+        return;
+      }
+      
+      setIsLoadingPatients(true);
+      setError(null);
+      
+      try {
+        // Get user's clinic_id
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('clinic_id')
+          .eq('id', user.id)
+          .single();
+        
+        if (userError) throw userError;
+        if (!userData.clinic_id) {
+          setIsLoadingPatients(false);
+          setPatients([]);
+          return;
+        }
+        
+        // Fetch patients for this clinic
+        const { data: patientsData, error: patientsError } = await supabase
+          .from('patients')
+          .select('*')
+          .eq('clinic_id', userData.clinic_id)
+          .order('name');
+          
+        if (patientsError) throw patientsError;
+        
+        // Fetch payment statistics for each patient
+        const { data: paymentsData, error: paymentsError } = await supabase
+          .from('payments')
+          .select('patient_id, amount_paid, paid_at')
+          .eq('clinic_id', userData.clinic_id);
+          
+        if (paymentsError) throw paymentsError;
+        
+        // Process payment data to calculate statistics for each patient
+        const paymentStats = paymentsData.reduce((stats: Record<string, any>, payment) => {
+          if (!payment.patient_id) return stats;
+          
+          if (!stats[payment.patient_id]) {
+            stats[payment.patient_id] = {
+              paymentCount: 0,
+              totalSpent: 0,
+              lastPaymentDate: null
+            };
+          }
+          
+          const stat = stats[payment.patient_id];
+          stat.paymentCount += 1;
+          stat.totalSpent += payment.amount_paid || 0;
+          
+          const paymentDate = new Date(payment.paid_at);
+          if (!stat.lastPaymentDate || paymentDate > new Date(stat.lastPaymentDate)) {
+            stat.lastPaymentDate = payment.paid_at;
+          }
+          
+          return stats;
+        }, {});
+        
+        // Combine patient data with their payment statistics
+        const enhancedPatients = patientsData.map((patient: Patient) => ({
+          ...patient,
+          paymentCount: paymentStats[patient.id]?.paymentCount || 0,
+          totalSpent: paymentStats[patient.id]?.totalSpent || 0,
+          lastPaymentDate: paymentStats[patient.id]?.lastPaymentDate || null
+        }));
+        
+        setPatients(enhancedPatients);
+      } catch (err: any) {
+        console.error('Error fetching patients:', err);
+        setError(err.message || 'Failed to load patients');
+      } finally {
+        setIsLoadingPatients(false);
+      }
+    };
+    
+    fetchPatients();
+  }, [user]);
+  
+  return {
+    patients,
+    isLoadingPatients,
+    error
+  };
+}

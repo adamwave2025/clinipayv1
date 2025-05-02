@@ -2,16 +2,7 @@
 import React from 'react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { TableRow, TableCell } from '@/components/ui/table';
-
-interface Patient {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  paymentCount: number;
-  totalSpent: number;
-  lastPaymentDate: string;
-}
+import { Patient } from '@/hooks/usePatients';
 
 interface PatientTableRowProps {
   patient: Patient;
@@ -28,19 +19,19 @@ const PatientTableRow = ({ patient, onClick }: PatientTableRowProps) => {
         {patient.name}
       </TableCell>
       <TableCell>
-        {patient.email}
+        {patient.email || 'N/A'}
       </TableCell>
       <TableCell>
         {patient.phone || 'N/A'}
       </TableCell>
       <TableCell>
-        {patient.paymentCount}
+        {patient.paymentCount || 0}
       </TableCell>
       <TableCell>
-        {formatCurrency(patient.totalSpent)}
+        {formatCurrency(patient.totalSpent || 0)}
       </TableCell>
       <TableCell>
-        {patient.lastPaymentDate}
+        {patient.lastPaymentDate ? formatDate(patient.lastPaymentDate) : 'N/A'}
       </TableCell>
     </TableRow>
   );
