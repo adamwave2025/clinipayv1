@@ -4,7 +4,6 @@ import { usePayments } from '@/hooks/usePayments';
 import { Card, CardContent } from '@/components/ui/card';
 import PatientsTable from './PatientsTable';
 import PatientDetailsDialog from './PatientDetailsDialog';
-import PatientsFilter from './PatientsFilter';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
