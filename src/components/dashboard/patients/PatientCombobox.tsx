@@ -28,7 +28,7 @@ interface Patient {
 interface PatientComboboxProps {
   onSelect: (patient: Patient | null) => void;
   value?: string;
-  onCreate: () => void;
+  onCreate: (searchTerm: string) => void;
 }
 
 const PatientCombobox = ({ onSelect, value = '', onCreate }: PatientComboboxProps) => {
@@ -55,7 +55,7 @@ const PatientCombobox = ({ onSelect, value = '', onCreate }: PatientComboboxProp
   };
 
   const handleCreateNew = () => {
-    onCreate();
+    onCreate(searchTerm);
     onSelect(null);
     setOpen(false);
   };

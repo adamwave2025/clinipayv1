@@ -31,7 +31,7 @@ interface SendLinkFormProps {
   onFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onSelectChange: (value: string) => void;
   onPatientSelect: (patient: Patient | null) => void;
-  onCreateNew: () => void;
+  onCreateNew: (searchTerm: string) => void;
   onSubmit: (e: React.FormEvent) => void;
 }
 

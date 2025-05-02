@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -57,9 +58,15 @@ const SendLinkPage = () => {
     }
   };
 
-  const handleCreateNew = () => {
+  const handleCreateNew = (searchTerm: string) => {
     setSelectedPatient(null);
-    // We keep the existing patient name from the search
+    // Update the form with the search term as the patient name
+    setFormData(prev => ({
+      ...prev,
+      patientName: searchTerm,
+      patientEmail: '',
+      patientPhone: '',
+    }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
