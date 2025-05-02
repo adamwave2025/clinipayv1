@@ -131,7 +131,7 @@ const SendLinkPage = () => {
   return (
     <DashboardLayout userType="clinic">
       <PageHeader 
-        title="Send Payment Link" 
+        title="Request Payment" 
         description="Email a payment link directly to your patient"
       />
       

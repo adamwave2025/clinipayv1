@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -119,7 +118,7 @@ const PaymentLinksCard = ({
           </Button>
           {!isArchiveView && (
             <Button className="btn-gradient" size="sm" asChild>
-              <Link to="/dashboard/create-link">Create New</Link>
+              <Link to="/dashboard/create-link">Create Payment</Link>
             </Button>
           )}
         </div>

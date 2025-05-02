@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, 
@@ -9,7 +9,10 @@ import {
   Users, 
   LogOut, 
   X,
-  Clock
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  CreditCard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Logo from '../common/Logo';
@@ -22,6 +25,14 @@ interface SidebarLink {
   icon: React.ReactNode;
 }
 
+interface SidebarSubmenu {
+  label: string;
+  icon: React.ReactNode;
+  links: SidebarLink[];
+}
+
+type SidebarItem = SidebarLink | SidebarSubmenu;
+
 interface DashboardSidebarProps {
   userType: 'clinic' | 'admin';
   isOpen: boolean;
@@ -33,26 +44,33 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useUserRole();
+  const [expandedMenu, setExpandedMenu] = useState<string | null>("Payments"); // Default expanded
   
   // Use the actual user role for link determination if available
   const actualUserType = role === 'admin' ? 'admin' : 'clinic';
   const effectiveUserType = userType || actualUserType;
   
-  const clinicLinks: SidebarLink[] = [
+  const clinicItems: SidebarItem[] = [
     { 
       to: '/dashboard', 
       label: 'Dashboard', 
       icon: <Home className="w-5 h-5" /> 
     },
     { 
-      to: '/dashboard/create-link', 
-      label: 'Create a Link', 
-      icon: <LinkIcon className="w-5 h-5" /> 
-    },
-    { 
-      to: '/dashboard/send-link', 
-      label: 'Send a Link', 
-      icon: <Send className="w-5 h-5" /> 
+      label: 'Payments',
+      icon: <CreditCard className="w-5 h-5" />,
+      links: [
+        {
+          to: '/dashboard/create-link',
+          label: 'Create Payment',
+          icon: <LinkIcon className="w-5 h-5" />
+        },
+        {
+          to: '/dashboard/send-link',
+          label: 'Request Payment',
+          icon: <Send className="w-5 h-5" />
+        }
+      ]
     },
     { 
       to: '/dashboard/patients', 
@@ -89,11 +107,23 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
     },
   ];
 
-  const links = effectiveUserType === 'clinic' ? clinicLinks : adminLinks;
+  const items = effectiveUserType === 'clinic' ? clinicItems : adminLinks;
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/sign-in');
+  };
+
+  const toggleSubmenu = (label: string) => {
+    setExpandedMenu(expandedMenu === label ? null : label);
+  };
+
+  const isLinkActive = (to: string) => {
+    return location.pathname === to;
+  };
+
+  const isSubmenuActive = (links: SidebarLink[]) => {
+    return links.some(link => isLinkActive(link.to));
   };
 
   return (
@@ -132,22 +162,72 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
           {/* Navigation links */}
           <nav className="flex-1 p-4">
             <ul className="space-y-1">
-              {links.map((link) => (
-                <li key={link.to}>
-                  <NavLink
-                    to={link.to}
-                    className={({ isActive }) => `
-                      flex items-center px-4 py-3 rounded-lg text-gray-700 transition-colors
-                      ${isActive 
-                        ? 'bg-gradient-primary text-white' 
-                        : 'hover:bg-gray-100'
-                      }
-                    `}
-                    end
-                  >
-                    {link.icon}
-                    <span className="ml-3">{link.label}</span>
-                  </NavLink>
+              {items.map((item, index) => (
+                <li key={`sidebar-item-${index}`}>
+                  {'to' in item ? (
+                    // Regular link item
+                    <NavLink
+                      to={item.to}
+                      className={({ isActive }) => `
+                        flex items-center px-4 py-3 rounded-lg text-gray-700 transition-colors
+                        ${isActive 
+                          ? 'bg-gradient-primary text-white' 
+                          : 'hover:bg-gray-100'
+                        }
+                      `}
+                      end
+                    >
+                      {item.icon}
+                      <span className="ml-3">{item.label}</span>
+                    </NavLink>
+                  ) : (
+                    // Submenu item
+                    <div className="space-y-1">
+                      <button
+                        onClick={() => toggleSubmenu(item.label)}
+                        className={`
+                          flex items-center justify-between w-full px-4 py-3 rounded-lg text-gray-700 transition-colors
+                          ${isSubmenuActive(item.links) || expandedMenu === item.label
+                            ? 'bg-gray-100'
+                            : 'hover:bg-gray-100'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center">
+                          {item.icon}
+                          <span className="ml-3">{item.label}</span>
+                        </div>
+                        {expandedMenu === item.label ? (
+                          <ChevronUp className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
+                      </button>
+                      
+                      {expandedMenu === item.label && (
+                        <ul className="pl-10 space-y-1">
+                          {item.links.map((link, linkIndex) => (
+                            <li key={`submenu-link-${linkIndex}`}>
+                              <NavLink
+                                to={link.to}
+                                className={({ isActive }) => `
+                                  flex items-center px-4 py-2 rounded-lg text-gray-700 transition-colors
+                                  ${isActive 
+                                    ? 'bg-gradient-primary text-white' 
+                                    : 'hover:bg-gray-100'
+                                  }
+                                `}
+                                end
+                              >
+                                {link.icon}
+                                <span className="ml-2">{link.label}</span>
+                              </NavLink>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

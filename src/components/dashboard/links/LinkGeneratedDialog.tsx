@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -94,7 +93,7 @@ const LinkGeneratedDialog = ({
           >
             <Link to="/dashboard/send-link" className="flex items-center justify-center">
               <Send className="mr-2 h-4 w-4" />
-              Send Link
+              Request Payment
             </Link>
           </Button>
         </DialogFooter>
