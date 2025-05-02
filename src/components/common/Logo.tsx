@@ -7,9 +7,12 @@ interface LogoProps {
 
 const Logo: React.FC<LogoProps> = ({ className = "" }) => {
   return (
-    <div className={`font-bold ${className}`}>
-      <span className="gradient-text text-xl">Clini</span>
-      <span className="text-black text-xl">Pay</span>
+    <div className={`${className}`}>
+      <img 
+        src="https://jbtxxlkhiubuzanegtzn.supabase.co/storage/v1/object/public/clinipaywebsiteimages//logo1.png" 
+        alt="CliniPay Logo" 
+        className="h-full w-auto max-h-10" 
+      />
     </div>
   );
 };
