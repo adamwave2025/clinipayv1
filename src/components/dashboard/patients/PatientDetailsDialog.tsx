@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +22,7 @@ interface PatientPayment {
   date: string;
   reference: string | null;
   type: string;
+  title?: string; // Add optional title property to fix the error
   amount: number;
   status: 'paid' | 'refunded' | 'partially_refunded' | 'sent';
   paymentUrl?: string;
