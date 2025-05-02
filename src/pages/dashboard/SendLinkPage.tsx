@@ -31,12 +31,15 @@ import { StandardNotificationPayload, NotificationMethod } from '@/types/notific
 import { processNotificationsNow } from '@/utils/notification-cron-setup';
 import { Json } from '@/integrations/supabase/types';
 import { addToNotificationQueue } from '@/utils/notification-queue';
+import PatientCombobox from '@/components/dashboard/patients/PatientCombobox';
+import { Patient } from '@/hooks/usePatients';
 
 const SendLinkPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const { paymentLinks, isLoading: isLoadingLinks } = usePaymentLinks();
   const { user } = useAuth();
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState({
     patientName: '',
     patientEmail: '',
@@ -45,6 +48,18 @@ const SendLinkPage = () => {
     customAmount: '',
     message: '',
   });
+
+  // Update form when a patient is selected
+  useEffect(() => {
+    if (selectedPatient) {
+      setFormData(prev => ({
+        ...prev,
+        patientName: selectedPatient.name,
+        patientEmail: selectedPatient.email || '',
+        patientPhone: selectedPatient.phone || ''
+      }));
+    }
+  }, [selectedPatient]);
 
   useEffect(() => {
     const checkNotificationSystem = async () => {
@@ -79,6 +94,24 @@ const SendLinkPage = () => {
 
   const handleSelectChange = (value: string) => {
     setFormData(prev => ({ ...prev, selectedLink: value }));
+  };
+
+  const handlePatientSelect = (patient: Patient | null) => {
+    setSelectedPatient(patient);
+    
+    if (!patient) {
+      // Keep the existing name if we're creating a new patient
+      setFormData(prev => ({
+        ...prev,
+        patientEmail: '',
+        patientPhone: '',
+      }));
+    }
+  };
+
+  const handleCreateNew = () => {
+    setSelectedPatient(null);
+    // We keep the existing patient name from the search
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -309,15 +342,10 @@ const SendLinkPage = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="patientName">Patient Name*</Label>
-              <Input
-                id="patientName"
-                name="patientName"
-                placeholder="Enter patient name"
+              <PatientCombobox 
+                onSelect={handlePatientSelect}
                 value={formData.patientName}
-                onChange={handleChange}
-                disabled={isLoading}
-                required
-                className="w-full input-focus"
+                onCreate={handleCreateNew}
               />
             </div>
             
