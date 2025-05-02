@@ -192,6 +192,7 @@ export type Database = {
           message: string | null
           paid_at: string | null
           patient_email: string | null
+          patient_id: string | null
           patient_name: string | null
           patient_phone: string | null
           payment_id: string | null
@@ -206,6 +207,7 @@ export type Database = {
           message?: string | null
           paid_at?: string | null
           patient_email?: string | null
+          patient_id?: string | null
           patient_name?: string | null
           patient_phone?: string | null
           payment_id?: string | null
@@ -220,6 +222,7 @@ export type Database = {
           message?: string | null
           paid_at?: string | null
           patient_email?: string | null
+          patient_id?: string | null
           patient_name?: string | null
           patient_phone?: string | null
           payment_id?: string | null
@@ -233,6 +236,13 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_requests_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
           {

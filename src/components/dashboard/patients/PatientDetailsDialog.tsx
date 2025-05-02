@@ -15,14 +15,17 @@ import { Mail, Phone, Calendar, CreditCard } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import StatusBadge from '@/components/common/StatusBadge';
+import PaymentLinkActionsSection from '@/components/dashboard/payment-details/PaymentLinkActionsSection';
 
-interface Payment {
+interface PatientPayment {
   id: string;
   date: string;
   reference: string | null;
   type: string;
   amount: number;
-  status: string;
+  status: 'paid' | 'refunded' | 'partially_refunded' | 'sent';
+  paymentUrl?: string;
 }
 
 interface PatientDetailsDialogProps {
@@ -32,19 +35,20 @@ interface PatientDetailsDialogProps {
 }
 
 const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogProps) => {
-  const [patientPayments, setPatientPayments] = useState<Payment[]>([]);
+  const [patientPayments, setPatientPayments] = useState<PatientPayment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchPatientPayments = async () => {
+    const fetchPatientHistory = async () => {
       if (!patient.id || !open) return;
       
       setIsLoading(true);
       setError(null);
       
       try {
-        const { data, error: fetchError } = await supabase
+        // Fetch completed payments
+        const { data: paymentsData, error: paymentsError } = await supabase
           .from('payments')
           .select(`
             id,
@@ -52,32 +56,67 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
             amount_paid,
             status,
             payment_ref,
-            payment_links(type)
+            payment_links(type, title)
           `)
           .eq('patient_id', patient.id)
           .order('paid_at', { ascending: false });
         
-        if (fetchError) throw fetchError;
+        if (paymentsError) throw paymentsError;
         
-        const formattedPayments = data.map((payment: any) => ({
+        // Fetch payment requests (sent links)
+        const { data: requestsData, error: requestsError } = await supabase
+          .from('payment_requests')
+          .select(`
+            id,
+            sent_at,
+            custom_amount,
+            status,
+            payment_links(type, title)
+          `)
+          .eq('patient_id', patient.id)
+          .is('paid_at', null) // Only get unpaid requests
+          .order('sent_at', { ascending: false });
+        
+        if (requestsError) throw requestsError;
+        
+        // Format completed payments
+        const formattedPayments = paymentsData.map((payment: any) => ({
           id: payment.id,
           date: payment.paid_at,
           reference: payment.payment_ref,
           type: payment.payment_links?.type || 'other',
+          title: payment.payment_links?.title,
           amount: payment.amount_paid,
           status: payment.status
         }));
         
-        setPatientPayments(formattedPayments);
+        // Format payment requests
+        const formattedRequests = requestsData.map((request: any) => ({
+          id: request.id,
+          date: request.sent_at,
+          reference: null,
+          type: request.payment_links?.type || 'custom',
+          title: request.payment_links?.title || 'Custom Payment',
+          amount: request.custom_amount || (request.payment_links ? request.payment_links.amount : 0),
+          status: 'sent' as const,
+          paymentUrl: `https://clinipay.co.uk/payment/${request.id}`
+        }));
+        
+        // Combine and sort by date (newest first)
+        const combinedHistory = [...formattedPayments, ...formattedRequests].sort((a, b) => {
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        });
+        
+        setPatientPayments(combinedHistory);
       } catch (err: any) {
-        console.error('Error fetching patient payments:', err);
+        console.error('Error fetching patient history:', err);
         setError('Failed to load payment history');
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchPatientPayments();
+    fetchPatientHistory();
   }, [patient.id, open]);
   
   return (
@@ -141,10 +180,10 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
-                    <TableHead>Reference</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -158,21 +197,20 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
                     patientPayments.map((payment) => (
                       <TableRow key={payment.id}>
                         <TableCell>{formatDate(payment.date)}</TableCell>
-                        <TableCell>{payment.reference || 'N/A'}</TableCell>
-                        <TableCell>{payment.type}</TableCell>
+                        <TableCell>
+                          {payment.title || payment.type.charAt(0).toUpperCase() + payment.type.slice(1)}
+                        </TableCell>
                         <TableCell>{formatCurrency(payment.amount)}</TableCell>
                         <TableCell>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            payment.status === 'paid' ? 'bg-green-100 text-green-800' :
-                            payment.status === 'refunded' ? 'bg-gray-100 text-gray-800' :
-                            payment.status === 'partially_refunded' ? 'bg-blue-100 text-blue-800' :
-                            'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {payment.status === 'paid' ? 'Paid' :
-                             payment.status === 'refunded' ? 'Refunded' :
-                             payment.status === 'partially_refunded' ? 'Partially Refunded' :
-                             'Sent'}
-                          </span>
+                          <StatusBadge status={payment.status} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {payment.status === 'sent' && (
+                            <PaymentLinkActionsSection 
+                              status={payment.status}
+                              paymentUrl={payment.paymentUrl}
+                            />
+                          )}
                         </TableCell>
                       </TableRow>
                     ))

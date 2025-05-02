@@ -14,6 +14,7 @@ export interface Patient {
   paymentCount?: number;
   totalSpent?: number;
   lastPaymentDate?: string;
+  pendingRequestsCount?: number; // Number of pending payment requests
 }
 
 export function usePatients() {
@@ -65,6 +66,14 @@ export function usePatients() {
           
         if (paymentsError) throw paymentsError;
         
+        // Fetch payment requests data
+        const { data: requestsData, error: requestsError } = await supabase
+          .from('payment_requests')
+          .select('patient_id, custom_amount, sent_at, status, payment_link_id, payment_links(amount)')
+          .eq('clinic_id', userData.clinic_id);
+          
+        if (requestsError) throw requestsError;
+        
         // Process payment data to calculate statistics for each patient
         const paymentStats = paymentsData.reduce((stats: Record<string, any>, payment) => {
           if (!payment.patient_id) return stats;
@@ -73,7 +82,8 @@ export function usePatients() {
             stats[payment.patient_id] = {
               paymentCount: 0,
               totalSpent: 0,
-              lastPaymentDate: null
+              lastPaymentDate: null,
+              pendingRequestsCount: 0
             };
           }
           
@@ -89,12 +99,32 @@ export function usePatients() {
           return stats;
         }, {});
         
+        // Process payment requests data
+        requestsData.forEach(request => {
+          if (!request.patient_id) return;
+          
+          if (!paymentStats[request.patient_id]) {
+            paymentStats[request.patient_id] = {
+              paymentCount: 0,
+              totalSpent: 0,
+              lastPaymentDate: null,
+              pendingRequestsCount: 0
+            };
+          }
+          
+          // Only count pending requests
+          if (request.status === 'sent') {
+            paymentStats[request.patient_id].pendingRequestsCount += 1;
+          }
+        });
+        
         // Combine patient data with their payment statistics
         const enhancedPatients = patientsData.map((patient: Patient) => ({
           ...patient,
           paymentCount: paymentStats[patient.id]?.paymentCount || 0,
           totalSpent: paymentStats[patient.id]?.totalSpent || 0,
-          lastPaymentDate: paymentStats[patient.id]?.lastPaymentDate || null
+          lastPaymentDate: paymentStats[patient.id]?.lastPaymentDate || null,
+          pendingRequestsCount: paymentStats[patient.id]?.pendingRequestsCount || 0
         }));
         
         setPatients(enhancedPatients);
