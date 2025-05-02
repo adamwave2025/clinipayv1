@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Copy, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface PaymentLinkActionsSectionProps {
   status: string;
@@ -22,29 +23,39 @@ const PaymentLinkActionsSection = ({ status, paymentUrl }: PaymentLinkActionsSec
   };
   
   return (
-    <div className="mt-2">
-      <h4 className="text-sm font-medium text-gray-500 mb-2">Payment Link</h4>
+    <TooltipProvider>
       <div className="flex items-center space-x-2">
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={handleCopyLink}
-          className="text-gray-700"
-        >
-          <Copy className="h-4 w-4 mr-1" />
-          Copy Link
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={handleOpenLink}
-          className="text-gray-700"
-        >
-          <ExternalLink className="h-4 w-4 mr-1" />
-          Open Link
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleCopyLink}
+              className="h-8 w-8 p-0"
+            >
+              <Copy className="h-4 w-4" />
+              <span className="sr-only">Copy Link</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Copy link</TooltipContent>
+        </Tooltip>
+        
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleOpenLink}
+              className="h-8 w-8 p-0"
+            >
+              <ExternalLink className="h-4 w-4" />
+              <span className="sr-only">Open Link</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Open link</TooltipContent>
+        </Tooltip>
       </div>
-    </div>
+    </TooltipProvider>
   );
 };
 

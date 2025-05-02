@@ -3,7 +3,6 @@ import React from 'react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Patient } from '@/hooks/usePatients';
-import { Badge } from '@/components/ui/badge';
 
 interface PatientTableRowProps {
   patient: Patient;
@@ -17,14 +16,7 @@ const PatientTableRow = ({ patient, onClick }: PatientTableRowProps) => {
       onClick={onClick}
     >
       <TableCell className="font-medium">
-        <div className="flex items-center gap-2">
-          {patient.name}
-          {patient.pendingRequestsCount ? (
-            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-              {patient.pendingRequestsCount} pending
-            </Badge>
-          ) : null}
-        </div>
+        {patient.name}
       </TableCell>
       <TableCell>
         {patient.email || 'N/A'}
