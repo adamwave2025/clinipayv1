@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -180,6 +179,53 @@ export const resumePaymentPlan = async (patientId: string, paymentLinkId: string
   } catch (error) {
     console.error('Error resuming payment plan:', error);
     toast.error('Failed to resume payment plan');
+    return { success: false, error };
+  }
+};
+
+export const reschedulePaymentPlan = async (patientId: string, paymentLinkId: string, newStartDate: Date) => {
+  try {
+    console.log('Original newStartDate received:', newStartDate);
+    
+    // First get all pending/upcoming installments for this plan
+    const { data: pendingInstallments, error: fetchError } = await supabase
+      .from('payment_schedule')
+      .select('id, payment_number, payment_frequency')
+      .eq('patient_id', patientId)
+      .eq('payment_link_id', paymentLinkId)
+      .in('status', ['pending', 'upcoming'])
+      .order('payment_number', { ascending: true });
+    
+    if (fetchError) throw fetchError;
+    
+    if (!pendingInstallments || pendingInstallments.length === 0) {
+      return { success: true, message: 'No pending installments found to reschedule' };
+    }
+    
+    // Calculate new due dates for each installment
+    const frequency = pendingInstallments[0]?.payment_frequency || 'monthly';
+    const updatePromises = pendingInstallments.map((installment, index) => {
+      // Calculate new due date based on the new start date and installment index
+      const newDueDate = calculateNewDueDate(newStartDate, index, frequency);
+      
+      // Format date using local date components to preserve the day regardless of timezone
+      const formattedDate = `${newDueDate.getFullYear()}-${String(newDueDate.getMonth() + 1).padStart(2, '0')}-${String(newDueDate.getDate()).padStart(2, '0')}`;
+      
+      console.log(`Installment ${installment.payment_number}, new due date: ${formattedDate}`);
+      
+      return supabase
+        .from('payment_schedule')
+        .update({ due_date: formattedDate })
+        .eq('id', installment.id);
+    });
+    
+    // Wait for all updates to complete
+    await Promise.all(updatePromises);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error rescheduling payment plan:', error);
+    toast.error('Failed to reschedule payment plan');
     return { success: false, error };
   }
 };

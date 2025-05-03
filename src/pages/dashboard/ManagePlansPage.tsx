@@ -11,6 +11,7 @@ import InstallmentPaymentDialog from '@/components/dashboard/payment-plans/Insta
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
 import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
 import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDialog';
+import ReschedulePlanDialog from '@/components/dashboard/payment-plans/ReschedulePlanDialog';
 import { useManagePlans } from '@/hooks/useManagePlans';
 
 const ManagePlansPage = () => {
@@ -48,6 +49,11 @@ const ManagePlansPage = () => {
     setShowResumeDialog,
     handleResumePlan,
     handleOpenResumeDialog,
+    // Reschedule plan properties
+    showRescheduleDialog,
+    setShowRescheduleDialog,
+    handleReschedulePlan,
+    handleOpenRescheduleDialog,
     isPlanPaused,
     isProcessing
   } = useManagePlans();
@@ -105,6 +111,7 @@ const ManagePlansPage = () => {
         onCancelPlan={handleOpenCancelDialog}
         onPausePlan={handleOpenPauseDialog}
         onResumePlan={handleOpenResumeDialog}
+        onReschedulePlan={handleOpenRescheduleDialog}
         isPlanPaused={isPlanPaused}
       />
 
@@ -141,6 +148,16 @@ const ManagePlansPage = () => {
         showDialog={showResumeDialog}
         setShowDialog={setShowResumeDialog}
         onConfirm={handleResumePlan}
+        planName={selectedPlan?.planName || ''}
+        patientName={selectedPlan?.patientName || ''}
+        isProcessing={isProcessing}
+      />
+
+      {/* Reschedule Plan Dialog */}
+      <ReschedulePlanDialog
+        showDialog={showRescheduleDialog}
+        setShowDialog={setShowRescheduleDialog}
+        onConfirm={handleReschedulePlan}
         planName={selectedPlan?.planName || ''}
         patientName={selectedPlan?.patientName || ''}
         isProcessing={isProcessing}

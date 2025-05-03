@@ -14,6 +14,7 @@ interface PlanActionsDropdownProps {
   onCancelPlan: () => void;
   onPausePlan?: () => void;
   onResumePlan?: () => void;
+  onReschedulePlan?: () => void;
   isPaused: boolean;
   isDisabled?: boolean;
 }
@@ -22,6 +23,7 @@ const PlanActionsDropdown = ({
   onCancelPlan, 
   onPausePlan, 
   onResumePlan,
+  onReschedulePlan,
   isPaused,
   isDisabled = false 
 }: PlanActionsDropdownProps) => {
@@ -56,6 +58,13 @@ const PlanActionsDropdown = ({
             Pause Plan
           </DropdownMenuItem>
         )}
+        <DropdownMenuItem
+          onClick={onReschedulePlan}
+          className="cursor-pointer"
+          disabled={!onReschedulePlan}
+        >
+          Reschedule Plan
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={onCancelPlan}

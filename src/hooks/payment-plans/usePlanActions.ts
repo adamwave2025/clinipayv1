@@ -1,9 +1,11 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { 
   cancelPaymentPlan, 
   pausePaymentPlan, 
-  resumePaymentPlan 
+  resumePaymentPlan,
+  reschedulePaymentPlan
 } from '@/services/PaymentScheduleService';
 import { Plan } from '@/utils/paymentPlanUtils';
 
@@ -12,6 +14,7 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showPauseDialog, setShowPauseDialog] = useState(false);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleSendReminder = async (installmentId: string) => {
@@ -85,6 +88,30 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
     }
   };
 
+  const handleReschedulePlan = async (patientId: string, paymentLinkId: string, newStartDate: Date) => {
+    try {
+      setIsProcessing(true);
+      
+      console.log('In usePlanActions, rescheduling with date:', newStartDate.toISOString());
+      
+      const result = await reschedulePaymentPlan(patientId, paymentLinkId, newStartDate);
+      
+      if (result.success) {
+        toast.success('Payment plan rescheduled successfully');
+        await refreshPlans();
+        return true;
+      }
+      toast.error('Failed to reschedule payment plan');
+      return false;
+    } catch (error) {
+      console.error('Error in handleReschedulePlan:', error);
+      toast.error('Failed to reschedule payment plan');
+      return false;
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return {
     showCancelDialog,
     setShowCancelDialog,
@@ -92,10 +119,13 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
     setShowPauseDialog,
     showResumeDialog,
     setShowResumeDialog,
+    showRescheduleDialog,
+    setShowRescheduleDialog,
     isProcessing,
     handleSendReminder,
     handleCancelPlan,
     handlePausePlan,
-    handleResumePlan
+    handleResumePlan,
+    handleReschedulePlan
   };
 };

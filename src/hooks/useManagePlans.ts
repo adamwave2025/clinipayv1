@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plan, PlanInstallment } from '@/utils/paymentPlanUtils';
@@ -22,11 +23,14 @@ export const useManagePlans = () => {
     setShowPauseDialog,
     showResumeDialog,
     setShowResumeDialog,
+    showRescheduleDialog,
+    setShowRescheduleDialog,
     isProcessing,
     handleSendReminder, 
     handleCancelPlan, 
     handlePausePlan,
-    handleResumePlan
+    handleResumePlan,
+    handleReschedulePlan
   } = usePlanActions(() => fetchPaymentPlans(user.id));
   
   const { 
@@ -133,6 +137,25 @@ export const useManagePlans = () => {
     }
   };
 
+  const handleOpenRescheduleDialog = () => {
+    setShowRescheduleDialog(true);
+  };
+
+  const handleReschedulePlanConfirm = async (newStartDate: Date) => {
+    if (!selectedPlan) return;
+    
+    // Log the date to help with debugging
+    console.log('Reschedule plan with date:', newStartDate.toISOString());
+    
+    const [patientId, paymentLinkId] = selectedPlan.id.split('_');
+    const success = await handleReschedulePlan(patientId, paymentLinkId, newStartDate);
+    
+    if (success) {
+      setShowRescheduleDialog(false);
+      setShowPlanDetails(false);
+    }
+  };
+
   const isPlanPaused = (plan: Plan | null) => {
     return plan?.status === 'paused';
   };
@@ -171,6 +194,11 @@ export const useManagePlans = () => {
     setShowResumeDialog,
     handleResumePlan: handleResumePlanConfirm,
     handleOpenResumeDialog,
+    // Reschedule plan properties
+    showRescheduleDialog,
+    setShowRescheduleDialog,
+    handleReschedulePlan: handleReschedulePlanConfirm,
+    handleOpenRescheduleDialog,
     isPlanPaused,
     isProcessing
   };

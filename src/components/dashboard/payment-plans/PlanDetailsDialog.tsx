@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Sheet,
@@ -30,6 +29,7 @@ interface PlanDetailsDialogProps {
   onCancelPlan: () => void;
   onPausePlan: () => void;
   onResumePlan: () => void;
+  onReschedulePlan: () => void;
   isPlanPaused: (plan: Plan | null) => boolean;
 }
 
@@ -43,6 +43,7 @@ const PlanDetailsDialog = ({
   onCancelPlan,
   onPausePlan,
   onResumePlan,
+  onReschedulePlan,
   isPlanPaused
 }: PlanDetailsDialogProps) => {
   if (!selectedPlan) return null;
@@ -57,9 +58,10 @@ const PlanDetailsDialog = ({
           <SheetTitle className="text-left">Plan Details</SheetTitle>
           <PlanActionsDropdown 
             onCancelPlan={onCancelPlan}
-            onPausePlan={onPausePlan}
-            onResumePlan={onResumePlan}
-            isPaused={isPaused}
+            onPausePlan={!isPlanPaused(selectedPlan) ? onPausePlan : undefined}
+            onResumePlan={isPlanPaused(selectedPlan) ? onResumePlan : undefined}
+            onReschedulePlan={onReschedulePlan}
+            isPaused={isPlanPaused(selectedPlan)}
             isDisabled={isDisabled}
           />
         </SheetHeader>
