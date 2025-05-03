@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Patient } from '@/hooks/usePatients';
 import { PaymentLink } from '@/types/payment';
-import { addDays, addWeeks, addMonths, format } from 'date-fns';
+import { addDays, addWeeks, addMonths, format, isSameDay } from 'date-fns';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { usePaymentLinkSender } from '@/hooks/usePaymentLinkSender';
 import { toast } from 'sonner';
@@ -180,6 +180,136 @@ export function useSendLinkPageState() {
     return schedule;
   };
 
+  const createPaymentRequest = async (
+    clinicId: string, 
+    patientId: string | null, 
+    paymentLinkId: string,
+    message: string,
+    status: 'sent' | 'scheduled' = 'scheduled',
+    scheduleEntry?: any
+  ) => {
+    try {
+      // Create a payment request entry
+      const { data: paymentRequest, error: requestError } = await supabase
+        .from('payment_requests')
+        .insert({
+          clinic_id: clinicId,
+          patient_id: patientId,
+          patient_name: formData.patientName,
+          patient_email: formData.patientEmail,
+          patient_phone: formData.patientPhone,
+          payment_link_id: paymentLinkId,
+          message: message,
+          status: status,
+          sent_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (requestError) {
+        console.error('Error creating payment request:', requestError);
+        throw new Error('Failed to create payment request');
+      }
+
+      return paymentRequest;
+    } catch (error) {
+      console.error('Error creating payment request:', error);
+      throw error;
+    }
+  };
+
+  const sendImmediatePayment = async (
+    paymentScheduleEntry: any,
+    clinicId: string,
+    patientId: string | null,
+    selectedLink: PaymentLink,
+    formattedAddress: string
+  ) => {
+    try {
+      // Create a payment request with status 'sent'
+      const paymentRequest = await createPaymentRequest(
+        clinicId,
+        patientId,
+        selectedLink.id,
+        `Payment ${paymentScheduleEntry.payment_number} of ${paymentScheduleEntry.total_payments} is due.`,
+        'sent'
+      );
+
+      // Update the corresponding schedule entry to 'processed'
+      await supabase
+        .from('payment_schedule')
+        .update({ 
+          status: 'processed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('payment_number', paymentScheduleEntry.payment_number)
+        .eq('payment_link_id', selectedLink.id)
+        .eq('patient_id', patientId);
+
+      // Send notification
+      const notificationMethod = {
+        email: !!formData.patientEmail,
+        sms: !!formData.patientPhone
+      };
+
+      if (notificationMethod.email || notificationMethod.sms) {
+        // Get clinic data
+        const { data: clinicData, error: clinicError } = await supabase
+          .from('clinics')
+          .select('*')
+          .eq('id', clinicId)
+          .single();
+
+        if (clinicError) {
+          console.error('Error getting clinic data:', clinicError);
+          throw new Error('Failed to get clinic data');
+        }
+
+        const notificationPayload = {
+          notification_type: "payment_request",
+          notification_method: notificationMethod,
+          patient: {
+            name: formData.patientName,
+            email: formData.patientEmail,
+            phone: formData.patientPhone
+          },
+          payment: {
+            reference: paymentRequest.id,
+            amount: paymentScheduleEntry.amount,
+            refund_amount: null,
+            payment_link: `https://clinipay.co.uk/payment/${paymentRequest.id}`,
+            message: `Payment ${paymentScheduleEntry.payment_number} of ${paymentScheduleEntry.total_payments} is due.`
+          },
+          clinic: {
+            name: clinicData.clinic_name || "Your healthcare provider",
+            email: clinicData.email,
+            phone: clinicData.phone,
+            address: formattedAddress
+          }
+        };
+
+        // Queue notification
+        await supabase
+          .from("notification_queue")
+          .insert({
+            type: 'payment_request',
+            payload: notificationPayload,
+            recipient_type: 'patient',
+            payment_id: paymentRequest.id,
+            status: 'pending'
+          });
+
+        // Process the notification
+        await supabase.functions.invoke('process-notification-queue');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error sending immediate payment:', error);
+      return false;
+    }
+  };
+
   const handleSchedulePaymentPlan = async () => {
     try {
       const selectedLink = [...regularLinks, ...paymentPlans].find(link => link.id === formData.selectedLink);
@@ -204,28 +334,6 @@ export function useSendLinkPageState() {
 
       const clinicId = userData.clinic_id;
 
-      // First create a payment request to get a reference
-      const { data: paymentRequest, error: requestError } = await supabase
-        .from('payment_requests')
-        .insert({
-          clinic_id: clinicId,
-          patient_name: formData.patientName,
-          patient_email: formData.patientEmail,
-          patient_phone: formData.patientPhone,
-          payment_link_id: formData.selectedLink,
-          message: formData.message,
-          status: 'scheduled',
-          sent_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (requestError) {
-        console.error('Error creating payment request:', requestError);
-        toast.error('Failed to schedule payment plan');
-        return { success: false };
-      }
-
       // Generate payment schedule
       const schedule = generatePaymentSchedule(
         formData.startDate,
@@ -234,19 +342,62 @@ export function useSendLinkPageState() {
         selectedLink.amount
       );
 
-      // Create schedule entries
-      const scheduleEntries = schedule.map(entry => ({
-        clinic_id: clinicId,
-        patient_id: selectedPatient?.id,
-        payment_link_id: selectedLink.id,
-        payment_request_id: paymentRequest.id,
-        amount: entry.amount,
-        due_date: entry.due_date,
-        payment_number: entry.payment_number,
-        total_payments: entry.total_payments,
-        payment_frequency: entry.payment_frequency,
-      }));
+      // Create a payment request (master record)
+      const paymentRequest = await createPaymentRequest(
+        clinicId,
+        selectedPatient?.id || null,
+        selectedLink.id,
+        formData.message || `Payment plan: ${selectedLink.title}`
+      );
 
+      // Format clinic address for notifications
+      const { data: clinicData, error: clinicError } = await supabase
+        .from('clinics')
+        .select('*')
+        .eq('id', clinicId)
+        .single();
+
+      if (clinicError) {
+        console.error('Error getting clinic data:', clinicError);
+        toast.error('Failed to schedule payment plan');
+        return { success: false };
+      }
+
+      const addressParts = [];
+      if (clinicData.address_line_1) addressParts.push(clinicData.address_line_1);
+      if (clinicData.address_line_2) addressParts.push(clinicData.address_line_2);
+      if (clinicData.city) addressParts.push(clinicData.city);
+      if (clinicData.postcode) addressParts.push(clinicData.postcode);
+      const formattedAddress = addressParts.join(", ");
+
+      // Check if first payment is due today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const firstPaymentDate = new Date(schedule[0].due_date);
+      const isFirstPaymentToday = isSameDay(firstPaymentDate, today);
+      
+      // Create schedule entries
+      const scheduleEntries = schedule.map((entry, index) => {
+        // The first payment should be marked as 'processed' if it's due today
+        // Others will remain 'pending' to be processed by the cron job
+        const isFirst = index === 0;
+        const status = (isFirst && isFirstPaymentToday) ? 'processed' : 'pending';
+        
+        return {
+          clinic_id: clinicId,
+          patient_id: selectedPatient?.id,
+          payment_link_id: selectedLink.id,
+          payment_request_id: paymentRequest.id,
+          amount: entry.amount,
+          due_date: entry.due_date,
+          payment_number: entry.payment_number,
+          total_payments: entry.total_payments,
+          payment_frequency: entry.payment_frequency,
+          status: status
+        };
+      });
+
+      // Insert all schedule entries
       const { error: scheduleError } = await supabase
         .from('payment_schedule')
         .insert(scheduleEntries);
@@ -257,7 +408,26 @@ export function useSendLinkPageState() {
         return { success: false };
       }
 
-      toast.success('Payment plan scheduled successfully');
+      // If the first payment is due today, send it immediately
+      if (isFirstPaymentToday) {
+        const firstPayment = schedule[0];
+        const sentSuccessfully = await sendImmediatePayment(
+          firstPayment,
+          clinicId,
+          selectedPatient?.id || null,
+          selectedLink,
+          formattedAddress
+        );
+        
+        if (sentSuccessfully) {
+          toast.success('Payment plan scheduled and first payment sent immediately');
+        } else {
+          toast.success('Payment plan scheduled, but there was an issue sending the first payment');
+        }
+      } else {
+        toast.success('Payment plan scheduled successfully');
+      }
+
       resetForm();
       setShowConfirmation(false);
       return { success: true };

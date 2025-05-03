@@ -71,3 +71,9 @@ verify_jwt = true
 
 [functions.stripe-webhooks]
 verify_jwt = false
+
+[functions.process-payment-schedule]
+verify_jwt = false
+
+[functions.setup-payment-schedule-cron]
+verify_jwt = true
