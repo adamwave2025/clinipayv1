@@ -104,6 +104,13 @@
     @apply bg-gradient-primary text-white hover:shadow-md transition-all duration-300;
   }
   
+  /* Add active state for gradient buttons */
+  .btn-gradient:active {
+    @apply opacity-80 scale-95 shadow-inner;
+    transform-origin: center;
+    transition: transform 0.1s ease-in-out, opacity 0.1s ease-in-out;
+  }
+  
   .btn-outline {
     @apply relative text-primary border-2 border-transparent hover:shadow-md transition-all duration-300;
     background-image: linear-gradient(white, white), linear-gradient(135deg, #ab53de 0%, #538fde 100%);

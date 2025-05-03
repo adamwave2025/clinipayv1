@@ -14,10 +14,16 @@ const SubmitButton = ({ isLoading }: SubmitButtonProps) => {
       className="w-full h-12 btn-gradient text-lg"
       disabled={isLoading}
     >
-      {isLoading ? (
-        <LoadingSpinner size="sm" className="mr-2" />
-      ) : null}
-      Pay Now
+      <span className="flex items-center justify-center">
+        {isLoading ? (
+          <>
+            <LoadingSpinner size="sm" className="mr-2" />
+            <span>Processing...</span>
+          </>
+        ) : (
+          "Pay Now"
+        )}
+      </span>
     </Button>
   );
 };

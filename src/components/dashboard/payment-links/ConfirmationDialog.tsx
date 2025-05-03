@@ -141,8 +141,14 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
             disabled={isLoading}
             className="btn-gradient"
           >
-            {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
-            {isPaymentPlan ? 'Schedule Payment Plan' : 'Send Payment Link'}
+            {isLoading ? (
+              <>
+                <LoadingSpinner size="sm" className="mr-2" />
+                {isPaymentPlan ? 'Scheduling...' : 'Sending...'}
+              </>
+            ) : (
+              isPaymentPlan ? 'Schedule Payment Plan' : 'Send Payment Link'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

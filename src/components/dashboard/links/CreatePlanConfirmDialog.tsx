@@ -87,7 +87,14 @@ const CreatePlanConfirmDialog = ({
             onClick={onConfirm}
             disabled={isLoading}
           >
-            {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : 'Create Payment Plan'}
+            {isLoading ? (
+              <>
+                <LoadingSpinner size="sm" className="mr-2" />
+                Creating...
+              </>
+            ) : (
+              'Create Payment Plan'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
