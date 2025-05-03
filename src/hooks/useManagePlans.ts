@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plan, PlanInstallment } from '@/utils/paymentPlanUtils';
@@ -121,6 +120,9 @@ export const useManagePlans = () => {
 
   const handleResumePlanConfirm = async (resumeDate: Date) => {
     if (!selectedPlan) return;
+    
+    // Log the date to help with debugging
+    console.log('Resume plan with date:', resumeDate.toISOString());
     
     const [patientId, paymentLinkId] = selectedPlan.id.split('_');
     const success = await handleResumePlan(patientId, paymentLinkId, resumeDate);

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { 
@@ -64,6 +63,10 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
   const handleResumePlan = async (patientId: string, paymentLinkId: string, resumeDate: Date) => {
     try {
       setIsProcessing(true);
+      
+      // Ensure the date is properly normalized before passing to the service
+      console.log('In usePlanActions, resuming with date:', resumeDate.toISOString());
+      
       const result = await resumePaymentPlan(patientId, paymentLinkId, resumeDate);
       
       if (result.success) {

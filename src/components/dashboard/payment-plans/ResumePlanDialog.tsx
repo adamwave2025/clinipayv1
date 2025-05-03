@@ -36,10 +36,17 @@ const ResumePlanDialog = ({
   patientName,
   isProcessing = false,
 }: ResumePlanDialogProps) => {
-  const [date, setDate] = useState<Date>(new Date());
+  // Initialize with current date but set hours to midnight
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [date, setDate] = useState<Date>(today);
 
   const handleConfirm = () => {
-    onConfirm(date);
+    // Ensure the date is normalized to midnight to avoid timezone issues
+    const normalizedDate = new Date(date);
+    normalizedDate.setHours(0, 0, 0, 0);
+    console.log('Confirming with date:', normalizedDate.toISOString());
+    onConfirm(normalizedDate);
   };
 
   // Disable dates in the past
@@ -83,7 +90,15 @@ const ResumePlanDialog = ({
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={(newDate) => newDate && setDate(newDate)}
+                  onSelect={(newDate) => {
+                    if (newDate) {
+                      // Ensure the time is set to midnight
+                      const normalizedDate = new Date(newDate);
+                      normalizedDate.setHours(0, 0, 0, 0);
+                      console.log('Selected date:', normalizedDate.toISOString());
+                      setDate(normalizedDate);
+                    }
+                  }}
                   disabled={disablePastDates}
                   initialFocus
                   className="pointer-events-auto"

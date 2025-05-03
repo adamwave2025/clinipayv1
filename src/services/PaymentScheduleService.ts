@@ -136,6 +136,8 @@ export const pausePaymentPlan = async (patientId: string, paymentLinkId: string)
 
 export const resumePaymentPlan = async (patientId: string, paymentLinkId: string, resumeDate: Date) => {
   try {
+    console.log('Original resumeDate received:', resumeDate);
+    
     // First get all paused installments for this plan
     const { data: pausedInstallments, error: fetchError } = await supabase
       .from('payment_schedule')
@@ -156,12 +158,15 @@ export const resumePaymentPlan = async (patientId: string, paymentLinkId: string
     const updatePromises = pausedInstallments.map((installment, index) => {
       // Calculate new due date based on the resume date and installment index
       const newDueDate = calculateNewDueDate(resumeDate, index, frequency);
+      const formattedDate = newDueDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      
+      console.log(`Installment ${installment.payment_number}, new due date: ${formattedDate}`);
       
       return supabase
         .from('payment_schedule')
         .update({ 
           status: 'pending',
-          due_date: newDueDate.toISOString().split('T')[0] // Format as YYYY-MM-DD
+          due_date: formattedDate
         })
         .eq('id', installment.id);
     });
@@ -179,7 +184,13 @@ export const resumePaymentPlan = async (patientId: string, paymentLinkId: string
 
 // Helper function to calculate new due date based on frequency
 function calculateNewDueDate(startDate: Date, index: number, frequency: string): Date {
+  // Create a new date object to avoid mutating the original date
   const newDate = new Date(startDate);
+  
+  // Ensure the date is set to the start of the day to avoid timezone issues
+  newDate.setHours(0, 0, 0, 0);
+  
+  console.log(`Index: ${index}, Original date: ${newDate.toISOString()}`);
   
   switch (frequency) {
     case 'daily':
@@ -203,6 +214,8 @@ function calculateNewDueDate(startDate: Date, index: number, frequency: string):
     default:
       newDate.setMonth(newDate.getMonth() + index);
   }
+  
+  console.log(`After calculation: ${newDate.toISOString()}`);
   
   return newDate;
 }
