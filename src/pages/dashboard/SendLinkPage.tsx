@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -187,6 +188,7 @@ const SendLinkPage = () => {
       
       if (result.success) {
         resetForm();
+        setShowConfirmation(false); // Close the dialog after successful submission
       }
     }
   };
