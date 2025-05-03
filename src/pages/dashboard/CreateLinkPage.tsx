@@ -7,6 +7,7 @@ import LinkGeneratedDialog from '@/components/dashboard/links/LinkGeneratedDialo
 import CreatePlanConfirmDialog from '@/components/dashboard/links/CreatePlanConfirmDialog';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { toast } from 'sonner';
+import { PaymentLink } from '@/types/payment';
 
 const CreateLinkPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -41,24 +42,30 @@ const CreateLinkPage = () => {
     }
   };
 
+  // Transform LinkFormData to PaymentLink format
+  const transformFormDataToPaymentLink = (data: LinkFormData): Omit<PaymentLink, "id" | "url" | "createdAt" | "isActive"> => {
+    return {
+      title: data.paymentTitle,
+      amount: Number(data.amount),
+      type: data.paymentType,
+      description: data.description,
+      paymentPlan: data.paymentPlan,
+      paymentCount: data.paymentPlan ? Number(data.paymentCount) : undefined,
+      paymentCycle: data.paymentPlan ? data.paymentCycle : undefined,
+      planTotalAmount: data.paymentPlan 
+        ? Number(data.amount) * Number(data.paymentCount) 
+        : undefined
+    };
+  };
+
   const handleCreateLink = async (data: LinkFormData) => {
     console.log('Creating link with data:', data);
     setIsLoading(true);
     setShowPlanConfirmation(false); // Close the confirmation dialog
     
     try {
-      const paymentData = {
-        title: data.paymentTitle,
-        amount: Number(data.amount),
-        type: data.paymentType,
-        description: data.description,
-        paymentPlan: data.paymentPlan,
-        paymentCount: data.paymentPlan ? Number(data.paymentCount) : undefined,
-        paymentCycle: data.paymentPlan ? data.paymentCycle : undefined,
-        planTotalAmount: data.paymentPlan 
-          ? Number(data.amount) * Number(data.paymentCount) 
-          : undefined
-      };
+      // Transform the form data to the expected PaymentLink format
+      const paymentData = transformFormDataToPaymentLink(data);
       
       console.log('Sending payment data to API:', paymentData);
       const result = await createPaymentLink(paymentData);
@@ -66,6 +73,7 @@ const CreateLinkPage = () => {
       if (!result.success) {
         toast.error(result.error || 'Failed to create payment link');
         setIsLoading(false);
+        return result;
       }
       
       return result;
@@ -87,7 +95,7 @@ const CreateLinkPage = () => {
       <CreateLinkForm 
         onLinkGenerated={handleLinkGenerated}
         isLoading={isLoading}
-        onCreateLink={handleCreateLink}
+        onCreateLink={createPaymentLink}
         onSubmit={handleSubmitForm}
       />
 

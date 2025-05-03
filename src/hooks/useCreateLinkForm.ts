@@ -20,6 +20,22 @@ interface UseCreateLinkFormProps {
   isLoading: boolean;
 }
 
+// Helper function to transform LinkFormData to PaymentLink format
+const transformFormDataToPaymentLink = (formData: LinkFormData): Omit<PaymentLink, 'id' | 'url' | 'createdAt' | 'isActive'> => {
+  return {
+    title: formData.paymentTitle,
+    amount: Number(formData.amount),
+    type: formData.paymentType,
+    description: formData.description,
+    paymentPlan: formData.paymentPlan,
+    paymentCount: formData.paymentPlan ? Number(formData.paymentCount) : undefined,
+    paymentCycle: formData.paymentPlan ? formData.paymentCycle : undefined,
+    planTotalAmount: formData.paymentPlan 
+      ? Number(formData.amount) * Number(formData.paymentCount) 
+      : undefined
+  };
+};
+
 export function useCreateLinkForm({ 
   onLinkGenerated, 
   onCreateLink, 
@@ -97,18 +113,8 @@ export function useCreateLinkForm({
     if (onCreateLink) {
       // Use Supabase to create the link
       try {
-        const paymentData = {
-          title: formData.paymentTitle,
-          amount: Number(formData.amount),
-          type: formData.paymentType,
-          description: formData.description,
-          paymentPlan: formData.paymentPlan,
-          paymentCount: formData.paymentPlan ? Number(formData.paymentCount) : undefined,
-          paymentCycle: formData.paymentPlan ? formData.paymentCycle : undefined,
-          planTotalAmount: formData.paymentPlan 
-            ? Number(formData.amount) * Number(formData.paymentCount) 
-            : undefined
-        };
+        // Transform the form data to the expected PaymentLink format
+        const paymentData = transformFormDataToPaymentLink(formData);
         
         console.log('Creating payment link with data:', paymentData);
         const result = await onCreateLink(paymentData);

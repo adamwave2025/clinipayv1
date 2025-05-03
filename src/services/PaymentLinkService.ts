@@ -39,7 +39,7 @@ export const PaymentLinkService = {
     }
   },
 
-  async createPaymentLink(linkData: Partial<PaymentLink>, clinicId: string) {
+  async createPaymentLink(linkData: Omit<PaymentLink, 'id' | 'url' | 'createdAt' | 'isActive'>, clinicId: string) {
     try {
       console.log('PaymentLinkService: Creating payment link with data:', linkData);
       
