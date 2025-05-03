@@ -28,15 +28,15 @@ const PlanDetailsDialog = ({
   const getStatusBadgeClass = (status: string) => {
     switch(status) {
       case 'paid':
-        return 'bg-green-100 text-green-700';
+        return 'bg-green-100 text-green-700 hover:bg-green-100 hover:text-green-700';
       case 'upcoming':
-        return 'bg-yellow-100 text-yellow-700';
+        return 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100 hover:text-yellow-700';
       case 'sent':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-blue-100 text-blue-700 hover:bg-blue-100 hover:text-blue-700';
       case 'overdue':
-        return 'bg-red-100 text-red-700';
+        return 'bg-red-100 text-red-700 hover:bg-red-100 hover:text-red-700';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-100 text-gray-700 hover:bg-gray-100 hover:text-gray-700';
     }
   };
 
@@ -67,11 +67,12 @@ const PlanDetailsDialog = ({
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">Status</h4>
                   <Badge 
+                    variant="outline"
                     className={`
-                      ${selectedPlan.status === 'active' ? 'bg-green-100 text-green-700' : ''}
-                      ${selectedPlan.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : ''}
-                      ${selectedPlan.status === 'completed' ? 'bg-blue-100 text-blue-700' : ''}
-                      ${selectedPlan.status === 'overdue' ? 'bg-red-100 text-red-700' : ''}
+                      ${selectedPlan.status === 'active' ? 'bg-green-100 text-green-700 hover:bg-green-100 hover:text-green-700' : ''}
+                      ${selectedPlan.status === 'pending' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100 hover:text-yellow-700' : ''}
+                      ${selectedPlan.status === 'completed' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100 hover:text-blue-700' : ''}
+                      ${selectedPlan.status === 'overdue' ? 'bg-red-100 text-red-700 hover:bg-red-100 hover:text-red-700' : ''}
                     `}
                   >
                     {selectedPlan.status.charAt(0).toUpperCase() + selectedPlan.status.slice(1)}
@@ -125,7 +126,7 @@ const PlanDetailsDialog = ({
                           <TableCell>{new Date(installment.dueDate).toLocaleDateString()}</TableCell>
                           <TableCell>£{installment.amount.toFixed(2)}</TableCell>
                           <TableCell>
-                            <Badge className={getStatusBadgeClass(installment.status)}>
+                            <Badge variant="outline" className={getStatusBadgeClass(installment.status)}>
                               {installment.status.charAt(0).toUpperCase() + installment.status.slice(1)}
                             </Badge>
                           </TableCell>
