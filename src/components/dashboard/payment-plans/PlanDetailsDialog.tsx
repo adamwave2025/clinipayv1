@@ -12,6 +12,7 @@ interface PlanDetailsDialogProps {
   selectedPlan: any | null;
   installments: any[];
   onSendReminder: (installmentId: string) => void;
+  onViewPaymentDetails?: (installment: any) => void;
 }
 
 const PlanDetailsDialog = ({ 
@@ -19,9 +20,25 @@ const PlanDetailsDialog = ({
   setShowPlanDetails, 
   selectedPlan,
   installments,
-  onSendReminder
+  onSendReminder,
+  onViewPaymentDetails
 }: PlanDetailsDialogProps) => {
   if (!selectedPlan) return null;
+
+  const getStatusBadgeClass = (status: string) => {
+    switch(status) {
+      case 'paid':
+        return 'bg-green-100 text-green-700';
+      case 'upcoming':
+        return 'bg-yellow-100 text-yellow-700';
+      case 'sent':
+        return 'bg-blue-100 text-blue-700';
+      case 'overdue':
+        return 'bg-red-100 text-red-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
+    }
+  };
 
   return (
     <Dialog open={showPlanDetails} onOpenChange={setShowPlanDetails}>
@@ -108,28 +125,22 @@ const PlanDetailsDialog = ({
                           <TableCell>{new Date(installment.dueDate).toLocaleDateString()}</TableCell>
                           <TableCell>£{installment.amount.toFixed(2)}</TableCell>
                           <TableCell>
-                            <Badge 
-                              className={`
-                                ${installment.status === 'paid' ? 'bg-green-100 text-green-700' : ''}
-                                ${installment.status === 'upcoming' ? 'bg-yellow-100 text-yellow-700' : ''}
-                                ${installment.status === 'sent' ? 'bg-blue-100 text-blue-700' : ''}
-                                ${installment.status === 'overdue' ? 'bg-red-100 text-red-700' : ''}
-                              `}
-                            >
+                            <Badge className={getStatusBadgeClass(installment.status)}>
                               {installment.status.charAt(0).toUpperCase() + installment.status.slice(1)}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            {installment.status === 'upcoming' && (
+                            {installment.status === 'paid' ? (
                               <Button 
                                 size="sm" 
                                 variant="outline"
-                                onClick={() => onSendReminder(installment.id)}
+                                onClick={() => onViewPaymentDetails && onViewPaymentDetails(installment)}
                               >
-                                Send Reminder
+                                View Payment
                               </Button>
-                            )}
-                            {installment.status === 'overdue' && (
+                            ) : installment.status === 'upcoming' ? (
+                              <span className="text-sm text-gray-500">-</span>
+                            ) : installment.status === 'overdue' && (
                               <Button 
                                 size="sm" 
                                 variant="outline"
@@ -146,11 +157,6 @@ const PlanDetailsDialog = ({
                               >
                                 Resend Request
                               </Button>
-                            )}
-                            {installment.status === 'paid' && (
-                              <span className="text-sm text-gray-500">
-                                Paid on {new Date(installment.paidDate!).toLocaleDateString()}
-                              </span>
                             )}
                           </TableCell>
                         </TableRow>

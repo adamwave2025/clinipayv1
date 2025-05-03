@@ -7,6 +7,7 @@ import PageHeader from '@/components/common/PageHeader';
 import PaymentPlanFilters from '@/components/dashboard/payment-plans/PaymentPlanFilters';
 import ActivePlansTable from '@/components/dashboard/payment-plans/ActivePlansTable';
 import PlanDetailsDialog from '@/components/dashboard/payment-plans/PlanDetailsDialog';
+import InstallmentPaymentDialog from '@/components/dashboard/payment-plans/InstallmentPaymentDialog';
 import { useManagePlans } from '@/hooks/useManagePlans';
 
 const ManagePlansPage = () => {
@@ -22,7 +23,13 @@ const ManagePlansPage = () => {
     handleViewPlanDetails,
     handleCreatePlanClick,
     handleViewPlansClick,
-    handleSendReminder
+    handleSendReminder,
+    // New properties for payment details
+    showPaymentDetails,
+    setShowPaymentDetails,
+    paymentData,
+    handleViewPaymentDetails,
+    handleBackToPlans
   } = useManagePlans();
 
   return (
@@ -74,6 +81,15 @@ const ManagePlansPage = () => {
         selectedPlan={selectedPlan}
         installments={installments}
         onSendReminder={handleSendReminder}
+        onViewPaymentDetails={handleViewPaymentDetails}
+      />
+
+      {/* Payment Details Dialog */}
+      <InstallmentPaymentDialog
+        showDialog={showPaymentDetails}
+        setShowDialog={setShowPaymentDetails}
+        paymentData={paymentData}
+        onBack={handleBackToPlans}
       />
     </DashboardLayout>
   );
