@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -30,7 +30,8 @@ const PaymentPlansPage = () => {
     handleDeletePlan,
     confirmDeletePlan,
     handleEditFormChange,
-    saveEditedPlan
+    saveEditedPlan,
+    handleViewActivePlansClick
   } = usePaymentPlans();
 
   const handleCreatePlanClick = () => {
@@ -43,13 +44,23 @@ const PaymentPlansPage = () => {
         title="Manage Payment Plans" 
         description="View, edit and manage all your payment plans"
         action={
-          <Button 
-            className="btn-gradient"
-            onClick={handleCreatePlanClick}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Create New Plan
-          </Button>
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline"
+              className="flex items-center"
+              onClick={handleViewActivePlansClick}
+            >
+              <ListChecks className="mr-2 h-4 w-4" />
+              Active Plans
+            </Button>
+            <Button 
+              className="btn-gradient"
+              onClick={handleCreatePlanClick}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create New Plan
+            </Button>
+          </div>
         }
       />
       

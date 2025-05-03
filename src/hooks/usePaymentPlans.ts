@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { PaymentLink } from '@/types/payment';
 import { toast } from 'sonner';
@@ -6,6 +5,7 @@ import { PaymentLinkService } from '@/services/PaymentLinkService';
 import { formatPaymentLinks } from '@/utils/paymentLinkFormatter';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export const usePaymentPlans = () => {
   const [paymentPlans, setPaymentPlans] = useState<PaymentLink[]>([]);
@@ -24,6 +24,7 @@ export const usePaymentPlans = () => {
 
   const { fetchPaymentLinks } = usePaymentLinks();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Filter plans when search query changes
   useEffect(() => {
@@ -125,6 +126,11 @@ export const usePaymentPlans = () => {
     }
   };
 
+  // New function to navigate to Active Plans screen
+  const handleViewActivePlansClick = () => {
+    navigate('/dashboard/manage-plans');
+  };
+
   return {
     paymentPlans,
     filteredPlans,
@@ -143,6 +149,7 @@ export const usePaymentPlans = () => {
     confirmDeletePlan,
     handleEditFormChange,
     saveEditedPlan,
-    fetchPaymentPlans
+    fetchPaymentPlans,
+    handleViewActivePlansClick // Export the new function
   };
 };
