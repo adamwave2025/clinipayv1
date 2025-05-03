@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Patient } from '@/hooks/usePatients';
 import { PaymentLink } from '@/types/payment';
@@ -274,7 +273,7 @@ export function useSendLinkPageState() {
         .from('payment_schedule')
         .update({ 
           payment_request_id: paymentRequest.id,
-          status: 'processed',
+          status: 'sent', // CHANGED: Using 'sent' status instead of 'processed'
           updated_at: new Date().toISOString()
         })
         .eq('payment_number', paymentScheduleEntry.payment_number)
@@ -432,9 +431,9 @@ export function useSendLinkPageState() {
       
       // Create schedule entries
       const scheduleEntries = schedule.map((entry, index) => {
-        // The first payment should be marked as 'processed' and linked to the payment request if it's due today
+        // The first payment should be marked as 'sent' and linked to the payment request if it's due today
         const isFirst = index === 0;
-        const status = (isFirst && isFirstPaymentToday) ? 'processed' : 'pending';
+        const status = (isFirst && isFirstPaymentToday) ? 'sent' : 'pending'; // CHANGED: Using 'sent' status instead of 'processed'
         
         return {
           clinic_id: clinicId,
