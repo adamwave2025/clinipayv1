@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
 };
 
-// This function will set up a cron job to process payment schedules daily at 9am
+// This function will set up a cron job to process payment schedules every minute for testing
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -77,11 +77,11 @@ serve(async (req) => {
       }
     }
 
-    // Create the cron job to call our function daily at 9am
+    // Create the cron job to call our function every minute (for testing)
     const createJobSql = `
       SELECT cron.schedule(
         'process_payment_schedule',
-        '0 9 * * *',  -- Run at 9am every day
+        '* * * * *',  -- Run every minute (for testing)
         $$
         SELECT
           net.http_post(
@@ -102,7 +102,7 @@ serve(async (req) => {
       throw new Error(`Failed to create cron job: ${scheduleError.message}`);
     }
 
-    console.log("✅ Payment processing cron job set up successfully to run daily at 9am");
+    console.log("✅ Payment processing cron job set up successfully to run every minute");
 
     // Run the payment processing immediately as a test
     console.log("🔄 Processing any pending payments immediately");
@@ -120,7 +120,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      message: "Payment processing cron job has been set up to run daily at 9am",
+      message: "Payment processing cron job has been set up to run every minute (for testing)",
       function_url: functionUrl
     }), {
       headers: {
