@@ -18,7 +18,8 @@ export const usePlanDataFetcher = () => {
   const [installments, setInstallments] = useState<PlanInstallment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchPaymentPlans = async (userId: string) => {
+  // Explicitly define the return type as Promise<Plan[]>
+  const fetchPaymentPlans = async (userId: string): Promise<Plan[]> => {
     setIsLoading(true);
     try {
       // Get user's clinic_id

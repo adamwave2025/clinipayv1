@@ -2,8 +2,10 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { cancelPaymentPlan } from '@/services/PaymentScheduleService';
+import { Plan } from '@/utils/paymentPlanUtils';
 
-export const usePlanActions = (refreshPlans: () => Promise<void>) => {
+// Update the type definition of refreshPlans to accept a Promise<Plan[]> return type
+export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const handleSendReminder = async (installmentId: string) => {

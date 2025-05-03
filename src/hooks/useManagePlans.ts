@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plan, PlanInstallment } from '@/utils/paymentPlanUtils';
@@ -14,7 +13,12 @@ export const useManagePlans = () => {
   // Use all the smaller hooks
   const { plans, installments, isLoading, fetchPaymentPlans, fetchPlanInstallmentsData } = usePlanDataFetcher();
   const { paymentData, setPaymentData, fetchPaymentDataForInstallment } = usePaymentDetailsFetcher();
-  const { showCancelDialog, setShowCancelDialog, handleSendReminder, handleCancelPlan, handlePausePlan } = usePlanActions(() => fetchPaymentPlans(user.id));
+  
+  // Pass fetchPaymentPlans directly as it returns Promise<Plan[]>
+  const { showCancelDialog, setShowCancelDialog, handleSendReminder, handleCancelPlan, handlePausePlan } = usePlanActions(
+    () => fetchPaymentPlans(user.id)
+  );
+  
   const { 
     searchQuery, setSearchQuery, 
     selectedPlan, setSelectedPlan,
