@@ -50,21 +50,23 @@ const PlanActionsDropdown = ({
             Resume Plan
           </DropdownMenuItem>
         ) : (
-          <DropdownMenuItem
-            onClick={onPausePlan}
-            className="cursor-pointer"
-            disabled={!onPausePlan}
-          >
-            Pause Plan
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem
+              onClick={onPausePlan}
+              className="cursor-pointer"
+              disabled={!onPausePlan}
+            >
+              Pause Plan
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={onReschedulePlan}
+              className="cursor-pointer"
+              disabled={!onReschedulePlan}
+            >
+              Reschedule Plan
+            </DropdownMenuItem>
+          </>
         )}
-        <DropdownMenuItem
-          onClick={onReschedulePlan}
-          className="cursor-pointer"
-          disabled={!onReschedulePlan}
-        >
-          Reschedule Plan
-        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={onCancelPlan}
