@@ -23,6 +23,7 @@ export const useManagePlans = () => {
     setShowPauseDialog,
     showResumeDialog,
     setShowResumeDialog,
+    isProcessing,
     handleSendReminder, 
     handleCancelPlan, 
     handlePausePlan,
@@ -95,8 +96,6 @@ export const useManagePlans = () => {
     if (success) {
       setShowCancelDialog(false);
       setShowPlanDetails(false);
-      // Refresh payment plans data
-      await fetchPaymentPlans(user.id);
     }
   };
 
@@ -113,8 +112,6 @@ export const useManagePlans = () => {
     if (success) {
       setShowPauseDialog(false);
       setShowPlanDetails(false);
-      // Refresh payment plans data
-      await fetchPaymentPlans(user.id);
     }
   };
 
@@ -131,8 +128,6 @@ export const useManagePlans = () => {
     if (success) {
       setShowResumeDialog(false);
       setShowPlanDetails(false);
-      // Refresh payment plans data
-      await fetchPaymentPlans(user.id);
     }
   };
 
@@ -174,6 +169,7 @@ export const useManagePlans = () => {
     setShowResumeDialog,
     handleResumePlan: handleResumePlanConfirm,
     handleOpenResumeDialog,
-    isPlanPaused
+    isPlanPaused,
+    isProcessing
   };
 };

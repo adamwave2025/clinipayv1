@@ -1,23 +1,25 @@
 
 import React from 'react';
-import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose
-} from '@/components/ui/dialog';
+import { Loader2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface CancelPlanDialogProps {
   showDialog: boolean;
-  setShowDialog: (open: boolean) => void;
-  onConfirm: () => Promise<void>;
+  setShowDialog: (show: boolean) => void;
+  onConfirm: () => void;
   planName: string;
   patientName: string;
+  isProcessing?: boolean;
 }
 
 const CancelPlanDialog = ({
@@ -25,56 +27,45 @@ const CancelPlanDialog = ({
   setShowDialog,
   onConfirm,
   planName,
-  patientName
+  patientName,
+  isProcessing = false,
 }: CancelPlanDialogProps) => {
-  const [isProcessing, setIsProcessing] = React.useState(false);
-  
-  const handleConfirm = async () => {
-    setIsProcessing(true);
-    try {
-      await onConfirm();
-    } finally {
-      setIsProcessing(false);
-    }
+  const handleConfirm = () => {
+    onConfirm();
   };
-  
+
   return (
-    <Dialog open={showDialog} onOpenChange={setShowDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Cancel Payment Plan</DialogTitle>
-          <DialogDescription className="pt-2">
-            Are you sure you want to cancel this payment plan? All pending payments will be cancelled.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="my-4 p-4 border rounded-md bg-red-50">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <div>
-              <h3 className="font-medium text-red-700">Warning</h3>
-              <p className="text-sm text-gray-700 mt-1">This will cancel all pending payments for:</p>
-              <p className="text-sm text-gray-700"><strong>Patient:</strong> {patientName}</p>
-              <p className="text-sm text-gray-700"><strong>Plan:</strong> {planName}</p>
-              <p className="text-sm text-gray-700 mt-2">This action cannot be undone. Any payments already processed will not be affected.</p>
-            </div>
-          </div>
-        </div>
-        
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline" disabled={isProcessing}>Cancel</Button>
-          </DialogClose>
-          <Button 
-            variant="destructive"
+    <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Cancel Payment Plan</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to cancel the <span className="font-semibold">{planName}</span> payment plan for{' '}
+            <span className="font-semibold">{patientName}</span>?
+          </AlertDialogDescription>
+          <p className="text-sm text-muted-foreground mt-2 text-red-500">
+            This action cannot be undone. All future payments will be cancelled.
+          </p>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+          <AlertDialogAction 
             onClick={handleConfirm}
+            className="bg-red-600 hover:bg-red-700"
             disabled={isProcessing}
           >
-            {isProcessing ? 'Cancelling...' : 'Cancel Plan'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            {isProcessing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              'Cancel Plan'
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 

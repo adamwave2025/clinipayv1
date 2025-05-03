@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +19,7 @@ interface PausePlanDialogProps {
   onConfirm: () => void;
   planName: string;
   patientName: string;
+  isProcessing?: boolean;
 }
 
 const PausePlanDialog = ({
@@ -26,6 +28,7 @@ const PausePlanDialog = ({
   onConfirm,
   planName,
   patientName,
+  isProcessing = false,
 }: PausePlanDialogProps) => {
   const handleConfirm = () => {
     onConfirm();
@@ -45,12 +48,20 @@ const PausePlanDialog = ({
           </p>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
           <AlertDialogAction 
             onClick={handleConfirm}
             className="bg-amber-600 hover:bg-amber-700"
+            disabled={isProcessing}
           >
-            Pause Plan
+            {isProcessing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              'Pause Plan'
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
@@ -25,6 +25,7 @@ interface ResumePlanDialogProps {
   onConfirm: (resumeDate: Date) => void;
   planName: string;
   patientName: string;
+  isProcessing?: boolean;
 }
 
 const ResumePlanDialog = ({
@@ -33,6 +34,7 @@ const ResumePlanDialog = ({
   onConfirm,
   planName,
   patientName,
+  isProcessing = false,
 }: ResumePlanDialogProps) => {
   const [date, setDate] = useState<Date>(new Date());
 
@@ -71,6 +73,7 @@ const ResumePlanDialog = ({
                     "w-full justify-start text-left font-normal",
                     !date && "text-muted-foreground"
                   )}
+                  disabled={isProcessing}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? format(date, "PPP") : <span>Pick a date</span>}
@@ -94,14 +97,22 @@ const ResumePlanDialog = ({
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowDialog(false)}>
+          <Button variant="outline" onClick={() => setShowDialog(false)} disabled={isProcessing}>
             Cancel
           </Button>
           <Button 
             onClick={handleConfirm}
             className="bg-green-600 hover:bg-green-700"
+            disabled={isProcessing}
           >
-            Resume Plan
+            {isProcessing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              'Resume Plan'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

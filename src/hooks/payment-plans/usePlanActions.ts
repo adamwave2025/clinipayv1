@@ -13,6 +13,7 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showPauseDialog, setShowPauseDialog] = useState(false);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleSendReminder = async (installmentId: string) => {
     // Implementation for sending payment reminder
@@ -21,10 +22,12 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
 
   const handleCancelPlan = async (patientId: string, paymentLinkId: string) => {
     try {
+      setIsProcessing(true);
       const result = await cancelPaymentPlan(patientId, paymentLinkId);
       
       if (result.success) {
         toast.success('Payment plan cancelled successfully');
+        await refreshPlans();
         return true;
       }
       return false;
@@ -32,11 +35,14 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
       console.error('Error in handleCancelPlan:', error);
       toast.error('Failed to cancel payment plan');
       return false;
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handlePausePlan = async (patientId: string, paymentLinkId: string) => {
     try {
+      setIsProcessing(true);
       const result = await pausePaymentPlan(patientId, paymentLinkId);
       
       if (result.success) {
@@ -50,11 +56,14 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
       console.error('Error in handlePausePlan:', error);
       toast.error('Failed to pause payment plan');
       return false;
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleResumePlan = async (patientId: string, paymentLinkId: string, resumeDate: Date) => {
     try {
+      setIsProcessing(true);
       const result = await resumePaymentPlan(patientId, paymentLinkId, resumeDate);
       
       if (result.success) {
@@ -68,6 +77,8 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
       console.error('Error in handleResumePlan:', error);
       toast.error('Failed to resume payment plan');
       return false;
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -78,6 +89,7 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
     setShowPauseDialog,
     showResumeDialog,
     setShowResumeDialog,
+    isProcessing,
     handleSendReminder,
     handleCancelPlan,
     handlePausePlan,

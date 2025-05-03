@@ -48,7 +48,8 @@ const ManagePlansPage = () => {
     setShowResumeDialog,
     handleResumePlan,
     handleOpenResumeDialog,
-    isPlanPaused
+    isPlanPaused,
+    isProcessing
   } = useManagePlans();
 
   return (
@@ -122,6 +123,7 @@ const ManagePlansPage = () => {
         onConfirm={handleCancelPlan}
         planName={selectedPlan?.planName || ''}
         patientName={selectedPlan?.patientName || ''}
+        isProcessing={isProcessing}
       />
 
       {/* Pause Plan Dialog */}
@@ -131,6 +133,7 @@ const ManagePlansPage = () => {
         onConfirm={handlePausePlan}
         planName={selectedPlan?.planName || ''}
         patientName={selectedPlan?.patientName || ''}
+        isProcessing={isProcessing}
       />
 
       {/* Resume Plan Dialog */}
@@ -140,6 +143,7 @@ const ManagePlansPage = () => {
         onConfirm={handleResumePlan}
         planName={selectedPlan?.planName || ''}
         patientName={selectedPlan?.patientName || ''}
+        isProcessing={isProcessing}
       />
     </DashboardLayout>
   );
