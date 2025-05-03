@@ -8,7 +8,8 @@ export type PlanActivityType =
   | 'cancel'
   | 'create'
   | 'payment_made'
-  | 'reminder_sent';
+  | 'reminder_sent'
+  | string; // Allow for other string values as well
 
 export interface PlanActivity {
   id: string;
@@ -39,6 +40,10 @@ export const getActionTypeLabel = (type: PlanActivityType): string => {
     case 'create': return 'Plan Created';
     case 'payment_made': return 'Payment Made';
     case 'reminder_sent': return 'Reminder Sent';
-    default: return `${type.charAt(0).toUpperCase()}${type.slice(1)}`;
+    default: {
+      // Ensure TypeScript knows this is a string by using type assertion
+      const typeAsString = type as string;
+      return typeAsString.charAt(0).toUpperCase() + typeAsString.slice(1);
+    }
   }
 };
