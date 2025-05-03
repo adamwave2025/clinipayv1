@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -158,8 +159,8 @@ export const resumePaymentPlan = async (patientId: string, paymentLinkId: string
       // Calculate new due date based on the resume date and installment index
       const newDueDate = calculateNewDueDate(resumeDate, index, frequency);
       
-      // Format date using local date components to preserve the day regardless of timezone
-      const formattedDate = `${newDueDate.getFullYear()}-${String(newDueDate.getMonth() + 1).padStart(2, '0')}-${String(newDueDate.getDate()).padStart(2, '0')}`;
+      // Format date using YYYY-MM-DD format to avoid timezone issues
+      const formattedDate = formatDateToYYYYMMDD(newDueDate);
       
       console.log(`Installment ${installment.payment_number}, new due date: ${formattedDate}`);
       
@@ -208,8 +209,8 @@ export const reschedulePaymentPlan = async (patientId: string, paymentLinkId: st
       // Calculate new due date based on the new start date and installment index
       const newDueDate = calculateNewDueDate(newStartDate, index, frequency);
       
-      // Format date using local date components to preserve the day regardless of timezone
-      const formattedDate = `${newDueDate.getFullYear()}-${String(newDueDate.getMonth() + 1).padStart(2, '0')}-${String(newDueDate.getDate()).padStart(2, '0')}`;
+      // Format date using YYYY-MM-DD format to avoid timezone issues
+      const formattedDate = formatDateToYYYYMMDD(newDueDate);
       
       console.log(`Installment ${installment.payment_number}, new due date: ${formattedDate}`);
       
@@ -238,7 +239,7 @@ function calculateNewDueDate(startDate: Date, index: number, frequency: string):
   // Ensure the date is set to the start of the day to avoid timezone issues
   newDate.setHours(0, 0, 0, 0);
   
-  console.log(`Index: ${index}, Original date: ${newDate.toISOString()}, Local date: ${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`);
+  console.log(`Index: ${index}, Original date: ${newDate.toISOString()}, Local date: ${formatDateToYYYYMMDD(newDate)}`);
   
   switch (frequency) {
     case 'daily':
@@ -263,7 +264,12 @@ function calculateNewDueDate(startDate: Date, index: number, frequency: string):
       newDate.setMonth(newDate.getMonth() + index);
   }
   
-  console.log(`After calculation: ${newDate.toISOString()}, Local date: ${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`);
+  console.log(`After calculation: ${newDate.toISOString()}, Local date: ${formatDateToYYYYMMDD(newDate)}`);
   
   return newDate;
+}
+
+// Helper function to format date as YYYY-MM-DD
+function formatDateToYYYYMMDD(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }

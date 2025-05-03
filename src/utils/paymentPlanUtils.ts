@@ -1,5 +1,5 @@
 
-import { format, parseISO, isAfter } from 'date-fns';
+import { format, parseISO, isAfter, startOfDay } from 'date-fns';
 
 export interface PaymentScheduleItem {
   id: string;
@@ -85,14 +85,16 @@ export const groupPaymentSchedulesByPlan = (scheduleItems: PaymentScheduleItem[]
     // Add this entry to the plan's schedule
     const plan = plansByPatient.get(planKey)!;
     
-    // Check if this installment is overdue
-    const dueDate = new Date(entry.due_date);
-    const now = new Date();
-    now.setHours(0, 0, 0, 0); // Reset time to start of day for fair comparison
+    // Check if this installment is overdue - FIXED: normalize date comparisons
+    const dueDate = parseISO(entry.due_date);
+    // Reset time to start of day to ensure fair comparison
+    const dueDateStart = startOfDay(dueDate);
+    const now = startOfDay(new Date()); // Also normalize current date to start of day
     
     // Consider 'pending', 'processed', and 'sent' status for overdue check
+    // Only mark as overdue if the due date is BEFORE today (not equal to today)
     const isOverdue = (entry.status === 'pending' || entry.status === 'processed' || entry.status === 'sent') && 
-                     dueDate < now && 
+                     dueDateStart < now && 
                      !entry.payment_requests?.payment_id;
     
     if (isOverdue) {
@@ -175,9 +177,9 @@ export const formatPlanInstallments = (installmentData: any[]): PlanInstallment[
       ? format(parseISO(item.payment_requests.paid_at), 'yyyy-MM-dd')
       : null;
       
-    // Determine status accurately
-    const now = new Date();
-    const due = parseISO(item.due_date);
+    // Determine status accurately - FIXED: normalize date comparisons
+    const now = startOfDay(new Date()); // Reset time to start of day
+    const due = startOfDay(parseISO(item.due_date)); // Reset time to start of day
     const isPaid = item.payment_requests?.payment_id || item.payment_requests?.status === 'paid';
     
     let status;
@@ -190,6 +192,7 @@ export const formatPlanInstallments = (installmentData: any[]): PlanInstallment[
       status = 'paused';  
     } else if (item.status === 'sent' || item.status === 'processed') {
       // If sent/processed but due date has passed, mark as overdue
+      // Only mark as overdue if the due date is BEFORE today (not equal to today)
       status = now > due ? 'overdue' : 'sent';
     } else if (item.status === 'pending') {
       // Check if it's overdue
