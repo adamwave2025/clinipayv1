@@ -13,7 +13,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Mail, Phone } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Mail, Phone, Calendar as CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import PatientCombobox from '@/components/dashboard/patients/PatientCombobox';
 import { Patient } from '@/hooks/usePatients';
@@ -24,6 +32,7 @@ interface SendLinkFormProps {
   paymentLinks: PaymentLink[];
   paymentPlans: PaymentLink[];
   isLoadingLinks: boolean;
+  isPaymentPlan: boolean;
   formData: {
     patientName: string;
     patientEmail: string;
@@ -31,9 +40,11 @@ interface SendLinkFormProps {
     selectedLink: string;
     customAmount: string;
     message: string;
+    startDate: Date;
   };
   onFormChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onSelectChange: (value: string) => void;
+  onDateChange: (date: Date | undefined) => void;
   onPatientSelect: (patient: Patient | null) => void;
   onCreateNew: (searchTerm: string) => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -44,9 +55,11 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
   paymentLinks,
   paymentPlans,
   isLoadingLinks,
+  isPaymentPlan,
   formData,
   onFormChange,
   onSelectChange,
+  onDateChange,
   onPatientSelect,
   onCreateNew,
   onSubmit,
@@ -157,6 +170,39 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
           </p>
         </div>
       </div>
+
+      {isPaymentPlan && (
+        <div className="space-y-2">
+          <Label htmlFor="startDate">Payment Start Date*</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !formData.startDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {formData.startDate ? format(formData.startDate, "PPP") : <span>Pick a date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={formData.startDate}
+                onSelect={onDateChange}
+                disabled={(date) => date < new Date()}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          <p className="text-xs text-gray-500">
+            This is when the first payment will be due
+          </p>
+        </div>
+      )}
       
       <div className="space-y-2">
         <Label htmlFor="message">Custom Message (Optional)</Label>
@@ -180,7 +226,7 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
         disabled={isLoading}
       >
         {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
-        Send Payment Link
+        {isPaymentPlan ? 'Schedule Payment Plan' : 'Send Payment Link'}
       </Button>
     </form>
   );

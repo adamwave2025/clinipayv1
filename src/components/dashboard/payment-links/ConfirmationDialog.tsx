@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { CheckCircle } from 'lucide-react';
+import { format } from 'date-fns';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 interface ConfirmationDialogProps {
@@ -21,11 +22,16 @@ interface ConfirmationDialogProps {
     selectedLink?: string;
     customAmount?: string;
     message?: string;
+    startDate?: Date;
   };
   paymentAmount: string;
   selectedPaymentLink: {
     title: string;
+    paymentCount?: number;
+    paymentCycle?: string;
+    amount?: number;
   } | null;
+  isPaymentPlan: boolean;
   isLoading: boolean;
   onConfirm: () => void;
 }
@@ -36,16 +42,34 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   formData,
   paymentAmount,
   selectedPaymentLink,
+  isPaymentPlan,
   isLoading,
   onConfirm
 }) => {
+  const formatCycle = (cycle?: string) => {
+    if (!cycle) return 'monthly';
+    switch (cycle) {
+      case 'weekly': return 'Weekly';
+      case 'bi-weekly': return 'Bi-Weekly';
+      case 'monthly': return 'Monthly';
+      default: return cycle.charAt(0).toUpperCase() + cycle.slice(1);
+    }
+  };
+
+  const getPlanDetails = () => {
+    if (!selectedPaymentLink?.paymentCount || !selectedPaymentLink.amount) return null;
+    
+    const individualAmount = selectedPaymentLink.amount / selectedPaymentLink.paymentCount;
+    return `${selectedPaymentLink.paymentCount} × £${individualAmount.toFixed(2)} ${formatCycle(selectedPaymentLink.paymentCycle)} payments`;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
-            Confirm Payment Link Details
+            {isPaymentPlan ? 'Confirm Payment Plan Details' : 'Confirm Payment Link Details'}
           </DialogTitle>
         </DialogHeader>
         
@@ -72,7 +96,17 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
                 <>Custom payment amount: {paymentAmount}</>
               )}
             </p>
+            {isPaymentPlan && getPlanDetails() && (
+              <p className="text-sm text-gray-600">{getPlanDetails()}</p>
+            )}
           </div>
+          
+          {isPaymentPlan && formData.startDate && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Start Date:</p>
+              <p className="text-sm">{format(formData.startDate, 'PPP')}</p>
+            </div>
+          )}
           
           {formData.message && (
             <div className="space-y-1">
@@ -96,7 +130,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
             className="btn-gradient"
           >
             {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
-            Send Payment Link
+            {isPaymentPlan ? 'Schedule Payment Plan' : 'Send Payment Link'}
           </Button>
         </DialogFooter>
       </DialogContent>

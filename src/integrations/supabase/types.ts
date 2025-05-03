@@ -273,6 +273,83 @@ export type Database = {
           },
         ]
       }
+      payment_schedule: {
+        Row: {
+          amount: number
+          clinic_id: string
+          created_at: string | null
+          due_date: string
+          id: string
+          patient_id: string | null
+          payment_frequency: string
+          payment_link_id: string
+          payment_number: number
+          payment_request_id: string | null
+          status: string
+          total_payments: number
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          clinic_id: string
+          created_at?: string | null
+          due_date: string
+          id?: string
+          patient_id?: string | null
+          payment_frequency: string
+          payment_link_id: string
+          payment_number: number
+          payment_request_id?: string | null
+          status?: string
+          total_payments: number
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          clinic_id?: string
+          created_at?: string | null
+          due_date?: string
+          id?: string
+          patient_id?: string | null
+          payment_frequency?: string
+          payment_link_id?: string
+          payment_number?: number
+          payment_request_id?: string | null
+          status?: string
+          total_payments?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_schedule_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_schedule_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_schedule_payment_link_id_fkey"
+            columns: ["payment_link_id"]
+            isOneToOne: false
+            referencedRelation: "payment_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_schedule_payment_request_id_fkey"
+            columns: ["payment_request_id"]
+            isOneToOne: false
+            referencedRelation: "payment_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_paid: number | null
