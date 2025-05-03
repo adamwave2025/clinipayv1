@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,6 +63,20 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
   onCreateNew,
   onSubmit,
 }) => {
+  // Function to determine if a date should be disabled
+  const isDateDisabled = (date: Date) => {
+    // Create a new date object for today with time values set to 0
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Set the time values of the input date to 0
+    const compareDate = new Date(date);
+    compareDate.setHours(0, 0, 0, 0);
+    
+    // Return true if the date is before today
+    return compareDate < today;
+  };
+
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       <div className="space-y-2">
@@ -192,7 +205,7 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
                 mode="single"
                 selected={formData.startDate}
                 onSelect={onDateChange}
-                disabled={(date) => date < new Date()}
+                disabled={isDateDisabled}
                 initialFocus
                 className={cn("p-3 pointer-events-auto")}
               />
