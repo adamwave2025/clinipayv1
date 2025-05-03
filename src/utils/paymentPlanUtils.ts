@@ -127,26 +127,35 @@ export const groupPaymentSchedulesByPlan = (scheduleItems: PaymentScheduleItem[]
     // Sort schedule by due date
     plan.schedule.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
     
+    // Check if all scheduled payments are cancelled
+    const allCancelled = plan.schedule.every(item => 
+      item.status === 'cancelled' || item.status === 'paid');
+    
     // Determine plan status based on priority:
-    // 1. First check for overdue payments
-    if (plan.hasOverduePayments) {
+    // 1. First check if it's cancelled (all remaining payments are cancelled)
+    if (plan.paidInstallments < plan.totalInstallments && allCancelled) {
+      plan.status = 'cancelled';
+    }
+    // 2. Then check for overdue payments
+    else if (plan.hasOverduePayments) {
       plan.status = 'overdue';
     }
-    // 2. Then check if it's completed
+    // 3. Then check if it's completed
     else if (plan.progress === 100) {
       plan.status = 'completed';
     }
-    // 3. Then check if it's pending (no payments made)
+    // 4. Then check if it's pending (no payments made)
     else if (plan.paidInstallments === 0) {
       plan.status = 'pending';
     }
-    // 4. Otherwise it's active
+    // 5. Otherwise it's active
     else {
       plan.status = 'active';
     }
     
-    // Find the next due date (first non-paid installment)
-    const upcoming = plan.schedule.find(entry => entry.status === 'pending');
+    // Find the next due date (first non-paid, non-cancelled installment)
+    const upcoming = plan.schedule.find(entry => 
+      entry.status !== 'paid' && entry.status !== 'cancelled');
     plan.nextDueDate = upcoming ? upcoming.dueDate : null;
   });
   
@@ -169,6 +178,8 @@ export const formatPlanInstallments = (installmentData: any[]): PlanInstallment[
     
     if (isPaid) {
       status = 'paid';
+    } else if (item.status === 'cancelled') {
+      status = 'cancelled';
     } else if (item.status === 'sent' || item.status === 'processed') {
       // If sent/processed but due date has passed, mark as overdue
       status = now > due ? 'overdue' : 'sent';

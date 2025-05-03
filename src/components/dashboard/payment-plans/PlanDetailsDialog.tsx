@@ -13,6 +13,7 @@ interface PlanDetailsDialogProps {
   installments: any[];
   onSendReminder: (installmentId: string) => void;
   onViewPaymentDetails?: (installment: any) => void;
+  onCancelPlan?: () => void;
 }
 
 const PlanDetailsDialog = ({ 
@@ -21,7 +22,8 @@ const PlanDetailsDialog = ({
   selectedPlan,
   installments,
   onSendReminder,
-  onViewPaymentDetails
+  onViewPaymentDetails,
+  onCancelPlan
 }: PlanDetailsDialogProps) => {
   if (!selectedPlan) return null;
 
@@ -35,6 +37,8 @@ const PlanDetailsDialog = ({
         return 'bg-blue-100 text-blue-700 hover:bg-blue-100 hover:text-blue-700';
       case 'overdue':
         return 'bg-red-100 text-red-700 hover:bg-red-100 hover:text-red-700';
+      case 'cancelled':
+        return 'bg-gray-100 text-gray-700 hover:bg-gray-100 hover:text-gray-700';
       default:
         return 'bg-gray-100 text-gray-700 hover:bg-gray-100 hover:text-gray-700';
     }
@@ -44,7 +48,21 @@ const PlanDetailsDialog = ({
     <Dialog open={showPlanDetails} onOpenChange={setShowPlanDetails}>
       <DialogContent className="sm:max-w-xl md:max-w-2xl max-h-[90vh] p-0">
         <DialogHeader className="px-6 pt-6">
-          <DialogTitle>Payment Plan Details</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>Payment Plan Details</DialogTitle>
+            
+            {/* Only show cancel button for active and pending plans that aren't fully paid */}
+            {(selectedPlan.status === 'active' || selectedPlan.status === 'pending') && 
+            selectedPlan.progress < 100 && (
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => onCancelPlan && onCancelPlan()}
+              >
+                Cancel Plan
+              </Button>
+            )}
+          </div>
         </DialogHeader>
         
         <ScrollArea className="max-h-[calc(90vh-4rem)] px-6">

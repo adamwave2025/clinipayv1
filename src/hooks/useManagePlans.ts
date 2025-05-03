@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,7 +5,8 @@ import { toast } from 'sonner';
 import { 
   fetchUserClinicId, 
   fetchPaymentSchedules,
-  fetchPlanInstallments 
+  fetchPlanInstallments,
+  cancelPaymentPlan 
 } from '@/services/PaymentScheduleService';
 import { 
   groupPaymentSchedulesByPlan,
@@ -27,6 +27,7 @@ export const useManagePlans = () => {
   const [selectedInstallment, setSelectedInstallment] = useState<PlanInstallment | null>(null);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const [paymentData, setPaymentData] = useState<Payment | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -203,6 +204,30 @@ export const useManagePlans = () => {
     setShowPlanDetails(true);
   };
 
+  const handleCancelPlan = async () => {
+    try {
+      if (!selectedPlan) return;
+      
+      const [patientId, paymentLinkId] = selectedPlan.id.split('_');
+      const result = await cancelPaymentPlan(patientId, paymentLinkId);
+      
+      if (result.success) {
+        toast.success('Payment plan cancelled successfully');
+        setShowCancelDialog(false);
+        setShowPlanDetails(false);
+        // Refresh payment plans data
+        await fetchPaymentPlans();
+      }
+    } catch (error) {
+      console.error('Error in handleCancelPlan:', error);
+      toast.error('Failed to cancel payment plan');
+    }
+  };
+
+  const handleOpenCancelDialog = () => {
+    setShowCancelDialog(true);
+  };
+
   return {
     searchQuery,
     setSearchQuery,
@@ -222,6 +247,11 @@ export const useManagePlans = () => {
     setShowPaymentDetails,
     paymentData,
     handleViewPaymentDetails,
-    handleBackToPlans
+    handleBackToPlans,
+    // New properties for cancel plan
+    showCancelDialog,
+    setShowCancelDialog,
+    handleCancelPlan,
+    handleOpenCancelDialog
   };
 };

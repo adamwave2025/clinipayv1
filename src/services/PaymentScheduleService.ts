@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -91,5 +90,25 @@ export const fetchPlanInstallments = async (patientId: string, paymentLinkId: st
     console.error('Error fetching plan installments:', error);
     toast.error('Failed to load payment details');
     return [];
+  }
+};
+
+export const cancelPaymentPlan = async (patientId: string, paymentLinkId: string) => {
+  try {
+    // Update all pending installments for this plan to 'cancelled'
+    const { data, error } = await supabase
+      .from('payment_schedule')
+      .update({ status: 'cancelled' })
+      .eq('patient_id', patientId)
+      .eq('payment_link_id', paymentLinkId)
+      .in('status', ['pending', 'upcoming'])
+      .select();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error cancelling payment plan:', error);
+    toast.error('Failed to cancel payment plan');
+    return { success: false, error };
   }
 };

@@ -8,6 +8,7 @@ import PaymentPlanFilters from '@/components/dashboard/payment-plans/PaymentPlan
 import ActivePlansTable from '@/components/dashboard/payment-plans/ActivePlansTable';
 import PlanDetailsDialog from '@/components/dashboard/payment-plans/PlanDetailsDialog';
 import InstallmentPaymentDialog from '@/components/dashboard/payment-plans/InstallmentPaymentDialog';
+import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
 import { useManagePlans } from '@/hooks/useManagePlans';
 
 const ManagePlansPage = () => {
@@ -24,12 +25,17 @@ const ManagePlansPage = () => {
     handleCreatePlanClick,
     handleViewPlansClick,
     handleSendReminder,
-    // New properties for payment details
+    // Payment details properties
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
     handleViewPaymentDetails,
-    handleBackToPlans
+    handleBackToPlans,
+    // Cancel plan properties
+    showCancelDialog,
+    setShowCancelDialog,
+    handleCancelPlan,
+    handleOpenCancelDialog
   } = useManagePlans();
 
   return (
@@ -82,6 +88,7 @@ const ManagePlansPage = () => {
         installments={installments}
         onSendReminder={handleSendReminder}
         onViewPaymentDetails={handleViewPaymentDetails}
+        onCancelPlan={handleOpenCancelDialog}
       />
 
       {/* Payment Details Dialog */}
@@ -90,6 +97,15 @@ const ManagePlansPage = () => {
         setShowDialog={setShowPaymentDetails}
         paymentData={paymentData}
         onBack={handleBackToPlans}
+      />
+
+      {/* Cancel Plan Dialog */}
+      <CancelPlanDialog
+        showDialog={showCancelDialog}
+        setShowDialog={setShowCancelDialog}
+        onConfirm={handleCancelPlan}
+        planName={selectedPlan?.planName || ''}
+        patientName={selectedPlan?.patientName || ''}
       />
     </DashboardLayout>
   );
