@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { useNavigate } from 'react-router-dom';
 
 interface ActivePlansTableProps {
   isLoading: boolean;
@@ -26,6 +27,8 @@ const ActivePlansTable = ({
   onCreatePlanClick, 
   onViewPlanDetails 
 }: ActivePlansTableProps) => {
+  const navigate = useNavigate();
+  
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -38,13 +41,13 @@ const ActivePlansTable = ({
           </div>
         ) : plans.length === 0 ? (
           <div className="py-8 text-center text-gray-500">
-            <p>No active payment plans found. Create your first payment plan to get started.</p>
+            <p>No active payment plans found. Schedule a patient payment plan to get started.</p>
             <Button 
               className="mt-4 btn-gradient" 
-              onClick={onCreatePlanClick}
+              onClick={() => navigate('/dashboard/send-link')}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Create First Payment Plan
+              Request Payment
             </Button>
           </div>
         ) : (
