@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -191,7 +190,7 @@ const ManagePlansPage = () => {
         {/* Plans Table */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle>All Payment Plans</CardTitle>
+            <CardTitle>Active Patient Plans</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
