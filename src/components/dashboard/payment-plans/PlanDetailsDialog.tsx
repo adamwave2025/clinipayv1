@@ -111,6 +111,7 @@ const PlanDetailsDialog = ({
                               className={`
                                 ${installment.status === 'paid' ? 'bg-green-100 text-green-700' : ''}
                                 ${installment.status === 'upcoming' ? 'bg-yellow-100 text-yellow-700' : ''}
+                                ${installment.status === 'sent' ? 'bg-blue-100 text-blue-700' : ''}
                                 ${installment.status === 'overdue' ? 'bg-red-100 text-red-700' : ''}
                               `}
                             >
@@ -134,6 +135,15 @@ const PlanDetailsDialog = ({
                                 onClick={() => onSendReminder(installment.id)}
                               >
                                 Send Reminder
+                              </Button>
+                            )}
+                            {installment.status === 'sent' && (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => onSendReminder(installment.id)}
+                              >
+                                Resend Request
                               </Button>
                             )}
                             {installment.status === 'paid' && (

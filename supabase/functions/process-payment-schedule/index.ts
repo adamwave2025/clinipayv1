@@ -91,10 +91,11 @@ serve(async (req) => {
         }
 
         // Update the payment schedule status and link it to the payment request
+        // CHANGED: Update status to 'sent' instead of 'processed'
         const { error: updateError } = await supabase
           .from('payment_schedule')
           .update({ 
-            status: 'processed',
+            status: 'sent', 
             payment_request_id: paymentRequest.id,
             updated_at: new Date().toISOString()
           })

@@ -64,6 +64,12 @@ export const useManagePlans = () => {
           payment_number,
           total_payments,
           status,
+          payment_request_id,
+          payment_requests (
+            id,
+            status,
+            payment_id
+          ),
           patients (
             id,
             name,
@@ -115,11 +121,17 @@ export const useManagePlans = () => {
             amount: entry.amount,
             status: entry.status,
             paymentNumber: entry.payment_number,
-            totalPayments: entry.total_payments
+            totalPayments: entry.total_payments,
+            paymentRequestId: entry.payment_request_id,
+            requestStatus: entry.payment_requests?.status
           });
           
           // Update paid installments count and progress
-          if (entry.status === 'processed') {
+          // CHANGED: Only count as paid if payment was actually made 
+          // (status is 'sent' AND payment request has a payment_id OR request status is 'paid')
+          const isPaid = (entry.status === 'sent' && entry.payment_requests?.payment_id) || 
+                         entry.payment_requests?.status === 'paid';
+          if (isPaid) {
             plan.paidInstallments += 1;
           }
         });
@@ -195,15 +207,20 @@ export const useManagePlans = () => {
           ? format(parseISO(item.payment_requests.paid_at), 'yyyy-MM-dd')
           : null;
           
-        // Determine status and map to UI status
-        let status = item.status;
-        if (status === 'processed' && item.payment_requests?.payment_id) {
+        // CHANGED: Determine status and map to UI status
+        let status;
+        
+        if (item.payment_requests?.payment_id || item.payment_requests?.status === 'paid') {
           status = 'paid';
-        } else if (status === 'pending') {
+        } else if (item.status === 'sent') {
+          status = 'sent';
+        } else if (item.status === 'pending') {
           // Check if it's overdue
           const now = new Date();
           const due = parseISO(item.due_date);
           status = now > due ? 'overdue' : 'upcoming';
+        } else {
+          status = item.status;
         }
         
         return {
