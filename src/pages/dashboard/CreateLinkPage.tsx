@@ -70,10 +70,24 @@ const CreateLinkPage = () => {
       console.log('Sending payment data to API:', paymentData);
       const result = await createPaymentLink(paymentData);
       
+      console.log('Create payment link result:', result);
+      
       if (!result.success) {
         toast.error(result.error || 'Failed to create payment link');
         setIsLoading(false);
         return result;
+      }
+      
+      // For successful creation, call handleLinkGenerated with the URL
+      if (result.paymentLink && result.paymentLink.url) {
+        console.log('Payment link created successfully:', result.paymentLink);
+        handleLinkGenerated(result.paymentLink.url, data);
+      } else {
+        // If we have a success but no URL (like for payment plans), create a mock URL
+        // This ensures the success dialog still shows
+        const mockUrl = `#payment-plan-${Date.now()}`;
+        console.log('Created payment plan, using mock URL:', mockUrl);
+        handleLinkGenerated(mockUrl, data);
       }
       
       return result;
