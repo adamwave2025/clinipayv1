@@ -46,7 +46,6 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
   const location = useLocation();
   const { role } = useUserRole();
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
-  const initialExpansionDone = useRef(false);
   
   // Use the actual user role for link determination if available
   const actualUserType = role === 'admin' ? 'admin' : 'clinic';
@@ -140,30 +139,22 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
     return links.some(link => isLinkActive(link.to));
   };
   
-  // Set expanded menu when component mounts or pathname changes significantly
+  // Initialize the expanded menu based on the current route
   useEffect(() => {
-    // Only check for active submenus if initial expansion hasn't been done
-    // or we're navigating to a path that would change which menu is active
-    if (!initialExpansionDone.current) {
-      let foundActiveSubmenu = false;
-      
-      items.forEach(item => {
-        if ('links' in item && isSubmenuActive(item.links)) {
-          setExpandedMenu(item.label);
-          foundActiveSubmenu = true;
+    items.forEach(item => {
+      if ('links' in item) {
+        const hasActiveLink = item.links.some(link => isLinkActive(link.to));
+        if (hasActiveLink) {
+          // Only set expanded menu if it's not already set to this menu
+          if (expandedMenu !== item.label) {
+            setExpandedMenu(item.label);
+          }
         }
-      });
-      
-      initialExpansionDone.current = true;
-    } else {
-      // For subsequent navigations, only update if we need to expand a different menu
-      items.forEach(item => {
-        if ('links' in item && isSubmenuActive(item.links) && expandedMenu !== item.label) {
-          setExpandedMenu(item.label);
-        }
-      });
-    }
-  }, [items, location.pathname.split('/').slice(0, 3).join('/')]); // Only run when main path section changes
+      }
+    });
+    // Only run this once on mount or when expandedMenu changes manually
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
