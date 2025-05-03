@@ -39,6 +39,6 @@ export const getActionTypeLabel = (type: PlanActivityType): string => {
     case 'create': return 'Plan Created';
     case 'payment_made': return 'Payment Made';
     case 'reminder_sent': return 'Reminder Sent';
-    default: return type.charAt(0).toUpperCase() + type.slice(1);
+    default: return `${type.charAt(0).toUpperCase()}${type.slice(1)}`;
   }
 };
