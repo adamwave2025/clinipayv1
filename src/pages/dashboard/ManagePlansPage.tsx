@@ -1,5 +1,5 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -12,12 +12,15 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { Plus, Search, Filter, MoreHorizontal, Calendar, ChevronDown } from 'lucide-react';
+import { Plus, Search, Filter, MoreHorizontal, Calendar, ChevronDown, List, PlusCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { usePaymentLinks } from '@/hooks/usePaymentLinks';
+import { PaymentLink } from '@/types/payment';
+import { toast } from 'sonner';
 
-// Mock data for payment plans
+// Extended mock data for payment plans (will be replaced with real data)
 const mockPaymentPlans = [
   {
     id: 'plan-1',
@@ -76,7 +79,7 @@ const mockPaymentPlans = [
   }
 ];
 
-// Mock data for plan installments
+// Mock data for plan installments (will be replaced with real data)
 const mockInstallments = [
   { id: 1, dueDate: '2025-04-01', amount: 250, status: 'paid', paidDate: '2025-04-01' },
   { id: 2, dueDate: '2025-05-01', amount: 250, status: 'paid', paidDate: '2025-05-01' },
@@ -87,10 +90,39 @@ const ManagePlansPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [showPlanDetails, setShowPlanDetails] = useState(false);
+  const [paymentPlans, setPaymentPlans] = useState<PaymentLink[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const navigate = useNavigate();
+  const { paymentLinks, fetchPaymentLinks, isLoading: isLoadingPaymentLinks } = usePaymentLinks();
+
+  // Fetch payment plans on component mount
+  useEffect(() => {
+    fetchPaymentPlans();
+  }, []);
+
+  const fetchPaymentPlans = async () => {
+    setIsLoading(true);
+    try {
+      await fetchPaymentLinks();
+      // Filter payment links to only include payment plans
+      const plans = paymentLinks.filter(link => link.paymentPlan === true);
+      setPaymentPlans(plans);
+    } catch (error) {
+      console.error('Error fetching payment plans:', error);
+      toast.error('Failed to load payment plans');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleViewPlanDetails = (plan: any) => {
     setSelectedPlan(plan);
     setShowPlanDetails(true);
+  };
+
+  const handleCreatePlanClick = () => {
+    navigate('/dashboard/create-link');
   };
 
   return (
@@ -99,10 +131,15 @@ const ManagePlansPage = () => {
         title="Payment Plans" 
         description="Create and manage payment plans for your patients"
         action={
-          <Button className="btn-gradient">
-            <Plus className="mr-2 h-4 w-4" />
-            Create Plan
-          </Button>
+          <div className="flex space-x-2">
+            <Button 
+              className="btn-gradient flex items-center"
+              onClick={handleCreatePlanClick}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Plan
+            </Button>
+          </div>
         }
       />
       
@@ -144,66 +181,84 @@ const ManagePlansPage = () => {
             <CardTitle>All Payment Plans</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Patient</TableHead>
-                  <TableHead>Plan Name</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Next Due Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mockPaymentPlans.map((plan) => (
-                  <TableRow key={plan.id}>
-                    <TableCell className="font-medium">{plan.patientName}</TableCell>
-                    <TableCell>{plan.planName}</TableCell>
-                    <TableCell>£{plan.amount.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="w-28 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-primary rounded-full" 
-                            style={{ width: `${plan.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-500">
-                          {plan.paidInstallments}/{plan.totalInstallments}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        className={`
-                          ${plan.status === 'active' ? 'bg-green-100 text-green-700' : ''}
-                          ${plan.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : ''}
-                          ${plan.status === 'completed' ? 'bg-blue-100 text-blue-700' : ''}
-                        `}
-                      >
-                        {plan.status.charAt(0).toUpperCase() + plan.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {plan.nextDueDate ? new Date(plan.nextDueDate).toLocaleDateString() : '-'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 w-8 p-0"
-                        onClick={() => handleViewPlanDetails(plan)}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">View plan details</span>
-                      </Button>
-                    </TableCell>
+            {isLoading ? (
+              <div className="py-8 text-center text-gray-500">
+                Loading payment plans...
+              </div>
+            ) : paymentPlans.length === 0 ? (
+              <div className="py-8 text-center text-gray-500">
+                <p>No payment plans found. Create your first payment plan to get started.</p>
+                <Button 
+                  className="mt-4 btn-gradient" 
+                  onClick={handleCreatePlanClick}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create First Payment Plan
+                </Button>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Patient</TableHead>
+                    <TableHead>Plan Name</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Progress</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Next Due Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {/* For now, we'll use the mock data until we have real payment schedule data */}
+                  {mockPaymentPlans.map((plan) => (
+                    <TableRow key={plan.id}>
+                      <TableCell className="font-medium">{plan.patientName}</TableCell>
+                      <TableCell>{plan.planName}</TableCell>
+                      <TableCell>£{plan.amount.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-28 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-primary rounded-full" 
+                              style={{ width: `${plan.progress}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {plan.paidInstallments}/{plan.totalInstallments}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          className={`
+                            ${plan.status === 'active' ? 'bg-green-100 text-green-700' : ''}
+                            ${plan.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : ''}
+                            ${plan.status === 'completed' ? 'bg-blue-100 text-blue-700' : ''}
+                          `}
+                        >
+                          {plan.status.charAt(0).toUpperCase() + plan.status.slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {plan.nextDueDate ? new Date(plan.nextDueDate).toLocaleDateString() : '-'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleViewPlanDetails(plan)}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">View plan details</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>

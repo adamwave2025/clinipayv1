@@ -28,6 +28,7 @@ import SettingsPage from "./pages/dashboard/SettingsPage";
 import PaymentHistoryPage from "./pages/dashboard/PaymentHistoryPage";
 import PatientsPage from "./pages/dashboard/PatientsPage";
 import ManagePlansPage from "./pages/dashboard/ManagePlansPage";
+import PaymentPlansPage from "./pages/dashboard/PaymentPlansPage";
 
 // Admin Pages
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
@@ -114,6 +115,11 @@ const App = () => (
             <Route path="/dashboard/manage-plans" element={
               <RoleBasedRoute allowedRoles={['clinic']}>
                 <ManagePlansPage />
+              </RoleBasedRoute>
+            } />
+            <Route path="/dashboard/payment-plans" element={
+              <RoleBasedRoute allowedRoles={['clinic']}>
+                <PaymentPlansPage />
               </RoleBasedRoute>
             } />
             
