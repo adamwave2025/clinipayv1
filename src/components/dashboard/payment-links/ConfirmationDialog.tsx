@@ -59,8 +59,17 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   const getPlanDetails = () => {
     if (!selectedPaymentLink?.paymentCount || !selectedPaymentLink.amount) return null;
     
-    const individualAmount = selectedPaymentLink.amount / selectedPaymentLink.paymentCount;
+    // Each payment is the full amount, not divided
+    const individualAmount = selectedPaymentLink.amount;
     return `${selectedPaymentLink.paymentCount} × £${individualAmount.toFixed(2)} ${formatCycle(selectedPaymentLink.paymentCycle)} payments`;
+  };
+
+  const getPlanTotal = () => {
+    if (!selectedPaymentLink?.paymentCount || !selectedPaymentLink.amount) return null;
+    
+    // Calculate total plan value
+    const totalAmount = selectedPaymentLink.amount * selectedPaymentLink.paymentCount;
+    return `£${totalAmount.toFixed(2)}`;
   };
 
   return (
@@ -98,6 +107,9 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
             </p>
             {isPaymentPlan && getPlanDetails() && (
               <p className="text-sm text-gray-600">{getPlanDetails()}</p>
+            )}
+            {isPaymentPlan && getPlanTotal() && (
+              <p className="text-sm font-medium text-gray-800">Total plan value: {getPlanTotal()}</p>
             )}
           </div>
           

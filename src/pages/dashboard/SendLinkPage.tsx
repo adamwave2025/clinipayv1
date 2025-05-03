@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -150,7 +149,9 @@ const SendLinkPage = () => {
   const generatePaymentSchedule = (startDate: Date, frequency: string, count: number, amount: number) => {
     const schedule = [];
     let currentDate = startDate;
-    const paymentAmount = amount / count;
+    
+    // Use the full amount for each payment, not divided by count
+    const paymentAmount = amount;
 
     for (let i = 1; i <= count; i++) {
       schedule.push({
