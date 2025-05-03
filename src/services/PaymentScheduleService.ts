@@ -158,7 +158,9 @@ export const resumePaymentPlan = async (patientId: string, paymentLinkId: string
     const updatePromises = pausedInstallments.map((installment, index) => {
       // Calculate new due date based on the resume date and installment index
       const newDueDate = calculateNewDueDate(resumeDate, index, frequency);
-      const formattedDate = newDueDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      
+      // Format date using local date components to preserve the day regardless of timezone
+      const formattedDate = `${newDueDate.getFullYear()}-${String(newDueDate.getMonth() + 1).padStart(2, '0')}-${String(newDueDate.getDate()).padStart(2, '0')}`;
       
       console.log(`Installment ${installment.payment_number}, new due date: ${formattedDate}`);
       
@@ -190,7 +192,7 @@ function calculateNewDueDate(startDate: Date, index: number, frequency: string):
   // Ensure the date is set to the start of the day to avoid timezone issues
   newDate.setHours(0, 0, 0, 0);
   
-  console.log(`Index: ${index}, Original date: ${newDate.toISOString()}`);
+  console.log(`Index: ${index}, Original date: ${newDate.toISOString()}, Local date: ${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`);
   
   switch (frequency) {
     case 'daily':
@@ -215,7 +217,7 @@ function calculateNewDueDate(startDate: Date, index: number, frequency: string):
       newDate.setMonth(newDate.getMonth() + index);
   }
   
-  console.log(`After calculation: ${newDate.toISOString()}`);
+  console.log(`After calculation: ${newDate.toISOString()}, Local date: ${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`);
   
   return newDate;
 }
