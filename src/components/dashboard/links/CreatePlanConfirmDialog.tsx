@@ -8,8 +8,9 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { LinkFormData } from './CreateLinkForm';
+import { LinkFormData } from '@/hooks/useCreateLinkForm';
 import { Check } from 'lucide-react';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 interface CreatePlanConfirmDialogProps {
   open: boolean;
@@ -86,7 +87,7 @@ const CreatePlanConfirmDialog = ({
             onClick={onConfirm}
             disabled={isLoading}
           >
-            {isLoading ? 'Creating...' : 'Create Payment Plan'}
+            {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : 'Create Payment Plan'}
           </Button>
         </DialogFooter>
       </DialogContent>

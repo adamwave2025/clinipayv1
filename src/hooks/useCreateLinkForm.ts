@@ -66,8 +66,8 @@ export function useCreateLinkForm({
     
     // Additional validation for payment plan
     if (formData.paymentPlan) {
-      if (!formData.paymentCount || isNaN(Number(formData.paymentCount)) || Number(formData.paymentCount) <= 0) {
-        toast.error('Please enter a valid number of payments');
+      if (!formData.paymentCount || isNaN(Number(formData.paymentCount)) || Number(formData.paymentCount) < 2) {
+        toast.error('Please enter a valid number of payments (minimum 2)');
         return false;
       }
 
@@ -105,10 +105,14 @@ export function useCreateLinkForm({
           paymentPlan: formData.paymentPlan,
           paymentCount: formData.paymentPlan ? Number(formData.paymentCount) : undefined,
           paymentCycle: formData.paymentPlan ? formData.paymentCycle : undefined,
-          planTotalAmount: formData.paymentPlan ? Number(formData.amount) * Number(formData.paymentCount) : undefined
+          planTotalAmount: formData.paymentPlan 
+            ? Number(formData.amount) * Number(formData.paymentCount) 
+            : undefined
         };
         
+        console.log('Creating payment link with data:', paymentData);
         const result = await onCreateLink(paymentData);
+        console.log('Payment link creation result:', result);
         
         if (result.success && result.paymentLink) {
           onLinkGenerated(result.paymentLink.url, formData);

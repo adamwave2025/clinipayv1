@@ -66,6 +66,23 @@ export const PaymentLinkDataService = {
   },
 
   async createLink(linkData: Partial<PaymentLink>, clinicId: string) {
+    console.log('PaymentLinkDataService: Creating link with data:', {
+      ...linkData,
+      clinic_id: clinicId
+    });
+    
+    // Ensure all required fields for payment plans are present
+    if (linkData.paymentPlan) {
+      if (!linkData.paymentCount || !linkData.paymentCycle) {
+        throw new Error('Payment plan requires payment count and cycle');
+      }
+      
+      // Calculate total amount if not provided
+      if (!linkData.planTotalAmount && linkData.amount && linkData.paymentCount) {
+        linkData.planTotalAmount = linkData.amount * linkData.paymentCount;
+      }
+    }
+
     const { data, error } = await supabase
       .from('payment_links')
       .insert({
@@ -84,6 +101,7 @@ export const PaymentLinkDataService = {
       .single();
 
     if (error) {
+      console.error('Error creating payment link:', error);
       throw new Error(error.message);
     }
 

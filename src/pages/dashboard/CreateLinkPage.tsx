@@ -6,6 +6,7 @@ import CreateLinkForm, { LinkFormData } from '@/components/dashboard/links/Creat
 import LinkGeneratedDialog from '@/components/dashboard/links/LinkGeneratedDialog';
 import CreatePlanConfirmDialog from '@/components/dashboard/links/CreatePlanConfirmDialog';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
+import { toast } from 'sonner';
 
 const CreateLinkPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +29,7 @@ const CreateLinkPage = () => {
   };
 
   const handleSubmitForm = (data: LinkFormData) => {
+    console.log('Form submitted with data:', data);
     setFormData(data);
     
     // If it's a payment plan, show confirmation dialog first
@@ -39,17 +41,40 @@ const CreateLinkPage = () => {
     }
   };
 
-  const handleCreateLink = async (data: any) => {
+  const handleCreateLink = async (data: LinkFormData) => {
+    console.log('Creating link with data:', data);
     setIsLoading(true);
     setShowPlanConfirmation(false); // Close the confirmation dialog
     
-    const result = await createPaymentLink(data);
-    
-    if (!result.success) {
+    try {
+      const paymentData = {
+        title: data.paymentTitle,
+        amount: Number(data.amount),
+        type: data.paymentType,
+        description: data.description,
+        paymentPlan: data.paymentPlan,
+        paymentCount: data.paymentPlan ? Number(data.paymentCount) : undefined,
+        paymentCycle: data.paymentPlan ? data.paymentCycle : undefined,
+        planTotalAmount: data.paymentPlan 
+          ? Number(data.amount) * Number(data.paymentCount) 
+          : undefined
+      };
+      
+      console.log('Sending payment data to API:', paymentData);
+      const result = await createPaymentLink(paymentData);
+      
+      if (!result.success) {
+        toast.error(result.error || 'Failed to create payment link');
+        setIsLoading(false);
+      }
+      
+      return result;
+    } catch (error: any) {
+      console.error('Error in handleCreateLink:', error);
+      toast.error('An error occurred while creating the payment link');
       setIsLoading(false);
+      return { success: false, error: error.message };
     }
-    
-    return result;
   };
 
   return (

@@ -41,8 +41,22 @@ export const PaymentLinkService = {
 
   async createPaymentLink(linkData: Partial<PaymentLink>, clinicId: string) {
     try {
+      console.log('PaymentLinkService: Creating payment link with data:', linkData);
+      
+      // Ensure all required fields are present for payment plans
+      if (linkData.paymentPlan) {
+        if (!linkData.paymentCount || !linkData.paymentCycle) {
+          throw new Error('Payment plan requires payment count and cycle');
+        }
+        
+        if (!linkData.planTotalAmount && linkData.amount && linkData.paymentCount) {
+          linkData.planTotalAmount = linkData.amount * linkData.paymentCount;
+        }
+      }
+      
       // Create the payment link in the database
       const data = await PaymentLinkDataService.createLink(linkData, clinicId);
+      console.log('PaymentLinkService: Link created successfully:', data);
       
       return { 
         success: true, 
