@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plan, PlanInstallment } from '@/utils/paymentPlanUtils';
 import PlanActionsDropdown from './PlanActionsDropdown';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import StatusBadge from '@/components/common/StatusBadge';
 
 interface PlanDetailsDialogProps {
   showPlanDetails: boolean;
@@ -79,19 +80,7 @@ const PlanDetailsDialog = ({
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Status</p>
-              <Badge 
-                variant="outline"
-                className={`
-                  ${selectedPlan.status === 'active' ? 'bg-green-100 text-green-700' : ''}
-                  ${selectedPlan.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : ''}
-                  ${selectedPlan.status === 'completed' ? 'bg-blue-100 text-blue-700' : ''}
-                  ${selectedPlan.status === 'overdue' ? 'bg-red-100 text-red-700' : ''}
-                  ${selectedPlan.status === 'cancelled' ? 'bg-gray-100 text-gray-700' : ''}
-                  ${selectedPlan.status === 'paused' ? 'bg-amber-100 text-amber-700' : ''}
-                `}
-              >
-                {selectedPlan.status.charAt(0).toUpperCase() + selectedPlan.status.slice(1)}
-              </Badge>
+              <StatusBadge status={selectedPlan.status} />
             </div>
           </div>
           
@@ -152,19 +141,7 @@ const PlanDetailsDialog = ({
                         <TableCell>{installment.dueDate}</TableCell>
                         <TableCell>£{installment.amount.toFixed(2)}</TableCell>
                         <TableCell>
-                          <Badge 
-                            variant="outline"
-                            className={`
-                              ${installment.status === 'paid' ? 'bg-green-100 text-green-700' : ''}
-                              ${installment.status === 'upcoming' ? 'bg-blue-100 text-blue-700' : ''}
-                              ${installment.status === 'overdue' ? 'bg-red-100 text-red-700' : ''}
-                              ${installment.status === 'sent' ? 'bg-yellow-100 text-yellow-700' : ''}
-                              ${installment.status === 'cancelled' ? 'bg-gray-100 text-gray-700' : ''}
-                              ${installment.status === 'paused' ? 'bg-amber-100 text-amber-700' : ''}
-                            `}
-                          >
-                            {installment.status.charAt(0).toUpperCase() + installment.status.slice(1)}
-                          </Badge>
+                          <StatusBadge status={installment.status as any} />
                         </TableCell>
                         <TableCell>{installment.paidDate || '-'}</TableCell>
                       </TableRow>
