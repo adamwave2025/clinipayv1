@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 
 interface PlanDetailsDialogProps {
   showPlanDetails: boolean;
@@ -30,7 +30,7 @@ const PlanDetailsDialog = ({
           <DialogTitle>Payment Plan Details</DialogTitle>
         </DialogHeader>
         
-        <ScrollArea className="max-h-[calc(90vh-8rem)] px-6">
+        <ScrollArea className="max-h-[calc(90vh-4rem)] px-6">
           <div className="space-y-6 py-4">
             {/* Plan Summary */}
             <div className="space-y-2">
@@ -82,7 +82,7 @@ const PlanDetailsDialog = ({
             </div>
             
             {/* Installments */}
-            <div className="space-y-3">
+            <div className="space-y-3 mb-6">
               <h4 className="text-sm font-medium">Payment Schedule</h4>
               <div className="rounded-md border overflow-hidden">
                 <Table>
@@ -151,11 +151,6 @@ const PlanDetailsDialog = ({
             </div>
           </div>
         </ScrollArea>
-        
-        <DialogFooter className="flex justify-between items-center p-6 border-t">
-          <Button variant="outline">Edit Plan</Button>
-          <Button className="btn-gradient">Send Statement</Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

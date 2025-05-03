@@ -9,13 +9,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Eye, MoreHorizontal, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
@@ -63,12 +57,15 @@ const ActivePlansTable = ({
                 <TableHead>Progress</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Next Due Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {plans.map((plan) => (
-                <TableRow key={plan.id}>
+                <TableRow 
+                  key={plan.id} 
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => onViewPlanDetails(plan)}
+                >
                   <TableCell className="font-medium">{plan.patientName}</TableCell>
                   <TableCell>{plan.planName}</TableCell>
                   <TableCell>£{plan.amount.toFixed(2)}</TableCell>
@@ -98,26 +95,6 @@ const ActivePlansTable = ({
                   </TableCell>
                   <TableCell>
                     {plan.nextDueDate ? new Date(plan.nextDueDate).toLocaleDateString() : '-'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 w-8 p-0"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" sideOffset={5}>
-                        <DropdownMenuItem onClick={() => onViewPlanDetails(plan)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          <span>View Details</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
