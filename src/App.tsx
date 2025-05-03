@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import ScrollToTop from "./components/common/ScrollToTop";
+import AuthRedirectWrapper from "./components/common/AuthRedirectWrapper";
 
 // Public Pages
 import HomePage from "./pages/HomePage";
@@ -59,8 +60,12 @@ const App = () => (
         <ScrollToTop />
         <AuthProvider>
           <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<HomePage />} />
+            {/* Public Routes - Home page will redirect to dashboard if authenticated */}
+            <Route path="/" element={
+              <AuthRedirectWrapper redirectTo="/dashboard">
+                <HomePage />
+              </AuthRedirectWrapper>
+            } />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/fees" element={<FeesPage />} />
             <Route path="/contact" element={<ContactPage />} />
