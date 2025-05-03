@@ -1,30 +1,43 @@
 
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plan, PlanInstallment } from '@/utils/paymentPlanUtils';
+import { Plan } from '@/utils/paymentPlanUtils';
 import { usePlanDataFetcher } from './payment-plans/usePlanDataFetcher';
 import { usePaymentDetailsFetcher } from './payment-plans/usePaymentDetailsFetcher';
 import { usePlanActions } from './payment-plans/usePlanActions';
 import { usePlanUIState } from './payment-plans/usePlanUIState';
 import { usePlanNavigation } from './payment-plans/usePlanNavigation';
+import { usePlanDetailsView } from './payment-plans/usePlanDetailsView';
+import { usePlanCancelActions } from './payment-plans/usePlanCancelActions';
+import { usePlanPauseActions } from './payment-plans/usePlanPauseActions';
+import { usePlanResumeActions } from './payment-plans/usePlanResumeActions';
+import { usePlanRescheduleActions } from './payment-plans/usePlanRescheduleActions';
 
 export const useManagePlans = () => {
   const { user } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Use all the smaller hooks
   const { plans, installments, isLoading, fetchPaymentPlans, fetchPlanInstallmentsData } = usePlanDataFetcher();
   const { paymentData, setPaymentData, fetchPaymentDataForInstallment } = usePaymentDetailsFetcher();
   
+  // Use plan details view hook
+  const { 
+    selectedPlan, 
+    setSelectedPlan,
+    showPlanDetails, 
+    setShowPlanDetails,
+    selectedInstallment,
+    setSelectedInstallment,
+    showPaymentDetails,
+    setShowPaymentDetails,
+    isPlanPaused,
+    handleViewPlanDetails: viewPlanDetails,
+    handleBackToPlans
+  } = usePlanDetailsView();
+  
   // Pass fetchPaymentPlans directly as it returns Promise<Plan[]>
   const { 
-    showCancelDialog, 
-    setShowCancelDialog, 
-    showPauseDialog,
-    setShowPauseDialog,
-    showResumeDialog,
-    setShowResumeDialog,
-    showRescheduleDialog,
-    setShowRescheduleDialog,
     isProcessing,
     handleSendReminder, 
     handleCancelPlan, 
@@ -33,14 +46,13 @@ export const useManagePlans = () => {
     handleReschedulePlan
   } = usePlanActions(() => fetchPaymentPlans(user.id));
   
-  const { 
-    searchQuery, setSearchQuery, 
-    selectedPlan, setSelectedPlan,
-    showPlanDetails, setShowPlanDetails,
-    selectedInstallment, setSelectedInstallment,
-    showPaymentDetails, setShowPaymentDetails
-  } = usePlanUIState();
   const { handleCreatePlanClick, handleViewPlansClick } = usePlanNavigation();
+  
+  // Use specialized action hooks
+  const cancelActions = usePlanCancelActions(selectedPlan, handleCancelPlan, setShowPlanDetails);
+  const pauseActions = usePlanPauseActions(selectedPlan, handlePausePlan, setShowPlanDetails);
+  const resumeActions = usePlanResumeActions(selectedPlan, handleResumePlan, setShowPlanDetails);
+  const rescheduleActions = usePlanRescheduleActions(selectedPlan, handleReschedulePlan, setShowPlanDetails);
 
   // Fetch payment plans on mount
   useEffect(() => {
@@ -49,28 +61,11 @@ export const useManagePlans = () => {
     }
   }, [user]);
 
-  // Filter plans when search query changes
-  useEffect(() => {
-    if (!searchQuery.trim()) return;
-    
-    const filtered = plans.filter(plan => 
-      plan.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      plan.planName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    
-    if (filtered.length > 0) {
-      // Only update if we have results
-      // This is important to prevent empty results
-    }
-  }, [searchQuery, plans]);
-
   const handleViewPlanDetails = async (plan: Plan) => {
-    setSelectedPlan(plan);
-    await fetchPlanInstallmentsData(plan.id);
-    setShowPlanDetails(true);
+    return viewPlanDetails(plan, fetchPlanInstallmentsData);
   };
-
-  const handleViewPaymentDetails = async (installment: PlanInstallment) => {
+  
+  const handleViewPaymentDetails = async (installment: any) => {
     setSelectedInstallment(installment);
     
     const payment = await fetchPaymentDataForInstallment(installment);
@@ -79,85 +74,6 @@ export const useManagePlans = () => {
       setShowPlanDetails(false); // Close the plan details dialog
       setShowPaymentDetails(true); // Open the payment details dialog
     }
-  };
-
-  const handleBackToPlans = () => {
-    setShowPaymentDetails(false);
-    setShowPlanDetails(true);
-  };
-
-  const handleOpenCancelDialog = () => {
-    setShowCancelDialog(true);
-  };
-
-  const handleCancelPlanConfirm = async () => {
-    if (!selectedPlan) return;
-    
-    const [patientId, paymentLinkId] = selectedPlan.id.split('_');
-    const success = await handleCancelPlan(patientId, paymentLinkId);
-    
-    if (success) {
-      setShowCancelDialog(false);
-      setShowPlanDetails(false);
-    }
-  };
-
-  const handleOpenPauseDialog = () => {
-    setShowPauseDialog(true);
-  };
-
-  const handlePausePlanConfirm = async () => {
-    if (!selectedPlan) return;
-    
-    const [patientId, paymentLinkId] = selectedPlan.id.split('_');
-    const success = await handlePausePlan(patientId, paymentLinkId);
-    
-    if (success) {
-      setShowPauseDialog(false);
-      setShowPlanDetails(false);
-    }
-  };
-
-  const handleOpenResumeDialog = () => {
-    setShowResumeDialog(true);
-  };
-
-  const handleResumePlanConfirm = async (resumeDate: Date) => {
-    if (!selectedPlan) return;
-    
-    // Log the date to help with debugging
-    console.log('Resume plan with date:', resumeDate.toISOString());
-    
-    const [patientId, paymentLinkId] = selectedPlan.id.split('_');
-    const success = await handleResumePlan(patientId, paymentLinkId, resumeDate);
-    
-    if (success) {
-      setShowResumeDialog(false);
-      setShowPlanDetails(false);
-    }
-  };
-
-  const handleOpenRescheduleDialog = () => {
-    setShowRescheduleDialog(true);
-  };
-
-  const handleReschedulePlanConfirm = async (newStartDate: Date) => {
-    if (!selectedPlan) return;
-    
-    // Log the date to help with debugging
-    console.log('Reschedule plan with date:', newStartDate.toISOString());
-    
-    const [patientId, paymentLinkId] = selectedPlan.id.split('_');
-    const success = await handleReschedulePlan(patientId, paymentLinkId, newStartDate);
-    
-    if (success) {
-      setShowRescheduleDialog(false);
-      setShowPlanDetails(false);
-    }
-  };
-
-  const isPlanPaused = (plan: Plan | null) => {
-    return plan?.status === 'paused';
   };
 
   return {
@@ -180,25 +96,13 @@ export const useManagePlans = () => {
     handleViewPaymentDetails,
     handleBackToPlans,
     // Cancel plan properties
-    showCancelDialog,
-    setShowCancelDialog,
-    handleCancelPlan: handleCancelPlanConfirm,
-    handleOpenCancelDialog,
+    ...cancelActions,
     // Pause plan properties
-    showPauseDialog,
-    setShowPauseDialog,
-    handlePausePlan: handlePausePlanConfirm,
-    handleOpenPauseDialog,
+    ...pauseActions,
     // Resume plan properties
-    showResumeDialog,
-    setShowResumeDialog,
-    handleResumePlan: handleResumePlanConfirm,
-    handleOpenResumeDialog,
+    ...resumeActions,
     // Reschedule plan properties
-    showRescheduleDialog,
-    setShowRescheduleDialog,
-    handleReschedulePlan: handleReschedulePlanConfirm,
-    handleOpenRescheduleDialog,
+    ...rescheduleActions,
     isPlanPaused,
     isProcessing
   };
