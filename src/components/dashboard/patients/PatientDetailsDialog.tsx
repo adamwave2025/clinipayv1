@@ -137,7 +137,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     fetchPatientHistory();
   }, [patient.id, open]);
 
-  // New useEffect for fetching patient payment plans
+  // Updated useEffect for fetching patient payment plans - directly using patient data
   useEffect(() => {
     const fetchPatientPaymentPlans = async () => {
       if (!patient.id || !open) return;
@@ -145,21 +145,25 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
       setLoadingPlans(true);
       
       try {
-        // Get user's clinic_id
-        const { data: userData, error: userError } = await supabase
-          .from('users')
+        // Get clinic_id directly from the patient record
+        // This fixes the issue where Adam Stokes' plan wasn't showing
+        const { data: patientData, error: patientError } = await supabase
+          .from('patients')
           .select('clinic_id')
           .eq('id', patient.id)
-          .maybeSingle();
+          .single();
 
-        if (userError) throw userError;
-        const clinicId = userData?.clinic_id;
+        if (patientError) throw patientError;
         
-        if (!clinicId) {
+        if (!patientData?.clinic_id) {
+          console.error('No clinic_id found for patient:', patient.id);
           setLoadingPlans(false);
           return;
         }
 
+        const clinicId = patientData.clinic_id;
+        console.log('Fetching plans for patient:', patient.id, 'with clinic_id:', clinicId);
+        
         // Fetch all payment schedules for the clinic
         const scheduleData = await fetchPaymentSchedules(clinicId);
         
@@ -168,10 +172,13 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
           item.patient_id === patient.id
         );
         
+        console.log('Found schedule data items:', filteredScheduleData.length);
+        
         // Format into plan objects
         const plansMap = groupPaymentSchedulesByPlan(filteredScheduleData);
         const plansArray = Array.from(plansMap.values());
         
+        console.log('Processed plans:', plansArray.length);
         setPatientPlans(plansArray);
       } catch (err) {
         console.error('Error fetching patient payment plans:', err);
@@ -296,9 +303,19 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
               <Separator className="my-6" />
 
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="payments">Payment History</TabsTrigger>
-                  <TabsTrigger value="plans">Payment Plans</TabsTrigger>
+                <TabsList className="mb-4 p-1">
+                  <TabsTrigger 
+                    value="payments"
+                    className="data-[state=active]:bg-gradient-primary data-[state=active]:text-white"
+                  >
+                    Payment History
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="plans"
+                    className="data-[state=active]:bg-gradient-primary data-[state=active]:text-white"
+                  >
+                    Payment Plans
+                  </TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="payments">
@@ -401,7 +418,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
                                     <div className="flex items-center gap-2">
                                       <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                                         <div 
-                                          className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full" 
+                                          className="h-full bg-gradient-primary rounded-full" 
                                           style={{ width: `${plan.progress}%` }}
                                         />
                                       </div>
