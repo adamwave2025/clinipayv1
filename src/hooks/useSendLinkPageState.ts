@@ -185,8 +185,7 @@ export function useSendLinkPageState() {
     patientId: string | null, 
     paymentLinkId: string,
     message: string,
-    status: 'sent' | 'scheduled' = 'scheduled',
-    scheduleEntry?: any
+    status: 'sent' | 'scheduled' = 'sent'
   ) => {
     try {
       // Create a payment request entry
@@ -201,7 +200,7 @@ export function useSendLinkPageState() {
           payment_link_id: paymentLinkId,
           message: message,
           status: status,
-          sent_at: new Date().toISOString(),
+          sent_at: status === 'sent' ? new Date().toISOString() : null,
         })
         .select()
         .single();
@@ -231,14 +230,14 @@ export function useSendLinkPageState() {
         clinicId,
         patientId,
         selectedLink.id,
-        `Payment ${paymentScheduleEntry.payment_number} of ${paymentScheduleEntry.total_payments} is due.`,
-        'sent'
+        `Payment ${paymentScheduleEntry.payment_number} of ${paymentScheduleEntry.total_payments} is due.`
       );
 
-      // Update the corresponding schedule entry to 'processed'
+      // Update the corresponding schedule entry to link it to the payment request
       await supabase
         .from('payment_schedule')
         .update({ 
+          payment_request_id: paymentRequest.id,
           status: 'processed',
           updated_at: new Date().toISOString()
         })
@@ -342,14 +341,6 @@ export function useSendLinkPageState() {
         selectedLink.amount
       );
 
-      // Create a payment request (master record)
-      const paymentRequest = await createPaymentRequest(
-        clinicId,
-        selectedPatient?.id || null,
-        selectedLink.id,
-        formData.message || `Payment plan: ${selectedLink.title}`
-      );
-
       // Format clinic address for notifications
       const { data: clinicData, error: clinicError } = await supabase
         .from('clinics')
@@ -376,10 +367,20 @@ export function useSendLinkPageState() {
       const firstPaymentDate = new Date(schedule[0].due_date);
       const isFirstPaymentToday = isSameDay(firstPaymentDate, today);
       
+      // Create payment request only if first payment is due today
+      let firstPaymentRequest = null;
+      if (isFirstPaymentToday) {
+        firstPaymentRequest = await createPaymentRequest(
+          clinicId,
+          selectedPatient?.id || null,
+          selectedLink.id,
+          `Payment 1 of ${selectedLink.paymentCount} is due.`
+        );
+      }
+      
       // Create schedule entries
       const scheduleEntries = schedule.map((entry, index) => {
-        // The first payment should be marked as 'processed' if it's due today
-        // Others will remain 'pending' to be processed by the cron job
+        // The first payment should be marked as 'processed' and linked to the payment request if it's due today
         const isFirst = index === 0;
         const status = (isFirst && isFirstPaymentToday) ? 'processed' : 'pending';
         
@@ -387,7 +388,7 @@ export function useSendLinkPageState() {
           clinic_id: clinicId,
           patient_id: selectedPatient?.id,
           payment_link_id: selectedLink.id,
-          payment_request_id: paymentRequest.id,
+          payment_request_id: (isFirst && isFirstPaymentToday) ? firstPaymentRequest?.id : null,
           amount: entry.amount,
           due_date: entry.due_date,
           payment_number: entry.payment_number,
@@ -409,7 +410,7 @@ export function useSendLinkPageState() {
       }
 
       // If the first payment is due today, send it immediately
-      if (isFirstPaymentToday) {
+      if (isFirstPaymentToday && firstPaymentRequest) {
         const firstPayment = schedule[0];
         const sentSuccessfully = await sendImmediatePayment(
           firstPayment,

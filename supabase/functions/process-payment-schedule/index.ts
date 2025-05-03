@@ -90,11 +90,12 @@ serve(async (req) => {
           throw new Error(`Error creating payment request: ${requestError.message}`);
         }
 
-        // Update the payment schedule status
+        // Update the payment schedule status and link it to the payment request
         const { error: updateError } = await supabase
           .from('payment_schedule')
           .update({ 
             status: 'processed',
+            payment_request_id: paymentRequest.id,
             updated_at: new Date().toISOString()
           })
           .eq('id', payment.id);
