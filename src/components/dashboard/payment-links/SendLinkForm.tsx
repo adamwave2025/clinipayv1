@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -15,10 +17,12 @@ import { Mail, Phone } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import PatientCombobox from '@/components/dashboard/patients/PatientCombobox';
 import { Patient } from '@/hooks/usePatients';
+import { PaymentLink } from '@/types/payment';
 
 interface SendLinkFormProps {
   isLoading: boolean;
-  paymentLinks: any[];
+  paymentLinks: PaymentLink[];
+  paymentPlans: PaymentLink[];
   isLoadingLinks: boolean;
   formData: {
     patientName: string;
@@ -38,6 +42,7 @@ interface SendLinkFormProps {
 const SendLinkForm: React.FC<SendLinkFormProps> = ({
   isLoading,
   paymentLinks,
+  paymentPlans,
   isLoadingLinks,
   formData,
   onFormChange,
@@ -96,24 +101,40 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="selectedLink">Select Payment Link (Optional)</Label>
+          <Label htmlFor="selectedLink">Select Payment (Optional)</Label>
           <Select
             value={formData.selectedLink}
             onValueChange={onSelectChange}
             disabled={isLoading || isLoadingLinks}
           >
             <SelectTrigger id="selectedLink" className="input-focus">
-              <SelectValue placeholder={isLoadingLinks ? "Loading..." : "Choose a payment link"} />
+              <SelectValue placeholder={isLoadingLinks ? "Loading..." : "Choose a payment option"} />
             </SelectTrigger>
             <SelectContent>
-              {paymentLinks.map(link => (
-                <SelectItem key={link.id} value={link.id}>
-                  {link.title} - £{link.amount.toFixed(2)}
-                </SelectItem>
-              ))}
+              {paymentLinks.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel>Payment Links</SelectLabel>
+                  {paymentLinks.map(link => (
+                    <SelectItem key={link.id} value={link.id}>
+                      {link.title} - £{link.amount.toFixed(2)}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
+              
+              {paymentPlans.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel>Payment Plans</SelectLabel>
+                  {paymentPlans.map(plan => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.title} - £{plan.amount.toFixed(2)}{plan.paymentCount ? ` × ${plan.paymentCount}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
             </SelectContent>
           </Select>
-          <p className="text-xs text-gray-500">Select an existing payment link or enter a custom amount</p>
+          <p className="text-xs text-gray-500">Select an existing payment option or enter a custom amount</p>
         </div>
         
         <div className="space-y-2">
@@ -132,7 +153,7 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
             />
           </div>
           <p className="text-xs text-gray-500">
-            Enter a custom amount if not using an existing payment link
+            Enter a custom amount if not using an existing payment option
           </p>
         </div>
       </div>

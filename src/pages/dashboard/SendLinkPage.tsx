@@ -9,10 +9,13 @@ import { usePaymentLinkSender } from '@/hooks/usePaymentLinkSender';
 import SendLinkForm from '@/components/dashboard/payment-links/SendLinkForm';
 import ConfirmationDialog from '@/components/dashboard/payment-links/ConfirmationDialog';
 import { toast } from 'sonner';
+import { PaymentLink } from '@/types/payment';
 
 const SendLinkPage = () => {
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const { paymentLinks, isLoading: isLoadingLinks } = usePaymentLinks();
+  const { paymentLinks: allPaymentLinks, isLoading: isLoadingLinks } = usePaymentLinks();
+  const [regularLinks, setRegularLinks] = useState<PaymentLink[]>([]);
+  const [paymentPlans, setPaymentPlans] = useState<PaymentLink[]>([]);
   const { isLoading, sendPaymentLink } = usePaymentLinkSender();
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState({
@@ -23,6 +26,12 @@ const SendLinkPage = () => {
     customAmount: '',
     message: '',
   });
+
+  // Separate payment links and payment plans
+  useEffect(() => {
+    setRegularLinks(allPaymentLinks.filter(link => !link.paymentPlan));
+    setPaymentPlans(allPaymentLinks.filter(link => link.paymentPlan));
+  }, [allPaymentLinks]);
 
   // Update form when a patient is selected
   useEffect(() => {
@@ -78,7 +87,7 @@ const SendLinkPage = () => {
     }
     
     if (!formData.selectedLink && !formData.customAmount) {
-      toast.error('Please either select a payment link or enter a custom amount');
+      toast.error('Please either select a payment option or enter a custom amount');
       return;
     }
     
@@ -105,7 +114,11 @@ const SendLinkPage = () => {
   };
 
   const handleSendPaymentLink = async () => {
-    const result = await sendPaymentLink({ formData, paymentLinks });
+    // Combine regular links and payment plans for the sender function
+    const result = await sendPaymentLink({ 
+      formData, 
+      paymentLinks: [...regularLinks, ...paymentPlans] 
+    });
     
     if (result.success) {
       setFormData({
@@ -120,8 +133,9 @@ const SendLinkPage = () => {
     }
   };
 
+  // Find the selected payment option from either regular links or payment plans
   const selectedPaymentLink = formData.selectedLink 
-    ? paymentLinks.find(link => link.id === formData.selectedLink) 
+    ? [...regularLinks, ...paymentPlans].find(link => link.id === formData.selectedLink) 
     : null;
   
   const paymentAmount = selectedPaymentLink 
@@ -139,7 +153,8 @@ const SendLinkPage = () => {
         <CardContent className="p-6">
           <SendLinkForm 
             isLoading={isLoading}
-            paymentLinks={paymentLinks}
+            paymentLinks={regularLinks}
+            paymentPlans={paymentPlans}
             isLoadingLinks={isLoadingLinks}
             formData={formData}
             onFormChange={handleChange}
