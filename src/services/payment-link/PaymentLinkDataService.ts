@@ -74,7 +74,11 @@ export const PaymentLinkDataService = {
         amount: linkData.amount,
         type: linkData.type,
         description: linkData.description,
-        is_active: true
+        is_active: true,
+        payment_plan: linkData.paymentPlan || false,
+        payment_count: linkData.paymentCount,
+        payment_cycle: linkData.paymentCycle,
+        plan_total_amount: linkData.planTotalAmount
       })
       .select()
       .single();

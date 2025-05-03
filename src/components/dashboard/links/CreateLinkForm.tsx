@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,12 +21,15 @@ export interface LinkFormData {
   amount: string;
   paymentType: string;
   description: string;
+  paymentPlan: boolean;
+  paymentCount: string;
+  paymentCycle: string;
 }
 
 interface CreateLinkFormProps {
   onLinkGenerated: (link: string, formData: LinkFormData) => void;
   isLoading: boolean;
-  onCreateLink?: (data: Omit<PaymentLink, 'id' | 'url' | 'createdAt'>) => Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }>;
+  onCreateLink?: (data: Omit<PaymentLink, 'id' | 'url' | 'createdAt' | 'isActive'>) => Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }>;
 }
 
 const CreateLinkForm = ({ onLinkGenerated, isLoading, onCreateLink }: CreateLinkFormProps) => {
@@ -35,6 +38,9 @@ const CreateLinkForm = ({ onLinkGenerated, isLoading, onCreateLink }: CreateLink
     amount: '',
     paymentType: 'deposit',
     description: '',
+    paymentPlan: false,
+    paymentCount: '',
+    paymentCycle: 'monthly',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -44,6 +50,13 @@ const CreateLinkForm = ({ onLinkGenerated, isLoading, onCreateLink }: CreateLink
 
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // If payment type changes to "payment_plan", set paymentPlan to true
+    if (name === 'paymentType' && value === 'payment_plan') {
+      setFormData(prev => ({ ...prev, paymentPlan: true }));
+    } else if (name === 'paymentType' && value !== 'payment_plan') {
+      setFormData(prev => ({ ...prev, paymentPlan: false }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,15 +73,34 @@ const CreateLinkForm = ({ onLinkGenerated, isLoading, onCreateLink }: CreateLink
       return;
     }
     
+    // Additional validation for payment plan
+    if (formData.paymentPlan) {
+      if (!formData.paymentCount || isNaN(Number(formData.paymentCount)) || Number(formData.paymentCount) <= 0) {
+        toast.error('Please enter a valid number of payments');
+        return;
+      }
+
+      if (!formData.paymentCycle) {
+        toast.error('Please select a payment cycle');
+        return;
+      }
+    }
+    
     if (onCreateLink) {
       // Use Supabase to create the link
       try {
-        const result = await onCreateLink({
+        const paymentData = {
           title: formData.paymentTitle,
           amount: Number(formData.amount),
           type: formData.paymentType,
-          description: formData.description
-        });
+          description: formData.description,
+          paymentPlan: formData.paymentPlan,
+          paymentCount: formData.paymentPlan ? Number(formData.paymentCount) : undefined,
+          paymentCycle: formData.paymentPlan ? formData.paymentCycle : undefined,
+          planTotalAmount: formData.paymentPlan ? Number(formData.amount) * Number(formData.paymentCount) : undefined
+        };
+        
+        const result = await onCreateLink(paymentData);
         
         if (result.success && result.paymentLink) {
           onLinkGenerated(result.paymentLink.url, formData);
@@ -124,6 +156,14 @@ const CreateLinkForm = ({ onLinkGenerated, isLoading, onCreateLink }: CreateLink
                 className="w-full input-focus pl-8"
               />
             </div>
+            {formData.paymentPlan && (
+              <p className="text-xs text-gray-500">
+                This will be the amount per payment. Total plan value: 
+                £{!isNaN(Number(formData.amount) * Number(formData.paymentCount)) 
+                  ? (Number(formData.amount) * Number(formData.paymentCount)).toFixed(2) 
+                  : '0.00'}
+              </p>
+            )}
           </div>
           
           <div className="space-y-2">
@@ -140,10 +180,51 @@ const CreateLinkForm = ({ onLinkGenerated, isLoading, onCreateLink }: CreateLink
                 <SelectItem value="deposit">Deposit</SelectItem>
                 <SelectItem value="treatment">Treatment</SelectItem>
                 <SelectItem value="consultation">Consultation</SelectItem>
+                <SelectItem value="payment_plan">Payment Plan</SelectItem>
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          
+          {formData.paymentPlan && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="paymentCount">Number of Payments*</Label>
+                  <Input
+                    id="paymentCount"
+                    name="paymentCount"
+                    type="number"
+                    min="2"
+                    placeholder="e.g., 3"
+                    value={formData.paymentCount}
+                    onChange={handleChange}
+                    disabled={isLoading}
+                    required={formData.paymentPlan}
+                    className="w-full input-focus"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="paymentCycle">Payment Frequency*</Label>
+                  <Select
+                    value={formData.paymentCycle}
+                    onValueChange={(value) => handleSelectChange('paymentCycle', value)}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger id="paymentCycle" className="input-focus">
+                      <SelectValue placeholder="Select frequency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="biweekly">Bi-Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
+          )}
           
           <div className="space-y-2">
             <Label htmlFor="description">Description (Optional)</Label>
@@ -164,7 +245,7 @@ const CreateLinkForm = ({ onLinkGenerated, isLoading, onCreateLink }: CreateLink
             disabled={isLoading}
           >
             {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
-            Generate Payment Link
+            {formData.paymentPlan ? 'Create Payment Plan' : 'Generate Payment Link'}
           </Button>
         </form>
       </CardContent>

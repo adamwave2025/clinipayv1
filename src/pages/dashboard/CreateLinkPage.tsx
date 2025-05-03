@@ -38,7 +38,7 @@ const CreateLinkPage = () => {
     <DashboardLayout userType="clinic">
       <PageHeader 
         title="Create Payment" 
-        description="Generate a secure payment link to send to your patients"
+        description="Generate a secure payment link or create a payment plan"
       />
       
       <CreateLinkForm 

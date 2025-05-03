@@ -1,4 +1,3 @@
-
 export interface Payment {
   id: string;
   patientName: string;
@@ -24,10 +23,14 @@ export interface PaymentLink {
   title: string;
   amount: number;
   type: string;
-  description: string;
+  description?: string;
   url: string;
   createdAt: string;
-  isActive?: boolean;
+  isActive: boolean;
+  paymentPlan?: boolean;
+  paymentCount?: number;
+  paymentCycle?: string;
+  planTotalAmount?: number;
 }
 
 export interface PaymentStats {
@@ -48,4 +51,3 @@ export interface PaymentRequest {
   date: string;
   paymentUrl: string;
 }
-

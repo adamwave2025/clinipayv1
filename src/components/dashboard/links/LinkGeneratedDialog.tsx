@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -42,48 +43,71 @@ const LinkGeneratedDialog = ({
     onOpenChange(newOpen);
   };
 
+  // Check if this is a payment plan
+  const isPaymentPlan = formData?.paymentPlan || false;
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <Check className="h-6 w-6 text-green-500 mr-2" />
-            Payment Link Created
+            {isPaymentPlan ? 'Payment Plan Created' : 'Payment Link Created'}
           </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4 py-4">
           <div className="p-4 bg-green-50 rounded-lg text-green-700 text-center">
-            <p className="font-medium">Your payment link has been generated successfully!</p>
+            <p className="font-medium">
+              {isPaymentPlan 
+                ? 'Your payment plan has been created successfully!' 
+                : 'Your payment link has been generated successfully!'}
+            </p>
           </div>
           
           {formData && (
             <div className="space-y-1">
               <p className="text-sm font-medium">Payment Details:</p>
-              <p className="text-sm">
-                {formData.paymentTitle} - £{Number(formData.amount).toFixed(2)}
-              </p>
+              {isPaymentPlan ? (
+                <>
+                  <p className="text-sm">
+                    {formData.paymentTitle}
+                  </p>
+                  <p className="text-sm">
+                    {formData.paymentCount} payments of £{Number(formData.amount).toFixed(2)} ({formData.paymentCycle})
+                  </p>
+                  <p className="text-sm">
+                    Total: £{(Number(formData.amount) * Number(formData.paymentCount)).toFixed(2)}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm">
+                  {formData.paymentTitle} - £{Number(formData.amount).toFixed(2)}
+                </p>
+              )}
               {formData.description && (
                 <p className="text-sm text-gray-500 mt-1">{formData.description}</p>
               )}
             </div>
           )}
           
-          <div className="space-y-1">
-            <p className="text-sm font-medium">Payment Link:</p>
-            <div className="flex items-center p-3 bg-gray-50 rounded-lg break-all">
-              <p className="text-sm text-gray-600 flex-1">{generatedLink}</p>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={handleCopyLink}
-                className="flex-shrink-0 ml-2"
-                aria-label="Copy link"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
+          {!isPaymentPlan && generatedLink && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Payment Link:</p>
+              <div className="flex items-center p-3 bg-gray-50 rounded-lg break-all">
+                <p className="text-sm text-gray-600 flex-1">{generatedLink}</p>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={handleCopyLink}
+                  className="flex-shrink-0 ml-2"
+                  aria-label="Copy link"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
         
         <DialogFooter>
@@ -91,10 +115,16 @@ const LinkGeneratedDialog = ({
             className="btn-gradient w-full" 
             asChild
           >
-            <Link to="/dashboard/send-link" className="flex items-center justify-center">
-              <Send className="mr-2 h-4 w-4" />
-              Request Payment
-            </Link>
+            {isPaymentPlan ? (
+              <Link to="/dashboard/manage-plans" className="flex items-center justify-center">
+                View Payment Plans
+              </Link>
+            ) : (
+              <Link to="/dashboard/send-link" className="flex items-center justify-center">
+                <Send className="mr-2 h-4 w-4" />
+                Request Payment
+              </Link>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

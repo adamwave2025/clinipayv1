@@ -9,5 +9,9 @@ export const formatPaymentLinks = (data: any[]): PaymentLink[] => data.map(link 
   description: link.description || '',
   url: `${window.location.origin}/payment/${link.id}`,
   createdAt: new Date(link.created_at).toLocaleDateString(),
-  isActive: link.is_active
+  isActive: link.is_active,
+  paymentPlan: link.payment_plan || false,
+  paymentCount: link.payment_count,
+  paymentCycle: link.payment_cycle,
+  planTotalAmount: link.plan_total_amount
 }));

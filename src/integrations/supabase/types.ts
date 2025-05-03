@@ -151,6 +151,10 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          payment_count: number | null
+          payment_cycle: string | null
+          payment_plan: boolean | null
+          plan_total_amount: number | null
           title: string | null
           type: string | null
         }
@@ -161,6 +165,10 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          payment_count?: number | null
+          payment_cycle?: string | null
+          payment_plan?: boolean | null
+          plan_total_amount?: number | null
           title?: string | null
           type?: string | null
         }
@@ -171,6 +179,10 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          payment_count?: number | null
+          payment_cycle?: string | null
+          payment_plan?: boolean | null
+          plan_total_amount?: number | null
           title?: string | null
           type?: string | null
         }
