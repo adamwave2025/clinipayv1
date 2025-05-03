@@ -27,15 +27,20 @@ const PaymentSuccessPage = () => {
   const [paymentReference, setPaymentReference] = useState<string>('');
   const [isLoadingReference, setIsLoadingReference] = useState<boolean>(true);
   const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 5;
+  const retryDelayMs = 2000;
   
   // Function to fetch payment reference
   const fetchPaymentReference = async () => {
     if (!paymentId) {
+      console.log('No payment ID provided, skipping reference fetch');
       setIsLoadingReference(false);
-      return;
+      return false;
     }
     
     try {
+      console.log('Fetching payment reference for payment ID:', paymentId);
+      
       const { data, error } = await supabase
         .from('payments')
         .select('payment_ref, stripe_payment_id')
@@ -48,9 +53,12 @@ const PaymentSuccessPage = () => {
       }
       
       if (data && data.payment_ref) {
+        console.log('Found payment reference:', data.payment_ref);
         setPaymentReference(data.payment_ref);
         setIsLoadingReference(false);
         return true;
+      } else {
+        console.log('Payment found, but no reference yet:', data);
       }
       
       return false;
@@ -66,15 +74,19 @@ const PaymentSuccessPage = () => {
       const found = await fetchPaymentReference();
       
       // If not found and we haven't exceeded retry attempts, set up retry logic
-      if (!found && retryCount < 5) {
+      if (!found && retryCount < maxRetries) {
         const timeout = setTimeout(() => {
+          console.log(`Retrying payment reference fetch (${retryCount + 1}/${maxRetries})...`);
           setRetryCount(prev => prev + 1);
-        }, 2000); // Retry every 2 seconds
+        }, retryDelayMs);
         
         return () => clearTimeout(timeout);
-      } else if (!found && retryCount >= 5) {
+      } else if (!found && retryCount >= maxRetries) {
         setIsLoadingReference(false);
-        toast.error("Could not retrieve payment reference. Please contact the clinic for assistance.");
+        toast.error("Could not retrieve payment reference. Please contact the clinic for assistance.", {
+          duration: 5000,
+          id: "payment-reference-error"
+        });
       }
     };
     
@@ -160,7 +172,7 @@ const PaymentSuccessPage = () => {
           email: linkData.clinic.email || '',
           phone: linkData.clinic.phone || '',
           address: linkData.clinic.address || '',
-          logo: linkData.clinic.logo // This is now optional in the interface
+          logo: linkData.clinic.logo
         }} 
       />
     </PaymentLayout>

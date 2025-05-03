@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentPageClinicCard from '@/components/payment/PaymentPageClinicCard';
@@ -18,6 +18,8 @@ const PatientPaymentPage = () => {
   const { linkId, errorParam, navigateToFailedPage } = usePaymentNavigation();
   const { linkData, isLoading, initError } = usePaymentInit(linkId, errorParam);
   const [isFetchingPayment, setIsFetchingPayment] = useState(false);
+  const hasShownToastRef = useRef(false);
+  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Function to fetch the most recent payment for the current payment link
   const fetchLatestPayment = async (paymentLinkId: string) => {
@@ -25,12 +27,12 @@ const PatientPaymentPage = () => {
     try {
       const { data, error } = await supabase
         .from('payments')
-        .select('stripe_payment_id')
+        .select('stripe_payment_id, payment_ref')
         .eq('payment_link_id', paymentLinkId)
         .eq('status', 'paid')
         .order('paid_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle(); // Using maybeSingle instead of single to prevent errors
 
       if (error) {
         console.error('Error fetching payment data:', error);
@@ -48,34 +50,60 @@ const PatientPaymentPage = () => {
 
   // Check if payment has already been made for this payment plan installment
   useEffect(() => {
-    if (linkData && linkData.paymentPlan && !isLoading && !isFetchingPayment) {
-      // For payment plans, check if current installment has already been paid
-      const currentAmount = linkData.amount || 0;
-      const totalPaid = linkData.totalPaid || 0;
+    // Only run this effect if we have the necessary data and aren't currently fetching
+    if (!linkData || !linkData.paymentPlan || isLoading || isFetchingPayment || hasShownToastRef.current) {
+      return;
+    }
+
+    // For payment plans, check if current installment has already been paid
+    const currentAmount = linkData.amount || 0;
+    const totalPaid = linkData.totalPaid || 0;
+    
+    // If the current installment amount has already been paid
+    if (totalPaid >= currentAmount) {
+      console.log('Payment already made for this installment:', { 
+        currentAmount, 
+        totalPaid,
+        paymentPlan: linkData.paymentPlan
+      });
       
-      // If the current installment amount has already been paid
-      if (totalPaid >= currentAmount) {
-        console.log('Payment already made for this installment:', { 
-          currentAmount, 
-          totalPaid,
-          paymentPlan: linkData.paymentPlan
+      // Prevent showing multiple toasts
+      if (!hasShownToastRef.current) {
+        hasShownToastRef.current = true;
+        toast.info('This payment has already been processed.', {
+          duration: 3000, // Set a reasonable duration (3 seconds)
+          id: 'payment-already-processed' // Set an ID to prevent duplicates
         });
-        
-        toast.info('This payment has already been processed.');
-        
-        // First try to get the payment ID for this link
-        (async () => {
+      }
+      
+      // First try to get the payment ID for this link
+      (async () => {
+        try {
           const paymentId = await fetchLatestPayment(linkId);
           
+          // Clear any existing timeout to prevent multiple redirects
+          if (redirectTimeoutRef.current) {
+            clearTimeout(redirectTimeoutRef.current);
+          }
+          
           // Redirect to success page with both link_id and payment_id (if available)
-          setTimeout(() => {
+          redirectTimeoutRef.current = setTimeout(() => {
             const redirectUrl = `/payment/success?link_id=${linkId}${paymentId ? `&payment_id=${paymentId}` : ''}`;
             navigate(redirectUrl);
           }, 1500); // Short delay to allow the toast to be visible
-        })();
-      }
+        } catch (error) {
+          console.error('Error during payment processing:', error);
+        }
+      })();
     }
-  }, [linkData, isLoading, linkId, navigate, isFetchingPayment]);
+    
+    // Cleanup function to prevent memory leaks
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+    };
+  }, [linkData, isLoading, linkId, navigate, isFetchingPayment]); // Dependencies carefully managed
 
   if (isLoading || isFetchingPayment) {
     return <PaymentPageLoading />;
