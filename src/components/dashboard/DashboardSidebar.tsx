@@ -45,7 +45,7 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useUserRole();
-  const [expandedMenu, setExpandedMenu] = useState<string | null>(null); // Changed from "Payments" to null
+  const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
   
   // Use the actual user role for link determination if available
   const actualUserType = role === 'admin' ? 'admin' : 'clinic';
@@ -72,14 +72,14 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
           icon: <Send className="w-5 h-5" />
         },
         {
+          to: '/dashboard/manage-plans',
+          label: 'Payment Plans',
+          icon: <Calendar className="w-5 h-5" />
+        },
+        {
           to: '/dashboard/payment-history',
           label: 'Payment History',
           icon: <Clock className="w-5 h-5" />
-        },
-        {
-          to: '/dashboard/manage-plans',
-          label: 'Manage Plans',
-          icon: <Calendar className="w-5 h-5" />
         }
       ]
     },
