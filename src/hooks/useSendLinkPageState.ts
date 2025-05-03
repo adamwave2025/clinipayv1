@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Patient } from '@/hooks/usePatients';
 import { PaymentLink } from '@/types/payment';
@@ -222,19 +223,54 @@ export function useSendLinkPageState() {
     clinicId: string,
     patientId: string | null,
     selectedLink: PaymentLink,
-    formattedAddress: string
+    formattedAddress: string,
+    existingPaymentRequestId?: string // Add optional parameter for existing payment request ID
   ) => {
     try {
-      // Create a payment request with status 'sent'
-      const paymentRequest = await createPaymentRequest(
-        clinicId,
-        patientId,
-        selectedLink.id,
-        `Payment ${paymentScheduleEntry.payment_number} of ${paymentScheduleEntry.total_payments} is due.`
-      );
+      let paymentRequest;
+
+      // Use existing payment request if provided, otherwise create a new one
+      if (existingPaymentRequestId) {
+        const { data, error } = await supabase
+          .from('payment_requests')
+          .select('*')
+          .eq('id', existingPaymentRequestId)
+          .single();
+
+        if (error) {
+          throw new Error(`Error retrieving existing payment request: ${error.message}`);
+        }
+        paymentRequest = data;
+        
+        // Ensure the request status is 'sent'
+        if (paymentRequest.status !== 'sent') {
+          const { error: updateError } = await supabase
+            .from('payment_requests')
+            .update({
+              status: 'sent',
+              sent_at: new Date().toISOString()
+            })
+            .eq('id', existingPaymentRequestId);
+            
+          if (updateError) {
+            throw new Error(`Error updating payment request status: ${updateError.message}`);
+          }
+        }
+
+        console.log('Using existing payment request:', paymentRequest.id);
+      } else {
+        // Create a new payment request
+        paymentRequest = await createPaymentRequest(
+          clinicId,
+          patientId,
+          selectedLink.id,
+          `Payment ${paymentScheduleEntry.payment_number} of ${paymentScheduleEntry.total_payments} is due.`
+        );
+        console.log('Created new payment request:', paymentRequest.id);
+      }
 
       // Update the corresponding schedule entry to link it to the payment request
-      await supabase
+      const { error: updateError } = await supabase
         .from('payment_schedule')
         .update({ 
           payment_request_id: paymentRequest.id,
@@ -244,6 +280,11 @@ export function useSendLinkPageState() {
         .eq('payment_number', paymentScheduleEntry.payment_number)
         .eq('payment_link_id', selectedLink.id)
         .eq('patient_id', patientId);
+
+      if (updateError) {
+        console.error('Error updating payment schedule:', updateError);
+        throw new Error(`Failed to update payment schedule: ${updateError.message}`);
+      }
 
       // Send notification
       const notificationMethod = {
@@ -288,7 +329,7 @@ export function useSendLinkPageState() {
         };
 
         // Queue notification
-        await supabase
+        const { error: notifError } = await supabase
           .from("notification_queue")
           .insert({
             type: 'payment_request',
@@ -297,6 +338,11 @@ export function useSendLinkPageState() {
             payment_id: paymentRequest.id,
             status: 'pending'
           });
+
+        if (notifError) {
+          console.error('Error queuing notification:', notifError);
+          throw new Error(`Failed to queue notification: ${notifError.message}`);
+        }
 
         // Process the notification
         await supabase.functions.invoke('process-notification-queue');
@@ -367,15 +413,21 @@ export function useSendLinkPageState() {
       const firstPaymentDate = new Date(schedule[0].due_date);
       const isFirstPaymentToday = isSameDay(firstPaymentDate, today);
       
-      // Create payment request only if first payment is due today
+      // Create first payment request only if it's due today
       let firstPaymentRequest = null;
       if (isFirstPaymentToday) {
-        firstPaymentRequest = await createPaymentRequest(
-          clinicId,
-          selectedPatient?.id || null,
-          selectedLink.id,
-          `Payment 1 of ${selectedLink.paymentCount} is due.`
-        );
+        try {
+          firstPaymentRequest = await createPaymentRequest(
+            clinicId,
+            selectedPatient?.id || null,
+            selectedLink.id,
+            `Payment 1 of ${selectedLink.paymentCount} is due.`
+          );
+          console.log('Created first payment request for today:', firstPaymentRequest.id);
+        } catch (reqError) {
+          console.error('Error creating first payment request:', reqError);
+          // Continue with scheduling even if the request creation fails
+        }
       }
       
       // Create schedule entries
@@ -388,7 +440,7 @@ export function useSendLinkPageState() {
           clinic_id: clinicId,
           patient_id: selectedPatient?.id,
           payment_link_id: selectedLink.id,
-          payment_request_id: (isFirst && isFirstPaymentToday) ? firstPaymentRequest?.id : null,
+          payment_request_id: (isFirst && isFirstPaymentToday && firstPaymentRequest) ? firstPaymentRequest.id : null,
           amount: entry.amount,
           due_date: entry.due_date,
           payment_number: entry.payment_number,
@@ -409,7 +461,7 @@ export function useSendLinkPageState() {
         return { success: false };
       }
 
-      // If the first payment is due today, send it immediately
+      // If the first payment is due today, send it immediately using the existing request ID
       if (isFirstPaymentToday && firstPaymentRequest) {
         const firstPayment = schedule[0];
         const sentSuccessfully = await sendImmediatePayment(
@@ -417,7 +469,8 @@ export function useSendLinkPageState() {
           clinicId,
           selectedPatient?.id || null,
           selectedLink,
-          formattedAddress
+          formattedAddress,
+          firstPaymentRequest.id // Pass the existing payment request ID
         );
         
         if (sentSuccessfully) {
