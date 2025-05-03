@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -12,7 +13,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { Plus, Search, Filter, MoreHorizontal, Calendar, ChevronDown, List, PlusCircle } from 'lucide-react';
+import { Plus, Search, Filter, MoreHorizontal, Calendar, ChevronDown, List, PlusCircle, ListChecks } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -125,6 +126,10 @@ const ManagePlansPage = () => {
     navigate('/dashboard/create-link');
   };
 
+  const handleViewPlansClick = () => {
+    navigate('/dashboard/payment-plans');
+  };
+
   return (
     <DashboardLayout userType="clinic">
       <PageHeader 
@@ -132,6 +137,14 @@ const ManagePlansPage = () => {
         description="Create and manage payment plans for your patients"
         action={
           <div className="flex space-x-2">
+            <Button 
+              variant="outline"
+              className="flex items-center"
+              onClick={handleViewPlansClick}
+            >
+              <ListChecks className="mr-2 h-4 w-4" />
+              View Plans
+            </Button>
             <Button 
               className="btn-gradient flex items-center"
               onClick={handleCreatePlanClick}
@@ -185,9 +198,9 @@ const ManagePlansPage = () => {
               <div className="py-8 text-center text-gray-500">
                 Loading payment plans...
               </div>
-            ) : paymentPlans.length === 0 ? (
+            ) : mockPaymentPlans.length === 0 ? (
               <div className="py-8 text-center text-gray-500">
-                <p>No payment plans found. Create your first payment plan to get started.</p>
+                <p>No active payment plans found. Create your first payment plan to get started.</p>
                 <Button 
                   className="mt-4 btn-gradient" 
                   onClick={handleCreatePlanClick}
