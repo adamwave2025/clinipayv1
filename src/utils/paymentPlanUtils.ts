@@ -127,13 +127,13 @@ export const groupPaymentSchedulesByPlan = (scheduleItems: PaymentScheduleItem[]
     // Sort schedule by due date
     plan.schedule.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
     
-    // Check if all scheduled payments are cancelled
-    const allCancelled = plan.schedule.every(item => 
-      item.status === 'cancelled' || item.status === 'paid');
+    // Check if ANY payment in the schedule is cancelled
+    // This is the key change - we now consider a plan cancelled if ANY payment is cancelled
+    const hasCancelledPayment = plan.schedule.some(item => item.status === 'cancelled');
     
     // Determine plan status based on priority:
-    // 1. First check if it's cancelled (all remaining payments are cancelled)
-    if (plan.paidInstallments < plan.totalInstallments && allCancelled) {
+    // 1. First check if any payment is cancelled (new logic)
+    if (hasCancelledPayment) {
       plan.status = 'cancelled';
     }
     // 2. Then check for overdue payments
