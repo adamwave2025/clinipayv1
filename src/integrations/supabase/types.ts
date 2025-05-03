@@ -196,6 +196,42 @@ export type Database = {
           },
         ]
       }
+      payment_plan_activities: {
+        Row: {
+          action_type: string
+          clinic_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          patient_id: string
+          payment_link_id: string
+          performed_at: string
+          performed_by_user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          clinic_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          patient_id: string
+          payment_link_id: string
+          performed_at?: string
+          performed_by_user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          clinic_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          patient_id?: string
+          payment_link_id?: string
+          performed_at?: string
+          performed_by_user_id?: string | null
+        }
+        Relationships: []
+      }
       payment_requests: {
         Row: {
           clinic_id: string | null

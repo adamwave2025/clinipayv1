@@ -18,7 +18,16 @@ export const useManagePlans = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Use all the smaller hooks
-  const { plans, installments, isLoading, fetchPaymentPlans, fetchPlanInstallmentsData } = usePlanDataFetcher();
+  const { 
+    plans, 
+    installments, 
+    activities,
+    isLoading, 
+    isLoadingActivities,
+    fetchPaymentPlans, 
+    fetchPlanInstallmentsData 
+  } = usePlanDataFetcher();
+  
   const { paymentData, setPaymentData, fetchPaymentDataForInstallment } = usePaymentDetailsFetcher();
   
   // Use plan details view hook
@@ -85,6 +94,8 @@ export const useManagePlans = () => {
     plans,
     isLoading,
     installments,
+    activities,
+    isLoadingActivities,
     handleViewPlanDetails,
     handleCreatePlanClick,
     handleViewPlansClick,

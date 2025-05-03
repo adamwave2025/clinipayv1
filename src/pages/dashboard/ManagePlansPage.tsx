@@ -24,6 +24,8 @@ const ManagePlansPage = () => {
     plans,
     isLoading,
     installments,
+    activities,
+    isLoadingActivities,
     handleViewPlanDetails,
     handleCreatePlanClick,
     handleViewPlansClick,
@@ -106,6 +108,8 @@ const ManagePlansPage = () => {
         setShowPlanDetails={setShowPlanDetails}
         selectedPlan={selectedPlan}
         installments={installments}
+        activities={activities}
+        isLoadingActivities={isLoadingActivities}
         onSendReminder={handleSendReminder}
         onViewPaymentDetails={handleViewPaymentDetails}
         onCancelPlan={handleOpenCancelDialog}

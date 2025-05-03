@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { PlanActivityType } from '@/utils/planActivityUtils';
 
 export const fetchUserClinicId = async (userId: string) => {
   try {
@@ -94,18 +94,89 @@ export const fetchPlanInstallments = async (patientId: string, paymentLinkId: st
   }
 };
 
-export const cancelPaymentPlan = async (patientId: string, paymentLinkId: string) => {
+export const fetchPlanActivities = async (patientId: string, paymentLinkId: string) => {
   try {
+    const { data, error } = await supabase
+      .from('payment_plan_activities')
+      .select('*')
+      .eq('patient_id', patientId)
+      .eq('payment_link_id', paymentLinkId)
+      .order('performed_at', { ascending: false });
+      
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching plan activities:', error);
+    return [];
+  }
+};
+
+export const recordPaymentPlanActivity = async (
+  patientId: string,
+  paymentLinkId: string,
+  clinicId: string,
+  actionType: PlanActivityType,
+  details: any,
+  userId?: string
+) => {
+  try {
+    const { data, error } = await supabase
+      .from('payment_plan_activities')
+      .insert({
+        patient_id: patientId,
+        payment_link_id: paymentLinkId,
+        clinic_id: clinicId,
+        action_type: actionType,
+        performed_by_user_id: userId,
+        details: details
+      })
+      .select();
+      
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error recording payment plan activity:', error);
+    return { success: false, error };
+  }
+};
+
+export const cancelPaymentPlan = async (patientId: string, paymentLinkId: string, userId?: string) => {
+  try {
+    // Get clinic_id for the activity record
+    const { data: scheduleData, error: scheduleError } = await supabase
+      .from('payment_schedule')
+      .select('clinic_id')
+      .eq('patient_id', patientId)
+      .eq('payment_link_id', paymentLinkId)
+      .limit(1)
+      .single();
+      
+    if (scheduleError) throw scheduleError;
+    
     // Update all pending installments for this plan to 'cancelled'
     const { data, error } = await supabase
       .from('payment_schedule')
       .update({ status: 'cancelled' })
       .eq('patient_id', patientId)
       .eq('payment_link_id', paymentLinkId)
-      .in('status', ['pending', 'upcoming', 'paused'])
+      .in('status', ['pending', 'upcoming', 'paused', 'sent', 'processed'])
       .select();
 
     if (error) throw error;
+    
+    // Record the activity
+    await recordPaymentPlanActivity(
+      patientId,
+      paymentLinkId,
+      scheduleData.clinic_id,
+      'cancel',
+      { 
+        installments_affected: data.length,
+        reason: 'User cancelled plan'
+      },
+      userId
+    );
+    
     return { success: true, data };
   } catch (error) {
     console.error('Error cancelling payment plan:', error);
@@ -114,18 +185,47 @@ export const cancelPaymentPlan = async (patientId: string, paymentLinkId: string
   }
 };
 
-export const pausePaymentPlan = async (patientId: string, paymentLinkId: string) => {
+export const pausePaymentPlan = async (patientId: string, paymentLinkId: string, userId?: string) => {
   try {
+    // Get clinic_id for the activity record
+    const { data: scheduleData, error: scheduleError } = await supabase
+      .from('payment_schedule')
+      .select('clinic_id')
+      .eq('patient_id', patientId)
+      .eq('payment_link_id', paymentLinkId)
+      .limit(1)
+      .single();
+      
+    if (scheduleError) throw scheduleError;
+    
     // Update all pending/upcoming installments for this plan to 'paused'
     const { data, error } = await supabase
       .from('payment_schedule')
       .update({ status: 'paused' })
       .eq('patient_id', patientId)
       .eq('payment_link_id', paymentLinkId)
-      .in('status', ['pending', 'upcoming'])
+      .in('status', ['pending', 'upcoming', 'sent', 'processed'])
       .select();
 
     if (error) throw error;
+    
+    // Record the activity
+    await recordPaymentPlanActivity(
+      patientId,
+      paymentLinkId,
+      scheduleData.clinic_id,
+      'pause',
+      { 
+        installments_affected: data.length,
+        instalments_paused: data.map(item => ({
+          id: item.id,
+          payment_number: item.payment_number,
+          due_date: item.due_date
+        }))
+      },
+      userId
+    );
+    
     return { success: true, data };
   } catch (error) {
     console.error('Error pausing payment plan:', error);
@@ -134,9 +234,20 @@ export const pausePaymentPlan = async (patientId: string, paymentLinkId: string)
   }
 };
 
-export const resumePaymentPlan = async (patientId: string, paymentLinkId: string, resumeDate: Date) => {
+export const resumePaymentPlan = async (patientId: string, paymentLinkId: string, resumeDate: Date, userId?: string) => {
   try {
     console.log('Original resumeDate received:', resumeDate);
+    
+    // Get clinic_id and other data for the activity record
+    const { data: scheduleData, error: scheduleError } = await supabase
+      .from('payment_schedule')
+      .select('clinic_id, payment_frequency')
+      .eq('patient_id', patientId)
+      .eq('payment_link_id', paymentLinkId)
+      .limit(1)
+      .single();
+      
+    if (scheduleError) throw scheduleError;
     
     // First get all paused installments for this plan
     const { data: pausedInstallments, error: fetchError } = await supabase
@@ -153,14 +264,24 @@ export const resumePaymentPlan = async (patientId: string, paymentLinkId: string
       return { success: true, message: 'No paused installments found' };
     }
     
+    // Keep track of original and new due dates for audit
+    const dueChanges = [];
+    
     // Calculate new due dates for each installment
-    const frequency = pausedInstallments[0]?.payment_frequency || 'monthly';
+    const frequency = scheduleData.payment_frequency || 'monthly';
     const updatePromises = pausedInstallments.map((installment, index) => {
       // Calculate new due date based on the resume date and installment index
       const newDueDate = calculateNewDueDate(resumeDate, index, frequency);
       
       // Format date using YYYY-MM-DD format to avoid timezone issues
       const formattedDate = formatDateToYYYYMMDD(newDueDate);
+      
+      // Track changes for audit
+      dueChanges.push({
+        installment_id: installment.id,
+        payment_number: installment.payment_number,
+        new_due_date: formattedDate
+      });
       
       console.log(`Installment ${installment.payment_number}, new due date: ${formattedDate}`);
       
@@ -176,6 +297,20 @@ export const resumePaymentPlan = async (patientId: string, paymentLinkId: string
     // Wait for all updates to complete
     await Promise.all(updatePromises);
     
+    // Record the activity
+    await recordPaymentPlanActivity(
+      patientId,
+      paymentLinkId,
+      scheduleData.clinic_id,
+      'resume',
+      { 
+        installments_affected: pausedInstallments.length,
+        resume_date: formatDateToYYYYMMDD(resumeDate),
+        schedule_changes: dueChanges
+      },
+      userId
+    );
+    
     return { success: true };
   } catch (error) {
     console.error('Error resuming payment plan:', error);
@@ -184,17 +319,41 @@ export const resumePaymentPlan = async (patientId: string, paymentLinkId: string
   }
 };
 
-export const reschedulePaymentPlan = async (patientId: string, paymentLinkId: string, newStartDate: Date) => {
+export const reschedulePaymentPlan = async (
+  patientId: string, 
+  paymentLinkId: string, 
+  newStartDate: Date,
+  userId?: string
+) => {
   try {
     console.log('Original newStartDate received:', newStartDate);
     
-    // First get all pending/upcoming installments for this plan
-    const { data: pendingInstallments, error: fetchError } = await supabase
+    // Get clinic_id and other data for the activity record
+    const { data: scheduleData, error: scheduleError } = await supabase
       .from('payment_schedule')
-      .select('id, payment_number, payment_frequency')
+      .select('clinic_id, payment_frequency')
       .eq('patient_id', patientId)
       .eq('payment_link_id', paymentLinkId)
-      .in('status', ['pending', 'upcoming'])
+      .limit(1)
+      .single();
+      
+    if (scheduleError) throw scheduleError;
+    
+    // First get all pending/upcoming/sent/processed installments for this plan
+    const { data: pendingInstallments, error: fetchError } = await supabase
+      .from('payment_schedule')
+      .select(`
+        id, 
+        payment_number, 
+        payment_frequency,
+        due_date,
+        status,
+        payment_request_id,
+        amount
+      `)
+      .eq('patient_id', patientId)
+      .eq('payment_link_id', paymentLinkId)
+      .in('status', ['pending', 'upcoming', 'sent', 'processed'])
       .order('payment_number', { ascending: true });
     
     if (fetchError) throw fetchError;
@@ -203,25 +362,71 @@ export const reschedulePaymentPlan = async (patientId: string, paymentLinkId: st
       return { success: true, message: 'No pending installments found to reschedule' };
     }
     
+    // Track all changes for audit log
+    const changes = {
+      original_dates: {},
+      new_dates: {},
+      sent_payment_requests_cancelled: []
+    };
+    
     // Calculate new due dates for each installment
-    const frequency = pendingInstallments[0]?.payment_frequency || 'monthly';
-    const updatePromises = pendingInstallments.map((installment, index) => {
+    const frequency = scheduleData.payment_frequency || 'monthly';
+    
+    // Process each installment
+    const updatePromises = pendingInstallments.map(async (installment, index) => {
       // Calculate new due date based on the new start date and installment index
       const newDueDate = calculateNewDueDate(newStartDate, index, frequency);
-      
-      // Format date using YYYY-MM-DD format to avoid timezone issues
       const formattedDate = formatDateToYYYYMMDD(newDueDate);
+      
+      // Track original and new date for audit
+      changes.original_dates[installment.id] = installment.due_date;
+      changes.new_dates[installment.id] = formattedDate;
+      
+      // Handle sent or processed payment requests differently
+      if ((installment.status === 'sent' || installment.status === 'processed') && installment.payment_request_id) {
+        // Cancel the existing payment request
+        const { error: cancelError } = await supabase
+          .from('payment_requests')
+          .update({ status: 'cancelled' })
+          .eq('id', installment.payment_request_id)
+          .select();
+          
+        if (cancelError) {
+          console.error('Error cancelling payment request:', cancelError);
+        } else {
+          changes.sent_payment_requests_cancelled.push(installment.payment_request_id);
+        }
+      }
       
       console.log(`Installment ${installment.payment_number}, new due date: ${formattedDate}`);
       
+      // Update the installment with new due date and reset to pending status
       return supabase
         .from('payment_schedule')
-        .update({ due_date: formattedDate })
+        .update({ 
+          due_date: formattedDate,
+          status: 'pending',  // Reset to pending since we've cancelled any existing requests
+          payment_request_id: null  // Clear the payment request reference
+        })
         .eq('id', installment.id);
     });
     
     // Wait for all updates to complete
     await Promise.all(updatePromises);
+    
+    // Record the activity
+    await recordPaymentPlanActivity(
+      patientId,
+      paymentLinkId,
+      scheduleData.clinic_id,
+      'reschedule',
+      { 
+        installments_affected: pendingInstallments.length,
+        new_start_date: formatDateToYYYYMMDD(newStartDate),
+        changes: changes
+      },
+      userId
+    );
     
     return { success: true };
   } catch (error) {

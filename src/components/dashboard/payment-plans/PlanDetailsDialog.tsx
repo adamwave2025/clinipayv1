@@ -6,7 +6,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { X } from 'lucide-react';
 import { 
   Table, 
   TableBody, 
@@ -15,17 +14,20 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Plan, PlanInstallment } from '@/utils/paymentPlanUtils';
+import { PlanActivity } from '@/utils/planActivityUtils';
 import PlanActionsDropdown from './PlanActionsDropdown';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import StatusBadge from '@/components/common/StatusBadge';
+import ActivityLog from './ActivityLog';
 
 interface PlanDetailsDialogProps {
   showPlanDetails: boolean;
   setShowPlanDetails: (show: boolean) => void;
   selectedPlan: Plan | null;
   installments: PlanInstallment[];
+  activities: PlanActivity[];
+  isLoadingActivities?: boolean;
   onSendReminder: (installmentId: string) => void;
   onViewPaymentDetails: (installment: PlanInstallment) => void;
   onCancelPlan: () => void;
@@ -40,6 +42,8 @@ const PlanDetailsDialog = ({
   setShowPlanDetails,
   selectedPlan,
   installments,
+  activities,
+  isLoadingActivities = false,
   onSendReminder,
   onViewPaymentDetails,
   onCancelPlan,
@@ -151,6 +155,12 @@ const PlanDetailsDialog = ({
               </ScrollArea>
             </div>
           </div>
+          
+          {/* Activity Log */}
+          <ActivityLog 
+            activities={activities} 
+            isLoading={isLoadingActivities} 
+          />
         </div>
       </SheetContent>
     </Sheet>

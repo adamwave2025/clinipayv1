@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   cancelPaymentPlan, 
   pausePaymentPlan, 
@@ -16,6 +17,7 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { user } = useAuth();
 
   const handleSendReminder = async (installmentId: string) => {
     // Implementation for sending payment reminder
@@ -25,7 +27,7 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
   const handleCancelPlan = async (patientId: string, paymentLinkId: string) => {
     try {
       setIsProcessing(true);
-      const result = await cancelPaymentPlan(patientId, paymentLinkId);
+      const result = await cancelPaymentPlan(patientId, paymentLinkId, user?.id);
       
       if (result.success) {
         toast.success('Payment plan cancelled successfully');
@@ -45,7 +47,7 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
   const handlePausePlan = async (patientId: string, paymentLinkId: string) => {
     try {
       setIsProcessing(true);
-      const result = await pausePaymentPlan(patientId, paymentLinkId);
+      const result = await pausePaymentPlan(patientId, paymentLinkId, user?.id);
       
       if (result.success) {
         toast.success('Payment plan paused successfully');
@@ -70,7 +72,7 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
       // Ensure the date is properly normalized before passing to the service
       console.log('In usePlanActions, resuming with date:', resumeDate.toISOString());
       
-      const result = await resumePaymentPlan(patientId, paymentLinkId, resumeDate);
+      const result = await resumePaymentPlan(patientId, paymentLinkId, resumeDate, user?.id);
       
       if (result.success) {
         toast.success('Payment plan resumed successfully');
@@ -94,7 +96,7 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
       
       console.log('In usePlanActions, rescheduling with date:', newStartDate.toISOString());
       
-      const result = await reschedulePaymentPlan(patientId, paymentLinkId, newStartDate);
+      const result = await reschedulePaymentPlan(patientId, paymentLinkId, newStartDate, user?.id);
       
       if (result.success) {
         toast.success('Payment plan rescheduled successfully');
