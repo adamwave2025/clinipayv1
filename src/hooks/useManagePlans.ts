@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -116,11 +117,15 @@ export const useManagePlans = () => {
           // Add this entry to the plan's schedule
           const plan = plansByPatient.get(planKey);
           
-          // Check if this installment is overdue (pending and due date is in the past)
+          // Check if this installment is overdue (pending or sent and due date is in the past)
           const dueDate = new Date(entry.due_date);
           const now = new Date();
           now.setHours(0, 0, 0, 0); // Reset time to start of day for fair comparison
-          const isOverdue = entry.status === 'pending' && dueDate < now;
+          
+          // UPDATED: Consider both 'pending' and 'processed' and 'sent' status for overdue check
+          const isOverdue = (entry.status === 'pending' || entry.status === 'processed' || entry.status === 'sent') && 
+                           dueDate < now && 
+                           !entry.payment_requests?.payment_id;
           
           if (isOverdue) {
             plan.hasOverduePayments = true;
@@ -156,15 +161,21 @@ export const useManagePlans = () => {
           // Sort schedule by due date
           plan.schedule.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
           
-          // Determine plan status
-          if (plan.progress === 100) {
-            plan.status = 'completed';
-          } else if (plan.hasOverduePayments) {
-            // NEW: Set status to overdue if any payment is overdue
+          // Determine plan status - UPDATED LOGIC ORDER
+          // 1. First check for overdue payments
+          if (plan.hasOverduePayments) {
             plan.status = 'overdue';
-          } else if (plan.paidInstallments === 0) {
+          }
+          // 2. Then check if it's completed
+          else if (plan.progress === 100) {
+            plan.status = 'completed';
+          }
+          // 3. Then check if it's pending (no payments made)
+          else if (plan.paidInstallments === 0) {
             plan.status = 'pending';
-          } else {
+          }
+          // 4. Otherwise it's active
+          else {
             plan.status = 'active';
           }
           
@@ -222,18 +233,21 @@ export const useManagePlans = () => {
           ? format(parseISO(item.payment_requests.paid_at), 'yyyy-MM-dd')
           : null;
           
-        // UPDATED: Map both 'processed' and 'sent' status to display as 'sent'
+        // Check if it's overdue
+        const now = new Date();
+        const due = parseISO(item.due_date);
+        const isPaid = item.payment_requests?.payment_id || item.payment_requests?.status === 'paid';
+        
+        // UPDATED: Determine status more accurately
         let status;
         
         if (item.payment_requests?.payment_id || item.payment_requests?.status === 'paid') {
           status = 'paid';
         } else if (item.status === 'sent' || item.status === 'processed') {
-          // Map both 'sent' and 'processed' to display as 'sent'
-          status = 'sent';
+          // If sent/processed but due date has passed, mark as overdue
+          status = now > due ? 'overdue' : 'sent';
         } else if (item.status === 'pending') {
           // Check if it's overdue
-          const now = new Date();
-          const due = parseISO(item.due_date);
           status = now > due ? 'overdue' : 'upcoming';
         } else {
           status = item.status;
