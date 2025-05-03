@@ -40,7 +40,7 @@ export interface Plan {
   totalInstallments: number;
   paidInstallments: number;
   progress: number;
-  status: 'active' | 'pending' | 'completed' | 'overdue' | 'cancelled';
+  status: 'active' | 'pending' | 'completed' | 'overdue' | 'cancelled' | 'paused';
   nextDueDate: string | null;
   schedule: any[];
   hasOverduePayments: boolean;
@@ -128,34 +128,40 @@ export const groupPaymentSchedulesByPlan = (scheduleItems: PaymentScheduleItem[]
     plan.schedule.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
     
     // Check if ANY payment in the schedule is cancelled
-    // This is the key change - we now consider a plan cancelled if ANY payment is cancelled
     const hasCancelledPayment = plan.schedule.some(item => item.status === 'cancelled');
     
+    // Check if ANY payment is paused (new logic)
+    const hasPausedPayment = plan.schedule.some(item => item.status === 'paused');
+    
     // Determine plan status based on priority:
-    // 1. First check if any payment is cancelled (new logic)
+    // 1. First check if any payment is cancelled
     if (hasCancelledPayment) {
       plan.status = 'cancelled';
     }
-    // 2. Then check for overdue payments
+    // 2. Check if any payment is paused (new logic)
+    else if (hasPausedPayment) {
+      plan.status = 'paused';
+    } 
+    // 3. Then check for overdue payments
     else if (plan.hasOverduePayments) {
       plan.status = 'overdue';
     }
-    // 3. Then check if it's completed
+    // 4. Then check if it's completed
     else if (plan.progress === 100) {
       plan.status = 'completed';
     }
-    // 4. Then check if it's pending (no payments made)
+    // 5. Then check if it's pending (no payments made)
     else if (plan.paidInstallments === 0) {
       plan.status = 'pending';
     }
-    // 5. Otherwise it's active
+    // 6. Otherwise it's active
     else {
       plan.status = 'active';
     }
     
-    // Find the next due date (first non-paid, non-cancelled installment)
+    // Find the next due date (first non-paid, non-cancelled, non-paused installment)
     const upcoming = plan.schedule.find(entry => 
-      entry.status !== 'paid' && entry.status !== 'cancelled');
+      entry.status !== 'paid' && entry.status !== 'cancelled' && entry.status !== 'paused');
     plan.nextDueDate = upcoming ? upcoming.dueDate : null;
   });
   
@@ -180,6 +186,8 @@ export const formatPlanInstallments = (installmentData: any[]): PlanInstallment[
       status = 'paid';
     } else if (item.status === 'cancelled') {
       status = 'cancelled';
+    } else if (item.status === 'paused') {
+      status = 'paused';  
     } else if (item.status === 'sent' || item.status === 'processed') {
       // If sent/processed but due date has passed, mark as overdue
       status = now > due ? 'overdue' : 'sent';

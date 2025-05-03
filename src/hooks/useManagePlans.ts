@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plan, PlanInstallment } from '@/utils/paymentPlanUtils';
@@ -15,9 +16,18 @@ export const useManagePlans = () => {
   const { paymentData, setPaymentData, fetchPaymentDataForInstallment } = usePaymentDetailsFetcher();
   
   // Pass fetchPaymentPlans directly as it returns Promise<Plan[]>
-  const { showCancelDialog, setShowCancelDialog, handleSendReminder, handleCancelPlan, handlePausePlan } = usePlanActions(
-    () => fetchPaymentPlans(user.id)
-  );
+  const { 
+    showCancelDialog, 
+    setShowCancelDialog, 
+    showPauseDialog,
+    setShowPauseDialog,
+    showResumeDialog,
+    setShowResumeDialog,
+    handleSendReminder, 
+    handleCancelPlan, 
+    handlePausePlan,
+    handleResumePlan
+  } = usePlanActions(() => fetchPaymentPlans(user.id));
   
   const { 
     searchQuery, setSearchQuery, 
@@ -90,6 +100,46 @@ export const useManagePlans = () => {
     }
   };
 
+  const handleOpenPauseDialog = () => {
+    setShowPauseDialog(true);
+  };
+
+  const handlePausePlanConfirm = async () => {
+    if (!selectedPlan) return;
+    
+    const [patientId, paymentLinkId] = selectedPlan.id.split('_');
+    const success = await handlePausePlan(patientId, paymentLinkId);
+    
+    if (success) {
+      setShowPauseDialog(false);
+      setShowPlanDetails(false);
+      // Refresh payment plans data
+      await fetchPaymentPlans(user.id);
+    }
+  };
+
+  const handleOpenResumeDialog = () => {
+    setShowResumeDialog(true);
+  };
+
+  const handleResumePlanConfirm = async (resumeDate: Date) => {
+    if (!selectedPlan) return;
+    
+    const [patientId, paymentLinkId] = selectedPlan.id.split('_');
+    const success = await handleResumePlan(patientId, paymentLinkId, resumeDate);
+    
+    if (success) {
+      setShowResumeDialog(false);
+      setShowPlanDetails(false);
+      // Refresh payment plans data
+      await fetchPaymentPlans(user.id);
+    }
+  };
+
+  const isPlanPaused = (plan: Plan | null) => {
+    return plan?.status === 'paused';
+  };
+
   return {
     searchQuery,
     setSearchQuery,
@@ -114,7 +164,16 @@ export const useManagePlans = () => {
     setShowCancelDialog,
     handleCancelPlan: handleCancelPlanConfirm,
     handleOpenCancelDialog,
-    // Pause plan property
-    handlePausePlan
+    // Pause plan properties
+    showPauseDialog,
+    setShowPauseDialog,
+    handlePausePlan: handlePausePlanConfirm,
+    handleOpenPauseDialog,
+    // Resume plan properties
+    showResumeDialog,
+    setShowResumeDialog,
+    handleResumePlan: handleResumePlanConfirm,
+    handleOpenResumeDialog,
+    isPlanPaused
   };
 };

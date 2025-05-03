@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -101,7 +102,7 @@ export const cancelPaymentPlan = async (patientId: string, paymentLinkId: string
       .update({ status: 'cancelled' })
       .eq('patient_id', patientId)
       .eq('payment_link_id', paymentLinkId)
-      .in('status', ['pending', 'upcoming'])
+      .in('status', ['pending', 'upcoming', 'paused'])
       .select();
 
     if (error) throw error;
@@ -112,3 +113,96 @@ export const cancelPaymentPlan = async (patientId: string, paymentLinkId: string
     return { success: false, error };
   }
 };
+
+export const pausePaymentPlan = async (patientId: string, paymentLinkId: string) => {
+  try {
+    // Update all pending/upcoming installments for this plan to 'paused'
+    const { data, error } = await supabase
+      .from('payment_schedule')
+      .update({ status: 'paused' })
+      .eq('patient_id', patientId)
+      .eq('payment_link_id', paymentLinkId)
+      .in('status', ['pending', 'upcoming'])
+      .select();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error pausing payment plan:', error);
+    toast.error('Failed to pause payment plan');
+    return { success: false, error };
+  }
+};
+
+export const resumePaymentPlan = async (patientId: string, paymentLinkId: string, resumeDate: Date) => {
+  try {
+    // First get all paused installments for this plan
+    const { data: pausedInstallments, error: fetchError } = await supabase
+      .from('payment_schedule')
+      .select('id, payment_number, payment_frequency')
+      .eq('patient_id', patientId)
+      .eq('payment_link_id', paymentLinkId)
+      .eq('status', 'paused')
+      .order('payment_number', { ascending: true });
+    
+    if (fetchError) throw fetchError;
+    
+    if (!pausedInstallments || pausedInstallments.length === 0) {
+      return { success: true, message: 'No paused installments found' };
+    }
+    
+    // Calculate new due dates for each installment
+    const frequency = pausedInstallments[0]?.payment_frequency || 'monthly';
+    const updatePromises = pausedInstallments.map((installment, index) => {
+      // Calculate new due date based on the resume date and installment index
+      const newDueDate = calculateNewDueDate(resumeDate, index, frequency);
+      
+      return supabase
+        .from('payment_schedule')
+        .update({ 
+          status: 'pending',
+          due_date: newDueDate.toISOString().split('T')[0] // Format as YYYY-MM-DD
+        })
+        .eq('id', installment.id);
+    });
+    
+    // Wait for all updates to complete
+    await Promise.all(updatePromises);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error resuming payment plan:', error);
+    toast.error('Failed to resume payment plan');
+    return { success: false, error };
+  }
+};
+
+// Helper function to calculate new due date based on frequency
+function calculateNewDueDate(startDate: Date, index: number, frequency: string): Date {
+  const newDate = new Date(startDate);
+  
+  switch (frequency) {
+    case 'daily':
+      newDate.setDate(newDate.getDate() + index);
+      break;
+    case 'weekly':
+      newDate.setDate(newDate.getDate() + (index * 7));
+      break;
+    case 'biweekly':
+      newDate.setDate(newDate.getDate() + (index * 14));
+      break;
+    case 'monthly':
+      newDate.setMonth(newDate.getMonth() + index);
+      break;
+    case 'quarterly':
+      newDate.setMonth(newDate.getMonth() + (index * 3));
+      break;
+    case 'yearly':
+      newDate.setFullYear(newDate.getFullYear() + index);
+      break;
+    default:
+      newDate.setMonth(newDate.getMonth() + index);
+  }
+  
+  return newDate;
+}

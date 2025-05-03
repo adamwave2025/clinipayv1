@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PlusCircle, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,8 @@ import ActivePlansTable from '@/components/dashboard/payment-plans/ActivePlansTa
 import PlanDetailsDialog from '@/components/dashboard/payment-plans/PlanDetailsDialog';
 import InstallmentPaymentDialog from '@/components/dashboard/payment-plans/InstallmentPaymentDialog';
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
+import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
+import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDialog';
 import { useManagePlans } from '@/hooks/useManagePlans';
 
 const ManagePlansPage = () => {
@@ -35,8 +38,17 @@ const ManagePlansPage = () => {
     setShowCancelDialog,
     handleCancelPlan,
     handleOpenCancelDialog,
-    // Pause plan property
-    handlePausePlan
+    // Pause plan properties
+    showPauseDialog,
+    setShowPauseDialog,
+    handlePausePlan,
+    handleOpenPauseDialog,
+    // Resume plan properties
+    showResumeDialog,
+    setShowResumeDialog,
+    handleResumePlan,
+    handleOpenResumeDialog,
+    isPlanPaused
   } = useManagePlans();
 
   return (
@@ -90,7 +102,9 @@ const ManagePlansPage = () => {
         onSendReminder={handleSendReminder}
         onViewPaymentDetails={handleViewPaymentDetails}
         onCancelPlan={handleOpenCancelDialog}
-        onPausePlan={handlePausePlan}
+        onPausePlan={handleOpenPauseDialog}
+        onResumePlan={handleOpenResumeDialog}
+        isPlanPaused={isPlanPaused}
       />
 
       {/* Payment Details Dialog */}
@@ -106,6 +120,24 @@ const ManagePlansPage = () => {
         showDialog={showCancelDialog}
         setShowDialog={setShowCancelDialog}
         onConfirm={handleCancelPlan}
+        planName={selectedPlan?.planName || ''}
+        patientName={selectedPlan?.patientName || ''}
+      />
+
+      {/* Pause Plan Dialog */}
+      <PausePlanDialog
+        showDialog={showPauseDialog}
+        setShowDialog={setShowPauseDialog}
+        onConfirm={handlePausePlan}
+        planName={selectedPlan?.planName || ''}
+        patientName={selectedPlan?.patientName || ''}
+      />
+
+      {/* Resume Plan Dialog */}
+      <ResumePlanDialog
+        showDialog={showResumeDialog}
+        setShowDialog={setShowResumeDialog}
+        onConfirm={handleResumePlan}
         planName={selectedPlan?.planName || ''}
         patientName={selectedPlan?.patientName || ''}
       />

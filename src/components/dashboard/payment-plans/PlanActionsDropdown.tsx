@@ -13,12 +13,16 @@ import {
 interface PlanActionsDropdownProps {
   onCancelPlan: () => void;
   onPausePlan?: () => void;
+  onResumePlan?: () => void;
+  isPaused: boolean;
   isDisabled?: boolean;
 }
 
 const PlanActionsDropdown = ({ 
   onCancelPlan, 
   onPausePlan, 
+  onResumePlan,
+  isPaused,
   isDisabled = false 
 }: PlanActionsDropdownProps) => {
   return (
@@ -35,13 +39,23 @@ const PlanActionsDropdown = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[200px]">
-        <DropdownMenuItem
-          onClick={onPausePlan}
-          className="cursor-pointer"
-          disabled={!onPausePlan}
-        >
-          Pause Plan
-        </DropdownMenuItem>
+        {isPaused ? (
+          <DropdownMenuItem
+            onClick={onResumePlan}
+            className="cursor-pointer"
+            disabled={!onResumePlan}
+          >
+            Resume Plan
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem
+            onClick={onPausePlan}
+            className="cursor-pointer"
+            disabled={!onPausePlan}
+          >
+            Pause Plan
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={onCancelPlan}
