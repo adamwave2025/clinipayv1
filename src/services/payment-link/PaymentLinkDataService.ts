@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentLink } from '@/types/payment';
 import { RawClinicData } from '@/types/paymentLink';
@@ -145,6 +146,7 @@ export const PaymentLinkDataService = {
       if (!paymentsError && paymentsData) {
         // Calculate total paid
         const totalPaid = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
+        // Add total_paid property to the data object since it doesn't exist yet
         data.total_paid = totalPaid;
       }
     }
@@ -199,6 +201,7 @@ export const PaymentLinkDataService = {
       if (!paymentsError && paymentsData) {
         // Calculate total paid
         const totalPaid = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
+        // Add total_paid property to the data object since it doesn't exist yet
         data.total_paid = totalPaid;
       }
     }
