@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentLink } from '@/types/payment';
 import { RawClinicData } from '@/types/paymentLink';
@@ -108,41 +107,8 @@ export const PaymentLinkDataService = {
     return data;
   },
 
-  async fetchPaymentRequestWithClinic(requestId: string) {
-    const { data, error } = await supabase
-      .from('payment_requests')
-      .select(`
-        *,
-        clinics:clinic_id (
-          id,
-          clinic_name,
-          logo_url,
-          email,
-          phone,
-          address_line_1,
-          address_line_2,
-          city,
-          postcode,
-          stripe_status
-        ),
-        payment_links:payment_link_id (
-          title,
-          amount,
-          type,
-          description
-        )
-      `)
-      .eq('id', requestId)
-      .maybeSingle();
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return data;
-  },
-
   async fetchPaymentLinkWithClinic(linkId: string) {
+    // First check if this is a payment link
     const { data, error } = await supabase
       .from('payment_links')
       .select(`
@@ -165,6 +131,76 @@ export const PaymentLinkDataService = {
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    // If it's a payment plan, fetch additional data
+    if (data && data.payment_plan) {
+      // Calculate total paid from payments table
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('payments')
+        .select('amount_paid')
+        .eq('payment_link_id', linkId)
+        .eq('status', 'paid');
+      
+      if (!paymentsError && paymentsData) {
+        // Calculate total paid
+        const totalPaid = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
+        data.total_paid = totalPaid;
+      }
+    }
+
+    return data;
+  },
+
+  async fetchPaymentRequestWithClinic(requestId: string) {
+    const { data, error } = await supabase
+      .from('payment_requests')
+      .select(`
+        *,
+        clinics:clinic_id (
+          id,
+          clinic_name,
+          logo_url,
+          email,
+          phone,
+          address_line_1,
+          address_line_2,
+          city,
+          postcode,
+          stripe_status
+        ),
+        payment_links:payment_link_id (
+          title,
+          amount,
+          type,
+          description,
+          payment_plan,
+          payment_count,
+          payment_cycle,
+          plan_total_amount
+        )
+      `)
+      .eq('id', requestId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    // If this is a payment plan request, fetch additional data
+    if (data && data.payment_links && data.payment_links.payment_plan) {
+      // Calculate total paid from payments table
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('payments')
+        .select('amount_paid')
+        .eq('payment_link_id', data.payment_link_id)
+        .eq('status', 'paid');
+      
+      if (!paymentsError && paymentsData) {
+        // Calculate total paid
+        const totalPaid = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
+        data.total_paid = totalPaid;
+      }
     }
 
     return data;

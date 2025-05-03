@@ -1,7 +1,9 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Building, Mail, Phone, MapPin, Calendar } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import PaymentPlanBreakdown from './PaymentPlanBreakdown';
 
 interface ClinicInfo {
   name: string;
@@ -13,7 +15,21 @@ interface ClinicInfo {
   amount: number;
 }
 
-const PaymentPageClinicCard = ({ clinic }: { clinic: ClinicInfo }) => {
+interface PaymentPageClinicCardProps {
+  clinic: ClinicInfo;
+  paymentPlan?: boolean;
+  planTotalAmount?: number;
+  totalPaid?: number;
+  totalOutstanding?: number;
+}
+
+const PaymentPageClinicCard = ({ 
+  clinic, 
+  paymentPlan, 
+  planTotalAmount, 
+  totalPaid, 
+  totalOutstanding 
+}: PaymentPageClinicCardProps) => {
   // Generate initials for the avatar fallback
   const getInitials = (name: string) => {
     return name
@@ -81,6 +97,13 @@ const PaymentPageClinicCard = ({ clinic }: { clinic: ClinicInfo }) => {
           </div>
           
           <div className="mt-4 pt-4 border-t border-gray-100">
+            {paymentPlan && planTotalAmount && totalPaid !== undefined && totalOutstanding !== undefined && (
+              <PaymentPlanBreakdown
+                planTotalAmount={planTotalAmount}
+                totalPaid={totalPaid}
+                totalOutstanding={totalOutstanding}
+              />
+            )}
             <div className="flex items-center justify-between">
               <span className="font-medium text-gray-600">Amount Due:</span>
               <span className="text-xl font-bold text-primary">£{clinic.amount.toFixed(2)}</span>

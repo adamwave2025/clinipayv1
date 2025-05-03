@@ -29,6 +29,16 @@ export const PaymentLinkFormatter = {
     // If it's a payment link-based request
     if (requestData.payment_links) {
       const linkData = requestData.payment_links;
+      
+      // Extract payment plan data if available
+      const paymentPlan = linkData.payment_plan || false;
+      const planData = paymentPlan ? {
+        paymentPlan: true,
+        planTotalAmount: linkData.plan_total_amount || 0,
+        totalPaid: requestData.total_paid || 0,
+        totalOutstanding: (linkData.plan_total_amount || 0) - (requestData.total_paid || 0)
+      } : {};
+      
       return {
         id: requestData.id,
         title: linkData.title || `Payment for ${requestData.patient_name}`,
@@ -39,7 +49,8 @@ export const PaymentLinkFormatter = {
         patientName: requestData.patient_name,
         patientEmail: requestData.patient_email,
         patientPhone: requestData.patient_phone,
-        clinic: ClinicFormatter.formatClinicData(clinicData)
+        clinic: ClinicFormatter.formatClinicData(clinicData),
+        ...planData
       };
     }
 
@@ -51,6 +62,15 @@ export const PaymentLinkFormatter = {
 
     // Format clinic data from the link
     const clinicData = linkData.clinics as RawClinicData;
+    
+    // Extract payment plan data if available
+    const paymentPlan = linkData.payment_plan || false;
+    const planData = paymentPlan ? {
+      paymentPlan: true,
+      planTotalAmount: linkData.plan_total_amount || 0,
+      totalPaid: linkData.total_paid || 0,
+      totalOutstanding: (linkData.plan_total_amount || 0) - (linkData.total_paid || 0)
+    } : {};
 
     return {
       id: linkData.id,
@@ -58,7 +78,8 @@ export const PaymentLinkFormatter = {
       amount: linkData.amount,
       type: linkData.type || 'other',
       description: linkData.description,
-      clinic: ClinicFormatter.formatClinicData(clinicData)
+      clinic: ClinicFormatter.formatClinicData(clinicData),
+      ...planData
     };
   }
 };

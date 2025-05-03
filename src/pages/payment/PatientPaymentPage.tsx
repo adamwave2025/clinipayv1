@@ -38,6 +38,12 @@ const PatientPaymentPage = () => {
   const paymentType = linkData.title || 'Payment';
   const isStripeConnected = clinicData.stripeStatus === 'connected';
 
+  // Extract payment plan data if available
+  const isPaymentPlan = !!linkData.paymentPlan;
+  const planTotalAmount = linkData.planTotalAmount;
+  const totalPaid = linkData.totalPaid || 0;
+  const totalOutstanding = linkData.totalOutstanding || 0;
+
   // Prepare default values from payment request patient info
   const defaultValues = linkData?.isRequest ? {
     name: linkData.patientName || '',
@@ -50,15 +56,21 @@ const PatientPaymentPage = () => {
       {/* Left Column - Clinic Info & Security */}
       <div className="space-y-4">
         {clinicData && (
-          <PaymentPageClinicCard clinic={{
-            name: clinicData.name,
-            logo: clinicData.logo || '',
-            email: clinicData.email,
-            phone: clinicData.phone,
-            address: clinicData.address,
-            paymentType: paymentType,
-            amount: linkData.amount
-          }} />
+          <PaymentPageClinicCard 
+            clinic={{
+              name: clinicData.name,
+              logo: clinicData.logo || '',
+              email: clinicData.email,
+              phone: clinicData.phone,
+              address: clinicData.address,
+              paymentType: paymentType,
+              amount: linkData.amount
+            }}
+            paymentPlan={isPaymentPlan}
+            planTotalAmount={planTotalAmount}
+            totalPaid={totalPaid}
+            totalOutstanding={totalOutstanding}
+          />
         )}
         <CliniPaySecuritySection />
       </div>

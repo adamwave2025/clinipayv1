@@ -19,6 +19,11 @@ export interface PaymentLinkData {
   patientName?: string;
   patientEmail?: string;
   patientPhone?: string;
+  // Payment plan fields
+  paymentPlan?: boolean;
+  planTotalAmount?: number;
+  totalPaid?: number;
+  totalOutstanding?: number;
 }
 
 export interface RawClinicData {
