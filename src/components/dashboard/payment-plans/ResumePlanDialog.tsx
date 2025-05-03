@@ -86,7 +86,7 @@ const ResumePlanDialog = ({
                   {date ? format(date, "PPP") : <span>Pick a date</span>}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
+              <PopoverContent className="w-auto p-0 max-h-[300px] overflow-y-auto" align="start">
                 <Calendar
                   mode="single"
                   selected={date}
