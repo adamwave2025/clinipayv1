@@ -32,7 +32,7 @@ export function usePaymentFetcher(
         .from('payments')
         .select(`
           *,
-          payment_links(id, type, title, description)
+          payment_links(id, type, title, description, payment_plan)
         `)
         .eq('clinic_id', userData.clinic_id)
         .order('paid_at', { ascending: false });
@@ -44,7 +44,7 @@ export function usePaymentFetcher(
         .from('payment_requests')
         .select(`
           *,
-          payment_links(id, type, title, description)
+          payment_links(id, type, title, description, payment_plan)
         `)
         .eq('clinic_id', userData.clinic_id)
         .is('paid_at', null) // Only get unpaid/sent requests

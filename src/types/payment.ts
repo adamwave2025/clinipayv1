@@ -11,7 +11,7 @@ export interface Payment {
   platformFee?: number; // Added platform fee property
   date: string;
   status: 'paid' | 'refunded' | 'sent' | 'partially_refunded';
-  type: 'deposit' | 'treatment' | 'consultation' | 'other';
+  type: 'deposit' | 'treatment' | 'consultation' | 'payment_plan' | 'other';
   paymentUrl?: string; // URL for testing payment links
   refundedAmount?: number; // Amount that was refunded (for partial refunds)
   reference?: string; // Payment reference (PAY-XXXX-YYYY)

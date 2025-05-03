@@ -65,6 +65,7 @@ const PaymentHistoryFilters: React.FC<PaymentHistoryFiltersProps> = ({
               <SelectItem value="deposit">Deposit</SelectItem>
               <SelectItem value="treatment">Treatment</SelectItem>
               <SelectItem value="consultation">Consultation</SelectItem>
+              <SelectItem value="payment_plan">Payment Plan</SelectItem>
               <SelectItem value="other">Other</SelectItem>
             </SelectGroup>
           </SelectContent>

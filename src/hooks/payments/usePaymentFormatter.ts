@@ -15,7 +15,10 @@ export function usePaymentFormatter() {
       
       // If linked to a payment link, use that type and title
       if (payment.payment_links) {
-        if (payment.payment_links.type) {
+        // Check if this is a payment plan first
+        if (payment.payment_links.payment_plan === true) {
+          paymentType = 'payment_plan';
+        } else if (payment.payment_links.type) {
           const linkType = payment.payment_links.type;
           // Ensure type is one of the allowed values
           if (['deposit', 'treatment', 'consultation', 'other'].includes(linkType)) {
@@ -83,8 +86,12 @@ export function usePaymentFormatter() {
         paymentType = 'other';
         linkTitle = 'Custom Payment Request';
       } else if (request.payment_links) {
+        // Check if this is a payment plan first
+        if (request.payment_links.payment_plan === true) {
+          paymentType = 'payment_plan';
+        }
         // It's a payment link-based request, use the link's type, title and description
-        if (request.payment_links.type) {
+        else if (request.payment_links.type) {
           const linkType = request.payment_links.type;
           if (['deposit', 'treatment', 'consultation', 'other'].includes(linkType)) {
             paymentType = linkType as Payment['type'];
