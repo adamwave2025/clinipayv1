@@ -199,11 +199,26 @@ const SendLinkPage = () => {
         return { success: false };
       }
 
+      // Get the clinic id from the user
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('clinic_id')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (userError) {
+        console.error('Error getting clinic ID:', userError);
+        toast.error('Failed to schedule payment plan');
+        return { success: false };
+      }
+
+      const clinicId = userData.clinic_id;
+
       // First create a payment request to get a reference
       const { data: paymentRequest, error: requestError } = await supabase
         .from('payment_requests')
         .insert({
-          clinic_id: selectedLink.clinicId,
+          clinic_id: clinicId,
           patient_name: formData.patientName,
           patient_email: formData.patientEmail,
           patient_phone: formData.patientPhone,
@@ -231,7 +246,7 @@ const SendLinkPage = () => {
 
       // Create schedule entries
       const scheduleEntries = schedule.map(entry => ({
-        clinic_id: selectedLink.clinicId,
+        clinic_id: clinicId,
         patient_id: selectedPatient?.id,
         payment_link_id: selectedLink.id,
         payment_request_id: paymentRequest.id,
