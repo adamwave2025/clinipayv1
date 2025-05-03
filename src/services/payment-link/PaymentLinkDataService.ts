@@ -146,8 +146,9 @@ export const PaymentLinkDataService = {
       if (!paymentsError && paymentsData) {
         // Calculate total paid
         const totalPaid = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
-        // Add total_paid property to the data object since it doesn't exist yet
-        data.total_paid = totalPaid;
+        
+        // Use type assertion to add the total_paid property
+        (data as any).total_paid = totalPaid;
       }
     }
 
@@ -201,8 +202,9 @@ export const PaymentLinkDataService = {
       if (!paymentsError && paymentsData) {
         // Calculate total paid
         const totalPaid = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
-        // Add total_paid property to the data object since it doesn't exist yet
-        data.total_paid = totalPaid;
+        
+        // Use type assertion to add the total_paid property
+        (data as any).total_paid = totalPaid;
       }
     }
 
