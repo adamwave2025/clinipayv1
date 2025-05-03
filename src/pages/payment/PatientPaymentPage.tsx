@@ -15,6 +15,7 @@ import { usePaymentInit } from '@/hooks/usePaymentInit';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import Logo from '@/components/common/Logo';
+import { CheckCircle2 } from 'lucide-react';
 
 const PatientPaymentPage = () => {
   const navigate = useNavigate();
@@ -81,8 +82,13 @@ const PatientPaymentPage = () => {
     return null; // Will redirect via useEffect in usePaymentInit
   }
 
+  // Check if the payment has been paid
+  const isPaid = linkData.status === 'paid' || (linkData.isRequest && !!linkData.paymentId);
+  
   // Check if the payment link or request has been cancelled
   const isCancelled = linkData.status === 'cancelled';
+  
+  // Render the cancelled state UI
   if (isCancelled) {
     console.log("Payment request is cancelled, showing cancelled message");
     return (
@@ -126,6 +132,61 @@ const PatientPaymentPage = () => {
             
             <p className="text-sm text-gray-500 mt-4">
               If you believe this is an error, please contact the clinic using the information provided.
+            </p>
+          </div>
+        </div>
+      </PaymentLayout>
+    );
+  }
+
+  // Render the paid state UI
+  if (isPaid) {
+    console.log("Payment has been paid, showing success message");
+    return (
+      <PaymentLayout isSplitView={true} hideHeaderFooter={true}>
+        {/* Left Column - Clinic Info & Security */}
+        <div className="space-y-4">
+          {linkData.clinic && (
+            <PaymentPageClinicCard 
+              clinic={{
+                name: linkData.clinic.name,
+                logo: linkData.clinic.logo || '',
+                email: linkData.clinic.email,
+                phone: linkData.clinic.phone,
+                address: linkData.clinic.address,
+                paymentType: linkData.title || 'Payment',
+                amount: linkData.amount
+              }}
+              paymentPlan={!!linkData.paymentPlan}
+              planTotalAmount={linkData.planTotalAmount}
+              totalPaid={linkData.totalPaid}
+              totalOutstanding={linkData.totalOutstanding}
+            />
+          )}
+          <CliniPaySecuritySection />
+        </div>
+        
+        {/* Right Column - Paid Success Message */}
+        <div className="bg-white p-6 rounded-lg border border-green-100">
+          <div className="flex justify-center mb-4">
+            <Logo className="h-10" />
+          </div>
+          
+          <div className="text-center">
+            <div className="bg-green-50 p-6 rounded-lg mb-6">
+              <PaymentStatusSummaryContent
+                status="success"
+                title="Payment Completed Successfully"
+                description={
+                  linkData.paymentPlan 
+                    ? `Thank you for your payment. This installment has been successfully processed. You have paid £${linkData.totalPaid?.toFixed(2)} of the total £${linkData.planTotalAmount?.toFixed(2)}.` 
+                    : "Thank you for your payment. Your transaction has been successfully processed."
+                }
+              />
+            </div>
+            
+            <p className="text-sm text-gray-500 mt-4">
+              A confirmation email has been sent with your payment receipt. If you have any questions, please contact the clinic using the information provided.
             </p>
           </div>
         </div>

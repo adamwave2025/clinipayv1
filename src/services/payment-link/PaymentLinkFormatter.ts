@@ -12,6 +12,10 @@ export const PaymentLinkFormatter = {
     // Handle cancelled status specifically
     const status = requestData.status === 'cancelled' ? 'cancelled' : requestData.status;
 
+    // Check if this payment has been paid
+    const paymentId = requestData.payment_id;
+    const isPaid = status === 'paid' || !!paymentId;
+    
     // If it's a custom amount request
     if (requestData.custom_amount && !requestData.payment_link_id) {
       return {
@@ -26,6 +30,7 @@ export const PaymentLinkFormatter = {
         patientEmail: requestData.patient_email,
         patientPhone: requestData.patient_phone,
         status: status,
+        paymentId: paymentId,
         clinic: ClinicFormatter.formatClinicData(clinicData)
       };
     }
@@ -54,6 +59,7 @@ export const PaymentLinkFormatter = {
         patientEmail: requestData.patient_email,
         patientPhone: requestData.patient_phone,
         status: status,
+        paymentId: paymentId,
         clinic: ClinicFormatter.formatClinicData(clinicData),
         ...planData
       };

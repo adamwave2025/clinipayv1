@@ -25,6 +25,8 @@ export interface PaymentLinkData {
   planTotalAmount?: number;
   totalPaid?: number;
   totalOutstanding?: number;
+  // Added field to track if payment is completed
+  paymentId?: string;
 }
 
 export interface RawClinicData {
