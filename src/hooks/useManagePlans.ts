@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -207,12 +206,13 @@ export const useManagePlans = () => {
           ? format(parseISO(item.payment_requests.paid_at), 'yyyy-MM-dd')
           : null;
           
-        // CHANGED: Determine status and map to UI status
+        // UPDATED: Map both 'processed' and 'sent' status to display as 'sent'
         let status;
         
         if (item.payment_requests?.payment_id || item.payment_requests?.status === 'paid') {
           status = 'paid';
-        } else if (item.status === 'sent') {
+        } else if (item.status === 'sent' || item.status === 'processed') {
+          // Map both 'sent' and 'processed' to display as 'sent'
           status = 'sent';
         } else if (item.status === 'pending') {
           // Check if it's overdue
