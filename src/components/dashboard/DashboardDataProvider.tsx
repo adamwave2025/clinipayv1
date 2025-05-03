@@ -30,8 +30,9 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [archivedLinks, setArchivedLinks] = useState<PaymentLink[]>([]);
 
   useEffect(() => {
-    setPaymentLinks(rawPaymentLinks);
-    setArchivedLinks(rawArchivedLinks);
+    // Filter out payment plans from raw links
+    setPaymentLinks(rawPaymentLinks.filter(link => !link.paymentPlan));
+    setArchivedLinks(rawArchivedLinks.filter(link => !link.paymentPlan));
   }, [rawPaymentLinks, rawArchivedLinks]);
 
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
