@@ -5,9 +5,15 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 interface SubmitButtonProps {
   isLoading: boolean;
+  loadingText?: string;
+  defaultText?: string;
 }
 
-const SubmitButton = ({ isLoading }: SubmitButtonProps) => {
+const SubmitButton = ({ 
+  isLoading, 
+  loadingText = "Processing...", 
+  defaultText = "Pay Now" 
+}: SubmitButtonProps) => {
   return (
     <Button 
       type="submit" 
@@ -18,10 +24,10 @@ const SubmitButton = ({ isLoading }: SubmitButtonProps) => {
         {isLoading ? (
           <>
             <LoadingSpinner size="sm" className="mr-2" />
-            <span>Processing...</span>
+            <span>{loadingText}</span>
           </>
         ) : (
-          "Pay Now"
+          defaultText
         )}
       </span>
     </Button>

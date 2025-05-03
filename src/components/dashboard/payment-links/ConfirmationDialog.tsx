@@ -33,6 +33,7 @@ interface ConfirmationDialogProps {
   } | null;
   isPaymentPlan: boolean;
   isLoading: boolean;
+  isSchedulingPlan?: boolean;
   onConfirm: () => void;
 }
 
@@ -44,8 +45,12 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   selectedPaymentLink,
   isPaymentPlan,
   isLoading,
+  isSchedulingPlan = false,
   onConfirm
 }) => {
+  // Determine the current loading state based on payment type
+  const isCurrentlyLoading = isPaymentPlan ? isSchedulingPlan : isLoading;
+  
   const formatCycle = (cycle?: string) => {
     if (!cycle) return 'monthly';
     switch (cycle) {
@@ -132,16 +137,16 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)}
-            disabled={isLoading}
+            disabled={isCurrentlyLoading}
           >
             Cancel
           </Button>
           <Button 
             onClick={onConfirm}
-            disabled={isLoading}
+            disabled={isCurrentlyLoading}
             className="btn-gradient"
           >
-            {isLoading ? (
+            {isCurrentlyLoading ? (
               <>
                 <LoadingSpinner size="sm" className="mr-2" />
                 {isPaymentPlan ? 'Scheduling...' : 'Sending...'}

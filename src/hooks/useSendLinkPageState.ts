@@ -23,6 +23,7 @@ export function useSendLinkPageState() {
   const [regularLinks, setRegularLinks] = useState<PaymentLink[]>([]);
   const [paymentPlans, setPaymentPlans] = useState<PaymentLink[]>([]);
   const { isLoading, sendPaymentLink } = usePaymentLinkSender();
+  const [isSchedulingPlan, setIsSchedulingPlan] = useState(false); // New state for payment plan scheduling
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState<SendLinkFormData>({
     patientName: '',
@@ -223,7 +224,7 @@ export function useSendLinkPageState() {
     patientId: string | null,
     selectedLink: PaymentLink,
     formattedAddress: string,
-    existingPaymentRequestId?: string // Add optional parameter for existing payment request ID
+    existingPaymentRequestId?: string
   ) => {
     try {
       let paymentRequest;
@@ -355,11 +356,19 @@ export function useSendLinkPageState() {
   };
 
   const handleSchedulePaymentPlan = async () => {
+    // Prevent multiple form submissions
+    if (isSchedulingPlan) {
+      return { success: false };
+    }
+
     try {
+      setIsSchedulingPlan(true);
+      
       const selectedLink = [...regularLinks, ...paymentPlans].find(link => link.id === formData.selectedLink);
       
       if (!selectedLink || !selectedLink.paymentPlan || !selectedLink.paymentCount) {
         toast.error('Invalid payment plan selected');
+        setIsSchedulingPlan(false);
         return { success: false };
       }
 
@@ -373,6 +382,7 @@ export function useSendLinkPageState() {
       if (userError) {
         console.error('Error getting clinic ID:', userError);
         toast.error('Failed to schedule payment plan');
+        setIsSchedulingPlan(false);
         return { success: false };
       }
 
@@ -396,6 +406,7 @@ export function useSendLinkPageState() {
       if (clinicError) {
         console.error('Error getting clinic data:', clinicError);
         toast.error('Failed to schedule payment plan');
+        setIsSchedulingPlan(false);
         return { success: false };
       }
 
@@ -457,6 +468,7 @@ export function useSendLinkPageState() {
       if (scheduleError) {
         console.error('Error creating payment schedule:', scheduleError);
         toast.error('Failed to schedule payment plan');
+        setIsSchedulingPlan(false);
         return { success: false };
       }
 
@@ -483,10 +495,12 @@ export function useSendLinkPageState() {
 
       resetForm();
       setShowConfirmation(false);
+      setIsSchedulingPlan(false);
       return { success: true };
     } catch (error) {
       console.error('Error scheduling payment plan:', error);
       toast.error('Failed to schedule payment plan');
+      setIsSchedulingPlan(false);
       return { success: false };
     }
   };
@@ -541,6 +555,7 @@ export function useSendLinkPageState() {
     isPaymentPlan,
     selectedPaymentLink,
     paymentAmount,
+    isSchedulingPlan, // Expose the new state
     handleChange,
     handleSelectChange,
     handleDateChange,

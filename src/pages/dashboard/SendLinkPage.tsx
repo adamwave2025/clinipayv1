@@ -19,6 +19,7 @@ const SendLinkPage = () => {
     isPaymentPlan,
     selectedPaymentLink,
     paymentAmount,
+    isSchedulingPlan,
     handleChange,
     handleSelectChange,
     handleDateChange,
@@ -61,6 +62,7 @@ const SendLinkPage = () => {
         paymentAmount={paymentAmount}
         selectedPaymentLink={selectedPaymentLink}
         isLoading={isLoading}
+        isSchedulingPlan={isSchedulingPlan}
         isPaymentPlan={isPaymentPlan}
         onConfirm={handleSendPaymentLink}
       />
