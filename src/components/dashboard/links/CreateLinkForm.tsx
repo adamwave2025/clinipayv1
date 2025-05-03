@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,9 +29,10 @@ interface CreateLinkFormProps {
   onLinkGenerated: (link: string, formData: LinkFormData) => void;
   isLoading: boolean;
   onCreateLink?: (data: Omit<PaymentLink, 'id' | 'url' | 'createdAt' | 'isActive'>) => Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }>;
+  onSubmit?: (formData: LinkFormData) => void;
 }
 
-const CreateLinkForm = ({ onLinkGenerated, isLoading, onCreateLink }: CreateLinkFormProps) => {
+const CreateLinkForm = ({ onLinkGenerated, isLoading, onCreateLink, onSubmit }: CreateLinkFormProps) => {
   const [formData, setFormData] = useState<LinkFormData>({
     paymentTitle: '',
     amount: '',
@@ -82,6 +82,13 @@ const CreateLinkForm = ({ onLinkGenerated, isLoading, onCreateLink }: CreateLink
 
       if (!formData.paymentCycle) {
         toast.error('Please select a payment cycle');
+        return;
+      }
+      
+      // If this is a payment plan and we have an onSubmit handler, use that instead
+      // to trigger the confirmation dialog
+      if (onSubmit) {
+        onSubmit(formData);
         return;
       }
     }
