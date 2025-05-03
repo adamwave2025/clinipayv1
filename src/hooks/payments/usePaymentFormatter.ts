@@ -1,3 +1,4 @@
+
 import { Payment, PaymentLink } from '@/types/payment';
 import { formatDate } from '@/utils/formatters';
 
@@ -59,7 +60,8 @@ export function usePaymentFormatter() {
   };
 
   const formatPaymentRequests = (requestsData: any[], paymentLinks: PaymentLink[]): Payment[] => {
-    return requestsData.map(request => {
+    // Process all requests
+    const allFormattedRequests = requestsData.map(request => {
       // Determine if this is a custom amount request
       const isCustomAmount = !!request.custom_amount && !request.payment_link_id;
       
@@ -132,6 +134,9 @@ export function usePaymentFormatter() {
         paymentLinkId
       };
     });
+    
+    // Filter out requests with zero amount
+    return allFormattedRequests.filter(request => request.amount > 0);
   };
 
   const combineAndSortPayments = (completedPayments: Payment[], requestPayments: Payment[]): Payment[] => {
