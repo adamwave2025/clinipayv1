@@ -228,6 +228,11 @@ export const useManagePlans = () => {
     setShowCancelDialog(true);
   };
 
+  const handlePausePlan = () => {
+    toast.info('Pause plan functionality will be implemented soon');
+    // We'll implement the actual functionality in the future
+  };
+
   return {
     searchQuery,
     setSearchQuery,
@@ -252,6 +257,8 @@ export const useManagePlans = () => {
     showCancelDialog,
     setShowCancelDialog,
     handleCancelPlan,
-    handleOpenCancelDialog
+    handleOpenCancelDialog,
+    // Add the new handlePausePlan function to the return object
+    handlePausePlan
   };
 };

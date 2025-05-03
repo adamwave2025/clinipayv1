@@ -93,6 +93,7 @@ const ActivePlansTable = ({
                         ${plan.status === 'pending' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100 hover:text-yellow-700' : ''}
                         ${plan.status === 'completed' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100 hover:text-blue-700' : ''}
                         ${plan.status === 'overdue' ? 'bg-red-100 text-red-700 hover:bg-red-100 hover:text-red-700' : ''}
+                        ${plan.status === 'cancelled' ? 'bg-gray-100 text-gray-700 hover:bg-gray-100 hover:text-gray-700' : ''}
                       `}
                     >
                       {plan.status.charAt(0).toUpperCase() + plan.status.slice(1)}

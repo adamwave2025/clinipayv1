@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import PlanActionsDropdown from './PlanActionsDropdown';
 
 interface PlanDetailsDialogProps {
   showPlanDetails: boolean;
@@ -14,6 +15,7 @@ interface PlanDetailsDialogProps {
   onSendReminder: (installmentId: string) => void;
   onViewPaymentDetails?: (installment: any) => void;
   onCancelPlan?: () => void;
+  onPausePlan?: () => void;
 }
 
 const PlanDetailsDialog = ({ 
@@ -23,7 +25,8 @@ const PlanDetailsDialog = ({
   installments,
   onSendReminder,
   onViewPaymentDetails,
-  onCancelPlan
+  onCancelPlan,
+  onPausePlan
 }: PlanDetailsDialogProps) => {
   if (!selectedPlan) return null;
 
@@ -51,16 +54,13 @@ const PlanDetailsDialog = ({
           <div className="flex items-center justify-between">
             <DialogTitle>Payment Plan Details</DialogTitle>
             
-            {/* Only show cancel button for active and pending plans that aren't fully paid */}
+            {/* Replace direct cancel button with dropdown menu for active/pending plans */}
             {(selectedPlan.status === 'active' || selectedPlan.status === 'pending') && 
-            selectedPlan.progress < 100 && (
-              <Button 
-                variant="destructive" 
-                size="sm"
-                onClick={() => onCancelPlan && onCancelPlan()}
-              >
-                Cancel Plan
-              </Button>
+             selectedPlan.progress < 100 && (
+              <PlanActionsDropdown
+                onCancelPlan={() => onCancelPlan && onCancelPlan()}
+                onPausePlan={onPausePlan}
+              />
             )}
           </div>
         </DialogHeader>

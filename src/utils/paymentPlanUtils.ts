@@ -40,7 +40,7 @@ export interface Plan {
   totalInstallments: number;
   paidInstallments: number;
   progress: number;
-  status: 'active' | 'pending' | 'completed' | 'overdue';
+  status: 'active' | 'pending' | 'completed' | 'overdue' | 'cancelled';
   nextDueDate: string | null;
   schedule: any[];
   hasOverduePayments: boolean;

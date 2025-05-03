@@ -35,7 +35,9 @@ const ManagePlansPage = () => {
     showCancelDialog,
     setShowCancelDialog,
     handleCancelPlan,
-    handleOpenCancelDialog
+    handleOpenCancelDialog,
+    // Pause plan property
+    handlePausePlan
   } = useManagePlans();
 
   return (
@@ -89,6 +91,7 @@ const ManagePlansPage = () => {
         onSendReminder={handleSendReminder}
         onViewPaymentDetails={handleViewPaymentDetails}
         onCancelPlan={handleOpenCancelDialog}
+        onPausePlan={handlePausePlan}
       />
 
       {/* Payment Details Dialog */}
