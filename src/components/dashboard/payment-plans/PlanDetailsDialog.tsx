@@ -9,14 +9,16 @@ interface PlanDetailsDialogProps {
   showPlanDetails: boolean;
   setShowPlanDetails: (show: boolean) => void;
   selectedPlan: any | null;
-  mockInstallments: any[];
+  installments: any[];
+  onSendReminder: (installmentId: string) => void;
 }
 
 const PlanDetailsDialog = ({ 
   showPlanDetails, 
   setShowPlanDetails, 
   selectedPlan,
-  mockInstallments
+  installments,
+  onSendReminder
 }: PlanDetailsDialogProps) => {
   if (!selectedPlan) return null;
 
@@ -90,35 +92,56 @@ const PlanDetailsDialog = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockInstallments.map((installment) => (
-                  <TableRow key={installment.id}>
-                    <TableCell>{new Date(installment.dueDate).toLocaleDateString()}</TableCell>
-                    <TableCell>£{installment.amount.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Badge 
-                        className={`
-                          ${installment.status === 'paid' ? 'bg-green-100 text-green-700' : ''}
-                          ${installment.status === 'upcoming' ? 'bg-yellow-100 text-yellow-700' : ''}
-                          ${installment.status === 'overdue' ? 'bg-red-100 text-red-700' : ''}
-                        `}
-                      >
-                        {installment.status.charAt(0).toUpperCase() + installment.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {installment.status === 'upcoming' && (
-                        <Button size="sm" variant="outline">
-                          Send Reminder
-                        </Button>
-                      )}
-                      {installment.status === 'paid' && (
-                        <span className="text-sm text-gray-500">
-                          Paid on {new Date(installment.paidDate!).toLocaleDateString()}
-                        </span>
-                      )}
+                {installments.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-4 text-gray-500">
+                      Loading installment details...
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  installments.map((installment) => (
+                    <TableRow key={installment.id}>
+                      <TableCell>{new Date(installment.dueDate).toLocaleDateString()}</TableCell>
+                      <TableCell>£{installment.amount.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Badge 
+                          className={`
+                            ${installment.status === 'paid' ? 'bg-green-100 text-green-700' : ''}
+                            ${installment.status === 'upcoming' ? 'bg-yellow-100 text-yellow-700' : ''}
+                            ${installment.status === 'overdue' ? 'bg-red-100 text-red-700' : ''}
+                          `}
+                        >
+                          {installment.status.charAt(0).toUpperCase() + installment.status.slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {installment.status === 'upcoming' && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => onSendReminder(installment.id)}
+                          >
+                            Send Reminder
+                          </Button>
+                        )}
+                        {installment.status === 'overdue' && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => onSendReminder(installment.id)}
+                          >
+                            Send Reminder
+                          </Button>
+                        )}
+                        {installment.status === 'paid' && (
+                          <span className="text-sm text-gray-500">
+                            Paid on {new Date(installment.paidDate!).toLocaleDateString()}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>

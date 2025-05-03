@@ -18,10 +18,11 @@ const ManagePlansPage = () => {
     setShowPlanDetails,
     plans,
     isLoading,
-    mockInstallments,
+    installments,
     handleViewPlanDetails,
     handleCreatePlanClick,
     handleViewPlansClick,
+    handleSendReminder
   } = useManagePlans();
 
   return (
@@ -71,7 +72,8 @@ const ManagePlansPage = () => {
         showPlanDetails={showPlanDetails}
         setShowPlanDetails={setShowPlanDetails}
         selectedPlan={selectedPlan}
-        mockInstallments={mockInstallments}
+        installments={installments}
+        onSendReminder={handleSendReminder}
       />
     </DashboardLayout>
   );

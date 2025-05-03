@@ -1,101 +1,235 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// Mock data for payment plans (will be replaced with real data)
-const mockPaymentPlans = [
-  {
-    id: 'plan-1',
-    patientName: 'John Smith',
-    planName: 'Dental Treatment',
-    amount: 750,
-    progress: 66, // percentage
-    status: 'active',
-    nextDueDate: '2025-05-12',
-    totalInstallments: 3,
-    paidInstallments: 2,
-  },
-  {
-    id: 'plan-2',
-    patientName: 'Sarah Johnson',
-    planName: 'Orthodontic Treatment',
-    amount: 1200,
-    progress: 33, 
-    status: 'active',
-    nextDueDate: '2025-05-05',
-    totalInstallments: 3,
-    paidInstallments: 1,
-  },
-  {
-    id: 'plan-3',
-    patientName: 'Michael Brown',
-    planName: 'Wisdom Teeth Removal',
-    amount: 550,
-    progress: 100,
-    status: 'completed',
-    nextDueDate: null,
-    totalInstallments: 2,
-    paidInstallments: 2,
-  },
-  {
-    id: 'plan-4',
-    patientName: 'Emma Wilson',
-    planName: 'Root Canal Treatment',
-    amount: 800,
-    progress: 0,
-    status: 'pending',
-    nextDueDate: '2025-05-10',
-    totalInstallments: 4,
-    paidInstallments: 0,
-  },
-  {
-    id: 'plan-5',
-    patientName: 'Daniel Lee',
-    planName: 'Dental Implant',
-    amount: 1500,
-    progress: 25,
-    status: 'active',
-    nextDueDate: '2025-05-18',
-    totalInstallments: 4,
-    paidInstallments: 1,
-  }
-];
-
-// Mock data for plan installments (will be replaced with real data)
-const mockInstallments = [
-  { id: 1, dueDate: '2025-04-01', amount: 250, status: 'paid', paidDate: '2025-04-01' },
-  { id: 2, dueDate: '2025-05-01', amount: 250, status: 'paid', paidDate: '2025-05-01' },
-  { id: 3, dueDate: '2025-06-01', amount: 250, status: 'upcoming', paidDate: null },
-];
+import { supabase } from '@/integrations/supabase/client';
+import { format, parseISO } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 export const useManagePlans = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [showPlanDetails, setShowPlanDetails] = useState(false);
   const [plans, setPlans] = useState<any[]>([]);
+  const [installments, setInstallments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Fetch payment plans on mount
   useEffect(() => {
-    fetchPaymentPlans();
-  }, []);
+    if (user) {
+      fetchPaymentPlans();
+    }
+  }, [user]);
+
+  // Filter plans when search query changes
+  useEffect(() => {
+    if (!searchQuery.trim()) return;
+    
+    const filtered = plans.filter(plan => 
+      plan.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      plan.planName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+    setPlans(prev => filtered.length > 0 ? filtered : prev);
+  }, [searchQuery]);
 
   const fetchPaymentPlans = async () => {
     setIsLoading(true);
     try {
-      // For now, we'll use mock data until we have real payment schedule data
-      setPlans(mockPaymentPlans);
+      // Get user's clinic_id
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('clinic_id')
+        .eq('id', user.id)
+        .single();
+
+      if (userError) throw userError;
+      if (!userData.clinic_id) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch payment schedule grouped by patient and payment_link
+      const { data, error } = await supabase
+        .from('payment_schedule')
+        .select(`
+          id,
+          patient_id,
+          payment_link_id,
+          amount,
+          due_date,
+          payment_number,
+          total_payments,
+          status,
+          patients (
+            id,
+            name,
+            email,
+            phone
+          ),
+          payment_links (
+            id,
+            title,
+            amount,
+            plan_total_amount
+          )
+        `)
+        .eq('clinic_id', userData.clinic_id)
+        .order('due_date', { ascending: true });
+
+      if (error) throw error;
+
+      // Process data to group by patient_id and payment_link_id
+      const plansByPatient = new Map();
+      
+      if (data && data.length > 0) {
+        data.forEach(entry => {
+          // Create a unique key for each patient's plan
+          const planKey = `${entry.patient_id || 'unknown'}_${entry.payment_link_id}`;
+          
+          if (!plansByPatient.has(planKey)) {
+            // Initialize plan data
+            plansByPatient.set(planKey, {
+              id: planKey,
+              patientId: entry.patient_id,
+              patientName: entry.patients?.name || 'Unknown Patient',
+              planName: entry.payment_links?.title || 'Payment Plan',
+              amount: entry.payment_links?.plan_total_amount || 0,
+              totalInstallments: entry.total_payments,
+              paidInstallments: 0,
+              progress: 0,
+              status: 'active',
+              nextDueDate: null,
+              schedule: []
+            });
+          }
+          
+          // Add this entry to the plan's schedule
+          const plan = plansByPatient.get(planKey);
+          plan.schedule.push({
+            id: entry.id,
+            dueDate: entry.due_date,
+            amount: entry.amount,
+            status: entry.status,
+            paymentNumber: entry.payment_number,
+            totalPayments: entry.total_payments
+          });
+          
+          // Update paid installments count and progress
+          if (entry.status === 'processed') {
+            plan.paidInstallments += 1;
+          }
+        });
+        
+        // Calculate progress and other derived fields for each plan
+        plansByPatient.forEach(plan => {
+          // Calculate progress percentage
+          plan.progress = Math.round((plan.paidInstallments / plan.totalInstallments) * 100);
+          
+          // Sort schedule by due date
+          plan.schedule.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+          
+          // Determine plan status
+          if (plan.progress === 100) {
+            plan.status = 'completed';
+          } else if (plan.paidInstallments === 0) {
+            plan.status = 'pending';
+          } else {
+            plan.status = 'active';
+          }
+          
+          // Find the next due date (first non-paid installment)
+          const upcoming = plan.schedule.find(entry => entry.status === 'pending');
+          plan.nextDueDate = upcoming ? upcoming.dueDate : null;
+        });
+      }
+      
+      setPlans(Array.from(plansByPatient.values()));
     } catch (error) {
       console.error('Error fetching payment plans:', error);
+      toast.error('Failed to load payment plans');
     } finally {
       setIsLoading(false);
     }
   };
+  
+  const fetchPlanInstallments = async (planId: string) => {
+    try {
+      const [patientId, paymentLinkId] = planId.split('_');
+      
+      if (!patientId || !paymentLinkId) {
+        throw new Error('Invalid plan ID');
+      }
+      
+      // Fetch installments for this plan
+      const { data, error } = await supabase
+        .from('payment_schedule')
+        .select(`
+          id,
+          amount,
+          due_date,
+          payment_number,
+          total_payments,
+          status,
+          payment_request_id,
+          payment_requests (
+            id,
+            payment_id,
+            paid_at,
+            status
+          )
+        `)
+        .eq('patient_id', patientId)
+        .eq('payment_link_id', paymentLinkId)
+        .order('payment_number', { ascending: true });
+        
+      if (error) throw error;
+      
+      // Format installments for display
+      const formattedInstallments = data.map(item => {
+        const dueDate = format(parseISO(item.due_date), 'yyyy-MM-dd');
+        const paidDate = item.payment_requests?.paid_at 
+          ? format(parseISO(item.payment_requests.paid_at), 'yyyy-MM-dd')
+          : null;
+          
+        // Determine status and map to UI status
+        let status = item.status;
+        if (status === 'processed' && item.payment_requests?.payment_id) {
+          status = 'paid';
+        } else if (status === 'pending') {
+          // Check if it's overdue
+          const now = new Date();
+          const due = parseISO(item.due_date);
+          status = now > due ? 'overdue' : 'upcoming';
+        }
+        
+        return {
+          id: item.id,
+          dueDate,
+          amount: item.amount,
+          status,
+          paidDate,
+          paymentNumber: item.payment_number,
+          totalPayments: item.total_payments,
+          paymentRequestId: item.payment_request_id
+        };
+      });
+      
+      setInstallments(formattedInstallments);
+      return formattedInstallments;
+    } catch (error) {
+      console.error('Error fetching plan installments:', error);
+      toast.error('Failed to load payment details');
+      return [];
+    }
+  };
 
-  const handleViewPlanDetails = (plan: any) => {
+  const handleViewPlanDetails = async (plan: any) => {
     setSelectedPlan(plan);
+    await fetchPlanInstallments(plan.id);
     setShowPlanDetails(true);
   };
 
@@ -106,6 +240,11 @@ export const useManagePlans = () => {
   const handleViewPlansClick = () => {
     navigate('/dashboard/payment-plans');
   };
+  
+  const handleSendReminder = async (installmentId: string) => {
+    // Implementation for sending payment reminder
+    toast.info('Reminder functionality will be implemented soon');
+  };
 
   return {
     searchQuery,
@@ -115,9 +254,10 @@ export const useManagePlans = () => {
     setShowPlanDetails,
     plans,
     isLoading,
-    mockInstallments,
+    installments,
     handleViewPlanDetails,
     handleCreatePlanClick,
     handleViewPlansClick,
+    handleSendReminder
   };
 };
