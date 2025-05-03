@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -37,6 +36,9 @@ import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { PaymentLink } from '@/types/payment';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/utils/formatters';
+import { PaymentLinkService } from '@/services/PaymentLinkService';
+import { formatPaymentLinks } from '@/utils/paymentLinkFormatter';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PaymentPlansPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,11 +57,7 @@ const PaymentPlansPage = () => {
 
   const navigate = useNavigate();
   const { paymentLinks, fetchPaymentLinks, isLoading: isLoadingPaymentLinks } = usePaymentLinks();
-
-  // Fetch payment plans on component mount
-  useEffect(() => {
-    fetchPaymentPlans();
-  }, []);
+  const { user } = useAuth();
 
   // Filter plans when search query changes
   useEffect(() => {
@@ -72,12 +70,33 @@ const PaymentPlansPage = () => {
     setFilteredPlans(filtered);
   }, [searchQuery, paymentPlans]);
 
+  // Fetch payment plans when user is available
+  useEffect(() => {
+    if (user) {
+      fetchPaymentPlans();
+    }
+  }, [user]);
+
   const fetchPaymentPlans = async () => {
     setIsLoading(true);
     try {
+      // First ensure the hook's state is updated (though we won't use it directly)
       await fetchPaymentLinks();
-      // Filter payment links to only include payment plans
-      const plans = paymentLinks.filter(link => link.paymentPlan === true);
+      
+      if (!user) {
+        console.error('No user found when trying to fetch payment plans');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Get fresh data directly from the service
+      const { activeLinks } = await PaymentLinkService.fetchLinks(user.id);
+      
+      // Filter and format the links
+      const plans = formatPaymentLinks(activeLinks).filter(link => link.paymentPlan === true);
+      
+      console.log('Fetched payment plans:', plans); // For debugging
+      
       setPaymentPlans(plans);
       setFilteredPlans(plans);
     } catch (error) {
