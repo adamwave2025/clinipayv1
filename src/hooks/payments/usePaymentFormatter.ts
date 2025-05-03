@@ -124,7 +124,7 @@ export function usePaymentFormatter() {
         patientPhone: request.patient_phone || undefined,
         amount,
         date: formatDate(sentDate),
-        status: 'sent',
+        status: 'sent' as Payment['status'],  // Fix the type error by specifying the exact status
         type: paymentType,
         linkTitle,
         description,

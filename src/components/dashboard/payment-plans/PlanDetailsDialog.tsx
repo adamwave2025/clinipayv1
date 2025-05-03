@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   Sheet,
@@ -134,13 +135,19 @@ const PlanDetailsDialog = ({
                       <TableHead>Amount</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Paid Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {installments.map((installment) => (
                       <TableRow 
                         key={installment.id}
+                        onClick={() => {
+                          if (installment.status === 'paid') {
+                            onViewPaymentDetails(installment);
+                          }
+                        }}
+                        className={installment.status === 'paid' ? 
+                          "cursor-pointer hover:bg-muted transition-colors" : ""}
                       >
                         <TableCell>{installment.dueDate}</TableCell>
                         <TableCell>£{installment.amount.toFixed(2)}</TableCell>
@@ -160,16 +167,6 @@ const PlanDetailsDialog = ({
                           </Badge>
                         </TableCell>
                         <TableCell>{installment.paidDate || '-'}</TableCell>
-                        <TableCell className="text-right">
-                          {installment.status === 'paid' && (
-                            <button 
-                              className="text-sm font-medium text-primary hover:underline"
-                              onClick={() => onViewPaymentDetails(installment)}
-                            >
-                              View Payment
-                            </button>
-                          )}
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
