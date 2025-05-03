@@ -14,6 +14,7 @@ import { usePaymentNavigation } from '@/hooks/usePaymentNavigation';
 import { usePaymentInit } from '@/hooks/usePaymentInit';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import Logo from '@/components/common/Logo';
 
 const PatientPaymentPage = () => {
   const navigate = useNavigate();
@@ -85,26 +86,48 @@ const PatientPaymentPage = () => {
   if (isCancelled) {
     console.log("Payment request is cancelled, showing cancelled message");
     return (
-      <PaymentLayout hideHeaderFooter={true}>
-        <div className="w-full max-w-md mx-auto p-6">
-          <Alert className="mb-4 bg-amber-50 border-amber-200">
-            <AlertTitle className="text-amber-800">Payment No Longer Available</AlertTitle>
-            <AlertDescription className="text-amber-700">
-              This payment link has been cancelled or rescheduled. Please contact the clinic for more information.
-            </AlertDescription>
-          </Alert>
-          <PaymentStatusSummaryContent
-            status="failed"
-            title="Payment Link Unavailable"
-            description="The payment link you're trying to access is no longer active. It may have been cancelled or rescheduled."
-            primaryActionLabel="Contact Clinic"
-            onPrimaryAction={() => {
-              // If we have clinic email, open mail client
-              if (linkData.clinic?.email) {
-                window.location.href = `mailto:${linkData.clinic.email}?subject=Regarding%20cancelled%20payment`;
-              }
-            }}
-          />
+      <PaymentLayout isSplitView={true} hideHeaderFooter={true}>
+        {/* Left Column - Clinic Info & Security */}
+        <div className="space-y-4">
+          {linkData.clinic && (
+            <PaymentPageClinicCard 
+              clinic={{
+                name: linkData.clinic.name,
+                logo: linkData.clinic.logo || '',
+                email: linkData.clinic.email,
+                phone: linkData.clinic.phone,
+                address: linkData.clinic.address,
+                paymentType: linkData.title || 'Payment',
+                amount: linkData.amount
+              }}
+              paymentPlan={!!linkData.paymentPlan}
+              planTotalAmount={linkData.planTotalAmount}
+              totalPaid={linkData.totalPaid}
+              totalOutstanding={linkData.totalOutstanding}
+            />
+          )}
+          <CliniPaySecuritySection />
+        </div>
+        
+        {/* Right Column - Cancellation Message */}
+        <div className="bg-white p-6 rounded-lg border border-amber-100">
+          <div className="flex justify-center mb-4">
+            <Logo className="h-10" />
+          </div>
+          
+          <div className="text-center">
+            <div className="bg-amber-50 p-6 rounded-lg mb-6">
+              <PaymentStatusSummaryContent
+                status="pending"
+                title="Payment No Longer Available"
+                description="This payment link has been cancelled or rescheduled by the clinic. Please contact them directly for further information about your appointment or treatment."
+              />
+            </div>
+            
+            <p className="text-sm text-gray-500 mt-4">
+              If you believe this is an error, please contact the clinic using the information provided.
+            </p>
+          </div>
         </div>
       </PaymentLayout>
     );
