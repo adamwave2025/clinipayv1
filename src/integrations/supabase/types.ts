@@ -539,6 +539,10 @@ export type Database = {
         Args: { data: string }
         Returns: string
       }
+      execute_sql: {
+        Args: { sql: string }
+        Returns: Json
+      }
       generate_verification_token: {
         Args: { user_id: string }
         Returns: string

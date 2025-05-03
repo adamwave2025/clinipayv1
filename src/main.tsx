@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { supabase } from '@/integrations/supabase/client';
+import { setupPaymentScheduleCron } from './utils/payment-schedule-cron-setup';
 
 // Initialize the auth trigger setup
 const setupAuthTrigger = async () => {
@@ -21,7 +22,19 @@ const setupAuthTrigger = async () => {
   }
 };
 
+// Initialize the payment schedule cron
+const initializePaymentScheduleCron = async () => {
+  try {
+    console.log('Initializing payment schedule cron...');
+    const result = await setupPaymentScheduleCron();
+    console.log('Payment schedule cron initialization result:', result);
+  } catch (error) {
+    console.error('Error initializing payment schedule cron:', error);
+  }
+};
+
 // Run setup on app initialization but don't block rendering
 setupAuthTrigger();
+initializePaymentScheduleCron();
 
 createRoot(document.getElementById("root")!).render(<App />);
