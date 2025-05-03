@@ -6,7 +6,11 @@
  * @param decimals - Number of decimal places (defaults to 2)
  * @returns Formatted currency string
  */
-export const formatCurrency = (amount: number, currency: string = '£', decimals: number = 2): string => {
+export const formatCurrency = (amount: number | undefined | null, currency: string = '£', decimals: number = 2): string => {
+  // Return a dash for undefined or null amounts
+  if (amount === undefined || amount === null) {
+    return `${currency}0.00`;
+  }
   return `${currency}${amount.toFixed(decimals)}`;
 };
 
@@ -27,6 +31,7 @@ export const capitalizeFirstLetter = (str: string): string => {
  * @returns Formatted date string
  */
 export const formatDate = (dateString: string | Date, locales: string = 'en-GB'): string => {
+  if (!dateString) return 'N/A';
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   return date.toLocaleDateString(locales);
 };

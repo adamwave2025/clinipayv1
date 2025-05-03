@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,8 +23,8 @@ interface PatientPayment {
   date: string;
   reference: string | null;
   type: string;
-  title?: string; // Add optional title property to fix the error
-  amount: number;
+  title?: string;
+  amount: number | null;
   status: 'paid' | 'refunded' | 'partially_refunded' | 'sent';
   paymentUrl?: string;
 }
@@ -86,7 +87,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
           reference: payment.payment_ref,
           type: payment.payment_links?.type || 'other',
           title: payment.payment_links?.title,
-          amount: payment.amount_paid,
+          amount: payment.amount_paid || 0, // Default to 0 if null
           status: payment.status
         }));
         
@@ -97,7 +98,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
           reference: null,
           type: request.payment_links?.type || 'custom',
           title: request.payment_links?.title || 'Custom Payment',
-          amount: request.custom_amount || (request.payment_links ? request.payment_links.amount : 0),
+          amount: request.custom_amount || (request.payment_links ? request.payment_links.amount : 0), // Default to 0 if null
           status: 'sent' as const,
           paymentUrl: `https://clinipay.co.uk/payment/${request.id}`
         }));
