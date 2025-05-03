@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isAfter } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -108,12 +108,24 @@ export const useManagePlans = () => {
               progress: 0,
               status: 'active',
               nextDueDate: null,
-              schedule: []
+              schedule: [],
+              hasOverduePayments: false
             });
           }
           
           // Add this entry to the plan's schedule
           const plan = plansByPatient.get(planKey);
+          
+          // Check if this installment is overdue (pending and due date is in the past)
+          const dueDate = new Date(entry.due_date);
+          const now = new Date();
+          now.setHours(0, 0, 0, 0); // Reset time to start of day for fair comparison
+          const isOverdue = entry.status === 'pending' && dueDate < now;
+          
+          if (isOverdue) {
+            plan.hasOverduePayments = true;
+          }
+          
           plan.schedule.push({
             id: entry.id,
             dueDate: entry.due_date,
@@ -122,7 +134,8 @@ export const useManagePlans = () => {
             paymentNumber: entry.payment_number,
             totalPayments: entry.total_payments,
             paymentRequestId: entry.payment_request_id,
-            requestStatus: entry.payment_requests?.status
+            requestStatus: entry.payment_requests?.status,
+            isOverdue: isOverdue
           });
           
           // Update paid installments count and progress
@@ -146,6 +159,9 @@ export const useManagePlans = () => {
           // Determine plan status
           if (plan.progress === 100) {
             plan.status = 'completed';
+          } else if (plan.hasOverduePayments) {
+            // NEW: Set status to overdue if any payment is overdue
+            plan.status = 'overdue';
           } else if (plan.paidInstallments === 0) {
             plan.status = 'pending';
           } else {
