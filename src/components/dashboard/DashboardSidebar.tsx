@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, 
@@ -46,6 +46,7 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
   const location = useLocation();
   const { role } = useUserRole();
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
+  const initialExpansionDone = useRef(false);
   
   // Use the actual user role for link determination if available
   const actualUserType = role === 'admin' ? 'admin' : 'clinic';
@@ -139,14 +140,30 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
     return links.some(link => isLinkActive(link.to));
   };
   
-  // Set expanded menu when submenu is active
+  // Set expanded menu when component mounts or pathname changes significantly
   useEffect(() => {
-    items.forEach(item => {
-      if ('links' in item && isSubmenuActive(item.links)) {
-        setExpandedMenu(item.label);
-      }
-    });
-  }, [location.pathname]);
+    // Only check for active submenus if initial expansion hasn't been done
+    // or we're navigating to a path that would change which menu is active
+    if (!initialExpansionDone.current) {
+      let foundActiveSubmenu = false;
+      
+      items.forEach(item => {
+        if ('links' in item && isSubmenuActive(item.links)) {
+          setExpandedMenu(item.label);
+          foundActiveSubmenu = true;
+        }
+      });
+      
+      initialExpansionDone.current = true;
+    } else {
+      // For subsequent navigations, only update if we need to expand a different menu
+      items.forEach(item => {
+        if ('links' in item && isSubmenuActive(item.links) && expandedMenu !== item.label) {
+          setExpandedMenu(item.label);
+        }
+      });
+    }
+  }, [items, location.pathname.split('/').slice(0, 3).join('/')]); // Only run when main path section changes
 
   return (
     <>
