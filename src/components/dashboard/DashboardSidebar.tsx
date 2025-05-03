@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, 
@@ -124,13 +124,29 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
     setExpandedMenu(expandedMenu === label ? null : label);
   };
 
+  // Updated isLinkActive function to check if the path includes the link
   const isLinkActive = (to: string) => {
-    return location.pathname === to;
+    // For main dashboard route, only return true for exact match
+    if (to === '/dashboard' && location.pathname !== '/dashboard') {
+      return false;
+    }
+    // For other routes, check if the location pathname includes the to path
+    return location.pathname.includes(to);
   };
 
+  // Check if submenu has any active links
   const isSubmenuActive = (links: SidebarLink[]) => {
     return links.some(link => isLinkActive(link.to));
   };
+  
+  // Set expanded menu when submenu is active
+  useEffect(() => {
+    items.forEach(item => {
+      if ('links' in item && isSubmenuActive(item.links)) {
+        setExpandedMenu(item.label);
+      }
+    });
+  }, [location.pathname]);
 
   return (
     <>
