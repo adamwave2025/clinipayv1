@@ -377,6 +377,8 @@ export const reschedulePaymentPlan = async (
     
     // Cancel all related payment requests in a single update operation
     if (paymentRequestIds.length > 0) {
+      console.log(`Attempting to cancel payment requests: ${paymentRequestIds.join(', ')}`);
+      
       const { data: cancelledRequests, error: cancelBatchError } = await supabase
         .from('payment_requests')
         .update({ status: 'cancelled' })
@@ -385,10 +387,13 @@ export const reschedulePaymentPlan = async (
       
       if (cancelBatchError) {
         console.error('Error cancelling payment requests batch:', cancelBatchError);
+        // Continue with the workflow even if there's an error here
       } else {
         changes.sent_payment_requests_cancelled = cancelledRequests.map(req => req.id);
-        console.log(`Successfully cancelled ${cancelledRequests.length} payment requests`);
+        console.log(`Successfully cancelled ${cancelledRequests.length} payment requests:`, cancelledRequests);
       }
+    } else {
+      console.log('No payment requests to cancel');
     }
     
     // Calculate new due dates for each installment
@@ -418,7 +423,8 @@ export const reschedulePaymentPlan = async (
     });
     
     // Wait for all updates to complete
-    await Promise.all(updatePromises);
+    const updateResults = await Promise.all(updatePromises);
+    console.log('Update results:', updateResults);
     
     // Record the activity
     await recordPaymentPlanActivity(

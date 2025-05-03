@@ -9,6 +9,9 @@ export const PaymentLinkFormatter = {
     // Format clinic data from the request
     const clinicData = requestData.clinics as RawClinicData;
 
+    // Handle cancelled status specifically
+    const status = requestData.status === 'cancelled' ? 'cancelled' : requestData.status;
+
     // If it's a custom amount request
     if (requestData.custom_amount && !requestData.payment_link_id) {
       return {
@@ -22,7 +25,7 @@ export const PaymentLinkFormatter = {
         patientName: requestData.patient_name,
         patientEmail: requestData.patient_email,
         patientPhone: requestData.patient_phone,
-        status: requestData.status,
+        status: status,
         clinic: ClinicFormatter.formatClinicData(clinicData)
       };
     }
@@ -50,7 +53,7 @@ export const PaymentLinkFormatter = {
         patientName: requestData.patient_name,
         patientEmail: requestData.patient_email,
         patientPhone: requestData.patient_phone,
-        status: requestData.status,
+        status: status,
         clinic: ClinicFormatter.formatClinicData(clinicData),
         ...planData
       };
@@ -74,13 +77,21 @@ export const PaymentLinkFormatter = {
       totalOutstanding: (linkData.plan_total_amount || 0) - (linkData.total_paid || 0)
     } : {};
 
+    // Handle link status specifically
+    let status = linkData.status;
+    
+    // If status isn't explicitly set, derive from is_active
+    if (!status) {
+      status = linkData.is_active === false ? 'inactive' : 'active';
+    }
+
     return {
       id: linkData.id,
       title: linkData.title || 'Payment',
       amount: linkData.amount,
       type: linkData.type || 'other',
       description: linkData.description,
-      status: linkData.is_active === false ? 'inactive' : 'active',
+      status: status,
       clinic: ClinicFormatter.formatClinicData(clinicData),
       ...planData
     };

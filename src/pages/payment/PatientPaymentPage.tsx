@@ -83,6 +83,7 @@ const PatientPaymentPage = () => {
   // Check if the payment link or request has been cancelled
   const isCancelled = linkData.status === 'cancelled';
   if (isCancelled) {
+    console.log("Payment request is cancelled, showing cancelled message");
     return (
       <PaymentLayout hideHeaderFooter={true}>
         <div className="w-full max-w-md mx-auto p-6">
