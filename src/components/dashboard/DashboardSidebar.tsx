@@ -12,7 +12,8 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
-  CreditCard
+  CreditCard,
+  Calendar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Logo from '../common/Logo';
@@ -44,7 +45,7 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useUserRole();
-  const [expandedMenu, setExpandedMenu] = useState<string | null>("Payments"); // Default expanded
+  const [expandedMenu, setExpandedMenu] = useState<string | null>(null); // Changed from "Payments" to null
   
   // Use the actual user role for link determination if available
   const actualUserType = role === 'admin' ? 'admin' : 'clinic';
@@ -74,6 +75,11 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
           to: '/dashboard/payment-history',
           label: 'Payment History',
           icon: <Clock className="w-5 h-5" />
+        },
+        {
+          to: '/dashboard/manage-plans',
+          label: 'Manage Plans',
+          icon: <Calendar className="w-5 h-5" />
         }
       ]
     },
