@@ -22,6 +22,7 @@ export const PaymentLinkFormatter = {
         patientName: requestData.patient_name,
         patientEmail: requestData.patient_email,
         patientPhone: requestData.patient_phone,
+        status: requestData.status,
         clinic: ClinicFormatter.formatClinicData(clinicData)
       };
     }
@@ -49,6 +50,7 @@ export const PaymentLinkFormatter = {
         patientName: requestData.patient_name,
         patientEmail: requestData.patient_email,
         patientPhone: requestData.patient_phone,
+        status: requestData.status,
         clinic: ClinicFormatter.formatClinicData(clinicData),
         ...planData
       };
@@ -78,6 +80,7 @@ export const PaymentLinkFormatter = {
       amount: linkData.amount,
       type: linkData.type || 'other',
       description: linkData.description,
+      status: linkData.is_active === false ? 'inactive' : 'active',
       clinic: ClinicFormatter.formatClinicData(clinicData),
       ...planData
     };

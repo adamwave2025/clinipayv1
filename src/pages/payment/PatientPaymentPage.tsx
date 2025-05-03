@@ -8,6 +8,8 @@ import PaymentPageLoading from '@/components/payment/PaymentPageLoading';
 import StripeProvider from '@/components/payment/StripeProvider';
 import PaymentFormContainer from '@/components/payment/PaymentFormContainer';
 import PaymentErrorBoundary from '@/components/payment/PaymentErrorBoundary';
+import PaymentStatusSummaryContent from '@/components/payment/PaymentStatusSummaryContent';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { usePaymentNavigation } from '@/hooks/usePaymentNavigation';
 import { usePaymentInit } from '@/hooks/usePaymentInit';
 import { toast } from 'sonner';
@@ -76,6 +78,35 @@ const PatientPaymentPage = () => {
   // At this point, linkData should be available if it exists
   if (!linkData) {
     return null; // Will redirect via useEffect in usePaymentInit
+  }
+
+  // Check if the payment link or request has been cancelled
+  const isCancelled = linkData.status === 'cancelled';
+  if (isCancelled) {
+    return (
+      <PaymentLayout hideHeaderFooter={true}>
+        <div className="w-full max-w-md mx-auto p-6">
+          <Alert className="mb-4 bg-amber-50 border-amber-200">
+            <AlertTitle className="text-amber-800">Payment No Longer Available</AlertTitle>
+            <AlertDescription className="text-amber-700">
+              This payment link has been cancelled or rescheduled. Please contact the clinic for more information.
+            </AlertDescription>
+          </Alert>
+          <PaymentStatusSummaryContent
+            status="failed"
+            title="Payment Link Unavailable"
+            description="The payment link you're trying to access is no longer active. It may have been cancelled or rescheduled."
+            primaryActionLabel="Contact Clinic"
+            onPrimaryAction={() => {
+              // If we have clinic email, open mail client
+              if (linkData.clinic?.email) {
+                window.location.href = `mailto:${linkData.clinic.email}?subject=Regarding%20cancelled%20payment`;
+              }
+            }}
+          />
+        </div>
+      </PaymentLayout>
+    );
   }
 
   const clinicData = linkData.clinic;

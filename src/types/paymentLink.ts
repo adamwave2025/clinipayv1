@@ -5,6 +5,7 @@ export interface PaymentLinkData {
   amount: number;
   type: string;
   description?: string;
+  status?: string;
   clinic: {
     id: string;
     name: string;

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PlanActivityType } from '@/utils/planActivityUtils';
@@ -369,6 +370,27 @@ export const reschedulePaymentPlan = async (
       sent_payment_requests_cancelled: []
     };
     
+    // First, collect all payment_request_ids that need to be cancelled
+    const paymentRequestIds = pendingInstallments
+      .filter(item => item.payment_request_id !== null)
+      .map(item => item.payment_request_id);
+    
+    // Cancel all related payment requests in a single update operation
+    if (paymentRequestIds.length > 0) {
+      const { data: cancelledRequests, error: cancelBatchError } = await supabase
+        .from('payment_requests')
+        .update({ status: 'cancelled' })
+        .in('id', paymentRequestIds)
+        .select('id');
+      
+      if (cancelBatchError) {
+        console.error('Error cancelling payment requests batch:', cancelBatchError);
+      } else {
+        changes.sent_payment_requests_cancelled = cancelledRequests.map(req => req.id);
+        console.log(`Successfully cancelled ${cancelledRequests.length} payment requests`);
+      }
+    }
+    
     // Calculate new due dates for each installment
     const frequency = scheduleData.payment_frequency || 'monthly';
     
@@ -381,22 +403,6 @@ export const reschedulePaymentPlan = async (
       // Track original and new date for audit
       changes.original_dates[installment.id] = installment.due_date;
       changes.new_dates[installment.id] = formattedDate;
-      
-      // Handle sent or processed payment requests differently
-      if ((installment.status === 'sent' || installment.status === 'processed') && installment.payment_request_id) {
-        // Cancel the existing payment request
-        const { error: cancelError } = await supabase
-          .from('payment_requests')
-          .update({ status: 'cancelled' })
-          .eq('id', installment.payment_request_id)
-          .select();
-          
-        if (cancelError) {
-          console.error('Error cancelling payment request:', cancelError);
-        } else {
-          changes.sent_payment_requests_cancelled.push(installment.payment_request_id);
-        }
-      }
       
       console.log(`Installment ${installment.payment_number}, new due date: ${formattedDate}`);
       
