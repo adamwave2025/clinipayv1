@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 /**
  * Set up the cron job to process payment schedules
@@ -15,16 +14,13 @@ export async function setupPaymentScheduleCron() {
     
     if (error) {
       console.error('Error setting up payment schedule cron:', error);
-      toast.error('Failed to set up payment schedule processing: ' + error.message);
       return { success: false, error };
     }
     
     console.log('Payment schedule cron setup result:', data);
-    toast.success('Payment schedule processing has been set up successfully');
     return { success: true, data };
   } catch (err: any) {
     console.error('Exception setting up payment schedule cron:', err);
-    toast.error('Failed to set up payment schedule processing: ' + err.message);
     return { success: false, error: err.message };
   }
 }

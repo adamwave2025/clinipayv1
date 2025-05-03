@@ -22,6 +22,7 @@ const PatientPaymentPage = () => {
   const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Function to fetch the most recent payment for the current payment link
+  // Kept for future use but not currently being used for redirects
   const fetchLatestPayment = async (paymentLinkId: string) => {
     setIsFetchingPayment(true);
     try {
@@ -48,70 +49,14 @@ const PatientPaymentPage = () => {
     }
   };
 
-  // Check if payment has already been made for this payment plan installment
+  // Clean up any timeouts on unmount
   useEffect(() => {
-    // Only run this effect if we have the necessary data and aren't currently fetching
-    if (!linkData || isLoading || isFetchingPayment || hasShownToastRef.current) {
-      return;
-    }
-
-    // ONLY redirect for payment plans - not regular payment links
-    if (linkData.paymentPlan) {
-      const currentAmount = linkData.amount || 0;
-      const totalPaid = linkData.totalPaid || 0;
-      
-      console.log('Payment plan data:', { 
-        currentAmount, 
-        totalPaid,
-        isPaymentPlan: !!linkData.paymentPlan
-      });
-      
-      // If the current installment amount has already been paid
-      if (totalPaid >= currentAmount) {
-        console.log('Payment already made for this installment:', { 
-          currentAmount, 
-          totalPaid,
-          paymentPlan: linkData.paymentPlan
-        });
-        
-        // Prevent showing multiple toasts
-        if (!hasShownToastRef.current) {
-          hasShownToastRef.current = true;
-          toast.info('This payment has already been processed.', {
-            duration: 3000, // Set a reasonable duration (3 seconds)
-            id: 'payment-already-processed' // Set an ID to prevent duplicates
-          });
-        }
-        
-        // First try to get the payment ID for this link
-        (async () => {
-          try {
-            const paymentId = await fetchLatestPayment(linkId);
-            
-            // Clear any existing timeout to prevent multiple redirects
-            if (redirectTimeoutRef.current) {
-              clearTimeout(redirectTimeoutRef.current);
-            }
-            
-            // Redirect to success page with both link_id and payment_id (if available)
-            redirectTimeoutRef.current = setTimeout(() => {
-              const redirectUrl = `/payment/success?link_id=${linkId}${paymentId ? `&payment_id=${paymentId}` : ''}`;
-              navigate(redirectUrl);
-            }, 1500); // Short delay to allow the toast to be visible
-          } catch (error) {
-            console.error('Error during payment processing:', error);
-          }
-        })();
-      }
-    }
-    
-    // Cleanup function to prevent memory leaks
     return () => {
       if (redirectTimeoutRef.current) {
         clearTimeout(redirectTimeoutRef.current);
       }
     };
-  }, [linkData, isLoading, linkId, navigate, isFetchingPayment]); // Dependencies carefully managed
+  }, []);
 
   if (isLoading || isFetchingPayment) {
     return <PaymentPageLoading />;
