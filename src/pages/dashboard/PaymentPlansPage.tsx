@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { Plus, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import PaymentPlanFilters from '@/components/dashboard/payment-plans/PaymentPlanFilters';
