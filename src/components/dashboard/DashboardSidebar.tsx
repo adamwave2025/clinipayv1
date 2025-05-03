@@ -69,6 +69,11 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
           to: '/dashboard/send-link',
           label: 'Request Payment',
           icon: <Send className="w-5 h-5" />
+        },
+        {
+          to: '/dashboard/payment-history',
+          label: 'Payment History',
+          icon: <Clock className="w-5 h-5" />
         }
       ]
     },
@@ -76,11 +81,6 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
       to: '/dashboard/patients', 
       label: 'Patients', 
       icon: <Users className="w-5 h-5" /> 
-    },
-    { 
-      to: '/dashboard/payment-history', 
-      label: 'Payment History', 
-      icon: <Clock className="w-5 h-5" /> 
     },
     { 
       to: '/dashboard/settings', 
@@ -211,7 +211,7 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
                               <NavLink
                                 to={link.to}
                                 className={({ isActive }) => `
-                                  flex items-center px-4 py-2 rounded-lg text-gray-700 transition-colors
+                                  flex items-center px-2 py-2 rounded-lg text-gray-700 transition-colors
                                   ${isActive 
                                     ? 'bg-gradient-primary text-white' 
                                     : 'hover:bg-gray-100'
@@ -220,7 +220,7 @@ const DashboardSidebar = ({ userType, isOpen, onClose }: DashboardSidebarProps) 
                                 end
                               >
                                 {link.icon}
-                                <span className="ml-2">{link.label}</span>
+                                <span className="ml-2 truncate">{link.label}</span>
                               </NavLink>
                             </li>
                           ))}
