@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,10 +17,9 @@ import StatusBadge from '@/components/common/StatusBadge';
 import PaymentLinkActionsSection from '@/components/dashboard/payment-details/PaymentLinkActionsSection';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plan } from '@/utils/planTypes';
-import { PlanInstallment, formatPlanInstallments, groupPaymentSchedulesByPlan } from '@/utils/paymentPlanUtils';
+import { Plan, formatPlanFromDb } from '@/utils/planTypes';
+import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { PlanActivity, formatPlanActivities } from '@/utils/planActivityUtils';
-import { fetchPaymentSchedules } from '@/services/PaymentScheduleService';
 import PatientNotes from './PatientNotes';
 import PatientActivity from './PatientActivity';
 import { usePlanQuickAccess } from '@/hooks/usePlanQuickAccess';
@@ -52,7 +50,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
   const [patientPayments, setPatientPayments] = useState<PatientPayment[]>([]);
   const [planActivities, setPlanActivities] = useState<PlanActivity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingActivities, setLoadingActivities] = useState(false); // Added missing state variable
+  const [loadingActivities, setLoadingActivities] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('notes');
   
@@ -207,7 +205,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     fetchPlanActivities();
   }, [patient.id, open, showPlanDetails]); // Refetch when plan details dialog closes
 
-  // Updated useEffect for fetching patient payment plans
+  // Updated useEffect for fetching patient payment plans directly from plans table
   useEffect(() => {
     const fetchPatientPaymentPlans = async () => {
       if (!patient.id || !open) return;
@@ -215,36 +213,36 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
       setLoadingPlans(true);
       
       try {
-        // Get clinic_id directly from the patient record
-        const { data: patientData, error: patientError } = await supabase
-          .from('patients')
-          .select('clinic_id')
-          .eq('id', patient.id)
-          .single();
+        // Directly query the plans table for this patient
+        const { data, error } = await supabase
+          .from('plans')
+          .select(`
+            *,
+            patients (name),
+            payment_links (title, payment_cycle)
+          `)
+          .eq('patient_id', patient.id);
 
-        if (patientError) throw patientError;
+        if (error) throw error;
         
-        if (!patientData?.clinic_id) {
-          console.error('No clinic_id found for patient:', patient.id);
+        if (!data || data.length === 0) {
+          setPatientPlans([]);
           setLoadingPlans(false);
           return;
         }
 
-        const clinicId = patientData.clinic_id;
+        // Format plans using the formatPlanFromDb utility to properly handle monetary values
+        const formattedPlans = data.map(plan => {
+          const formattedPlan = formatPlanFromDb(plan);
+          
+          // Add additional fields needed for display
+          formattedPlan.patientName = plan.patients?.name || 'Unknown Patient';
+          formattedPlan.paymentFrequency = plan.payment_links?.payment_cycle || formattedPlan.paymentFrequency;
+          
+          return formattedPlan;
+        });
         
-        // Fetch all payment schedules for the clinic
-        const scheduleData = await fetchPaymentSchedules(clinicId);
-        
-        // Filter only this patient's plans
-        const filteredScheduleData = scheduleData.filter(item => 
-          item.patient_id === patient.id
-        );
-        
-        // Format into plan objects
-        const plansMap = groupPaymentSchedulesByPlan(filteredScheduleData);
-        const plansArray = Array.from(plansMap.values());
-        
-        setPatientPlans(plansArray);
+        setPatientPlans(formattedPlans);
       } catch (err) {
         console.error('Error fetching patient payment plans:', err);
       } finally {
@@ -332,7 +330,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
                             onClick={() => handleViewPlanDetails(plan)}
                           >
                             <TableCell className="font-medium">{plan.title || plan.planName}</TableCell>
-                            <TableCell>{formatCurrency(plan.totalAmount || plan.amount || 0)}</TableCell>
+                            <TableCell>{formatCurrency(plan.totalAmount || 0)}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">

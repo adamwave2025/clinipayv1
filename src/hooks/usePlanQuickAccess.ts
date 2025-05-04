@@ -52,15 +52,9 @@ export const usePlanQuickAccess = () => {
           amount,
           status,
           payment_request_id,
-          plan_id,
-          payment_requests (
-            id,
-            status,
-            payment_id,
-            paid_at
-          )
+          plan_id
         `)
-        .eq('payment_link_id', plan.paymentLinkId || plan.id)
+        .eq('plan_id', plan.id)
         .order('payment_number', { ascending: true });
         
       if (error) throw error;
@@ -83,7 +77,7 @@ export const usePlanQuickAccess = () => {
       const { data, error } = await supabase
         .from('payment_plan_activities')
         .select('*')
-        .eq('payment_link_id', plan.paymentLinkId || plan.id)
+        .eq('payment_link_id', plan.paymentLinkId)
         .order('performed_at', { ascending: false });
         
       if (error) throw error;
@@ -135,8 +129,7 @@ export const usePlanQuickAccess = () => {
       const { error: planUpdateError } = await supabase
         .from('plans')
         .update({ status: 'cancelled' })
-        .eq('id', selectedPlan.id)
-        .eq('payment_link_id', selectedPlan.paymentLinkId);
+        .eq('id', selectedPlan.id);
       
       if (planUpdateError) throw planUpdateError;
       
@@ -144,7 +137,7 @@ export const usePlanQuickAccess = () => {
       const { error: scheduleUpdateError } = await supabase
         .from('payment_schedule')
         .update({ status: 'cancelled' })
-        .eq('payment_link_id', selectedPlan.paymentLinkId)
+        .eq('plan_id', selectedPlan.id)
         .in('status', ['pending', 'paused']);
         
       if (scheduleUpdateError) throw scheduleUpdateError;
@@ -196,8 +189,7 @@ export const usePlanQuickAccess = () => {
       const { error: planUpdateError } = await supabase
         .from('plans')
         .update({ status: 'paused' })
-        .eq('id', selectedPlan.id)
-        .eq('payment_link_id', selectedPlan.paymentLinkId);
+        .eq('id', selectedPlan.id);
       
       if (planUpdateError) throw planUpdateError;
       
@@ -205,7 +197,7 @@ export const usePlanQuickAccess = () => {
       const { error: scheduleUpdateError } = await supabase
         .from('payment_schedule')
         .update({ status: 'paused' })
-        .eq('payment_link_id', selectedPlan.paymentLinkId)
+        .eq('plan_id', selectedPlan.id)
         .eq('status', 'pending');
         
       if (scheduleUpdateError) throw scheduleUpdateError;
@@ -261,8 +253,7 @@ export const usePlanQuickAccess = () => {
       const { error: planUpdateError } = await supabase
         .from('plans')
         .update({ status: newStatus })
-        .eq('id', selectedPlan.id)
-        .eq('payment_link_id', selectedPlan.paymentLinkId);
+        .eq('id', selectedPlan.id);
       
       if (planUpdateError) throw planUpdateError;
       
@@ -270,7 +261,7 @@ export const usePlanQuickAccess = () => {
       const { error: scheduleUpdateError } = await supabase
         .from('payment_schedule')
         .update({ status: 'pending' })
-        .eq('payment_link_id', selectedPlan.paymentLinkId)
+        .eq('plan_id', selectedPlan.id)
         .eq('status', 'paused');
         
       if (scheduleUpdateError) throw scheduleUpdateError;
