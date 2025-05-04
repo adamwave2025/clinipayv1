@@ -20,6 +20,9 @@ export interface Plan {
   createdAt?: string;
   updatedAt?: string;
   schedule?: any[];
+  // Backward compatibility properties
+  planName?: string;
+  amount?: number;
 }
 
 // Keep the existing PlanInstallment type for consistency
@@ -55,6 +58,9 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
     nextDueDate: dbPlan.next_due_date,
     hasOverduePayments: dbPlan.has_overdue_payments || false,
     createdAt: dbPlan.created_at,
-    updatedAt: dbPlan.updated_at
+    updatedAt: dbPlan.updated_at,
+    // Set backward compatibility fields
+    planName: dbPlan.title || 'Payment Plan',
+    amount: dbPlan.total_amount || 0
   };
 };

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { supabase } from '@/integrations/supabase/client';
@@ -364,8 +363,8 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
                               className="cursor-pointer hover:bg-muted"
                               onClick={() => handleViewPlanDetails(plan)}
                             >
-                              <TableCell className="font-medium">{plan.planName}</TableCell>
-                              <TableCell>{formatCurrency(plan.amount)}</TableCell>
+                              <TableCell className="font-medium">{plan.title || plan.planName}</TableCell>
+                              <TableCell>{formatCurrency(plan.totalAmount || plan.amount || 0)}</TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
                                   <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -432,7 +431,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
           ) : selectedPlan && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-semibold">{selectedPlan.planName}</h2>
+                <h2 className="text-xl font-semibold">{selectedPlan.title || selectedPlan.planName}</h2>
                 <p className="text-sm text-muted-foreground">
                   Payment plan details
                 </p>
@@ -441,7 +440,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Total Amount</p>
-                  <p className="font-medium">{formatCurrency(selectedPlan.amount)}</p>
+                  <p className="font-medium">{formatCurrency(selectedPlan.totalAmount || selectedPlan.amount || 0)}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Progress</p>

@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 /**
  * Sends a payment reminder for a specific installment
  */
-export const sendPaymentReminder = async (installmentId: string) => {
+export const sendPaymentReminder = async (installmentId: string): Promise<void> => {
   try {
     // Get installment details
     const { data: installment, error: installmentError } = await supabase
@@ -26,25 +26,20 @@ export const sendPaymentReminder = async (installmentId: string) => {
     
     if (installmentError) {
       console.error('Error fetching installment details:', installmentError);
-      return { success: false, error: installmentError };
+      toast.error('Failed to send payment reminder');
+      return;
     }
     
     if (!installment.payment_request_id) {
       // Create a new payment request for this installment
-      // This would typically involve creating a payment_request and updating the installment
-      // For now we'll just return an error since this would require more implementation
-      return { 
-        success: false, 
-        error: 'This installment doesn\'t have a payment request yet. Please create one first.' 
-      };
+      toast.error('This installment doesn\'t have a payment request yet. Please create one first.');
+      return;
     }
     
     // In a real implementation, we would now queue a notification to the patient
-    // For now, we'll simulate success
-    
-    return { success: true };
+    toast.success('Payment reminder sent successfully');
   } catch (error) {
     console.error('Error sending payment reminder:', error);
-    return { success: false, error };
+    toast.error('Failed to send payment reminder');
   }
 };

@@ -77,7 +77,6 @@ export const groupPaymentSchedulesByPlan = (scheduleData: PaymentScheduleItem[])
       id: planId,
       patientId: entry.patient_id,
       patientName: entry.patients?.name || 'Unknown Patient',
-      planName: entry.payment_links?.title || 'Payment Plan',
       clinicId: '', // Will be set from the patient record if needed
       paymentLinkId: entry.payment_link_id,
       title: entry.payment_links?.title || 'Payment Plan',
@@ -91,7 +90,9 @@ export const groupPaymentSchedulesByPlan = (scheduleData: PaymentScheduleItem[])
       startDate: '',
       nextDueDate: null,
       hasOverduePayments: false,
-      amount: 0 // Backwards compatibility with PatientDetailsDialog
+      // Backward compatibility fields
+      planName: entry.payment_links?.title || 'Payment Plan',
+      amount: 0
     };
     
     // Calculate first payment and next due date
