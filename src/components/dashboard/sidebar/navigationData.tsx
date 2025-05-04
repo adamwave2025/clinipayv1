@@ -54,14 +54,14 @@ export const getClinicItems = (): SidebarItem[] => [
     icon: <Users className="w-5 h-5" /> 
   },
   { 
-    to: '/dashboard/help', 
-    label: 'Help', 
-    icon: <HelpCircle className="w-5 h-5" /> 
-  },
-  { 
     to: '/dashboard/settings', 
     label: 'Settings', 
     icon: <Settings className="w-5 h-5" /> 
+  },
+  { 
+    to: '/dashboard/help', 
+    label: 'Help', 
+    icon: <HelpCircle className="w-5 h-5" /> 
   },
 ];
 
@@ -82,4 +82,3 @@ export const getAdminLinks = (): SidebarLink[] => [
     icon: <Settings className="w-5 h-5" /> 
   },
 ];
-
