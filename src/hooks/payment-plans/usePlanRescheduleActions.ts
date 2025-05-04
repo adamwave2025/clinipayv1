@@ -13,7 +13,7 @@ export const usePlanRescheduleActions = (
     setShowRescheduleDialog(true);
   };
 
-  const handleReschedulePlanConfirm = async (newStartDate: Date) => {
+  const handleReschedulePlan = async (newStartDate: Date) => {
     if (!selectedPlan) return;
     
     // Log the date to help with debugging
@@ -32,6 +32,6 @@ export const usePlanRescheduleActions = (
     showRescheduleDialog,
     setShowRescheduleDialog,
     handleOpenRescheduleDialog,
-    handleReschedulePlan: handleReschedulePlanConfirm
+    handleReschedulePlan // This is the correct property name with capital 'P'
   };
 };

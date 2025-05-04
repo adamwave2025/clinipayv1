@@ -41,6 +41,7 @@ const ManagePlansPageContent = () => {
     // Refund properties
     refundDialogOpen,
     setRefundDialogOpen,
+    paymentToRefund,
     openRefundDialog,
     processRefund,
     // Cancel plan properties
@@ -61,7 +62,7 @@ const ManagePlansPageContent = () => {
     // Reschedule plan properties
     showRescheduleDialog,
     setShowRescheduleDialog,
-    handleRescheduleplan,
+    handleReschedulePlan, // Fixed the capitalization here - from handleRescheduleplan to handleReschedulePlan
     handleOpenRescheduleDialog,
     isPlanPaused,
     isProcessing
@@ -154,7 +155,7 @@ const ManagePlansPageContent = () => {
       <ReschedulePlanDialog
         showDialog={showRescheduleDialog}
         setShowDialog={setShowRescheduleDialog}
-        onConfirm={handleRescheduleplan}
+        onConfirm={handleReschedulePlan} // Fixed the capitalization here - from handleRescheduleplan to handleReschedulePlan
         planName={selectedPlan?.planName || ''}
         patientName={selectedPlan?.patientName || ''}
         isProcessing={isProcessing}
