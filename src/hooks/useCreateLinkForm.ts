@@ -21,18 +21,25 @@ interface UseCreateLinkFormProps {
 }
 
 // Helper function to transform LinkFormData to PaymentLink format
+// Converts display amounts (e.g., 100.50) to cents (10050) for database storage
 const transformFormDataToPaymentLink = (formData: LinkFormData): Omit<PaymentLink, 'id' | 'url' | 'createdAt' | 'isActive'> => {
+  // Parse amount as float and multiply by 100 to convert to cents
+  const amountInCents = Math.round(parseFloat(formData.amount) * 100);
+  
+  // Calculate plan total amount in cents if it's a payment plan
+  const planTotalAmountInCents = formData.paymentPlan 
+    ? amountInCents * Number(formData.paymentCount) 
+    : undefined;
+  
   return {
     title: formData.paymentTitle,
-    amount: Number(formData.amount),
+    amount: amountInCents,
     type: formData.paymentType,
     description: formData.description,
     paymentPlan: formData.paymentPlan,
     paymentCount: formData.paymentPlan ? Number(formData.paymentCount) : undefined,
     paymentCycle: formData.paymentPlan ? formData.paymentCycle : undefined,
-    planTotalAmount: formData.paymentPlan 
-      ? Number(formData.amount) * Number(formData.paymentCount) 
-      : undefined
+    planTotalAmount: planTotalAmountInCents
   };
 };
 
@@ -75,7 +82,9 @@ export function useCreateLinkForm({
       return false;
     }
     
-    if (isNaN(Number(formData.amount)) || Number(formData.amount) <= 0) {
+    // Validate amount as a valid decimal number
+    const amountValue = parseFloat(formData.amount);
+    if (isNaN(amountValue) || amountValue <= 0) {
       toast.error('Please enter a valid amount');
       return false;
     }
@@ -114,6 +123,7 @@ export function useCreateLinkForm({
       // Use Supabase to create the link
       try {
         // Transform the form data to the expected PaymentLink format
+        // This now handles converting display amounts to cents
         const paymentData = transformFormDataToPaymentLink(formData);
         
         console.log('Creating payment link with data:', paymentData);

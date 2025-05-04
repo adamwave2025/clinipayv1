@@ -1,6 +1,4 @@
 
-
-
 /**
  * Formats a numeric amount as a currency with the proper symbol and decimal places
  * @param amount - The numeric amount to format
@@ -13,7 +11,11 @@ export const formatCurrency = (amount: number | undefined | null, currency: stri
   if (amount === undefined || amount === null) {
     return `${currency}0.00`;
   }
-  return `${currency}${amount.toFixed(decimals)}`;
+  
+  // Ensure we're dividing by 100 if the amount is stored in cents
+  // Our database stores monetary values in cents (1/100 of currency unit)
+  const formattedAmount = amount / 100;
+  return `${currency}${formattedAmount.toFixed(decimals)}`;
 };
 
 /**
@@ -74,4 +76,21 @@ export const formatDateTime = (
   return `${formattedDate} ${formattedTime}`;
 };
 
+/**
+ * Converts a display amount (decimal) to cents for database storage
+ * @param amount - Amount as decimal string or number (e.g., "100.50" or 100.50)
+ * @returns Integer amount in cents (e.g., 10050)
+ */
+export const amountToCents = (amount: string | number): number => {
+  const value = typeof amount === 'string' ? parseFloat(amount) : amount;
+  return Math.round(value * 100);
+};
 
+/**
+ * Converts an amount in cents to a display decimal value
+ * @param cents - Amount in cents (e.g., 10050)
+ * @returns Decimal amount (e.g., 100.50)
+ */
+export const centsToAmount = (cents: number): number => {
+  return cents / 100;
+};

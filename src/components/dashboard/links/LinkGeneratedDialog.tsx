@@ -46,6 +46,12 @@ const LinkGeneratedDialog = ({
   // Check if this is a payment plan
   const isPaymentPlan = formData?.paymentPlan || false;
 
+  // Format displayed amount correctly (input values are already in decimal format)
+  const formatAmount = (amountStr: string) => {
+    const amount = parseFloat(amountStr);
+    return !isNaN(amount) ? amount.toFixed(2) : '0.00';
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
@@ -74,15 +80,15 @@ const LinkGeneratedDialog = ({
                     {formData.paymentTitle}
                   </p>
                   <p className="text-sm">
-                    {formData.paymentCount} payments of £{Number(formData.amount).toFixed(2)} ({formData.paymentCycle})
+                    {formData.paymentCount} payments of £{formatAmount(formData.amount)} ({formData.paymentCycle})
                   </p>
                   <p className="text-sm">
-                    Total: £{(Number(formData.amount) * Number(formData.paymentCount)).toFixed(2)}
+                    Total: £{(parseFloat(formData.amount) * Number(formData.paymentCount)).toFixed(2)}
                   </p>
                 </>
               ) : (
                 <p className="text-sm">
-                  {formData.paymentTitle} - £{Number(formData.amount).toFixed(2)}
+                  {formData.paymentTitle} - £{formatAmount(formData.amount)}
                 </p>
               )}
               {formData.description && (

@@ -29,9 +29,15 @@ const CreatePlanConfirmDialog = ({
 }: CreatePlanConfirmDialogProps) => {
   if (!formData) return null;
 
+  // Format displayed amount correctly (input values are already in decimal format)
+  const formatAmount = (amountStr: string) => {
+    const amount = parseFloat(amountStr);
+    return !isNaN(amount) ? amount.toFixed(2) : '0.00';
+  };
+
   // Calculate total amount
   const totalAmount = formData.paymentPlan && formData.paymentCount && formData.amount
-    ? Number(formData.amount) * Number(formData.paymentCount)
+    ? parseFloat(formData.amount) * Number(formData.paymentCount)
     : 0;
 
   // Format frequency display text
@@ -58,7 +64,7 @@ const CreatePlanConfirmDialog = ({
           <div className="space-y-2">
             <h3 className="font-medium text-lg">{formData.paymentTitle}</h3>
             <div className="text-sm space-y-1">
-              <p><span className="font-medium">Amount per payment:</span> £{Number(formData.amount).toFixed(2)}</p>
+              <p><span className="font-medium">Amount per payment:</span> £{formatAmount(formData.amount)}</p>
               <p><span className="font-medium">Number of payments:</span> {formData.paymentCount}</p>
               <p><span className="font-medium">Frequency:</span> {getFrequencyText(formData.paymentCycle)}</p>
               <p><span className="font-medium">Total value:</span> £{totalAmount.toFixed(2)}</p>

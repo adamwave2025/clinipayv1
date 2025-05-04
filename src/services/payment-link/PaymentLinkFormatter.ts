@@ -2,6 +2,12 @@
 import { PaymentLinkData, RawClinicData } from '@/types/paymentLink';
 import { ClinicFormatter } from './ClinicFormatter';
 
+/**
+ * PaymentLinkFormatter
+ * 
+ * NOTE: The database stores monetary values in cents (1/100 of currency unit)
+ * So we consistently divide by 100 when formatting amounts for display
+ */
 export const PaymentLinkFormatter = {
   formatPaymentRequest(requestData: any): PaymentLinkData | null {
     if (!requestData) return null;
@@ -21,11 +27,11 @@ export const PaymentLinkFormatter = {
       return {
         id: requestData.id,
         title: `Payment for ${requestData.patient_name}`,
-        amount: requestData.custom_amount,
+        amount: requestData.custom_amount / 100, // Convert cents to standard currency units
         type: 'custom',
         description: requestData.message || undefined,
         isRequest: true,
-        customAmount: requestData.custom_amount,
+        customAmount: requestData.custom_amount / 100, // Convert cents to standard currency units
         patientName: requestData.patient_name,
         patientEmail: requestData.patient_email,
         patientPhone: requestData.patient_phone,
@@ -43,15 +49,15 @@ export const PaymentLinkFormatter = {
       const paymentPlan = linkData.payment_plan || false;
       const planData = paymentPlan ? {
         paymentPlan: true,
-        planTotalAmount: linkData.plan_total_amount || 0,
-        totalPaid: requestData.total_paid || 0,
-        totalOutstanding: (linkData.plan_total_amount || 0) - (requestData.total_paid || 0)
+        planTotalAmount: (linkData.plan_total_amount || 0) / 100, // Convert cents to standard currency units
+        totalPaid: (requestData.total_paid || 0) / 100, // Convert cents to standard currency units
+        totalOutstanding: (linkData.plan_total_amount || 0 - (requestData.total_paid || 0)) / 100 // Convert cents to standard currency units
       } : {};
       
       return {
         id: requestData.id,
         title: linkData.title || `Payment for ${requestData.patient_name}`,
-        amount: linkData.amount,
+        amount: (linkData.amount || 0) / 100, // Convert cents to standard currency units
         type: linkData.type || 'other',
         description: linkData.description || requestData.message,
         isRequest: true,
@@ -78,9 +84,9 @@ export const PaymentLinkFormatter = {
     const paymentPlan = linkData.payment_plan || false;
     const planData = paymentPlan ? {
       paymentPlan: true,
-      planTotalAmount: linkData.plan_total_amount || 0,
-      totalPaid: linkData.total_paid || 0,
-      totalOutstanding: (linkData.plan_total_amount || 0) - (linkData.total_paid || 0)
+      planTotalAmount: (linkData.plan_total_amount || 0) / 100, // Convert cents to standard currency units
+      totalPaid: (linkData.total_paid || 0) / 100, // Convert cents to standard currency units
+      totalOutstanding: ((linkData.plan_total_amount || 0) - (linkData.total_paid || 0)) / 100 // Convert cents to standard currency units
     } : {};
 
     // Handle link status specifically
@@ -94,7 +100,7 @@ export const PaymentLinkFormatter = {
     return {
       id: linkData.id,
       title: linkData.title || 'Payment',
-      amount: linkData.amount,
+      amount: (linkData.amount || 0) / 100, // Convert cents to standard currency units
       type: linkData.type || 'other',
       description: linkData.description,
       status: status,

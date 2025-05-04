@@ -38,7 +38,15 @@ export interface PlanInstallment {
   paymentRequestId?: string;
 }
 
-// Helper function to format a plan from the database into our frontend format
+/**
+ * Helper function to format a plan from the database into our frontend format
+ * 
+ * IMPORTANT: The database stores monetary values in cents (1/100 of currency unit)
+ * So we ALWAYS divide by 100 when formatting amounts for display
+ * 
+ * @param dbPlan - Raw plan data from database
+ * @returns Formatted Plan object with amounts in standard currency units
+ */
 export const formatPlanFromDb = (dbPlan: any): Plan => {
   // If the plan comes directly from the plans table
   if ('patient_id' in dbPlan) {

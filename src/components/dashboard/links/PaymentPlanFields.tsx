@@ -27,8 +27,9 @@ const PaymentPlanFields: React.FC<PaymentPlanFieldsProps> = ({
   onSelectChange,
   isLoading
 }) => {
-  const totalAmount = !isNaN(Number(amount) * Number(paymentCount)) 
-    ? (Number(amount) * Number(paymentCount)).toFixed(2) 
+  // Calculate total amount properly handling decimal values
+  const totalAmount = !isNaN(parseFloat(amount) * Number(paymentCount)) 
+    ? (parseFloat(amount) * Number(paymentCount)).toFixed(2) 
     : '0.00';
 
   return (

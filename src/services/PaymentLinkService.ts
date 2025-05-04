@@ -2,6 +2,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { PaymentLinkData } from '@/types/paymentLink';
 import { PaymentLink } from '@/types/payment';
 
+/**
+ * PaymentLinkService
+ * 
+ * IMPORTANT: The database stores all monetary values in cents (1/100 of currency unit)
+ * So we DO NOT need to multiply by 100 when creating payment links, as the amounts
+ * coming from the UI have already been converted to cents.
+ * 
+ * When returning data from the database, we divide by 100 to display as currency.
+ */
 export const PaymentLinkService = {
   async fetchPaymentLink(linkId: string): Promise<PaymentLinkData | null> {
     try {
@@ -386,6 +395,9 @@ export const PaymentLinkService = {
         linkData.planTotalAmount = linkData.amount * linkData.paymentCount;
       }
     }
+
+    // Note: linkData.amount is already in cents from the form processing
+    // No need to multiply by 100 here
 
     const { data, error } = await supabase
       .from('payment_links')

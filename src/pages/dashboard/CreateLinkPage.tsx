@@ -43,18 +43,25 @@ const CreateLinkPage = () => {
   };
 
   // Transform LinkFormData to PaymentLink format
+  // Ensure we convert decimal amounts to cents for storage
   const transformFormDataToPaymentLink = (data: LinkFormData): Omit<PaymentLink, "id" | "url" | "createdAt" | "isActive"> => {
+    // Parse amount as float and multiply by 100 to convert to cents
+    const amountInCents = Math.round(parseFloat(data.amount) * 100);
+    
+    // Calculate plan total amount in cents if it's a payment plan
+    const planTotalAmountInCents = data.paymentPlan 
+      ? amountInCents * Number(data.paymentCount) 
+      : undefined;
+    
     return {
       title: data.paymentTitle,
-      amount: Number(data.amount),
+      amount: amountInCents,
       type: data.paymentType,
       description: data.description,
       paymentPlan: data.paymentPlan,
       paymentCount: data.paymentPlan ? Number(data.paymentCount) : undefined,
       paymentCycle: data.paymentPlan ? data.paymentCycle : undefined,
-      planTotalAmount: data.paymentPlan 
-        ? Number(data.amount) * Number(data.paymentCount) 
-        : undefined
+      planTotalAmount: planTotalAmountInCents
     };
   };
 
@@ -65,6 +72,7 @@ const CreateLinkPage = () => {
     
     try {
       // Transform the form data to the expected PaymentLink format
+      // This now handles converting display amounts to cents
       const paymentData = transformFormDataToPaymentLink(data);
       
       console.log('Sending payment data to API:', paymentData);
