@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +14,7 @@ export interface Patient {
   totalSpent?: number;
   lastPaymentDate?: string;
   pendingRequestsCount?: number; // Number of pending payment requests
+  clinic_id?: string; // Added clinic_id property to fix TypeScript error
 }
 
 export function usePatients() {

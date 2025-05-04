@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { supabase } from '@/integrations/supabase/client';
@@ -272,7 +271,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     setShowPlanDetails(false);
   };
   
-  // Get the clinic ID from the patient for notes
+  // Function to get the clinic ID from the patient for notes
   const getClinicId = () => {
     return patient.clinic_id || '';
   };

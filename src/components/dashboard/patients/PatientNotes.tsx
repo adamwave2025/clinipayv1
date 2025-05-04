@@ -14,9 +14,7 @@ interface PatientNote {
   content: string;
   created_at: string;
   created_by_user_id: string | null;
-  created_by_user?: {
-    email: string;
-  } | null;
+  created_by_user_email?: string; // Changed to match the format we'll transform into
 }
 
 interface PatientNotesProps {
@@ -56,7 +54,16 @@ const PatientNotes: React.FC<PatientNotesProps> = ({ patientId, clinicId }) => {
 
       if (error) throw error;
       
-      setNotes(data || []);
+      // Transform the data to fit our PatientNote interface
+      const formattedNotes = data?.map(note => ({
+        id: note.id,
+        content: note.content,
+        created_at: note.created_at,
+        created_by_user_id: note.created_by_user_id,
+        created_by_user_email: note.users?.email || 'Unknown user'
+      })) || [];
+      
+      setNotes(formattedNotes);
     } catch (error: any) {
       console.error('Error fetching patient notes:', error);
       toast.error('Failed to load patient notes');
@@ -168,7 +175,7 @@ const PatientNotes: React.FC<PatientNotesProps> = ({ patientId, clinicId }) => {
                   {note.created_at && formatDate(note.created_at)}
                 </span>
                 <span>
-                  {note.users?.email || 'Unknown user'}
+                  {note.created_by_user_email}
                 </span>
               </div>
             </div>
