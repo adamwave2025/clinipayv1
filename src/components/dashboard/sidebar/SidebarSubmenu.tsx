@@ -44,7 +44,7 @@ const SidebarSubmenu: React.FC<SidebarSubmenuProps> = ({
       </button>
       
       {isExpanded && (
-        <ul className="pl-10 space-y-1" role="menu" aria-label={`${item.label} submenu`}>
+        <ul className="pl-8 space-y-1" role="menu" aria-label={`${item.label} submenu`}>
           {item.links.map((link, linkIndex) => (
             <li key={`submenu-link-${linkIndex}`} role="menuitem">
               <NavLink
@@ -59,7 +59,7 @@ const SidebarSubmenu: React.FC<SidebarSubmenuProps> = ({
                 end
               >
                 {link.icon}
-                <span className="ml-2 truncate">{link.label}</span>
+                <span className="ml-2 whitespace-normal">{link.label}</span>
               </NavLink>
             </li>
           ))}
