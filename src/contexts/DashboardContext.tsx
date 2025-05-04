@@ -21,6 +21,7 @@ interface DashboardContextType {
   handleRefund: (amount?: number, paymentId?: string) => void;
   archivePaymentLink: (linkId: string) => Promise<{ success: boolean; error?: string }>;
   unarchivePaymentLink: (linkId: string) => Promise<{ success: boolean; error?: string }>;
+  rawPaymentLinks: PaymentLink[]; // Added this to access the raw payment links including plans
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);

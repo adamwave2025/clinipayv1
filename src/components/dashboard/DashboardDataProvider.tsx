@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Payment, PaymentLink } from '@/types/payment';
 import { toast } from 'sonner';
@@ -180,6 +181,8 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
     handleRefund,
     archivePaymentLink,
     unarchivePaymentLink,
+    // Add rawPaymentLinks to the context so we can check for payment plans
+    rawPaymentLinks,
   };
 
   return (

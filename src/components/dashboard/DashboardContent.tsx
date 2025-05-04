@@ -25,7 +25,8 @@ const DashboardContent = () => {
     handlePaymentClick,
     handleRefund,
     archivePaymentLink,
-    unarchivePaymentLink
+    unarchivePaymentLink,
+    rawPaymentLinks
   } = useDashboardData();
 
   // Get clinic data to determine Stripe connection status
@@ -33,7 +34,11 @@ const DashboardContent = () => {
   
   // Default values for new accounts or when data isn't loaded yet
   const stripeConnected = clinicData?.stripe_status === 'connected';
-  const paymentLinksExist = paymentLinks.length > 0;
+  
+  // Updated to check both regular payment links AND payment plans
+  // This ensures that creating a payment plan also completes the "create a payment link" task
+  const paymentLinksExist = paymentLinks.length > 0 || rawPaymentLinks.some(link => link.paymentPlan === true);
+  
   const hasSentPaymentLink = payments.some(payment => payment.status === 'sent');
 
   return (
