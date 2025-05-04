@@ -1,10 +1,19 @@
 
 import { PaymentLink } from '@/types/payment';
 
+/**
+ * Formats raw payment link data from the API into the PaymentLink interface format
+ * 
+ * NOTE: The database stores monetary values in cents (1/100 of currency unit)
+ * So we need to divide by 100 when formatting amounts for display
+ * 
+ * @param data - Raw payment link data from API
+ * @returns Array of formatted PaymentLink objects
+ */
 export const formatPaymentLinks = (data: any[]): PaymentLink[] => data.map(link => ({
   id: link.id,
   title: link.title || '',
-  amount: link.amount || 0,
+  amount: (link.amount || 0) / 100, // Convert cents to standard currency units
   type: link.type || 'other',
   description: link.description || '',
   url: `${window.location.origin}/payment/${link.id}`,
@@ -13,5 +22,5 @@ export const formatPaymentLinks = (data: any[]): PaymentLink[] => data.map(link 
   paymentPlan: link.payment_plan || false,
   paymentCount: link.payment_count,
   paymentCycle: link.payment_cycle,
-  planTotalAmount: link.plan_total_amount
+  planTotalAmount: link.plan_total_amount ? link.plan_total_amount / 100 : undefined // Convert cents to standard currency units
 }));
