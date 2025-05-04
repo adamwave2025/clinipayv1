@@ -149,6 +149,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     ...resumeActions,
     // Reschedule plan properties
     ...rescheduleActions,
+    // Plan state helpers
     isPlanPaused,
     isProcessing
   };

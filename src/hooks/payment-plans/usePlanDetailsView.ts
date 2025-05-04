@@ -17,7 +17,7 @@ export const usePlanDetailsView = () => {
   const [selectedInstallment, setSelectedInstallment] = useState<PlanInstallment | null>(null);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   
-  const isPlanPaused = (plan: Plan | null) => {
+  const isPlanPaused = (plan: Plan | null): boolean => {
     return plan?.status === 'paused';
   };
 

@@ -67,7 +67,7 @@ export interface ManagePlansContextType {
   handleOpenRescheduleDialog: () => void;
   
   // Plan state helpers
-  isPlanPaused: boolean;
+  isPlanPaused: (plan: Plan | null) => boolean;
   isProcessing: boolean;
 }
 
