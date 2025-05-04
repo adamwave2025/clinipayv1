@@ -25,7 +25,7 @@ export const formatPlanActivities = (activities: any[]): PlanActivity[] => {
   return activities.map(activity => ({
     id: activity.id,
     actionType: activity.action_type,
-    performedAt: format(new Date(activity.performed_at), 'yyyy-MM-dd HH:mm'),
+    performedAt: activity.performed_at, // Preserve original ISO timestamp
     performedBy: activity.performed_by_user_id,
     details: activity.details || {}
   }));
