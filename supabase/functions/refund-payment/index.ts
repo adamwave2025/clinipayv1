@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -217,6 +218,82 @@ serve(async (req) => {
           status: 200,
         }
       );
+    }
+
+    // NEW CODE: Update the payment plan to reflect this refund
+    try {
+      // First check if this payment is linked to a payment request
+      const { data: paymentRequest, error: requestError } = await supabase
+        .from('payment_requests')
+        .select('*')
+        .eq('payment_id', paymentId)
+        .maybeSingle();
+      
+      if (requestError) {
+        console.error('❌ Error checking payment request:', requestError);
+      } else if (paymentRequest) {
+        console.log('📋 Found payment request:', paymentRequest.id);
+        
+        // Check if this payment request is linked to a payment schedule
+        const { data: scheduleItem, error: scheduleError } = await supabase
+          .from('payment_schedule')
+          .select('*')
+          .eq('payment_request_id', paymentRequest.id)
+          .maybeSingle();
+          
+        if (scheduleError) {
+          console.error('❌ Error checking payment schedule:', scheduleError);
+        } else if (scheduleItem) {
+          console.log('📋 Found payment schedule item:', scheduleItem.id);
+          
+          // Update the payment schedule status
+          const scheduleStatus = isFullRefund ? 'refunded' : 'partially_refunded';
+          const { error: updateScheduleError } = await supabase
+            .from('payment_schedule')
+            .update({ status: scheduleStatus })
+            .eq('id', scheduleItem.id);
+            
+          if (updateScheduleError) {
+            console.error('❌ Error updating payment schedule:', updateScheduleError);
+          } else {
+            console.log('✅ Updated payment schedule status to:', scheduleStatus);
+            
+            // Record the refund activity
+            const activityPayload = {
+              patient_id: scheduleItem.patient_id,
+              payment_link_id: scheduleItem.payment_link_id,
+              clinic_id: scheduleItem.clinic_id,
+              action_type: 'payment_refund',
+              details: {
+                payment_number: scheduleItem.payment_number,
+                total_payments: scheduleItem.total_payments,
+                refund_amount: refundAmountToStore,
+                is_full_refund: isFullRefund,
+                payment_reference: payment.payment_ref || '',
+                refund_date: currentTimestamp,
+                original_amount: scheduleItem.amount / 100 // Convert cents to pounds
+              }
+            };
+            
+            const { error: activityError } = await supabase
+              .from('payment_plan_activities')
+              .insert(activityPayload);
+              
+            if (activityError) {
+              console.error('❌ Error recording refund activity:', activityError);
+            } else {
+              console.log('✅ Recorded refund activity successfully');
+            }
+          }
+        } else {
+          console.log('ℹ️ This payment is not linked to a payment schedule');
+        }
+      } else {
+        console.log('ℹ️ This payment is not linked to a payment request');
+      }
+    } catch (planUpdateError) {
+      console.error('❌ Error updating payment plan:', planUpdateError);
+      // Don't fail the whole refund if plan update fails
     }
     
     const { data: clinicData, error: clinicError } = await supabase

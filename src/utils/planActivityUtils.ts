@@ -1,6 +1,4 @@
 
-import { format } from 'date-fns';
-
 export type PlanActivityType = 
   | 'reschedule'
   | 'pause'
@@ -9,6 +7,7 @@ export type PlanActivityType =
   | 'create'
   | 'payment_made'
   | 'reminder_sent'
+  | 'payment_refund'
   | string; // Allow for other string values as well
 
 export interface PlanActivity {
@@ -40,6 +39,7 @@ export const getActionTypeLabel = (type: PlanActivityType): string => {
     case 'create': return 'Plan Created';
     case 'payment_made': return 'Payment Made';
     case 'reminder_sent': return 'Reminder Sent';
+    case 'payment_refund': return 'Payment Refunded';
     default: {
       // Ensure TypeScript knows this is a string by using type assertion
       const typeAsString = type as string;

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { formatDate, formatCurrency, formatDateTime } from '@/utils/formatters';
 import StatusBadge from '@/components/common/StatusBadge';
@@ -10,7 +11,8 @@ import {
   X, 
   Clock, 
   CheckCircle, 
-  Mail
+  Mail,
+  RefreshCcw
 } from 'lucide-react';
 
 interface PatientActivityProps {
@@ -62,6 +64,8 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments, planActivit
           return <CreditCard className="h-4 w-4 text-clinipay-purple" />;
         case 'reminder_sent':
           return <Mail className="h-4 w-4 text-blue-500" />;
+        case 'payment_refund':
+          return <RefreshCcw className="h-4 w-4 text-orange-500" />;
         default:
           return <Clock className="h-4 w-4 text-gray-500" />;
       }
@@ -94,6 +98,10 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments, planActivit
           return `Installment dates updated`;
         } else if (activity.actionType === 'payment_made') {
           return `Installment ${activity.details.payment_number || ''} paid`;
+        } else if (activity.actionType === 'payment_refund') {
+          return activity.details.is_full_refund 
+            ? `Full refund of installment ${activity.details.payment_number || ''}` 
+            : `Partial refund of installment ${activity.details.payment_number || ''}`;
         }
       }
       

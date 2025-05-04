@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PlanActivityType } from '@/utils/planActivityUtils';
@@ -610,3 +609,114 @@ function calculateNewDueDate(startDate: Date, index: number, frequency: string):
 function formatDateToYYYYMMDD(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
+
+/**
+ * Record a payment refund in the payment plan system
+ * Updates the payment_schedule status and records the activity
+ */
+export const recordPaymentRefund = async (
+  paymentId: string,
+  refundAmount: number,
+  isFullRefund: boolean,
+  userId?: string
+) => {
+  try {
+    // First, find the payment request associated with this payment
+    const { data: paymentRequest, error: paymentRequestError } = await supabase
+      .from('payment_requests')
+      .select('id, patient_id, payment_link_id, clinic_id')
+      .eq('payment_id', paymentId)
+      .single();
+      
+    if (paymentRequestError) {
+      console.error('Error finding payment request for refund:', paymentRequestError);
+      return { success: false, error: paymentRequestError.message };
+    }
+    
+    if (!paymentRequest) {
+      console.log('No payment request found for this payment');
+      return { success: false, error: 'No payment request found for this payment' };
+    }
+    
+    // Find the payment schedule entry associated with this payment request
+    const { data: scheduleEntry, error: scheduleError } = await supabase
+      .from('payment_schedule')
+      .select(`
+        id, 
+        payment_number, 
+        total_payments, 
+        amount,
+        due_date,
+        payment_requests (
+          id,
+          payment_id,
+          status,
+          patient_name
+        )
+      `)
+      .eq('payment_request_id', paymentRequest.id)
+      .single();
+      
+    if (scheduleError) {
+      console.error('Error finding schedule entry for refund:', scheduleError);
+      return { success: false, error: scheduleError.message };
+    }
+    
+    if (!scheduleEntry) {
+      console.log('No schedule entry found for this payment request');
+      return { success: false, error: 'No schedule entry found for this payment request' };
+    }
+    
+    console.log('Found schedule entry:', scheduleEntry);
+    
+    // Get payment details for the activity log
+    const { data: payment, error: paymentError } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('id', paymentId)
+      .single();
+      
+    if (paymentError) {
+      console.error('Error fetching payment details:', paymentError);
+      // Continue without payment details
+    }
+    
+    // Update the schedule entry status based on refund type
+    const newStatus = isFullRefund ? 'refunded' : 'partially_refunded';
+    
+    const { error: updateError } = await supabase
+      .from('payment_schedule')
+      .update({ status: newStatus })
+      .eq('id', scheduleEntry.id);
+      
+    if (updateError) {
+      console.error('Error updating schedule status:', updateError);
+      return { success: false, error: updateError.message };
+    }
+    
+    // Record the refund activity
+    const activityDetails = {
+      payment_number: scheduleEntry.payment_number,
+      total_payments: scheduleEntry.total_payments,
+      refund_amount: refundAmount,
+      is_full_refund: isFullRefund,
+      payment_reference: payment?.payment_ref || '',
+      refund_date: new Date().toISOString(),
+      original_amount: scheduleEntry.amount / 100 // Convert cents to dollars/pounds
+    };
+    
+    await recordPaymentPlanActivity(
+      paymentRequest.patient_id,
+      paymentRequest.payment_link_id,
+      paymentRequest.clinic_id,
+      'payment_refund',
+      activityDetails,
+      userId
+    );
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error recording payment refund:', error);
+    return { success: false, error: String(error) };
+  }
+};

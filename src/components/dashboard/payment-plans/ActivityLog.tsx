@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { PlanActivity, getActionTypeLabel } from '@/utils/planActivityUtils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Clock, RotateCw, PauseCircle, PlayCircle, XCircle, CalendarIcon, CheckCircle2, CreditCard } from 'lucide-react';
+import { Clock, RotateCw, PauseCircle, PlayCircle, XCircle, CalendarIcon, CheckCircle2, CreditCard, RefreshCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDateTime } from '@/utils/formatters';
 
@@ -26,6 +27,8 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading }) => {
         return <CreditCard className="h-4 w-4 text-emerald-500" />;
       case 'create':
         return <CheckCircle2 className="h-4 w-4 text-indigo-500" />;
+      case 'payment_refund':
+        return <RefreshCcw className="h-4 w-4 text-orange-500" />;
       default:
         return <Clock className="h-4 w-4 text-gray-500" />;
     }
@@ -46,6 +49,8 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading }) => {
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'create':
         return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      case 'payment_refund':
+        return 'bg-orange-50 text-orange-700 border-orange-200';
       default:
         return 'bg-gray-50 text-gray-700 border-gray-200';
     }
@@ -105,6 +110,18 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading }) => {
             <p>Amount: £{details.amount?.toFixed(2) || '0.00'}</p>
             <p>Reference: {details.payment_reference || 'N/A'}</p>
             <p>Date: {formatDate(details.payment_date)}</p>
+          </div>
+        );
+      case 'payment_refund':
+        return (
+          <div className="text-sm">
+            <p>Payment {details.payment_number} of {details.total_payments}</p>
+            <p>Refund amount: £{details.refund_amount?.toFixed(2) || '0.00'}</p>
+            {details.is_full_refund 
+              ? <p>Full refund processed</p> 
+              : <p>Partial refund processed</p>}
+            <p>Reference: {details.payment_reference || 'N/A'}</p>
+            <p>Date: {formatDate(details.refund_date)}</p>
           </div>
         );
       case 'create':
