@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { generatePaymentReference } from "./utils.ts";
@@ -185,7 +184,8 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
               clinic_id,
               payment_number,
               total_payments,
-              payment_frequency
+              payment_frequency,
+              plan_id
             `)
             .eq("payment_request_id", requestId)
             .single();
@@ -194,6 +194,113 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
             console.log("No payment schedule entry found for this request, not a payment plan payment");
           } else if (scheduleData) {
             console.log(`Found payment schedule entry: payment ${scheduleData.payment_number} of ${scheduleData.total_payments}`);
+            
+            // Update the payment schedule status if not already updated
+            const { error: updateScheduleError } = await supabaseClient
+              .from("payment_schedule")
+              .update({ status: "paid" })
+              .eq("id", scheduleData.id);
+              
+            if (updateScheduleError) {
+              console.error("Error updating payment schedule status:", updateScheduleError);
+            } else {
+              console.log("Successfully updated payment schedule status to paid");
+            }
+            
+            // IMPORTANT NEW CODE: Update the parent plan record with new payment status
+            if (scheduleData.plan_id) {
+              console.log(`Updating parent plan with ID: ${scheduleData.plan_id}`);
+              
+              try {
+                // First get current plan data to update correctly
+                const { data: planData, error: planFetchError } = await supabaseClient
+                  .from("plans")
+                  .select("*")
+                  .eq("id", scheduleData.plan_id)
+                  .single();
+                
+                if (planFetchError) {
+                  console.error("Error fetching plan data:", planFetchError);
+                } else if (planData) {
+                  // Increment paid installments
+                  const paidInstallments = (planData.paid_installments || 0) + 1;
+                  const totalInstallments = planData.total_installments || scheduleData.total_payments;
+                  
+                  // Calculate new progress percentage
+                  const progress = Math.floor((paidInstallments / totalInstallments) * 100) || 0;
+                  
+                  // Determine the new status
+                  let newStatus = planData.status;
+                  
+                  // If all installments are paid, mark as completed
+                  if (paidInstallments >= totalInstallments) {
+                    newStatus = 'completed';
+                  } 
+                  // If some installments are paid but not all, mark as active (unless it's already marked as overdue or paused)
+                  else if (paidInstallments > 0 && newStatus === 'pending') {
+                    newStatus = 'active';
+                  }
+                  
+                  // Find the next due date from remaining unpaid installments
+                  let nextDueDate = null;
+                  
+                  // Get all schedule entries for this plan to find next due date
+                  const { data: allScheduleEntries, error: entriesError } = await supabaseClient
+                    .from("payment_schedule")
+                    .select("*")
+                    .eq("plan_id", scheduleData.plan_id)
+                    .order("due_date", { ascending: true });
+                    
+                  if (!entriesError && allScheduleEntries) {
+                    // Find first unpaid entry
+                    const unpaidEntry = allScheduleEntries.find(entry => 
+                      entry.status !== 'paid' && entry.status !== 'cancelled'
+                    );
+                    
+                    if (unpaidEntry) {
+                      nextDueDate = unpaidEntry.due_date;
+                    }
+                  } else {
+                    console.error("Error fetching all schedule entries:", entriesError);
+                  }
+                  
+                  // Check for overdue status on remaining entries
+                  const now = new Date();
+                  now.setHours(0, 0, 0, 0); // Start of day for accurate comparison
+                  
+                  const hasOverduePayments = allScheduleEntries ? allScheduleEntries.some(entry => {
+                    const dueDate = new Date(entry.due_date);
+                    dueDate.setHours(0, 0, 0, 0); // Start of day for accurate comparison
+                    return entry.status !== 'paid' && entry.status !== 'cancelled' && dueDate < now;
+                  }) : false;
+                  
+                  // If plan is active but has overdue payments, mark as overdue (unless paused or cancelled)
+                  if (hasOverduePayments && newStatus !== 'paused' && newStatus !== 'cancelled') {
+                    newStatus = 'overdue';
+                  }
+                  
+                  // Update the plan with new values
+                  const { error: planUpdateError } = await supabaseClient
+                    .from("plans")
+                    .update({
+                      paid_installments: paidInstallments,
+                      progress: progress,
+                      next_due_date: nextDueDate,
+                      status: newStatus,
+                      has_overdue_payments: hasOverduePayments
+                    })
+                    .eq("id", scheduleData.plan_id);
+                  
+                  if (planUpdateError) {
+                    console.error("Error updating plan record:", planUpdateError);
+                  } else {
+                    console.log(`Successfully updated plan record. New status: ${newStatus}, Progress: ${progress}%, Next due date: ${nextDueDate}`);
+                  }
+                }
+              } catch (planError) {
+                console.error("Error updating plan record:", planError);
+              }
+            }
             
             // Record payment activity in the payment plan activity log
             const activityPayload = {
@@ -221,16 +328,6 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
               console.error("Error recording payment activity:", activityError);
             } else {
               console.log("Successfully recorded payment activity in plan history");
-            }
-            
-            // Also update the payment schedule status if not already updated
-            const { error: updateScheduleError } = await supabaseClient
-              .from("payment_schedule")
-              .update({ status: "paid" })
-              .eq("id", scheduleData.id);
-              
-            if (updateScheduleError) {
-              console.error("Error updating payment schedule status:", updateScheduleError);
             }
           }
         } catch (scheduleError) {
