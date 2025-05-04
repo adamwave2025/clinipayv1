@@ -3,7 +3,7 @@ import React from 'react';
 import { PlanActivity, getActionTypeLabel } from '@/utils/planActivityUtils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Clock, RotateCw, PauseCircle, PlayCircle, XCircle, CalendarIcon, CheckCircle2, CreditCard, RefreshCcw } from 'lucide-react';
+import { Clock, RotateCw, PauseCircle, PlayCircle, XCircle, CalendarIcon, CheckCircle2, CreditCard, RefreshCcw, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatDateTime } from '@/utils/formatters';
 
@@ -29,6 +29,8 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading }) => {
         return <CheckCircle2 className="h-4 w-4 text-indigo-500" />;
       case 'payment_refund':
         return <RefreshCcw className="h-4 w-4 text-orange-500" />;
+      case 'overdue':
+        return <AlertTriangle className="h-4 w-4 text-red-500" />;
       default:
         return <Clock className="h-4 w-4 text-gray-500" />;
     }
@@ -51,6 +53,8 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading }) => {
         return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       case 'payment_refund':
         return 'bg-orange-50 text-orange-700 border-orange-200';
+      case 'overdue':
+        return 'bg-red-50 text-red-700 border-red-200';
       default:
         return 'bg-gray-50 text-gray-700 border-gray-200';
     }
@@ -131,6 +135,16 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading }) => {
             <p>{details.installments} payments of £{details.installment_amount?.toFixed(2) || '0.00'}</p>
             <p>Frequency: {details.frequency || 'monthly'}</p>
             <p>Total: £{details.total_amount?.toFixed(2) || '0.00'}</p>
+          </div>
+        );
+      case 'overdue':
+        return (
+          <div className="text-sm">
+            <p>{details.overdue_count || 0} overdue payment(s) detected</p>
+            {details.overdue_items && details.overdue_items.length > 0 && (
+              <p>Payments {details.overdue_items.map((item: any) => item.payment_number).join(', ')} are overdue</p>
+            )}
+            {details.previous_status && <p>Plan status changed from {details.previous_status}</p>}
           </div>
         );
       default:

@@ -112,18 +112,16 @@ serve(async (req) => {
             throw new Error(`Error updating plan ${plan.id}: ${updateError.message}`);
           }
           
-          // Record this update in the activity log
+          // Record this update in the activity log using the new 'overdue' action type
           const { error: activityError } = await supabase
             .from('payment_plan_activities')
             .insert({
               patient_id: null,  // Will be populated from the plan data
               payment_link_id: null,  // Will be populated from the plan data
               clinic_id: null,  // Will be populated from the plan data
-              action_type: 'status_update',
+              action_type: 'overdue',
               details: {
-                old_status: plan.status,
-                new_status: 'overdue',
-                reason: 'Overdue payments detected',
+                previous_status: plan.status,
                 overdue_count: overduePayments.length,
                 overdue_items: overduePayments.map(p => ({
                   id: p.id,

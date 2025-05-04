@@ -207,7 +207,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
               console.log("Successfully updated payment schedule status to paid");
             }
             
-            // IMPORTANT NEW CODE: Update the parent plan record with new payment status
+            // IMPORTANT: Update the parent plan record with new payment status
             if (scheduleData.plan_id) {
               console.log(`Updating parent plan with ID: ${scheduleData.plan_id}`);
               
@@ -235,7 +235,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
                     .select("*")
                     .eq("plan_id", scheduleData.plan_id)
                     .order("due_date", { ascending: true });
-                  
+                          
                   if (entriesError) {
                     console.error("Error fetching all schedule entries:", entriesError);
                     throw entriesError;
@@ -307,31 +307,8 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
                     } else {
                       console.log(`Successfully updated plan record. New status: ${newStatus}, Progress: ${progress}%, Has overdue payments: ${hasOverduePayments}, Next due date: ${nextDueDate || 'None'}`);
                       
-                      // If status changed, record this in the activity log
-                      if (statusChanged) {
-                        const activityPayload = {
-                          patient_id: scheduleData.patient_id,
-                          payment_link_id: scheduleData.payment_link_id,
-                          clinic_id: scheduleData.clinic_id,
-                          action_type: "status_update",
-                          details: {
-                            old_status: oldStatus,
-                            new_status: newStatus,
-                            reason: `Status updated after payment of installment ${scheduleData.payment_number}`,
-                            payment_id: paymentId
-                          }
-                        };
-                        
-                        const { error: activityError } = await supabaseClient
-                          .from("payment_plan_activities")
-                          .insert(activityPayload);
-                          
-                        if (activityError) {
-                          console.error("Error recording status change activity:", activityError);
-                        } else {
-                          console.log(`Successfully recorded status change from ${oldStatus} to ${newStatus} in plan history`);
-                        }
-                      }
+                      // REMOVED: No more status_update activity when returning from overdue to active
+                      // We only want to log overdue status changes, which happen in the update-plan-statuses function
                     }
                   }
                 }

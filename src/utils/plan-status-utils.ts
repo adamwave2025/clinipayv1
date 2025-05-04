@@ -123,6 +123,40 @@ export async function checkAndUpdatePlanOverdueStatus(planId: string) {
         return { success: false, error: updateError };
       }
       
+      // If the plan is becoming overdue, we should log an 'overdue' activity
+      if (newStatus === 'overdue' && plan.status !== 'overdue') {
+        // Get overdue payments for the activity log
+        const overdueEntries = scheduleEntries.filter(entry => {
+          const dueDate = new Date(entry.due_date);
+          dueDate.setHours(0, 0, 0, 0);
+          return entry.status !== 'paid' && entry.status !== 'cancelled' && dueDate < now;
+        });
+        
+        const { error: activityError } = await supabase
+          .from('payment_plan_activities')
+          .insert({
+            patient_id: plan.patient_id,
+            payment_link_id: plan.payment_link_id,
+            clinic_id: plan.clinic_id,
+            action_type: 'overdue',
+            details: {
+              previous_status: plan.status,
+              overdue_count: overdueEntries.length,
+              overdue_items: overdueEntries.map(p => ({
+                id: p.id,
+                payment_number: p.payment_number,
+                due_date: p.due_date
+              }))
+            }
+          });
+          
+        if (activityError) {
+          console.error('Error logging overdue activity:', activityError);
+        }
+      }
+      
+      // No activity needed when returning to active state - we just silently update the status
+      
       console.log(`Updated plan status from ${plan.status} to ${newStatus}`);
       return { 
         success: true, 
@@ -139,4 +173,3 @@ export async function checkAndUpdatePlanOverdueStatus(planId: string) {
     return { success: false, error: err.message };
   }
 }
-
