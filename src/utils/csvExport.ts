@@ -19,6 +19,7 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
     'Patient Phone',
     'Amount',
     'Platform Fee',
+    'Net Amount',
     'Reference',
     'Type',
     'Date',
@@ -41,6 +42,10 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
       ? formatCurrency(payment.platformFee / 100).replace('£', '') 
       : '0.00';
     
+    // Calculate net amount (amount - platform fee)
+    const platformFeeValue = payment.platformFee ? payment.platformFee / 100 : 0;
+    const netAmount = payment.amount ? formatCurrency(payment.amount - platformFeeValue).replace('£', '') : '0.00';
+    
     const reference = payment.reference ? `"${payment.reference}"` : '""';
     const type = payment.linkTitle || payment.type || 'Unknown';
     const status = payment.status || 'Unknown';
@@ -52,6 +57,7 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
       patientPhone,
       amount,
       platformFee,
+      netAmount,
       reference,
       `"${type}"`,
       `"${payment.date}"`,
