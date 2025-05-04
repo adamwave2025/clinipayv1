@@ -135,11 +135,11 @@ export const groupPaymentSchedulesByPlan = (scheduleData: PaymentScheduleItem[])
     // Find next due date from the unpaid entries
     plan.nextDueDate = findNextDueDate(entries);
     
-    // Check for overdue payments
-    const now = new Date();
+    // Check for overdue payments - FIX: Use startOfDay for accurate comparison
+    const now = startOfDay(new Date());
     const hasOverdue = entries.some(e => 
       !isPlanInstallmentPaid(e) && 
-      new Date(e.due_date) < now
+      startOfDay(new Date(e.due_date)) < now
     );
     plan.hasOverduePayments = hasOverdue;
     
@@ -224,9 +224,9 @@ export const groupPaymentSchedulesByPlan = (scheduleData: PaymentScheduleItem[])
       plan.nextDueDate = entry.due_date;
     }
     
-    // Check for overdue payments
-    const now = new Date();
-    if (!isPlanInstallmentPaid(entry) && new Date(entry.due_date) < now) {
+    // Check for overdue payments - FIX: Use startOfDay for accurate comparison
+    const now = startOfDay(new Date());
+    if (!isPlanInstallmentPaid(entry) && startOfDay(new Date(entry.due_date)) < now) {
       plan.hasOverduePayments = true;
     }
     
