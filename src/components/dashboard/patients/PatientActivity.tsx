@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { formatDate, formatCurrency } from '@/utils/formatters';
+import { formatDate, formatCurrency, formatDateTime } from '@/utils/formatters';
 import StatusBadge from '@/components/common/StatusBadge';
 import { getActionTypeLabel } from '@/utils/planActivityUtils';
 import { 
@@ -33,8 +32,14 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments, planActivit
       date: activity.performedAt
     }))
   ].sort((a, b) => {
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
+    // Convert to Date objects and compare timestamps
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    console.log(`Comparing dates: ${a.date} (${dateA}) vs ${b.date} (${dateB})`);
+    return dateB - dateA; // Newest first
   });
+  
+  console.log('All sorted activities:', allActivities);
 
   const getActivityIcon = (activity: any) => {
     if (activity.type === 'payment') {
@@ -121,7 +126,7 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments, planActivit
                   <p className="text-sm text-gray-600 mt-1">{getActivityDetails(activity)}</p>
                 )}
                 <p className="text-xs text-gray-500 mt-1">
-                  {formatDate(activity.date)}
+                  {formatDateTime(activity.date)}
                 </p>
               </div>
             </div>

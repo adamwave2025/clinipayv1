@@ -96,10 +96,10 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
         
         if (requestsError) throw requestsError;
         
-        // Format completed payments
+        // Format completed payments - ensure full timestamp is preserved
         const formattedPayments = paymentsData.map((payment: any) => ({
           id: payment.id,
-          date: payment.paid_at,
+          date: payment.paid_at, // Full ISO timestamp
           reference: payment.payment_ref,
           type: payment.payment_links?.type || 'other',
           title: payment.payment_links?.title,
@@ -107,13 +107,13 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
           status: payment.status
         }));
         
-        // Format payment requests - filter out £0 amounts
+        // Format payment requests - filter out £0 amounts and ensure full timestamp
         const formattedRequests = requestsData
           .map((request: any) => {
             const amount = request.custom_amount || (request.payment_links ? request.payment_links.amount : 0);
             return {
               id: request.id,
-              date: request.sent_at,
+              date: request.sent_at, // Full ISO timestamp
               reference: null,
               type: request.payment_links?.type || 'custom',
               title: request.payment_links?.title || 'Custom Payment',
@@ -124,10 +124,15 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
           })
           .filter(request => request.amount > 0); // Filter out zero amounts
         
-        // Combine and sort by date (newest first)
+        // Combine and sort by date (newest first) - verify sorting is working correctly
         const combinedHistory = [...formattedPayments, ...formattedRequests].sort((a, b) => {
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
+          // Ensure we're using proper date objects for comparison
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          return dateB - dateA; // Newest first
         });
+        
+        console.log('Sorted patient payment history:', combinedHistory);
         
         setPatientPayments(combinedHistory);
       } catch (err: any) {
