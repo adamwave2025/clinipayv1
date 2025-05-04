@@ -141,6 +141,20 @@ export const recordPaymentPlanActivity = async (
   }
 };
 
+/**
+ * Helper function to determine if an installment has been paid
+ * Checks for valid payment_request_id and completed payment
+ */
+const isInstallmentPaid = (installment: any): boolean => {
+  // Check if the payment_request_id exists and payment_id exists in the payment_requests object
+  return (
+    installment.payment_request_id !== null && 
+    installment.payment_requests !== null &&
+    installment.payment_requests.payment_id !== null && 
+    (installment.payment_requests.status === 'paid' || installment.status === 'paid')
+  );
+};
+
 export const cancelPaymentPlan = async (patientId: string, paymentLinkId: string, userId?: string) => {
   try {
     // Get clinic_id for the activity record
@@ -153,14 +167,40 @@ export const cancelPaymentPlan = async (patientId: string, paymentLinkId: string
       .single();
       
     if (scheduleError) throw scheduleError;
+
+    // Get all installments to find which ones can be cancelled
+    const { data: installments, error: installmentsError } = await supabase
+      .from('payment_schedule')
+      .select(`
+        id, 
+        payment_number, 
+        status, 
+        payment_request_id,
+        payment_requests (
+          payment_id,
+          status
+        )
+      `)
+      .eq('patient_id', patientId)
+      .eq('payment_link_id', paymentLinkId);
+
+    if (installmentsError) throw installmentsError;
+
+    // Filter out payments that have already been processed/paid
+    const cancellableInstallments = installments.filter(installment => !isInstallmentPaid(installment));
     
-    // Update all pending installments for this plan to 'cancelled'
+    if (cancellableInstallments.length === 0) {
+      return { success: true, message: "No installments available to cancel" };
+    }
+    
+    // Get IDs of cancellable installments
+    const cancellableIds = cancellableInstallments.map(item => item.id);
+    
+    // Update only cancellable installments to 'cancelled'
     const { data, error } = await supabase
       .from('payment_schedule')
       .update({ status: 'cancelled' })
-      .eq('patient_id', patientId)
-      .eq('payment_link_id', paymentLinkId)
-      .in('status', ['pending', 'upcoming', 'paused', 'sent', 'processed'])
+      .in('id', cancellableIds)
       .select();
 
     if (error) throw error;
@@ -199,13 +239,40 @@ export const pausePaymentPlan = async (patientId: string, paymentLinkId: string,
       
     if (scheduleError) throw scheduleError;
     
-    // Update all pending/upcoming installments for this plan to 'paused'
+    // Get all installments to find which ones are pausable
+    const { data: allInstallments, error: fetchError } = await supabase
+      .from('payment_schedule')
+      .select(`
+        id, 
+        payment_number, 
+        status, 
+        payment_request_id, 
+        due_date,
+        payment_requests (
+          payment_id,
+          status
+        )
+      `)
+      .eq('patient_id', patientId)
+      .eq('payment_link_id', paymentLinkId);
+
+    if (fetchError) throw fetchError;
+    
+    // Filter out payments that have already been processed/paid
+    const pausableInstallments = allInstallments.filter(installment => !isInstallmentPaid(installment));
+    
+    if (pausableInstallments.length === 0) {
+      return { success: true, message: "No installments available to pause" };
+    }
+    
+    // Get IDs of pausable installments
+    const pausableIds = pausableInstallments.map(item => item.id);
+    
+    // Update only pausable installments to 'paused'
     const { data, error } = await supabase
       .from('payment_schedule')
       .update({ status: 'paused' })
-      .eq('patient_id', patientId)
-      .eq('payment_link_id', paymentLinkId)
-      .in('status', ['pending', 'upcoming', 'sent', 'processed'])
+      .in('id', pausableIds)
       .select();
 
     if (error) throw error;
@@ -250,29 +317,63 @@ export const resumePaymentPlan = async (patientId: string, paymentLinkId: string
       
     if (scheduleError) throw scheduleError;
     
-    // First get all paused installments for this plan
-    const { data: pausedInstallments, error: fetchError } = await supabase
+    // Get all installments for this plan to properly handle the sequence
+    const { data: allInstallments, error: fetchAllError } = await supabase
       .from('payment_schedule')
-      .select('id, payment_number, payment_frequency')
+      .select(`
+        id, 
+        payment_number, 
+        payment_frequency, 
+        due_date,
+        status,
+        payment_request_id,
+        payment_requests (
+          payment_id,
+          status,
+          paid_at
+        )
+      `)
       .eq('patient_id', patientId)
       .eq('payment_link_id', paymentLinkId)
-      .eq('status', 'paused')
       .order('payment_number', { ascending: true });
     
-    if (fetchError) throw fetchError;
+    if (fetchAllError) throw fetchAllError;
     
-    if (!pausedInstallments || pausedInstallments.length === 0) {
+    // 1. Find all paid installments
+    const paidInstallments = allInstallments.filter(installment => isInstallmentPaid(installment));
+    
+    // 2. Find all paused installments that need to be resumed
+    const pausedInstallments = allInstallments.filter(installment => 
+      installment.status === 'paused' && !isInstallmentPaid(installment)
+    );
+    
+    if (pausedInstallments.length === 0) {
       return { success: true, message: 'No paused installments found' };
     }
     
     // Keep track of original and new due dates for audit
     const dueChanges = [];
     
-    // Calculate new due dates for each installment
+    // Calculate new due dates for each paused installment
     const frequency = scheduleData.payment_frequency || 'monthly';
+    
+    // Find the last paid installment to start scheduling from
+    let startDate = new Date(resumeDate);
+    if (paidInstallments.length > 0) {
+      // Sort paid installments by payment number to find the latest one
+      const sortedPaidInstallments = [...paidInstallments].sort((a, b) => 
+        b.payment_number - a.payment_number
+      );
+      
+      console.log('Last paid installment:', sortedPaidInstallments[0]);
+    }
+    
+    // Reset startDate time to beginning of day to avoid timezone issues
+    startDate.setHours(0, 0, 0, 0);
+    
     const updatePromises = pausedInstallments.map((installment, index) => {
       // Calculate new due date based on the resume date and installment index
-      const newDueDate = calculateNewDueDate(resumeDate, index, frequency);
+      const newDueDate = calculateNewDueDate(startDate, index, frequency);
       
       // Format date using YYYY-MM-DD format to avoid timezone issues
       const formattedDate = formatDateToYYYYMMDD(newDueDate);
@@ -281,10 +382,11 @@ export const resumePaymentPlan = async (patientId: string, paymentLinkId: string
       dueChanges.push({
         installment_id: installment.id,
         payment_number: installment.payment_number,
+        old_due_date: installment.due_date,
         new_due_date: formattedDate
       });
       
-      console.log(`Installment ${installment.payment_number}, new due date: ${formattedDate}`);
+      console.log(`Resuming installment ${installment.payment_number}, new due date: ${formattedDate}`);
       
       return supabase
         .from('payment_schedule')
@@ -340,8 +442,8 @@ export const reschedulePaymentPlan = async (
       
     if (scheduleError) throw scheduleError;
     
-    // First get all pending/upcoming/sent/processed installments for this plan
-    const { data: pendingInstallments, error: fetchError } = await supabase
+    // Get all installments for this plan to properly handle the sequence
+    const { data: allInstallments, error: fetchAllError } = await supabase
       .from('payment_schedule')
       .select(`
         id, 
@@ -350,17 +452,29 @@ export const reschedulePaymentPlan = async (
         due_date,
         status,
         payment_request_id,
-        amount
+        amount,
+        payment_requests (
+          id,
+          payment_id,
+          status
+        )
       `)
       .eq('patient_id', patientId)
       .eq('payment_link_id', paymentLinkId)
-      .in('status', ['pending', 'upcoming', 'sent', 'processed'])
       .order('payment_number', { ascending: true });
     
-    if (fetchError) throw fetchError;
+    if (fetchAllError) throw fetchAllError;
     
-    if (!pendingInstallments || pendingInstallments.length === 0) {
-      return { success: true, message: 'No pending installments found to reschedule' };
+    if (!allInstallments || allInstallments.length === 0) {
+      return { success: true, message: 'No installments found for rescheduling' };
+    }
+    
+    // Separate paid and unpaid installments
+    const paidInstallments = allInstallments.filter(item => isInstallmentPaid(item));
+    const unpaidInstallments = allInstallments.filter(item => !isInstallmentPaid(item));
+    
+    if (unpaidInstallments.length === 0) {
+      return { success: true, message: 'No unpaid installments found to reschedule' };
     }
     
     // Track all changes for audit log
@@ -371,8 +485,8 @@ export const reschedulePaymentPlan = async (
     };
     
     // First, collect all payment_request_ids that need to be cancelled
-    const paymentRequestIds = pendingInstallments
-      .filter(item => item.payment_request_id !== null)
+    const paymentRequestIds = unpaidInstallments
+      .filter(item => item.payment_request_id !== null && !isInstallmentPaid(item))
       .map(item => item.payment_request_id);
     
     // Cancel all related payment requests in a single update operation
@@ -396,13 +510,18 @@ export const reschedulePaymentPlan = async (
       console.log('No payment requests to cancel');
     }
     
-    // Calculate new due dates for each installment
+    // Calculate new due dates for each unpaid installment
     const frequency = scheduleData.payment_frequency || 'monthly';
     
-    // Process each installment
-    const updatePromises = pendingInstallments.map(async (installment, index) => {
+    // Start date for new schedule should be the provided new start date
+    // Reset to beginning of day to avoid timezone issues
+    const startDate = new Date(newStartDate);
+    startDate.setHours(0, 0, 0, 0);
+    
+    // Process each unpaid installment
+    const updatePromises = unpaidInstallments.map(async (installment, index) => {
       // Calculate new due date based on the new start date and installment index
-      const newDueDate = calculateNewDueDate(newStartDate, index, frequency);
+      const newDueDate = calculateNewDueDate(startDate, index, frequency);
       const formattedDate = formatDateToYYYYMMDD(newDueDate);
       
       // Track original and new date for audit
@@ -433,7 +552,8 @@ export const reschedulePaymentPlan = async (
       scheduleData.clinic_id,
       'reschedule',
       { 
-        installments_affected: pendingInstallments.length,
+        installments_affected: unpaidInstallments.length,
+        paid_installments_unaffected: paidInstallments.length,
         new_start_date: formatDateToYYYYMMDD(newStartDate),
         changes: changes
       },
