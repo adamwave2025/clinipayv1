@@ -26,13 +26,13 @@ const PaymentFormSection: React.FC<PaymentFormSectionProps> = ({
 }) => {
   return (
     <Card className="card-shadow h-full">
-      <CardContent className="p-6">
-        <h2 className="text-xl font-bold text-center mb-6 text-gray-800">
+      <CardContent className="p-8">
+        <h2 className="text-xl font-bold text-center mb-8 text-gray-800">
           Complete Your Payment
         </h2>
         
         {!isStripeConnected ? (
-          <Alert variant="destructive" className="mb-6">
+          <Alert variant="destructive" className="mb-8">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Payment Unavailable</AlertTitle>
             <AlertDescription>
