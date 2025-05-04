@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { PlanActivity, getActionTypeLabel } from '@/utils/planActivityUtils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Clock, RotateCw, PauseCircle, PlayCircle, XCircle, CalendarIcon, CheckCircle2, CreditCard } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface ActivityLogProps {
   activities: PlanActivity[];
@@ -31,6 +30,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading }) => {
     }
   };
 
+  // Keep this function as we might still use it for styling the activity item
   const getActivityBadgeClass = (type: string) => {
     switch (type) {
       case 'reschedule':
@@ -156,9 +156,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading }) => {
                       <span className="font-medium">
                         {getActionTypeLabel(activity.actionType)}
                       </span>
-                      <Badge className={`${getActivityBadgeClass(activity.actionType)}`} variant="outline">
-                        {activity.actionType}
-                      </Badge>
+                      {/* Badge removed from here */}
                     </div>
                     <span className="text-xs text-gray-500">{activity.performedAt}</span>
                   </div>
