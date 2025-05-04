@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,9 +18,9 @@ import StatusBadge from '@/components/common/StatusBadge';
 import PaymentLinkActionsSection from '@/components/dashboard/payment-details/PaymentLinkActionsSection';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plan, PlanInstallment } from '@/utils/paymentPlanUtils';
+import { Plan } from '@/utils/planTypes';
+import { PlanInstallment, formatPlanInstallments, groupPaymentSchedulesByPlan } from '@/utils/paymentPlanUtils';
 import { PlanActivity, formatPlanActivities } from '@/utils/planActivityUtils';
-import { groupPaymentSchedulesByPlan, formatPlanInstallments } from '@/utils/paymentPlanUtils';
 import { fetchPaymentSchedules } from '@/services/PaymentScheduleService';
 import PatientNotes from './PatientNotes';
 import PatientActivity from './PatientActivity';

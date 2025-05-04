@@ -103,7 +103,7 @@ const ManagePlansDialogs: React.FC = () => {
         showDialog={showCancelDialog}
         setShowDialog={setShowCancelDialog}
         onConfirm={handleCancelPlan}
-        planName={selectedPlan?.planName || ''}
+        planName={selectedPlan?.title || ''}
         patientName={selectedPlan?.patientName || ''}
         isProcessing={isProcessing}
       />
@@ -113,7 +113,7 @@ const ManagePlansDialogs: React.FC = () => {
         showDialog={showPauseDialog}
         setShowDialog={setShowPauseDialog}
         onConfirm={handlePausePlan}
-        planName={selectedPlan?.planName || ''}
+        planName={selectedPlan?.title || ''}
         patientName={selectedPlan?.patientName || ''}
         isProcessing={isProcessing}
       />
@@ -123,7 +123,7 @@ const ManagePlansDialogs: React.FC = () => {
         showDialog={showResumeDialog}
         setShowDialog={setShowResumeDialog}
         onConfirm={handleResumePlan}
-        planName={selectedPlan?.planName || ''}
+        planName={selectedPlan?.title || ''}
         patientName={selectedPlan?.patientName || ''}
         isProcessing={isProcessing}
       />
@@ -133,7 +133,7 @@ const ManagePlansDialogs: React.FC = () => {
         showDialog={showRescheduleDialog}
         setShowDialog={setShowRescheduleDialog}
         onConfirm={handleReschedulePlan}
-        planName={selectedPlan?.planName || ''}
+        planName={selectedPlan?.title || ''}
         patientName={selectedPlan?.patientName || ''}
         isProcessing={isProcessing}
       />

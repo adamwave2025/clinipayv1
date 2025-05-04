@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
-import { Plan, PlanInstallment } from '@/utils/paymentPlanUtils';
+import { Plan } from '@/utils/planTypes';
+import { PlanInstallment } from '@/utils/paymentPlanUtils';
 
 export const usePlanUIState = () => {
   const [searchQuery, setSearchQuery] = useState('');

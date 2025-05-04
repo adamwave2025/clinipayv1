@@ -1,5 +1,6 @@
 
 import { format, parseISO, isAfter, startOfDay } from 'date-fns';
+import { Plan } from './planTypes';
 
 export interface PaymentScheduleItem {
   id: string;
@@ -55,6 +56,98 @@ const isPlanInstallmentPaid = (entry: PaymentScheduleItem): boolean => {
                  entry.payment_requests.payment_id !== null;
   
   return isPaid;
+};
+
+/**
+ * Group payment schedules by plan
+ * This is for backwards compatibility with code that still uses the old grouping method
+ */
+export const groupPaymentSchedulesByPlan = (scheduleData: PaymentScheduleItem[]): Map<string, Plan> => {
+  const plans = new Map<string, Plan>();
+  
+  scheduleData.forEach(entry => {
+    // Skip entries without patient_id or payment_link_id
+    if (!entry.patient_id || !entry.payment_link_id) return;
+    
+    // Create a unique key for this plan
+    const planId = `${entry.patient_id}_${entry.payment_link_id}`;
+    
+    // Get existing plan or create a new one
+    let plan = plans.get(planId) || {
+      id: planId,
+      patientId: entry.patient_id,
+      patientName: entry.patients?.name || 'Unknown Patient',
+      planName: entry.payment_links?.title || 'Payment Plan',
+      clinicId: '', // Will be set from the patient record if needed
+      paymentLinkId: entry.payment_link_id,
+      title: entry.payment_links?.title || 'Payment Plan',
+      status: 'pending',
+      totalAmount: 0,
+      installmentAmount: entry.amount || 0,
+      totalInstallments: entry.total_payments || 0,
+      paidInstallments: 0,
+      progress: 0,
+      paymentFrequency: '',
+      startDate: '',
+      nextDueDate: null,
+      hasOverduePayments: false,
+      amount: 0 // Backwards compatibility with PatientDetailsDialog
+    };
+    
+    // Calculate first payment and next due date
+    if (!plan.startDate || new Date(entry.due_date) < new Date(plan.startDate)) {
+      plan.startDate = entry.due_date;
+    }
+    
+    // Count paid installments and update status
+    if (isPlanInstallmentPaid(entry)) {
+      plan.paidInstallments++;
+    }
+    
+    // Get next unpaid due date
+    if (!isPlanInstallmentPaid(entry) && (!plan.nextDueDate || new Date(entry.due_date) < new Date(plan.nextDueDate))) {
+      plan.nextDueDate = entry.due_date;
+    }
+    
+    // Check for overdue payments
+    const now = new Date();
+    if (!isPlanInstallmentPaid(entry) && new Date(entry.due_date) < now) {
+      plan.hasOverduePayments = true;
+    }
+    
+    // Update plan status
+    if (entry.status === 'cancelled') {
+      plan.status = 'cancelled';
+    } else if (entry.status === 'paused') {
+      plan.status = 'paused';
+    } else if (plan.hasOverduePayments) {
+      plan.status = 'overdue';
+    } else if (plan.paidInstallments > 0) {
+      plan.status = 'active';
+    }
+    
+    // Update total amount if available from payment_links
+    if (entry.payment_links?.plan_total_amount) {
+      plan.totalAmount = entry.payment_links.plan_total_amount;
+      plan.amount = entry.payment_links.plan_total_amount; // For backwards compatibility
+    } else {
+      plan.totalAmount = (entry.amount || 0) * (entry.total_payments || 1);
+      plan.amount = (entry.amount || 0) * (entry.total_payments || 1);
+    }
+    
+    // Update progress
+    plan.progress = Math.floor((plan.paidInstallments / plan.totalInstallments) * 100) || 0;
+    
+    // If all installments are paid, mark as completed
+    if (plan.paidInstallments === plan.totalInstallments) {
+      plan.status = 'completed';
+    }
+    
+    // Update the plan in the map
+    plans.set(planId, plan);
+  });
+  
+  return plans;
 };
 
 export const formatPlanInstallments = (installmentData: any[]): PlanInstallment[] => {

@@ -14,7 +14,8 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { Plan, PlanInstallment } from '@/utils/paymentPlanUtils';
+import { Plan } from '@/utils/planTypes';
+import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { PlanActivity } from '@/utils/planActivityUtils';
 import PlanActionsDropdown from './PlanActionsDropdown';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -80,7 +81,7 @@ const PlanDetailsDialog = ({
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Plan</p>
-              <p className="font-medium">{selectedPlan.planName}</p>
+              <p className="font-medium">{selectedPlan.title}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Status</p>
@@ -91,7 +92,7 @@ const PlanDetailsDialog = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Total Amount</p>
-              <p className="font-medium">£{selectedPlan.amount.toFixed(2)}</p>
+              <p className="font-medium">£{selectedPlan.totalAmount.toFixed(2)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Progress</p>

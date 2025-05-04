@@ -484,7 +484,7 @@ export function useSendLinkPageState() {
         selectedPatient?.id || null,
         selectedLink.id,
         clinicId,
-        'create',
+        'create', 
         {
           start_date: format(formData.startDate, 'yyyy-MM-dd'),
           installments: selectedLink.paymentCount,
@@ -493,8 +493,7 @@ export function useSendLinkPageState() {
           installment_amount: selectedLink.amount,
           patient_name: formData.patientName,
           patient_email: formData.patientEmail
-        },
-        userId
+        }
       );
 
       // If the first payment is due today, send it immediately using the existing request ID
