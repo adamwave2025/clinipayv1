@@ -77,3 +77,9 @@ verify_jwt = false
 
 [functions.setup-payment-schedule-cron]
 verify_jwt = true
+
+[functions.update-plan-statuses]
+verify_jwt = false
+
+[functions.setup-plan-status-cron]
+verify_jwt = true

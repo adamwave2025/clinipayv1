@@ -33,8 +33,26 @@ const initializePaymentScheduleCron = async () => {
   }
 };
 
+// Initialize the plan status update cron
+const initializePlanStatusCron = async () => {
+  try {
+    console.log('Initializing plan status update cron...');
+    const response = await supabase.functions.invoke('setup-plan-status-cron');
+    console.log('Plan status update cron initialization result:', response);
+    
+    if (response.error) {
+      console.error('Error setting up plan status update cron:', response.error);
+    } else {
+      console.log('Plan status update cron setup successful');
+    }
+  } catch (error) {
+    console.error('Error initializing plan status update cron:', error);
+  }
+};
+
 // Run setup on app initialization but don't block rendering
 setupAuthTrigger();
 initializePaymentScheduleCron();
+initializePlanStatusCron();
 
 createRoot(document.getElementById("root")!).render(<App />);
