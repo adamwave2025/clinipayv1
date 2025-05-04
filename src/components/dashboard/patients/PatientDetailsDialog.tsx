@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { supabase } from '@/integrations/supabase/client';
@@ -51,6 +52,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
   const [patientPayments, setPatientPayments] = useState<PatientPayment[]>([]);
   const [planActivities, setPlanActivities] = useState<PlanActivity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingActivities, setLoadingActivities] = useState(false); // Added missing state variable
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('notes');
   
