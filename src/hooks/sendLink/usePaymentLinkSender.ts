@@ -12,7 +12,7 @@ interface SendPaymentLinkParams {
 }
 
 export function usePaymentLinkSender() {
-  const { isLoading, sendPaymentLink: originalSendPaymentLink } = useOriginalPaymentLinkSender();
+  const { isLoading: isOriginalLoading, sendPaymentLink: originalSendPaymentLink } = useOriginalPaymentLinkSender();
   const [isSending, setIsSending] = useState(false);
 
   const sendPaymentLink = async ({ formData, paymentLinks, patientId }: SendPaymentLinkParams) => {
@@ -21,10 +21,14 @@ export function usePaymentLinkSender() {
     try {
       // Check if patient ID is valid
       if (!patientId) {
+        console.error('Invalid patient ID provided to sendPaymentLink:', patientId);
         toast.error('Invalid patient ID');
+        setIsSending(false);
         return { success: false };
       }
 
+      console.log('Sending payment link for patient ID:', patientId);
+      
       // Now use the original send payment link function with enhanced parameters
       const enhancedFormData = {
         ...formData,
@@ -36,18 +40,26 @@ export function usePaymentLinkSender() {
         paymentLinks
       });
       
-      setIsSending(false);
+      if (result.success) {
+        console.log('Payment link sent successfully');
+        toast.success('Payment link sent successfully');
+      } else {
+        console.error('Failed to send payment link');
+        toast.error('Failed to send payment link');
+      }
+      
       return result;
     } catch (error) {
       console.error('Error sending payment link:', error);
       toast.error('Failed to send payment link');
-      setIsSending(false);
       return { success: false };
+    } finally {
+      setIsSending(false);
     }
   };
 
   return {
-    isLoading: isLoading || isSending,
+    isLoading: isOriginalLoading || isSending,
     sendPaymentLink
   };
 }

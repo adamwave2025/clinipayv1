@@ -21,6 +21,12 @@ export function usePatientManager() {
       return selectedPatient.id;
     }
     
+    // Input validation - patient must have a name and email
+    if (!patientName || !patientEmail) {
+      toast.error('Patient name and email are required');
+      return null;
+    }
+    
     // Prevent concurrent patient creation
     if (creatingPatientInProgress) {
       toast.error('Patient creation already in progress');
@@ -45,66 +51,61 @@ export function usePatientManager() {
       }
 
       const clinicId = userData.clinic_id;
+      console.log('Creating patient with clinic ID:', clinicId);
       
-      // If we're creating a new patient, do that now
-      if (isCreatingNewPatient && patientName && patientEmail) {
-        console.log('Creating new patient:', patientName);
-        
-        // Check for existing patient with this email
-        const { data: existingPatient } = await supabase
-          .from('patients')
-          .select('*')
-          .eq('clinic_id', clinicId)
-          .eq('email', patientEmail)
-          .maybeSingle();
-        
-        if (existingPatient) {
-          console.log('Found existing patient with same email:', existingPatient.id);
-          toast.dismiss(patientLoadingToast);
-          toast.success('Found existing patient record');
-          return existingPatient.id;
-        }
-        
-        // Create the new patient
-        const { data: newPatient, error: patientError } = await supabase
-          .from('patients')
-          .insert({
-            clinic_id: clinicId,
-            name: patientName,
-            email: patientEmail,
-            phone: patientPhone || null
-          })
-          .select('*')
-          .single();
-        
-        if (patientError || !newPatient) {
-          toast.dismiss(patientLoadingToast);
-          toast.error('Could not create new patient');
-          return null;
-        }
-        
-        console.log('Successfully created new patient with ID:', newPatient.id);
-        
-        // Verify patient creation by fetching it again
-        const { data: verifiedPatient } = await supabase
-          .from('patients')
-          .select('*')
-          .eq('id', newPatient.id)
-          .single();
-          
-        if (!verifiedPatient) {
-          toast.dismiss(patientLoadingToast);
-          toast.error('Could not verify patient creation');
-          return null;
-        }
-        
+      // Check for existing patient with this email first
+      const { data: existingPatient } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('clinic_id', clinicId)
+        .eq('email', patientEmail)
+        .maybeSingle();
+      
+      if (existingPatient) {
+        console.log('Found existing patient with same email:', existingPatient.id);
         toast.dismiss(patientLoadingToast);
-        toast.success('Patient created successfully');
-        return newPatient.id;
+        toast.success('Found existing patient record');
+        return existingPatient.id;
+      }
+      
+      // Create the new patient
+      const { data: newPatient, error: patientError } = await supabase
+        .from('patients')
+        .insert({
+          clinic_id: clinicId,
+          name: patientName,
+          email: patientEmail,
+          phone: patientPhone || null
+        })
+        .select('*')
+        .single();
+      
+      if (patientError || !newPatient) {
+        console.error('Error creating patient:', patientError);
+        toast.dismiss(patientLoadingToast);
+        toast.error(`Could not create new patient: ${patientError?.message || 'Unknown error'}`);
+        return null;
+      }
+      
+      console.log('Successfully created new patient with ID:', newPatient.id);
+      
+      // Verify patient creation by fetching it again
+      const { data: verifiedPatient, error: verifyError } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('id', newPatient.id)
+        .single();
+          
+      if (verifyError || !verifiedPatient) {
+        console.error('Error verifying patient creation:', verifyError);
+        toast.dismiss(patientLoadingToast);
+        toast.error('Could not verify patient creation');
+        return null;
       }
       
       toast.dismiss(patientLoadingToast);
-      return null;
+      toast.success('Patient created successfully');
+      return verifiedPatient.id;
     } catch (error: any) {
       console.error('Error in createOrGetPatient:', error);
       toast.dismiss(patientLoadingToast);

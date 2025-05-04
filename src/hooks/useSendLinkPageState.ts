@@ -14,6 +14,7 @@ export function useSendLinkPageState() {
   const [regularLinks, setRegularLinks] = useState<PaymentLink[]>([]);
   const [paymentPlans, setPaymentPlans] = useState<PaymentLink[]>([]);
   const [isPaymentPlan, setIsPaymentPlan] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Import all the hooks
   const formState = useSendLinkFormState();
@@ -28,9 +29,9 @@ export function useSendLinkPageState() {
     handlePatientSelect, handleCreateNew, resetForm
   } = formState;
 
-  const { createOrGetPatient } = patientManager;
+  const { createOrGetPatient, creatingPatientInProgress } = patientManager;
   const { handleSchedulePaymentPlan, isSchedulingPlan } = paymentPlanScheduler;
-  const { isLoading, sendPaymentLink } = paymentLinkSender;
+  const { isLoading: isSendingPaymentLink, sendPaymentLink } = paymentLinkSender;
   const { validateForm } = formValidation;
 
   // Separate payment links and payment plans
@@ -60,50 +61,78 @@ export function useSendLinkPageState() {
     setShowConfirmation(true);
   };
 
-  // Modified to handle the patient creation process first, then payment operations
+  // Modified to create patient first, then handle payment actions
   const handleSendPaymentLink = async () => {
-    // Step 1: Create or get the patient first
-    const patientId = await createOrGetPatient(
-      formData.patientName,
-      formData.patientEmail,
-      formData.patientPhone,
-      isCreatingNewPatient,
-      selectedPatient
-    );
-
-    if (!patientId) {
-      toast.error('Could not create or find patient record');
+    // Prevent concurrent processing
+    if (isProcessing || creatingPatientInProgress || isSchedulingPlan || isSendingPaymentLink) {
+      toast.warning('Another operation is in progress');
       return;
     }
     
-    // Step 2: Now that we have a valid patient ID, proceed with the appropriate action
-    if (isPaymentPlan) {
-      // For payment plans, get the selected plan details
-      const selectedLink = [...regularLinks, ...paymentPlans].find(link => link.id === formData.selectedLink);
-      if (!selectedLink) {
-        toast.error('Selected payment plan not found');
+    setIsProcessing(true);
+    
+    try {
+      console.log('Starting payment link sending process...');
+      console.log('Form data:', {
+        patientName: formData.patientName,
+        patientEmail: formData.patientEmail,
+        isCreatingNewPatient,
+        selectedPatient: selectedPatient?.id
+      });
+      
+      // Step 1: Create or get the patient first - this is the critical step
+      const patientId = await createOrGetPatient(
+        formData.patientName,
+        formData.patientEmail,
+        formData.patientPhone,
+        isCreatingNewPatient,
+        selectedPatient
+      );
+
+      if (!patientId) {
+        console.error('Failed to create or get patient');
+        toast.error('Could not create or find patient record');
+        setIsProcessing(false);
         return;
       }
       
-      // Schedule the plan with the verified patient ID
-      const result = await handleSchedulePaymentPlan(patientId, formData, selectedLink);
+      console.log('Successfully obtained patientId:', patientId);
       
-      if (result.success) {
-        resetForm();
-        setShowConfirmation(false);
+      // Step 2: Now that we have a valid patient ID, proceed with the appropriate action
+      if (isPaymentPlan) {
+        // For payment plans, get the selected plan details
+        const selectedLink = [...regularLinks, ...paymentPlans].find(link => link.id === formData.selectedLink);
+        if (!selectedLink) {
+          toast.error('Selected payment plan not found');
+          setIsProcessing(false);
+          return;
+        }
+        
+        // Schedule the plan with the verified patient ID
+        const result = await handleSchedulePaymentPlan(patientId, formData, selectedLink);
+        
+        if (result.success) {
+          resetForm();
+          setShowConfirmation(false);
+        }
+      } else {
+        // For regular payment links, use the link sender with the verified patient ID
+        const result = await sendPaymentLink({ 
+          formData, 
+          paymentLinks: [...regularLinks, ...paymentPlans],
+          patientId
+        });
+        
+        if (result.success) {
+          resetForm();
+          setShowConfirmation(false);
+        }
       }
-    } else {
-      // For regular payment links, use the link sender with the verified patient ID
-      const result = await sendPaymentLink({ 
-        formData, 
-        paymentLinks: [...regularLinks, ...paymentPlans],
-        patientId
-      });
-      
-      if (result.success) {
-        resetForm();
-        setShowConfirmation(false);
-      }
+    } catch (error: any) {
+      console.error('Error in handleSendPaymentLink:', error);
+      toast.error(`Failed to process request: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -119,7 +148,7 @@ export function useSendLinkPageState() {
   return {
     showConfirmation,
     setShowConfirmation,
-    isLoading,
+    isLoading: isProcessing || creatingPatientInProgress || isSendingPaymentLink || isSchedulingPlan,
     isLoadingLinks,
     regularLinks,
     paymentPlans,
