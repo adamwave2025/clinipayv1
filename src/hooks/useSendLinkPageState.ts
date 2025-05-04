@@ -6,6 +6,7 @@ import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { usePaymentLinkSender } from '@/hooks/usePaymentLinkSender';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { recordPaymentPlanActivity } from '@/services/PaymentScheduleService';
 
 export interface SendLinkFormData {
   patientName: string;
@@ -471,6 +472,25 @@ export function useSendLinkPageState() {
         setIsSchedulingPlan(false);
         return { success: false };
       }
+
+      // Record the "Plan Created" activity
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      await recordPaymentPlanActivity(
+        selectedPatient?.id || null,
+        selectedLink.id,
+        clinicId,
+        'create',
+        {
+          start_date: format(formData.startDate, 'yyyy-MM-dd'),
+          installments: selectedLink.paymentCount,
+          frequency: selectedLink.paymentCycle || 'monthly',
+          total_amount: selectedLink.amount * selectedLink.paymentCount,
+          installment_amount: selectedLink.amount,
+          patient_name: formData.patientName,
+          patient_email: formData.patientEmail
+        },
+        userId
+      );
 
       // If the first payment is due today, send it immediately using the existing request ID
       if (isFirstPaymentToday && firstPaymentRequest) {
