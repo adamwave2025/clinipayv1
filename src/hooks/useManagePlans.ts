@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plan } from '@/utils/paymentPlanUtils';
@@ -12,8 +13,9 @@ import { usePlanPauseActions } from './payment-plans/usePlanPauseActions';
 import { usePlanResumeActions } from './payment-plans/usePlanResumeActions';
 import { usePlanRescheduleActions } from './payment-plans/usePlanRescheduleActions';
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider';
+import { ManagePlansContextType } from '@/contexts/ManagePlansContext';
 
-export const useManagePlans = () => {
+export const useManagePlans = (): ManagePlansContextType => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
@@ -92,7 +94,6 @@ export const useManagePlans = () => {
 
   // Refund functionality
   const openRefundDialog = () => {
-    console.log('Opening refund dialog for payment:', paymentData?.id);
     if (paymentData && paymentData.id) {
       setPaymentToRefund(paymentData.id);
       setRefundDialogOpen(true);
@@ -102,7 +103,6 @@ export const useManagePlans = () => {
   };
 
   const processRefund = (amount?: number) => {
-    console.log('Processing refund for payment:', paymentToRefund, 'amount:', amount);
     if (paymentToRefund) {
       // Explicitly pass the payment ID to handleRefund
       handleRefund(amount, paymentToRefund);
@@ -133,6 +133,7 @@ export const useManagePlans = () => {
     setShowPaymentDetails,
     paymentData,
     handleViewPaymentDetails,
+    selectedInstallment,
     handleBackToPlans,
     // Refund properties
     refundDialogOpen,

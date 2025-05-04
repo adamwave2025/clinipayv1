@@ -4,196 +4,59 @@ import { PlusCircle, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
-import PaymentPlanFilters from '@/components/dashboard/payment-plans/PaymentPlanFilters';
-import ActivePlansTable from '@/components/dashboard/payment-plans/ActivePlansTable';
-import PlanDetailsDialog from '@/components/dashboard/payment-plans/PlanDetailsDialog';
-import InstallmentPaymentDialog from '@/components/dashboard/payment-plans/InstallmentPaymentDialog';
-import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
-import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
-import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDialog';
-import ReschedulePlanDialog from '@/components/dashboard/payment-plans/ReschedulePlanDialog';
-import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
-import { useManagePlans } from '@/hooks/useManagePlans';
-import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
+import { 
+  ManagePlansProvider, 
+  ManagePlansContent, 
+  ManagePlansDialogs 
+} from './manage-plans';
+import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 
-const ManagePlansPageContent = () => {
-  const {
-    searchQuery,
-    setSearchQuery,
-    selectedPlan,
-    showPlanDetails,
-    setShowPlanDetails,
-    plans,
-    isLoading,
-    installments,
-    activities,
-    isLoadingActivities,
-    handleViewPlanDetails,
-    handleCreatePlanClick,
-    handleViewPlansClick,
-    handleSendReminder,
-    // Payment details properties
-    showPaymentDetails,
-    setShowPaymentDetails,
-    paymentData,
-    handleViewPaymentDetails,
-    handleBackToPlans,
-    // Refund properties
-    refundDialogOpen,
-    setRefundDialogOpen,
-    paymentToRefund,
-    openRefundDialog,
-    processRefund,
-    // Cancel plan properties
-    showCancelDialog,
-    setShowCancelDialog,
-    handleCancelPlan,
-    handleOpenCancelDialog,
-    // Pause plan properties
-    showPauseDialog,
-    setShowPauseDialog,
-    handlePausePlan,
-    handleOpenPauseDialog,
-    // Resume plan properties
-    showResumeDialog,
-    setShowResumeDialog,
-    handleResumePlan,
-    handleOpenResumeDialog,
-    // Reschedule plan properties
-    showRescheduleDialog,
-    setShowRescheduleDialog,
-    handleReschedulePlan, // Fixed the capitalization here - from handleRescheduleplan to handleReschedulePlan
-    handleOpenRescheduleDialog,
-    isPlanPaused,
-    isProcessing
-  } = useManagePlans();
+const ManagePlansHeader: React.FC = () => {
+  const { handleCreatePlanClick, handleViewPlansClick } = useManagePlansContext();
+  
+  return (
+    <PageHeader 
+      title="Payment Plans" 
+      description="Create and manage payment plans for your patients"
+      action={
+        <div className="flex space-x-2">
+          <Button 
+            variant="outline"
+            className="flex items-center"
+            onClick={handleViewPlansClick}
+          >
+            <ListChecks className="mr-2 h-4 w-4" />
+            View Plans
+          </Button>
+          <Button 
+            className="btn-gradient flex items-center"
+            onClick={handleCreatePlanClick}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create Plan
+          </Button>
+        </div>
+      }
+    />
+  );
+};
 
+const ManagePlansPageContent: React.FC = () => {
   return (
     <>
-      <div className="space-y-6">
-        {/* Filters */}
-        <PaymentPlanFilters 
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-        />
-        
-        {/* Plans Table */}
-        <ActivePlansTable 
-          isLoading={isLoading}
-          plans={plans}
-          onCreatePlanClick={handleCreatePlanClick}
-          onViewPlanDetails={handleViewPlanDetails}
-        />
-      </div>
-      
-      {/* Plan Details Dialog */}
-      <PlanDetailsDialog 
-        showPlanDetails={showPlanDetails}
-        setShowPlanDetails={setShowPlanDetails}
-        selectedPlan={selectedPlan}
-        installments={installments}
-        activities={activities}
-        isLoadingActivities={isLoadingActivities}
-        onSendReminder={handleSendReminder}
-        onViewPaymentDetails={handleViewPaymentDetails}
-        onCancelPlan={handleOpenCancelDialog}
-        onPausePlan={handleOpenPauseDialog}
-        onResumePlan={handleOpenResumeDialog}
-        onReschedulePlan={handleOpenRescheduleDialog}
-        isPlanPaused={isPlanPaused}
-      />
-
-      {/* Payment Details Dialog */}
-      <InstallmentPaymentDialog
-        showDialog={showPaymentDetails}
-        setShowDialog={setShowPaymentDetails}
-        paymentData={paymentData}
-        onBack={handleBackToPlans}
-        onRefund={openRefundDialog}
-      />
-
-      {/* Payment Refund Dialog */}
-      <PaymentRefundDialog
-        open={refundDialogOpen}
-        onOpenChange={setRefundDialogOpen}
-        onConfirm={processRefund}
-        paymentAmount={paymentData?.amount || 0}
-        patientName={paymentData?.patientName || ''}
-      />
-
-      {/* Cancel Plan Dialog */}
-      <CancelPlanDialog
-        showDialog={showCancelDialog}
-        setShowDialog={setShowCancelDialog}
-        onConfirm={handleCancelPlan}
-        planName={selectedPlan?.planName || ''}
-        patientName={selectedPlan?.patientName || ''}
-        isProcessing={isProcessing}
-      />
-
-      {/* Pause Plan Dialog */}
-      <PausePlanDialog
-        showDialog={showPauseDialog}
-        setShowDialog={setShowPauseDialog}
-        onConfirm={handlePausePlan}
-        planName={selectedPlan?.planName || ''}
-        patientName={selectedPlan?.patientName || ''}
-        isProcessing={isProcessing}
-      />
-
-      {/* Resume Plan Dialog */}
-      <ResumePlanDialog
-        showDialog={showResumeDialog}
-        setShowDialog={setShowResumeDialog}
-        onConfirm={handleResumePlan}
-        planName={selectedPlan?.planName || ''}
-        patientName={selectedPlan?.patientName || ''}
-        isProcessing={isProcessing}
-      />
-
-      {/* Reschedule Plan Dialog */}
-      <ReschedulePlanDialog
-        showDialog={showRescheduleDialog}
-        setShowDialog={setShowRescheduleDialog}
-        onConfirm={handleReschedulePlan} // Fixed the capitalization here - from handleRescheduleplan to handleReschedulePlan
-        planName={selectedPlan?.planName || ''}
-        patientName={selectedPlan?.patientName || ''}
-        isProcessing={isProcessing}
-      />
+      <ManagePlansHeader />
+      <ManagePlansContent />
+      <ManagePlansDialogs />
     </>
   );
 };
 
-const ManagePlansPage = () => {
+const ManagePlansPage: React.FC = () => {
   return (
     <DashboardLayout userType="clinic">
-      <PageHeader 
-        title="Payment Plans" 
-        description="Create and manage payment plans for your patients"
-        action={
-          <div className="flex space-x-2">
-            <Button 
-              variant="outline"
-              className="flex items-center"
-              onClick={() => {/* This will be handled in the child component */}}
-            >
-              <ListChecks className="mr-2 h-4 w-4" />
-              View Plans
-            </Button>
-            <Button 
-              className="btn-gradient flex items-center"
-              onClick={() => {/* This will be handled in the child component */}}
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create Plan
-            </Button>
-          </div>
-        }
-      />
-      
-      <DashboardDataProvider>
+      <ManagePlansProvider>
         <ManagePlansPageContent />
-      </DashboardDataProvider>
+      </ManagePlansProvider>
     </DashboardLayout>
   );
 };

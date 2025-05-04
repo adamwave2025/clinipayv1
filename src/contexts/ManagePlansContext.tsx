@@ -1,0 +1,84 @@
+
+import React, { createContext, useContext } from 'react';
+import { Plan } from '@/utils/paymentPlanUtils';
+import { Payment } from '@/types/payment';
+import { PlanActivity } from '@/utils/planActivityUtils';
+
+export interface ManagePlansContextType {
+  // Search and filter state
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  
+  // Plan data and state
+  plans: Plan[];
+  isLoading: boolean;
+  installments: any[];
+  activities: PlanActivity[];
+  isLoadingActivities: boolean;
+  
+  // Selected plan state
+  selectedPlan: Plan | null;
+  showPlanDetails: boolean;
+  setShowPlanDetails: (show: boolean) => void;
+  
+  // Payment details state
+  showPaymentDetails: boolean;
+  setShowPaymentDetails: (show: boolean) => void;
+  paymentData: Payment | null;
+  selectedInstallment: any | null;
+  
+  // Action handlers
+  handleViewPlanDetails: (plan: Plan) => Promise<void>;
+  handleCreatePlanClick: () => void;
+  handleViewPlansClick: () => void;
+  handleSendReminder: (installmentId: string) => Promise<void>;
+  handleViewPaymentDetails: (installment: any) => Promise<void>;
+  handleBackToPlans: () => void;
+  
+  // Refund properties
+  refundDialogOpen: boolean;
+  setRefundDialogOpen: (open: boolean) => void;
+  paymentToRefund: string | null;
+  openRefundDialog: () => void;
+  processRefund: (amount?: number) => void;
+  
+  // Cancel plan properties
+  showCancelDialog: boolean;
+  setShowCancelDialog: (show: boolean) => void;
+  handleCancelPlan: () => Promise<void>;
+  handleOpenCancelDialog: () => void;
+  
+  // Pause plan properties
+  showPauseDialog: boolean;
+  setShowPauseDialog: (show: boolean) => void;
+  handlePausePlan: () => Promise<void>;
+  handleOpenPauseDialog: () => void;
+  
+  // Resume plan properties
+  showResumeDialog: boolean;
+  setShowResumeDialog: (show: boolean) => void;
+  handleResumePlan: (resumeDate: Date) => Promise<void>;
+  handleOpenResumeDialog: () => void;
+  
+  // Reschedule plan properties
+  showRescheduleDialog: boolean;
+  setShowRescheduleDialog: (show: boolean) => void;
+  handleReschedulePlan: (newStartDate: Date) => Promise<void>;
+  handleOpenRescheduleDialog: () => void;
+  
+  // Plan state helpers
+  isPlanPaused: boolean;
+  isProcessing: boolean;
+}
+
+const ManagePlansContext = createContext<ManagePlansContextType | undefined>(undefined);
+
+export const useManagePlansContext = () => {
+  const context = useContext(ManagePlansContext);
+  if (!context) {
+    throw new Error('useManagePlansContext must be used within a ManagePlansProvider');
+  }
+  return context;
+};
+
+export default ManagePlansContext;
