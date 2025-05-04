@@ -1,5 +1,6 @@
 
 
+
 /**
  * Formats a numeric amount as a currency with the proper symbol and decimal places
  * @param amount - The numeric amount to format
@@ -41,14 +42,36 @@ export const formatDate = (dateString: string | Date, locales: string = 'en-GB')
  * Formats a date string into a standardized display format including time
  * @param dateString - ISO date string or date object
  * @param locales - Locale for formatting (defaults to 'en-GB')
+ * @param timeZone - Optional timezone (defaults to browser's local timezone)
  * @returns Formatted date and time string
  */
-export const formatDateTime = (dateString: string | Date, locales: string = 'en-GB'): string => {
+export const formatDateTime = (
+  dateString: string | Date, 
+  locales: string = 'en-GB', 
+  timeZone?: string
+): string => {
   if (!dateString) return 'N/A';
+  
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-  return `${date.toLocaleDateString(locales)} ${date.toLocaleTimeString(locales, {
+  
+  // Use Intl.DateTimeFormat for more consistent formatting with timezone support
+  const dateOptions: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone
+  };
+  
+  const timeOptions: Intl.DateTimeFormatOptions = {
     hour: '2-digit',
-    minute: '2-digit'
-  })}`;
+    minute: '2-digit',
+    timeZone
+  };
+  
+  const formattedDate = new Intl.DateTimeFormat(locales, dateOptions).format(date);
+  const formattedTime = new Intl.DateTimeFormat(locales, timeOptions).format(date);
+  
+  return `${formattedDate} ${formattedTime}`;
 };
+
 

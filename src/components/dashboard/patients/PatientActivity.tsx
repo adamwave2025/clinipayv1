@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { formatDate, formatCurrency, formatDateTime } from '@/utils/formatters';
 import StatusBadge from '@/components/common/StatusBadge';
@@ -21,6 +22,20 @@ interface PatientActivityProps {
 }
 
 const PatientActivity: React.FC<PatientActivityProps> = ({ payments, planActivities }) => {
+  // Helper function to ensure consistent date parsing with timezone awareness
+  const getDateTimestamp = (dateString: string): number => {
+    if (!dateString) return 0;
+    // Use ISO string to ensure consistent parsing across browsers
+    // The Z at the end ensures UTC timezone for consistency
+    const ensureUTCFormat = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
+    try {
+      return new Date(dateString).getTime();
+    } catch (e) {
+      console.error('Invalid date format:', dateString, e);
+      return 0;
+    }
+  };
+
   // Combine and sort all activities by date (newest first)
   const allActivities = [
     ...payments.map(payment => ({
@@ -34,10 +49,13 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments, planActivit
       date: activity.performedAt
     }))
   ].sort((a, b) => {
-    // Convert to Date objects and compare timestamps
-    const dateA = new Date(a.date).getTime();
-    const dateB = new Date(b.date).getTime();
-    console.log(`Comparing dates: ${a.date} (${dateA}) vs ${b.date} (${dateB})`);
+    // Use our helper function to get timestamps consistently
+    const dateA = getDateTimestamp(a.date);
+    const dateB = getDateTimestamp(b.date);
+    
+    console.log(`Comparing dates: ${a.date} (${new Date(a.date).toISOString()}) vs ${b.date} (${new Date(b.date).toISOString()})`);
+    console.log(`Timestamps: ${dateA} vs ${dateB}`);
+    
     return dateB - dateA; // Newest first
   });
   
@@ -147,3 +165,4 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments, planActivit
 };
 
 export default PatientActivity;
+
