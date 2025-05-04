@@ -14,7 +14,7 @@ interface PatientNote {
   content: string;
   created_at: string;
   created_by_user_id: string | null;
-  created_by_user_email?: string; // Changed to match the format we'll transform into
+  created_by_user_email?: string;
 }
 
 interface PatientNotesProps {
@@ -37,33 +37,46 @@ const PatientNotes: React.FC<PatientNotesProps> = ({ patientId, clinicId }) => {
   const fetchNotes = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      // First, let's fetch the patient notes without the join
+      const { data: notesData, error: notesError } = await supabase
         .from('patient_notes')
         .select(`
           id,
           content,
           created_at,
-          created_by_user_id,
-          users:created_by_user_id (
-            email
-          )
+          created_by_user_id
         `)
         .eq('patient_id', patientId)
         .eq('clinic_id', clinicId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (notesError) throw notesError;
       
-      // Transform the data to fit our PatientNote interface
-      const formattedNotes = data?.map(note => ({
-        id: note.id,
-        content: note.content,
-        created_at: note.created_at,
-        created_by_user_id: note.created_by_user_id,
-        created_by_user_email: note.users?.email || 'Unknown user'
-      })) || [];
+      // Now, for each note with a user ID, we'll fetch the user email separately
+      const notesWithUserEmails = await Promise.all(
+        (notesData || []).map(async (note) => {
+          if (!note.created_by_user_id) {
+            return {
+              ...note,
+              created_by_user_email: 'Unknown user'
+            };
+          }
+          
+          // Fetch the user email
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('email')
+            .eq('id', note.created_by_user_id)
+            .single();
+            
+          return {
+            ...note,
+            created_by_user_email: userError ? 'Unknown user' : (userData?.email || 'Unknown user')
+          };
+        })
+      );
       
-      setNotes(formattedNotes);
+      setNotes(notesWithUserEmails);
     } catch (error: any) {
       console.error('Error fetching patient notes:', error);
       toast.error('Failed to load patient notes');
