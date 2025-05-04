@@ -196,7 +196,7 @@ export function useSendLinkPageState() {
         // Check if patient with this email already exists to prevent duplicates
         const { data: existingPatient, error: lookupError } = await supabase
           .from('patients')
-          .select('id, name')
+          .select('id, name, email, phone, notes, created_at, updated_at')
           .eq('clinic_id', clinicId)
           .eq('email', formData.patientEmail)
           .maybeSingle();
@@ -207,7 +207,7 @@ export function useSendLinkPageState() {
         
         if (existingPatient) {
           console.log('Found existing patient with same email:', existingPatient.id);
-          // Update selected patient reference
+          // Update selected patient reference with the complete Patient object
           setSelectedPatient(existingPatient);
           setIsCreatingNewPatient(false);
           return existingPatient.id;
@@ -222,7 +222,7 @@ export function useSendLinkPageState() {
             email: formData.patientEmail,
             phone: formData.patientPhone || null
           })
-          .select()
+          .select('*')
           .single();
         
         if (patientError) {
