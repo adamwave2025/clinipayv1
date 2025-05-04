@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Patient } from '@/hooks/usePatients';
 import { PaymentLink } from '@/types/payment';
@@ -514,11 +513,9 @@ export function useSendLinkPageState() {
 
       // Record the "Plan Created" activity
       await recordPaymentPlanActivity(
-        selectedPatient?.id || null,
-        selectedLink.id,
-        clinicId,
-        'create', 
-        {
+        planData.id,  // Use plan ID as first parameter
+        'create',     // Action type as second parameter
+        {             // Details as third parameter
           start_date: format(formData.startDate, 'yyyy-MM-dd'),
           installments: selectedLink.paymentCount,
           frequency: selectedLink.paymentCycle || 'monthly',

@@ -160,11 +160,35 @@ const isPlanInstallmentPaid = (entry: any): boolean => {
 };
 
 export const recordPaymentPlanActivity = async (
+  patientIdOrPlanId: string | null,
+  paymentLinkIdOrActionType: string,
+  clinicIdOrDetails: string | any = {},
+  actionTypeOrUserId?: string,
+  details?: any
+) => {
+  // Check if this is a call using the new signature (planId, actionType, details, userId?)
+  if (actionTypeOrUserId === undefined && typeof clinicIdOrDetails !== 'string') {
+    // New signature: (planId, actionType, details?, userId?)
+    return recordPlanActivity(patientIdOrPlanId as string, paymentLinkIdOrActionType as PlanActivityType, clinicIdOrDetails);
+  }
+  
+  // Old signature: (patientId, paymentLinkId, clinicId, actionType, details?)
+  return recordPlanActivityLegacy(
+    patientIdOrPlanId, 
+    paymentLinkIdOrActionType, 
+    clinicIdOrDetails as string, 
+    actionTypeOrUserId as string, 
+    details
+  );
+};
+
+// Implementation for the new signature
+async function recordPlanActivity(
   planId: string,
   actionType: PlanActivityType,
   details: any = {},
   userId?: string
-) => {
+) {
   try {
     // First get the plan details to retrieve patient_id and payment_link_id
     const { data: plan, error: planError } = await supabase
@@ -190,15 +214,46 @@ export const recordPaymentPlanActivity = async (
       });
     
     if (error) {
-      console.error('Error recording payment plan activity:', error);
+      console.error('Error recording plan activity:', error);
     }
     
     return { success: !error };
   } catch (error) {
-    console.error('Error recording payment plan activity:', error);
+    console.error('Error recording plan activity:', error);
     return { success: false };
   }
-};
+}
+
+// Implementation for the legacy signature
+async function recordPlanActivityLegacy(
+  patientId: string | null,
+  paymentLinkId: string,
+  clinicId: string,
+  actionType: string,
+  details: any = {}
+) {
+  try {
+    const { data, error } = await supabase
+      .from('payment_plan_activities')
+      .insert({
+        patient_id: patientId || '00000000-0000-0000-0000-000000000000',
+        payment_link_id: paymentLinkId,
+        clinic_id: clinicId,
+        action_type: actionType,
+        details: details,
+        performed_by_user_id: (await supabase.auth.getUser()).data.user?.id
+      });
+    
+    if (error) {
+      console.error('Error recording payment plan activity (legacy):', error);
+    }
+    
+    return { success: !error };
+  } catch (error) {
+    console.error('Error recording payment plan activity (legacy):', error);
+    return { success: false };
+  }
+}
 
 export const cancelPaymentPlan = async (planId: string, userId?: string) => {
   try {
@@ -213,7 +268,7 @@ export const cancelPaymentPlan = async (planId: string, userId?: string) => {
       console.error('Error fetching plan for cancellation:', planError);
       return { success: false, error: planError };
     }
-
+    
     // Get all installments to find which ones can be cancelled
     const { data: installments, error: installmentsError } = await supabase
       .from('payment_schedule')
