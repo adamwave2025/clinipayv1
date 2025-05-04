@@ -25,34 +25,6 @@ const PatientPaymentPage = () => {
   const hasShownToastRef = useRef(false);
   const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Function to fetch the most recent payment for the current payment link
-  // Kept for future use but not currently being used for redirects
-  const fetchLatestPayment = async (paymentLinkId: string) => {
-    setIsFetchingPayment(true);
-    try {
-      const { data, error } = await supabase
-        .from('payments')
-        .select('stripe_payment_id, payment_ref')
-        .eq('payment_link_id', paymentLinkId)
-        .eq('status', 'paid')
-        .order('paid_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(); // Using maybeSingle instead of single to prevent errors
-
-      if (error) {
-        console.error('Error fetching payment data:', error);
-        return null;
-      }
-      
-      return data?.stripe_payment_id || null;
-    } catch (err) {
-      console.error('Error fetching payment:', err);
-      return null;
-    } finally {
-      setIsFetchingPayment(false);
-    }
-  };
-
   // Clean up any timeouts on unmount
   useEffect(() => {
     return () => {
@@ -87,6 +59,12 @@ const PatientPaymentPage = () => {
   
   // Check if the payment link or request has been cancelled
   const isCancelled = linkData.status === 'cancelled';
+  
+  // Check if the payment plan is overdue (using status from plans table)
+  const isOverdue = linkData.status === 'overdue';
+  
+  // Check if the payment plan is paused
+  const isPaused = linkData.status === 'paused';
   
   // Render the cancelled state UI
   if (isCancelled) {
@@ -124,7 +102,7 @@ const PatientPaymentPage = () => {
           <div className="text-center">
             <div className="bg-amber-50 p-6 rounded-lg mb-6">
               <PaymentStatusSummaryContent
-                status="pending"
+                status="cancelled"
                 title="Payment No Longer Available"
                 description="This payment link has been cancelled or rescheduled by the clinic. Please contact them directly for further information about your appointment or treatment."
               />
@@ -132,6 +110,57 @@ const PatientPaymentPage = () => {
             
             <p className="text-sm text-gray-500 mt-4">
               If you believe this is an error, please contact the clinic using the information provided.
+            </p>
+          </div>
+        </div>
+      </PaymentLayout>
+    );
+  }
+
+  // Render the paused state UI
+  if (isPaused) {
+    console.log("Payment plan is paused, showing paused message");
+    return (
+      <PaymentLayout isSplitView={true} hideHeaderFooter={true}>
+        {/* Left Column - Clinic Info & Security */}
+        <div className="space-y-4">
+          {linkData.clinic && (
+            <PaymentPageClinicCard 
+              clinic={{
+                name: linkData.clinic.name,
+                logo: linkData.clinic.logo || '',
+                email: linkData.clinic.email,
+                phone: linkData.clinic.phone,
+                address: linkData.clinic.address,
+                paymentType: linkData.title || 'Payment',
+                amount: linkData.amount
+              }}
+              paymentPlan={!!linkData.paymentPlan}
+              planTotalAmount={linkData.planTotalAmount}
+              totalPaid={linkData.totalPaid}
+              totalOutstanding={linkData.totalOutstanding}
+            />
+          )}
+          <CliniPaySecuritySection />
+        </div>
+        
+        {/* Right Column - Paused Message */}
+        <div className="bg-white p-6 rounded-lg border border-blue-100">
+          <div className="flex justify-center mb-4">
+            <Logo className="h-10" />
+          </div>
+          
+          <div className="text-center">
+            <div className="bg-blue-50 p-6 rounded-lg mb-6">
+              <PaymentStatusSummaryContent
+                status="paused"
+                title="Payment Plan Temporarily Paused"
+                description="This payment plan has been paused by the clinic. No payments are due at this time. Please contact the clinic for more information."
+              />
+            </div>
+            
+            <p className="text-sm text-gray-500 mt-4">
+              If you have any questions about your payment plan, please contact the clinic using the information provided.
             </p>
           </div>
         </div>
@@ -193,6 +222,11 @@ const PatientPaymentPage = () => {
       </PaymentLayout>
     );
   }
+  
+  // Show overdue notification if applicable
+  if (isOverdue && linkData.paymentPlan) {
+    console.log("Payment plan is overdue, showing payment form with overdue notification");
+  }
 
   const clinicData = linkData.clinic;
   const paymentType = linkData.title || 'Payment';
@@ -237,6 +271,16 @@ const PatientPaymentPage = () => {
       
       {/* Right Column - Payment Form */}
       <PaymentErrorBoundary linkId={linkId}>
+        {isOverdue && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Payment Overdue</AlertTitle>
+            <AlertDescription>
+              This payment plan has overdue payments. Please contact the clinic if you're having difficulties making payments.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <StripeProvider>
           <PaymentFormContainer 
             linkId={linkId}

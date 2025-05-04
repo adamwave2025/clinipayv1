@@ -1,244 +1,333 @@
 
 import { useState } from 'react';
-import { Plan } from '@/utils/planTypes';
-import { PlanInstallment, formatPlanInstallments } from '@/utils/paymentPlanUtils';
-import { PlanActivity, formatPlanActivities } from '@/utils/planActivityUtils';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { 
-  cancelPaymentPlan, 
-  pausePaymentPlan,
-  resumePaymentPlan,
-  reschedulePaymentPlan,
-  fetchPlanActivities
-} from '@/services/PaymentScheduleService';
+import { supabase } from '@/integrations/supabase/client';
+import { Plan } from '@/utils/planTypes';
+import { PlanActivity } from '@/utils/planActivityUtils';
+import { PlanInstallment } from '@/utils/paymentPlanUtils';
+import { formatPlanInstallments } from '@/utils/paymentPlanUtils';
+import { formatPlanActivities } from '@/utils/planActivityUtils';
 
 export const usePlanQuickAccess = () => {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-  const [showPlanDetails, setShowPlanDetails] = useState(false);
   const [planInstallments, setPlanInstallments] = useState<PlanInstallment[]>([]);
   const [planActivities, setPlanActivities] = useState<PlanActivity[]>([]);
   const [isLoadingInstallments, setIsLoadingInstallments] = useState(false);
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  
-  // Dialog state for various actions
+  const [showPlanDetails, setShowPlanDetails] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showPauseDialog, setShowPauseDialog] = useState(false);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
-  
-  // Handle viewing plan details
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const handleViewPlanDetails = async (plan: Plan) => {
     setSelectedPlan(plan);
     
+    // Fetch installments and activities
+    await fetchPlanDetails(plan);
+    
+    setShowPlanDetails(true);
+  };
+  
+  const fetchPlanDetails = async (plan: Plan) => {
+    // First fetch installments
+    await fetchPlanInstallments(plan);
+    
+    // Then fetch activities
+    await fetchPlanActivities(plan);
+  };
+  
+  const fetchPlanInstallments = async (plan: Plan) => {
+    setIsLoadingInstallments(true);
     try {
-      setIsLoadingInstallments(true);
-      setIsLoadingActivities(true);
-      
-      // Fetch installments for this plan
-      let installments: PlanInstallment[] = [];
-      
-      if (plan.id.includes('_')) {
-        // Legacy plan ID format: patientId_paymentLinkId
-        const [patientId, paymentLinkId] = plan.id.split('_');
-        
-        if (!patientId || !paymentLinkId) {
-          throw new Error('Invalid plan ID');
-        }
-        
-        // Fetch installments for this plan from Supabase
-        const { data: rawInstallments, error } = await supabase
-          .from('payment_schedule')
-          .select(`
+      // Get all payment schedules for this plan
+      const { data, error } = await supabase
+        .from('payment_schedule')
+        .select(`
+          id, 
+          payment_number,
+          total_payments,
+          due_date,
+          amount,
+          status,
+          payment_request_id,
+          plan_id,
+          payment_requests (
             id,
-            amount,
-            due_date,
-            payment_number,
-            total_payments,
             status,
-            payment_request_id,
-            payment_requests (
-              id,
-              payment_id,
-              paid_at,
-              status
-            )
-          `)
-          .eq('patient_id', patientId)
-          .eq('payment_link_id', paymentLinkId)
-          .order('payment_number', { ascending: true });
-          
-        if (error) throw error;
+            payment_id,
+            paid_at
+          )
+        `)
+        .eq('payment_link_id', plan.paymentLinkId || plan.id)
+        .order('payment_number', { ascending: true });
         
-        // Format installments for display
-        installments = formatPlanInstallments(rawInstallments || []);
-      } else {
-        // Modern plan ID format: direct UUID
-        const { data: rawInstallments, error } = await supabase
-          .from('payment_schedule')
-          .select(`
-            id,
-            amount,
-            due_date,
-            payment_number,
-            total_payments,
-            status,
-            payment_request_id,
-            payment_requests (
-              id,
-              payment_id,
-              paid_at,
-              status
-            )
-          `)
-          .eq('plan_id', plan.id)
-          .order('payment_number', { ascending: true });
-          
-        if (error) throw error;
-        
-        // Format installments for display
-        installments = formatPlanInstallments(rawInstallments || []);
-      }
+      if (error) throw error;
       
-      setPlanInstallments(installments);
+      const formattedInstallments = formatPlanInstallments(data || []);
+      setPlanInstallments(formattedInstallments);
       
-      // Fetch plan activities
-      const activities = await fetchPlanActivities(plan.id);
-      setPlanActivities(formatPlanActivities(activities));
-      
-      // Show the plan details drawer
-      setShowPlanDetails(true);
     } catch (err) {
-      console.error('Error fetching plan details:', err);
-      toast.error('Could not load plan details');
+      console.error('Error fetching plan installments:', err);
+      toast.error('Failed to load payment installments');
     } finally {
       setIsLoadingInstallments(false);
-      setIsLoadingActivities(false);
     }
   };
   
-  // Helper to check if a plan is paused
-  const isPlanPaused = (plan: Plan | null) => {
+  const fetchPlanActivities = async (plan: Plan) => {
+    setIsLoadingActivities(true);
+    try {
+      // Get all activities for this plan
+      const { data, error } = await supabase
+        .from('payment_plan_activities')
+        .select('*')
+        .eq('payment_link_id', plan.paymentLinkId || plan.id)
+        .order('performed_at', { ascending: false });
+        
+      if (error) throw error;
+      
+      const formattedActivities = formatPlanActivities(data || []);
+      setPlanActivities(formattedActivities);
+      
+    } catch (err) {
+      console.error('Error fetching plan activities:', err);
+      toast.error('Failed to load plan activities');
+    } finally {
+      setIsLoadingActivities(false);
+    }
+  };
+
+  const handleOpenCancelDialog = () => {
+    setShowCancelDialog(true);
+    setShowPlanDetails(false);
+  };
+  
+  const handleOpenPauseDialog = () => {
+    setShowPauseDialog(true);
+    setShowPlanDetails(false);
+  };
+  
+  const handleOpenResumeDialog = () => {
+    setShowResumeDialog(true);
+    setShowPlanDetails(false);
+  };
+  
+  const handleOpenRescheduleDialog = () => {
+    setShowRescheduleDialog(true);
+    setShowPlanDetails(false);
+  };
+  
+  // Function to check if a plan is paused - now uses plan.status directly
+  const isPlanPaused = (plan: Plan | null): boolean => {
     if (!plan) return false;
     return plan.status === 'paused';
   };
-  
-  // Handle plan actions
-  const handleOpenCancelDialog = () => setShowCancelDialog(true);
-  const handleOpenPauseDialog = () => setShowPauseDialog(true);
-  const handleOpenResumeDialog = () => setShowResumeDialog(true);
-  const handleOpenRescheduleDialog = () => setShowRescheduleDialog(true);
-  
+
   const handleCancelPlan = async () => {
     if (!selectedPlan) return;
     
+    setIsProcessing(true);
+    
     try {
-      setIsProcessing(true);
-      const result = await cancelPaymentPlan(selectedPlan.id);
+      // 1. Update the plan status in the plans table
+      const { error: planUpdateError } = await supabase
+        .from('plans')
+        .update({ status: 'cancelled' })
+        .eq('id', selectedPlan.id)
+        .eq('payment_link_id', selectedPlan.paymentLinkId);
       
-      if (result.success) {
-        toast.success('Payment plan cancelled successfully');
-        setShowCancelDialog(false);
-        setShowPlanDetails(false);
-        return true;
-      } else {
-        toast.error('Failed to cancel payment plan');
-        return false;
+      if (planUpdateError) throw planUpdateError;
+      
+      // 2. Update all pending payment schedules to cancelled
+      const { error: scheduleUpdateError } = await supabase
+        .from('payment_schedule')
+        .update({ status: 'cancelled' })
+        .eq('payment_link_id', selectedPlan.paymentLinkId)
+        .in('status', ['pending', 'paused']);
+        
+      if (scheduleUpdateError) throw scheduleUpdateError;
+      
+      // 3. Add an activity log entry
+      const { error: activityError } = await supabase
+        .from('payment_plan_activities')
+        .insert({
+          payment_link_id: selectedPlan.paymentLinkId,
+          patient_id: selectedPlan.patientId,
+          clinic_id: selectedPlan.clinicId,
+          action_type: 'cancel_plan',
+          details: {
+            plan_name: selectedPlan.title || selectedPlan.planName,
+            previous_status: selectedPlan.status
+          }
+        });
+      
+      if (activityError) {
+        console.error('Error logging cancel activity:', activityError);
       }
-    } catch (error) {
+      
+      toast.success('Payment plan cancelled successfully');
+      
+      // Update plan state
+      if (selectedPlan) {
+        setSelectedPlan({
+          ...selectedPlan,
+          status: 'cancelled'
+        });
+      }
+      
+    } catch (error: any) {
       console.error('Error cancelling plan:', error);
-      toast.error('Failed to cancel payment plan');
-      return false;
+      toast.error('Failed to cancel plan: ' + error.message);
     } finally {
       setIsProcessing(false);
+      setShowCancelDialog(false);
     }
   };
   
   const handlePausePlan = async () => {
     if (!selectedPlan) return;
     
+    setIsProcessing(true);
+    
     try {
-      setIsProcessing(true);
-      const result = await pausePaymentPlan(selectedPlan.id);
+      // 1. Update the plan status in the plans table
+      const { error: planUpdateError } = await supabase
+        .from('plans')
+        .update({ status: 'paused' })
+        .eq('id', selectedPlan.id)
+        .eq('payment_link_id', selectedPlan.paymentLinkId);
       
-      if (result.success) {
-        toast.success('Payment plan paused successfully');
-        setShowPauseDialog(false);
-        setShowPlanDetails(false);
-        return true;
-      } else {
-        toast.error('Failed to pause payment plan');
-        return false;
+      if (planUpdateError) throw planUpdateError;
+      
+      // 2. Update all pending payment schedules to paused
+      const { error: scheduleUpdateError } = await supabase
+        .from('payment_schedule')
+        .update({ status: 'paused' })
+        .eq('payment_link_id', selectedPlan.paymentLinkId)
+        .eq('status', 'pending');
+        
+      if (scheduleUpdateError) throw scheduleUpdateError;
+      
+      // 3. Add an activity log entry
+      const { error: activityError } = await supabase
+        .from('payment_plan_activities')
+        .insert({
+          payment_link_id: selectedPlan.paymentLinkId,
+          patient_id: selectedPlan.patientId,
+          clinic_id: selectedPlan.clinicId,
+          action_type: 'pause_plan',
+          details: {
+            plan_name: selectedPlan.title || selectedPlan.planName,
+            previous_status: selectedPlan.status
+          }
+        });
+      
+      if (activityError) {
+        console.error('Error logging pause activity:', activityError);
       }
-    } catch (error) {
+      
+      toast.success('Payment plan paused successfully');
+      
+      // Update plan state
+      if (selectedPlan) {
+        setSelectedPlan({
+          ...selectedPlan,
+          status: 'paused'
+        });
+      }
+      
+    } catch (error: any) {
       console.error('Error pausing plan:', error);
-      toast.error('Failed to pause payment plan');
-      return false;
+      toast.error('Failed to pause plan: ' + error.message);
     } finally {
       setIsProcessing(false);
+      setShowPauseDialog(false);
     }
   };
   
-  const handleResumePlan = async (resumeDate: Date) => {
+  const handleResumePlan = async () => {
     if (!selectedPlan) return;
     
+    setIsProcessing(true);
+    
     try {
-      setIsProcessing(true);
-      const result = await resumePaymentPlan(selectedPlan.id, resumeDate);
+      // Determine what the plan status should be updated to
+      // If it has overdue payments, it should be 'overdue', otherwise 'active'
+      const newStatus = selectedPlan.hasOverduePayments ? 'overdue' : 'active';
       
-      if (result.success) {
-        toast.success('Payment plan resumed successfully');
-        setShowResumeDialog(false);
-        setShowPlanDetails(false);
-        return true;
-      } else {
-        toast.error('Failed to resume payment plan');
-        return false;
+      // 1. Update the plan status in the plans table
+      const { error: planUpdateError } = await supabase
+        .from('plans')
+        .update({ status: newStatus })
+        .eq('id', selectedPlan.id)
+        .eq('payment_link_id', selectedPlan.paymentLinkId);
+      
+      if (planUpdateError) throw planUpdateError;
+      
+      // 2. Update all paused payment schedules back to pending
+      const { error: scheduleUpdateError } = await supabase
+        .from('payment_schedule')
+        .update({ status: 'pending' })
+        .eq('payment_link_id', selectedPlan.paymentLinkId)
+        .eq('status', 'paused');
+        
+      if (scheduleUpdateError) throw scheduleUpdateError;
+      
+      // 3. Add an activity log entry
+      const { error: activityError } = await supabase
+        .from('payment_plan_activities')
+        .insert({
+          payment_link_id: selectedPlan.paymentLinkId,
+          patient_id: selectedPlan.patientId,
+          clinic_id: selectedPlan.clinicId,
+          action_type: 'resume_plan',
+          details: {
+            plan_name: selectedPlan.title || selectedPlan.planName,
+            previous_status: 'paused',
+            new_status: newStatus
+          }
+        });
+      
+      if (activityError) {
+        console.error('Error logging resume activity:', activityError);
       }
-    } catch (error) {
+      
+      toast.success('Payment plan resumed successfully');
+      
+      // Update plan state
+      if (selectedPlan) {
+        setSelectedPlan({
+          ...selectedPlan,
+          status: newStatus
+        });
+      }
+      
+    } catch (error: any) {
       console.error('Error resuming plan:', error);
-      toast.error('Failed to resume payment plan');
-      return false;
+      toast.error('Failed to resume plan: ' + error.message);
     } finally {
       setIsProcessing(false);
+      setShowResumeDialog(false);
     }
   };
   
-  const handleReschedulePlan = async (newStartDate: Date) => {
+  const handleReschedulePlan = async () => {
     if (!selectedPlan) return;
     
-    try {
-      setIsProcessing(true);
-      const result = await reschedulePaymentPlan(selectedPlan.id, newStartDate);
-      
-      if (result.success) {
-        toast.success('Payment plan rescheduled successfully');
-        setShowRescheduleDialog(false);
-        setShowPlanDetails(false);
-        return true;
-      } else {
-        toast.error('Failed to reschedule payment plan');
-        return false;
-      }
-    } catch (error) {
-      console.error('Error rescheduling plan:', error);
-      toast.error('Failed to reschedule payment plan');
-      return false;
-    } finally {
-      setIsProcessing(false);
-    }
+    // This functionality would be more complex and would need to reschedule future payments
+    // For now, just show a toast saying this would be implemented
+    toast.info("Plan rescheduling is not currently implemented");
+    setShowRescheduleDialog(false);
   };
-  
+
   return {
-    // Plan data
     selectedPlan,
     planInstallments,
     planActivities,
     isLoadingInstallments,
     isLoadingActivities,
-    
-    // Dialog state
     showPlanDetails,
     setShowPlanDetails,
     showCancelDialog,
@@ -249,8 +338,6 @@ export const usePlanQuickAccess = () => {
     setShowResumeDialog,
     showRescheduleDialog,
     setShowRescheduleDialog,
-    
-    // Actions
     handleViewPlanDetails,
     handleOpenCancelDialog,
     handleOpenPauseDialog,

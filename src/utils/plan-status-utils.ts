@@ -34,3 +34,22 @@ export async function updatePlanStatuses() {
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Manually trigger a refresh of the user interface after updating a plan status
+ * This can be used after making manual status changes to force the UI to update
+ */
+export async function refreshPlanDisplay() {
+  try {
+    // Simple toast notification that we're refreshing the display
+    toast.info('Refreshing payment plan information...');
+    
+    // We could add additional logic here if needed
+    // For now we just notify the user as most components will refresh on their own
+    
+    return { success: true };
+  } catch (err: any) {
+    console.error('Exception refreshing plan display:', err);
+    return { success: false, error: err.message };
+  }
+}

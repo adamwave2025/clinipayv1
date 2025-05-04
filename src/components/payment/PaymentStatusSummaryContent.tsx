@@ -1,58 +1,61 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import PaymentStatusIcon from './PaymentStatusIcon';
+import { CheckCircle, AlertTriangle, Clock, AlertCircle } from 'lucide-react';
 
 interface PaymentStatusSummaryContentProps {
-  status: 'success' | 'failed' | 'pending';
+  status: 'success' | 'pending' | 'failed' | 'cancelled' | 'overdue' | 'paused';
   title: string;
   description: string;
-  primaryActionLabel?: React.ReactNode;
-  secondaryActionLabel?: string;
-  onPrimaryAction?: () => void;
-  onSecondaryAction?: () => void;
 }
 
-const PaymentStatusSummaryContent = ({
-  status,
-  title,
-  description,
-  primaryActionLabel,
-  secondaryActionLabel,
-  onPrimaryAction,
-  onSecondaryAction,
+const PaymentStatusSummaryContent = ({ 
+  status, 
+  title, 
+  description 
 }: PaymentStatusSummaryContentProps) => {
+  // Define icon and color based on status
+  let icon;
+  let iconClassName;
+  
+  switch (status) {
+    case 'success':
+      icon = <CheckCircle className="w-12 h-12 text-green-500" />;
+      iconClassName = "bg-green-100";
+      break;
+    case 'pending':
+      icon = <Clock className="w-12 h-12 text-amber-500" />;
+      iconClassName = "bg-amber-100";
+      break;
+    case 'failed':
+      icon = <AlertTriangle className="w-12 h-12 text-red-500" />;
+      iconClassName = "bg-red-100";
+      break;
+    case 'cancelled':
+      icon = <AlertCircle className="w-12 h-12 text-gray-500" />;
+      iconClassName = "bg-gray-100";
+      break;
+    case 'overdue':
+      icon = <AlertTriangle className="w-12 h-12 text-red-500" />;
+      iconClassName = "bg-red-100";
+      break;
+    case 'paused':
+      icon = <Clock className="w-12 h-12 text-blue-500" />;
+      iconClassName = "bg-blue-100";
+      break;
+    default:
+      icon = <Clock className="w-12 h-12 text-amber-500" />;
+      iconClassName = "bg-amber-100";
+  }
+
   return (
     <div className="text-center">
-      <PaymentStatusIcon status={status} />
-      
-      <h1 className="text-2xl font-bold mb-2">{title}</h1>
-      <p className="text-gray-600 mb-6">
-        {description}
-      </p>
-      
-      {(primaryActionLabel || secondaryActionLabel) && (
-        <div className="space-y-3">
-          {primaryActionLabel && (
-            <Button 
-              className="w-full bg-gradient-primary text-white hover:opacity-90" 
-              onClick={onPrimaryAction}
-            >
-              {primaryActionLabel}
-            </Button>
-          )}
-          
-          {secondaryActionLabel && (
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              onClick={onSecondaryAction}
-            >
-              {secondaryActionLabel}
-            </Button>
-          )}
+      <div className="flex justify-center mb-4">
+        <div className={`${iconClassName} p-3 rounded-full`}>
+          {icon}
         </div>
-      )}
+      </div>
+      <h3 className="text-xl font-semibold mb-2">{title}</h3>
+      <p className="text-gray-600">{description}</p>
     </div>
   );
 };

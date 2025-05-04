@@ -1,11 +1,10 @@
 
 export interface PaymentLinkData {
   id: string;
-  title: string;
+  title?: string;
+  type?: string;
   amount: number;
-  type: string;
   description?: string;
-  status?: string;
   clinic: {
     id: string;
     name: string;
@@ -13,31 +12,17 @@ export interface PaymentLinkData {
     email?: string;
     phone?: string;
     address?: string;
-    stripeStatus?: string;
+    stripeStatus: string;
   };
-  isRequest?: boolean;
-  customAmount?: number;
+  status: string; // Now consistently using the status from the plans table when applicable
+  isRequest: boolean;
   patientName?: string;
   patientEmail?: string;
   patientPhone?: string;
-  // Payment plan fields
+  paymentId?: string;
   paymentPlan?: boolean;
   planTotalAmount?: number;
   totalPaid?: number;
   totalOutstanding?: number;
-  // Added field to track if payment is completed
-  paymentId?: string;
-}
-
-export interface RawClinicData {
-  id: string;
-  clinic_name: string | null;
-  logo_url: string | null;
-  email: string | null;
-  phone: string | null;
-  address_line_1: string | null;
-  address_line_2: string | null;
-  city: string | null;
-  postcode: string | null;
-  stripe_status: string | null;
+  hasOverduePayments?: boolean; // From plans table has_overdue_payments flag
 }
