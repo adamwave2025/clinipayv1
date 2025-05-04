@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Patient } from '@/hooks/usePatients';
 import { PaymentLink } from '@/types/payment';
@@ -36,6 +37,7 @@ export function useSendLinkPageState() {
     startDate: new Date(),
   });
   const [isPaymentPlan, setIsPaymentPlan] = useState(false);
+  const [isCreatingNewPatient, setIsCreatingNewPatient] = useState(false);
 
   // Separate payment links and payment plans
   useEffect(() => {
@@ -52,6 +54,7 @@ export function useSendLinkPageState() {
         patientEmail: selectedPatient.email || '',
         patientPhone: selectedPatient.phone || ''
       }));
+      setIsCreatingNewPatient(false);
     }
   }, [selectedPatient]);
 
@@ -83,6 +86,7 @@ export function useSendLinkPageState() {
 
   const handlePatientSelect = (patient: Patient | null) => {
     setSelectedPatient(patient);
+    setIsCreatingNewPatient(false);
     
     if (!patient) {
       // Keep the existing name if we're creating a new patient
@@ -96,6 +100,7 @@ export function useSendLinkPageState() {
 
   const handleCreateNew = (searchTerm: string) => {
     setSelectedPatient(null);
+    setIsCreatingNewPatient(true);
     // Update the form with the search term as the patient name
     setFormData(prev => ({
       ...prev,
@@ -151,6 +156,62 @@ export function useSendLinkPageState() {
     }
     
     setShowConfirmation(true);
+  };
+
+  // New function to create a patient and return the ID
+  const createOrGetPatient = async (): Promise<string | null> => {
+    try {
+      // Get the clinic id from the user
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('clinic_id')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (userError) {
+        console.error('Error getting clinic ID:', userError);
+        throw new Error('Could not determine clinic ID');
+      }
+
+      const clinicId = userData.clinic_id;
+      
+      // If we have a selected patient, return their ID
+      if (selectedPatient) {
+        return selectedPatient.id;
+      }
+      
+      // If we're creating a new patient, insert them into the database
+      if (isCreatingNewPatient && formData.patientName && formData.patientEmail) {
+        console.log('Creating new patient:', formData.patientName);
+        
+        // Create the patient
+        const { data: newPatient, error: patientError } = await supabase
+          .from('patients')
+          .insert({
+            clinic_id: clinicId,
+            name: formData.patientName,
+            email: formData.patientEmail,
+            phone: formData.patientPhone || null
+          })
+          .select()
+          .single();
+        
+        if (patientError) {
+          console.error('Error creating patient:', patientError);
+          throw new Error('Could not create new patient');
+        }
+        
+        // Update selected patient and return ID
+        setSelectedPatient(newPatient);
+        setIsCreatingNewPatient(false);
+        return newPatient.id;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error in createOrGetPatient:', error);
+      return null;
+    }
   };
 
   const generatePaymentSchedule = (startDate: Date, frequency: string, count: number, amount: number) => {
@@ -373,6 +434,14 @@ export function useSendLinkPageState() {
         return { success: false };
       }
 
+      // Create or get patient ID first
+      const patientId = await createOrGetPatient();
+      if (isCreatingNewPatient && !patientId) {
+        toast.error('Could not create patient record');
+        setIsSchedulingPlan(false);
+        return { success: false };
+      }
+
       // Get the clinic id from the user
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -430,7 +499,7 @@ export function useSendLinkPageState() {
         try {
           firstPaymentRequest = await createPaymentRequest(
             clinicId,
-            selectedPatient?.id || null,
+            patientId,
             selectedLink.id,
             `Payment 1 of ${selectedLink.paymentCount} is due.`
           );
@@ -451,7 +520,7 @@ export function useSendLinkPageState() {
         .from('plans')
         .insert({
           clinic_id: clinicId,
-          patient_id: selectedPatient?.id || null,
+          patient_id: patientId,
           payment_link_id: selectedLink.id,
           title: selectedLink.title || 'Payment Plan',
           description: selectedLink.description,
@@ -489,7 +558,7 @@ export function useSendLinkPageState() {
         
         return {
           clinic_id: clinicId,
-          patient_id: selectedPatient?.id || null,
+          patient_id: patientId,
           payment_link_id: selectedLink.id,
           plan_id: planData.id, // Link to the new plan
           payment_request_id: (isFirst && isFirstPaymentToday && firstPaymentRequest) ? firstPaymentRequest.id : null,
@@ -537,7 +606,7 @@ export function useSendLinkPageState() {
         const sentSuccessfully = await sendImmediatePayment(
           firstPayment,
           clinicId,
-          selectedPatient?.id || null,
+          patientId,
           selectedLink,
           formattedAddress,
           firstPaymentRequest.id // Pass the existing payment request ID
@@ -568,6 +637,15 @@ export function useSendLinkPageState() {
     if (isPaymentPlan) {
       await handleSchedulePaymentPlan();
     } else {
+      // For regular payment links, create patient first if needed
+      if (isCreatingNewPatient) {
+        const patientId = await createOrGetPatient();
+        if (!patientId) {
+          toast.error('Could not create patient record');
+          return;
+        }
+      }
+      
       // Use existing functionality for regular payment links
       const result = await sendPaymentLink({ 
         formData, 
@@ -592,6 +670,7 @@ export function useSendLinkPageState() {
       startDate: new Date(),
     });
     setSelectedPatient(null);
+    setIsCreatingNewPatient(false);
   };
 
   // Find the selected payment option from either regular links or payment plans

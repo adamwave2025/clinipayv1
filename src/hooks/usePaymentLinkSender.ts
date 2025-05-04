@@ -79,8 +79,47 @@ export function usePaymentLinkSender() {
         console.log('Using custom amount:', amount);
       }
 
+      // Check if we need to create a patient first
+      let patientId = null;
+      
+      // Look for existing patient with this email
+      if (formData.patientEmail) {
+        const { data: existingPatient } = await supabase
+          .from('patients')
+          .select('id')
+          .eq('clinic_id', userData.clinic_id)
+          .eq('email', formData.patientEmail)
+          .maybeSingle();
+          
+        if (existingPatient) {
+          patientId = existingPatient.id;
+          console.log('Found existing patient:', patientId);
+        } else {
+          // Create a new patient if not found
+          const { data: newPatient, error: patientError } = await supabase
+            .from('patients')
+            .insert({
+              clinic_id: userData.clinic_id,
+              name: formData.patientName,
+              email: formData.patientEmail,
+              phone: formData.patientPhone || null
+            })
+            .select()
+            .single();
+            
+          if (patientError) {
+            console.error('Error creating patient:', patientError);
+            // Continue without patient ID
+          } else if (newPatient) {
+            patientId = newPatient.id;
+            console.log('Created new patient:', patientId);
+          }
+        }
+      }
+
       console.log('Creating payment request with:', {
         clinicId: userData.clinic_id,
+        patientId,
         paymentLinkId,
         amount,
         patientName: formData.patientName
@@ -90,6 +129,7 @@ export function usePaymentLinkSender() {
         .from('payment_requests')
         .insert({
           clinic_id: userData.clinic_id,
+          patient_id: patientId,
           payment_link_id: paymentLinkId,
           custom_amount: formData.selectedLink ? null : amount,
           patient_name: formData.patientName,
