@@ -79,8 +79,18 @@ serve(async (req) => {
                          schedule.payment_requests !== null &&
                          schedule.payment_requests.payment_id !== null;
           
-          const dueDate = new Date(schedule.due_date);
-          const isOverdue = !isPaid && dueDate < today && schedule.status !== 'paused';
+          // FIXED: Compare dates without the time component
+          // Convert both dates to YYYY-MM-DD format and then compare them
+          const dueDateStr = new Date(schedule.due_date).toISOString().split('T')[0];
+          const todayStr = today.toISOString().split('T')[0];
+          
+          // A payment is overdue if:
+          // 1. It's not paid
+          // 2. The due date is strictly before today (not including today)
+          // 3. It's not paused
+          const isOverdue = !isPaid && 
+                           dueDateStr < todayStr && 
+                           schedule.status !== 'paused';
           
           return isOverdue;
         });
