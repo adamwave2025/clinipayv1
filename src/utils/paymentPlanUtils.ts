@@ -11,6 +11,7 @@ export interface PaymentScheduleItem {
   total_payments: number;
   status: string;
   payment_request_id?: string;
+  created_at?: string; // Add created_at to help distinguish between plan instances
   payment_requests?: {
     id: string;
     status?: string;
@@ -44,6 +45,7 @@ export interface Plan {
   nextDueDate: string | null;
   schedule: any[];
   hasOverduePayments: boolean;
+  createdAt?: string; // Add created_at to help identify when the plan was created
 }
 
 export interface PlanInstallment {
@@ -76,70 +78,115 @@ const isPlanInstallmentPaid = (entry: PaymentScheduleItem): boolean => {
 };
 
 export const groupPaymentSchedulesByPlan = (scheduleItems: PaymentScheduleItem[]): Map<string, Plan> => {
-  const plansByPatient = new Map<string, Plan>();
+  // First, group by patient_id, payment_link_id, and initial created_at date
+  // This ensures that each "plan instance" (even with same patient and payment link) is treated separately
+  const groupedByCreationBatch = new Map<string, PaymentScheduleItem[]>();
   
-  scheduleItems.forEach(entry => {
-    // Create a unique key for each patient's plan
-    const planKey = `${entry.patient_id || 'unknown'}_${entry.payment_link_id}`;
+  // Sort items by created_at to ensure we process older items first
+  const sortedItems = [...scheduleItems].sort((a, b) => {
+    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return dateA - dateB;
+  });
+  
+  // Group items by their creation batch
+  sortedItems.forEach(item => {
+    // Get all items from the same plan batch based on patient_id, payment_link_id, and status
+    // For cancelled plans, consider them as separate entities
+    let existingBatchKey: string | null = null;
     
-    if (!plansByPatient.has(planKey)) {
-      // Initialize plan data
-      plansByPatient.set(planKey, {
-        id: planKey,
-        patientId: entry.patient_id,
-        patientName: entry.patients?.name || 'Unknown Patient',
-        planName: entry.payment_links?.title || 'Payment Plan',
-        amount: entry.payment_links?.plan_total_amount || 0,
-        totalInstallments: entry.total_payments,
-        paidInstallments: 0,
-        progress: 0,
-        status: 'active',
-        nextDueDate: null,
-        schedule: [],
-        hasOverduePayments: false
-      });
+    for (const [key, batch] of groupedByCreationBatch.entries()) {
+      if (batch[0].patient_id === item.patient_id && 
+          batch[0].payment_link_id === item.payment_link_id) {
+        
+        // Check if any item in this batch is cancelled - if so, this is a separate plan instance
+        const batchIsCancelled = batch.some(entry => entry.status === 'cancelled');
+        const itemIsCancelled = item.status === 'cancelled';
+        
+        // If either the batch or the item is cancelled but not both, they should be separate
+        // If neither is cancelled, they should be grouped together
+        // If both are cancelled, check if they were likely part of the same plan
+        if ((!batchIsCancelled && !itemIsCancelled) || 
+            (batchIsCancelled && itemIsCancelled)) {
+          existingBatchKey = key;
+          break;
+        }
+      }
     }
     
-    // Add this entry to the plan's schedule
-    const plan = plansByPatient.get(planKey)!;
-    
-    // Check if this installment is overdue - FIXED: normalize date comparisons
-    const dueDate = parseISO(entry.due_date);
-    // Reset time to start of day to ensure fair comparison
-    const dueDateStart = startOfDay(dueDate);
-    const now = startOfDay(new Date()); // Also normalize current date to start of day
-    
-    // Consider 'pending', 'processed', and 'sent' status for overdue check
-    // Only mark as overdue if the due date is BEFORE today (not equal to today)
-    const isOverdue = (entry.status === 'pending' || entry.status === 'processed' || entry.status === 'sent') && 
-                     dueDateStart < now && 
-                     !isPlanInstallmentPaid(entry);
-    
-    if (isOverdue) {
-      plan.hasOverduePayments = true;
-    }
-    
-    plan.schedule.push({
-      id: entry.id,
-      dueDate: entry.due_date,
-      amount: entry.amount,
-      status: entry.status,
-      paymentNumber: entry.payment_number,
-      totalPayments: entry.total_payments,
-      paymentRequestId: entry.payment_request_id,
-      requestStatus: entry.payment_requests?.status,
-      isOverdue: isOverdue,
-      isPaid: isPlanInstallmentPaid(entry)
-    });
-    
-    // Count paid installments using the consistent isPlanInstallmentPaid helper
-    if (isPlanInstallmentPaid(entry)) {
-      plan.paidInstallments += 1;
+    // If we found a matching batch, add to it, otherwise create a new batch
+    if (existingBatchKey) {
+      const existingBatch = groupedByCreationBatch.get(existingBatchKey)!;
+      existingBatch.push(item);
+    } else {
+      // Create a unique key for this new plan instance
+      const newBatchKey = `${item.patient_id}_${item.payment_link_id}_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+      groupedByCreationBatch.set(newBatchKey, [item]);
     }
   });
   
-  // Calculate progress and determine status for each plan
-  plansByPatient.forEach(plan => {
+  // Now convert the grouped batches into Plan objects
+  const plansByPatient = new Map<string, Plan>();
+  
+  for (const [batchKey, batchItems] of groupedByCreationBatch.entries()) {
+    // Take the first item as reference for the plan
+    const firstItem = batchItems[0];
+    
+    // Create a plan for this batch
+    const plan: Plan = {
+      id: batchKey, // Use the unique batch key as the plan ID
+      patientId: firstItem.patient_id,
+      patientName: firstItem.patients?.name || 'Unknown Patient',
+      planName: firstItem.payment_links?.title || 'Payment Plan',
+      amount: firstItem.payment_links?.plan_total_amount || 0,
+      totalInstallments: firstItem.total_payments,
+      paidInstallments: 0,
+      progress: 0,
+      status: 'active',
+      nextDueDate: null,
+      schedule: [],
+      hasOverduePayments: false,
+      createdAt: firstItem.created_at
+    };
+    
+    // Process each item in the batch
+    for (const item of batchItems) {
+      // Check if this installment is overdue - normalize date comparisons
+      const dueDate = parseISO(item.due_date);
+      // Reset time to start of day to ensure fair comparison
+      const dueDateStart = startOfDay(dueDate);
+      const now = startOfDay(new Date()); // Also normalize current date to start of day
+      
+      // Consider 'pending', 'processed', and 'sent' status for overdue check
+      // Only mark as overdue if the due date is BEFORE today (not equal to today)
+      const isOverdue = (item.status === 'pending' || item.status === 'processed' || item.status === 'sent') && 
+                        dueDateStart < now && 
+                        !isPlanInstallmentPaid(item);
+      
+      if (isOverdue) {
+        plan.hasOverduePayments = true;
+      }
+      
+      plan.schedule.push({
+        id: item.id,
+        dueDate: item.due_date,
+        amount: item.amount,
+        status: item.status,
+        paymentNumber: item.payment_number,
+        totalPayments: item.total_payments,
+        paymentRequestId: item.payment_request_id,
+        requestStatus: item.payment_requests?.status,
+        isOverdue: isOverdue,
+        isPaid: isPlanInstallmentPaid(item)
+      });
+      
+      // Count paid installments using the consistent isPlanInstallmentPaid helper
+      if (isPlanInstallmentPaid(item)) {
+        plan.paidInstallments += 1;
+      }
+    }
+    
+    // Calculate progress and determine status for each plan
     // Calculate progress percentage
     plan.progress = Math.round((plan.paidInstallments / plan.totalInstallments) * 100);
     
@@ -149,44 +196,35 @@ export const groupPaymentSchedulesByPlan = (scheduleItems: PaymentScheduleItem[]
     // Check if ANY payment in the schedule is cancelled
     const hasCancelledPayment = plan.schedule.some(item => item.status === 'cancelled');
     
-    // Check if ANY payment is paused (new logic)
+    // Check if ANY payment is paused
     const hasPausedPayment = plan.schedule.some(item => item.status === 'paused');
     
     // Determine plan status based on priority:
-    // 1. First check if any payment is cancelled
     if (hasCancelledPayment) {
       plan.status = 'cancelled';
-    }
-    // 2. Check if any payment is paused (new logic)
-    else if (hasPausedPayment) {
+    } else if (hasPausedPayment) {
       plan.status = 'paused';
-    } 
-    // 3. Then check for overdue payments
-    else if (plan.hasOverduePayments) {
+    } else if (plan.hasOverduePayments) {
       plan.status = 'overdue';
-    }
-    // 4. Then check if it's completed
-    else if (plan.progress === 100) {
+    } else if (plan.progress === 100) {
       plan.status = 'completed';
-    }
-    // 5. Then check if it's pending (no payments made)
-    else if (plan.paidInstallments === 0) {
+    } else if (plan.paidInstallments === 0) {
       plan.status = 'pending';
-    }
-    // 6. Otherwise it's active
-    else {
+    } else {
       plan.status = 'active';
     }
     
     // Find the next due date (first non-paid, non-cancelled, non-paused installment)
-    // Using our consistent payment check instead of just status
     const upcoming = plan.schedule.find(entry => 
       !entry.isPaid && entry.status !== 'cancelled' && entry.status !== 'paused');
     
     plan.nextDueDate = upcoming ? upcoming.dueDate : null;
     
     console.log(`Plan ${plan.planName} status: ${plan.status}, next due date: ${plan.nextDueDate}`);
-  });
+    
+    // Add the plan to our final map
+    plansByPatient.set(plan.id, plan);
+  }
   
   return plansByPatient;
 };

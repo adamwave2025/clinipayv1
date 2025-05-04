@@ -441,6 +441,9 @@ export function useSendLinkPageState() {
         }
       }
       
+      // Create a timestamp to identify this batch of schedule entries
+      const batchCreationTime = new Date().toISOString();
+      
       // Create schedule entries
       const scheduleEntries = schedule.map((entry, index) => {
         // The first payment should be marked as 'sent' and linked to the payment request if it's due today
@@ -457,7 +460,9 @@ export function useSendLinkPageState() {
           payment_number: entry.payment_number,
           total_payments: entry.total_payments,
           payment_frequency: entry.payment_frequency,
-          status: status
+          status: status,
+          created_at: batchCreationTime, // Add the same timestamp to all entries in this batch
+          updated_at: batchCreationTime  // Add the same timestamp to all entries in this batch
         };
       });
 

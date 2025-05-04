@@ -36,7 +36,7 @@ export const usePlanDataFetcher = () => {
       // Fetch payment schedule data
       const scheduleData = await fetchPaymentSchedules(clinicId);
       
-      // Process data to group by patient_id and payment_link_id
+      // Process data to group by patient_id, payment_link_id, and creation batch
       const plansMap = groupPaymentSchedulesByPlan(scheduleData);
       
       const plansArray = Array.from(plansMap.values());

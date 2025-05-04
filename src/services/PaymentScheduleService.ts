@@ -19,47 +19,33 @@ export const fetchUserClinicId = async (userId: string) => {
 };
 
 export const fetchPaymentSchedules = async (clinicId: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('payment_schedule')
-      .select(`
+  const { data, error } = await supabase
+    .from('payment_schedule')
+    .select(`
+      *,
+      payment_requests (*),
+      patients (
         id,
-        patient_id,
-        payment_link_id,
+        name,
+        email,
+        phone
+      ),
+      payment_links (
+        id,
+        title,
         amount,
-        due_date,
-        payment_number,
-        total_payments,
-        status,
-        payment_request_id,
-        payment_requests (
-          id,
-          status,
-          payment_id
-        ),
-        patients (
-          id,
-          name,
-          email,
-          phone
-        ),
-        payment_links (
-          id,
-          title,
-          amount,
-          plan_total_amount
-        )
-      `)
-      .eq('clinic_id', clinicId)
-      .order('due_date', { ascending: true });
+        plan_total_amount
+      )
+    `)
+    .eq('clinic_id', clinicId)
+    .order('payment_number', { ascending: true });
 
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
+  if (error) {
     console.error('Error fetching payment schedules:', error);
-    toast.error('Failed to load payment plans');
-    return [];
+    throw error;
   }
+
+  return data || [];
 };
 
 export const fetchPlanInstallments = async (patientId: string, paymentLinkId: string) => {
