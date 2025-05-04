@@ -14,8 +14,9 @@ import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDia
 import ReschedulePlanDialog from '@/components/dashboard/payment-plans/ReschedulePlanDialog';
 import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 import { useManagePlans } from '@/hooks/useManagePlans';
+import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
 
-const ManagePlansPage = () => {
+const ManagePlansPageContent = () => {
   const {
     searchQuery,
     setSearchQuery,
@@ -60,38 +61,14 @@ const ManagePlansPage = () => {
     // Reschedule plan properties
     showRescheduleDialog,
     setShowRescheduleDialog,
-    handleReschedulePlan,
+    handleRescheduleplan,
     handleOpenRescheduleDialog,
     isPlanPaused,
     isProcessing
   } = useManagePlans();
 
   return (
-    <DashboardLayout userType="clinic">
-      <PageHeader 
-        title="Payment Plans" 
-        description="Create and manage payment plans for your patients"
-        action={
-          <div className="flex space-x-2">
-            <Button 
-              variant="outline"
-              className="flex items-center"
-              onClick={handleViewPlansClick}
-            >
-              <ListChecks className="mr-2 h-4 w-4" />
-              View Plans
-            </Button>
-            <Button 
-              className="btn-gradient flex items-center"
-              onClick={handleCreatePlanClick}
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create Plan
-            </Button>
-          </div>
-        }
-      />
-      
+    <>
       <div className="space-y-6">
         {/* Filters */}
         <PaymentPlanFilters 
@@ -177,11 +154,45 @@ const ManagePlansPage = () => {
       <ReschedulePlanDialog
         showDialog={showRescheduleDialog}
         setShowDialog={setShowRescheduleDialog}
-        onConfirm={handleReschedulePlan}
+        onConfirm={handleRescheduleplan}
         planName={selectedPlan?.planName || ''}
         patientName={selectedPlan?.patientName || ''}
         isProcessing={isProcessing}
       />
+    </>
+  );
+};
+
+const ManagePlansPage = () => {
+  return (
+    <DashboardLayout userType="clinic">
+      <PageHeader 
+        title="Payment Plans" 
+        description="Create and manage payment plans for your patients"
+        action={
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline"
+              className="flex items-center"
+              onClick={() => {/* This will be handled in the child component */}}
+            >
+              <ListChecks className="mr-2 h-4 w-4" />
+              View Plans
+            </Button>
+            <Button 
+              className="btn-gradient flex items-center"
+              onClick={() => {/* This will be handled in the child component */}}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Plan
+            </Button>
+          </div>
+        }
+      />
+      
+      <DashboardDataProvider>
+        <ManagePlansPageContent />
+      </DashboardDataProvider>
     </DashboardLayout>
   );
 };
