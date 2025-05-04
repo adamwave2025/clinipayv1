@@ -1,10 +1,10 @@
 
 import { useState } from 'react';
-import { Plan } from '@/utils/paymentPlanUtils';
+import { Plan } from '@/utils/planTypes';
 
 export const usePlanResumeActions = (
   selectedPlan: Plan | null,
-  handleResumePlanOperation: (patientId: string, paymentLinkId: string, resumeDate: Date) => Promise<boolean>,
+  handleResumePlan: (planId: string, resumeDate: Date) => Promise<any>,
   setShowPlanDetails: (show: boolean) => void
 ) => {
   const [showResumeDialog, setShowResumeDialog] = useState(false);
@@ -13,25 +13,21 @@ export const usePlanResumeActions = (
     setShowResumeDialog(true);
   };
 
-  const handleResumePlanConfirm = async (resumeDate: Date) => {
+  const handleConfirmResumePlan = async (resumeDate: Date) => {
     if (!selectedPlan) return;
     
-    // Log the date to help with debugging
-    console.log('Resume plan with date:', resumeDate.toISOString());
+    const result = await handleResumePlan(selectedPlan.id, resumeDate);
     
-    const [patientId, paymentLinkId] = selectedPlan.id.split('_');
-    const success = await handleResumePlanOperation(patientId, paymentLinkId, resumeDate);
-    
-    if (success) {
+    if (result.success) {
       setShowResumeDialog(false);
-      setShowPlanDetails(false);
+      setShowPlanDetails(false); // Close the plan details modal
     }
   };
 
   return {
     showResumeDialog,
     setShowResumeDialog,
-    handleOpenResumeDialog,
-    handleResumePlan: handleResumePlanConfirm
+    handleResumePlan: handleConfirmResumePlan,
+    handleOpenResumeDialog
   };
 };

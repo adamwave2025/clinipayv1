@@ -1,10 +1,10 @@
 
 import { useState } from 'react';
-import { Plan } from '@/utils/paymentPlanUtils';
+import { Plan } from '@/utils/planTypes';
 
 export const usePlanCancelActions = (
   selectedPlan: Plan | null,
-  handleCancelPlanOperation: (patientId: string, paymentLinkId: string) => Promise<boolean>,
+  handleCancelPlan: (planId: string) => Promise<any>,
   setShowPlanDetails: (show: boolean) => void
 ) => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -13,22 +13,21 @@ export const usePlanCancelActions = (
     setShowCancelDialog(true);
   };
 
-  const handleCancelPlanConfirm = async () => {
+  const handleConfirmCancelPlan = async () => {
     if (!selectedPlan) return;
     
-    const [patientId, paymentLinkId] = selectedPlan.id.split('_');
-    const success = await handleCancelPlanOperation(patientId, paymentLinkId);
+    const result = await handleCancelPlan(selectedPlan.id);
     
-    if (success) {
+    if (result.success) {
       setShowCancelDialog(false);
-      setShowPlanDetails(false);
+      setShowPlanDetails(false); // Close the plan details modal
     }
   };
 
   return {
     showCancelDialog,
     setShowCancelDialog,
-    handleOpenCancelDialog,
-    handleCancelPlan: handleCancelPlanConfirm
+    handleCancelPlan: handleConfirmCancelPlan,
+    handleOpenCancelDialog
   };
 };

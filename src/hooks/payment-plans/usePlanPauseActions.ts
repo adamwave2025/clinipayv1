@@ -1,10 +1,10 @@
 
 import { useState } from 'react';
-import { Plan } from '@/utils/paymentPlanUtils';
+import { Plan } from '@/utils/planTypes';
 
 export const usePlanPauseActions = (
   selectedPlan: Plan | null,
-  handlePausePlanOperation: (patientId: string, paymentLinkId: string) => Promise<boolean>,
+  handlePausePlan: (planId: string) => Promise<any>,
   setShowPlanDetails: (show: boolean) => void
 ) => {
   const [showPauseDialog, setShowPauseDialog] = useState(false);
@@ -13,22 +13,21 @@ export const usePlanPauseActions = (
     setShowPauseDialog(true);
   };
 
-  const handlePausePlanConfirm = async () => {
+  const handleConfirmPausePlan = async () => {
     if (!selectedPlan) return;
     
-    const [patientId, paymentLinkId] = selectedPlan.id.split('_');
-    const success = await handlePausePlanOperation(patientId, paymentLinkId);
+    const result = await handlePausePlan(selectedPlan.id);
     
-    if (success) {
+    if (result.success) {
       setShowPauseDialog(false);
-      setShowPlanDetails(false);
+      setShowPlanDetails(false); // Close the plan details modal
     }
   };
 
   return {
     showPauseDialog,
     setShowPauseDialog,
-    handleOpenPauseDialog,
-    handlePausePlan: handlePausePlanConfirm
+    handlePausePlan: handleConfirmPausePlan,
+    handleOpenPauseDialog
   };
 };

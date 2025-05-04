@@ -1,10 +1,10 @@
 
 import { useState } from 'react';
-import { Plan } from '@/utils/paymentPlanUtils';
+import { Plan } from '@/utils/planTypes';
 
 export const usePlanRescheduleActions = (
   selectedPlan: Plan | null,
-  handleReschedulePlanOperation: (patientId: string, paymentLinkId: string, newStartDate: Date) => Promise<boolean>,
+  handleReschedulePlan: (planId: string, newStartDate: Date) => Promise<any>,
   setShowPlanDetails: (show: boolean) => void
 ) => {
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
@@ -13,25 +13,21 @@ export const usePlanRescheduleActions = (
     setShowRescheduleDialog(true);
   };
 
-  const handleReschedulePlan = async (newStartDate: Date) => {
+  const handleConfirmReschedulePlan = async (newStartDate: Date) => {
     if (!selectedPlan) return;
     
-    // Log the date to help with debugging
-    console.log('Reschedule plan with date:', newStartDate.toISOString());
+    const result = await handleReschedulePlan(selectedPlan.id, newStartDate);
     
-    const [patientId, paymentLinkId] = selectedPlan.id.split('_');
-    const success = await handleReschedulePlanOperation(patientId, paymentLinkId, newStartDate);
-    
-    if (success) {
+    if (result.success) {
       setShowRescheduleDialog(false);
-      setShowPlanDetails(false);
+      setShowPlanDetails(false); // Close the plan details modal
     }
   };
 
   return {
     showRescheduleDialog,
     setShowRescheduleDialog,
-    handleOpenRescheduleDialog,
-    handleReschedulePlan // This is the correct property name with capital 'P'
+    handleReschedulePlan: handleConfirmReschedulePlan,
+    handleOpenRescheduleDialog
   };
 };

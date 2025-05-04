@@ -1,38 +1,37 @@
 
 import { useState } from 'react';
-import { Plan, PlanInstallment } from '@/utils/paymentPlanUtils';
-
-export interface PaymentDetailData {
-  id: string;
-  amount: number;
-  status: string;
-  paidDate?: string;
-  paymentMethod?: string;
-  transactionId?: string;
-}
+import { Plan } from '@/utils/planTypes';
 
 export const usePlanDetailsView = () => {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [showPlanDetails, setShowPlanDetails] = useState(false);
-  const [selectedInstallment, setSelectedInstallment] = useState<PlanInstallment | null>(null);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
+  const [selectedInstallment, setSelectedInstallment] = useState<any | null>(null);
   
-  const isPlanPaused = (plan: Plan | null): boolean => {
-    return plan?.status === 'paused';
-  };
-
   const handleViewPlanDetails = async (
     plan: Plan, 
-    fetchInstallments: (planId: string) => Promise<PlanInstallment[]>
+    fetchInstallments: (planId: string) => Promise<any[]>
   ) => {
     setSelectedPlan(plan);
+    
+    // Fetch the installments for this plan
     await fetchInstallments(plan.id);
+    
+    // Show the plan details dialog
     setShowPlanDetails(true);
   };
-
+  
   const handleBackToPlans = () => {
+    setShowPlanDetails(false);
     setShowPaymentDetails(false);
-    setShowPlanDetails(true);
+    setSelectedPlan(null);
+    setSelectedInstallment(null);
+  };
+  
+  // Helper to check if a plan is paused
+  const isPlanPaused = (plan: Plan | null) => {
+    if (!plan) return false;
+    return plan.status === 'paused';
   };
 
   return {
@@ -40,12 +39,12 @@ export const usePlanDetailsView = () => {
     setSelectedPlan,
     showPlanDetails,
     setShowPlanDetails,
-    selectedInstallment,
-    setSelectedInstallment,
     showPaymentDetails,
     setShowPaymentDetails,
-    isPlanPaused,
+    selectedInstallment,
+    setSelectedInstallment,
     handleViewPlanDetails,
-    handleBackToPlans
+    handleBackToPlans,
+    isPlanPaused
   };
 };

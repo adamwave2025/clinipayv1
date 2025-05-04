@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plan } from '@/utils/paymentPlanUtils';
+import { Plan } from '@/utils/planTypes';
 import { usePlanDataFetcher } from './payment-plans/usePlanDataFetcher';
 import { usePaymentDetailsFetcher } from './payment-plans/usePaymentDetailsFetcher';
 import { usePlanActions } from './payment-plans/usePlanActions';
@@ -56,19 +56,19 @@ export const useManagePlans = (): ManagePlansContextType => {
   const { 
     isProcessing,
     handleSendReminder, 
-    handleCancelPlan, 
-    handlePausePlan,
-    handleResumePlan,
-    handleReschedulePlan
+    handleCancelPlan: cancelPlan, 
+    handlePausePlan: pausePlan,
+    handleResumePlan: resumePlan,
+    handleReschedulePlan: reschedulePlan
   } = usePlanActions(() => fetchPaymentPlans(user.id));
   
   const { handleCreatePlanClick, handleViewPlansClick } = usePlanNavigation();
   
   // Use specialized action hooks
-  const cancelActions = usePlanCancelActions(selectedPlan, handleCancelPlan, setShowPlanDetails);
-  const pauseActions = usePlanPauseActions(selectedPlan, handlePausePlan, setShowPlanDetails);
-  const resumeActions = usePlanResumeActions(selectedPlan, handleResumePlan, setShowPlanDetails);
-  const rescheduleActions = usePlanRescheduleActions(selectedPlan, handleReschedulePlan, setShowPlanDetails);
+  const cancelActions = usePlanCancelActions(selectedPlan, cancelPlan, setShowPlanDetails);
+  const pauseActions = usePlanPauseActions(selectedPlan, pausePlan, setShowPlanDetails);
+  const resumeActions = usePlanResumeActions(selectedPlan, resumePlan, setShowPlanDetails);
+  const rescheduleActions = usePlanRescheduleActions(selectedPlan, reschedulePlan, setShowPlanDetails);
 
   // Fetch payment plans on mount
   useEffect(() => {

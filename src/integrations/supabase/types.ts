@@ -359,6 +359,7 @@ export type Database = {
           payment_link_id: string
           payment_number: number
           payment_request_id: string | null
+          plan_id: string | null
           status: string
           total_payments: number
           updated_at: string | null
@@ -374,6 +375,7 @@ export type Database = {
           payment_link_id: string
           payment_number: number
           payment_request_id?: string | null
+          plan_id?: string | null
           status?: string
           total_payments: number
           updated_at?: string | null
@@ -389,6 +391,7 @@ export type Database = {
           payment_link_id?: string
           payment_number?: number
           payment_request_id?: string | null
+          plan_id?: string | null
           status?: string
           total_payments?: number
           updated_at?: string | null
@@ -420,6 +423,13 @@ export type Database = {
             columns: ["payment_request_id"]
             isOneToOne: false
             referencedRelation: "payment_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_schedule_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
             referencedColumns: ["id"]
           },
         ]
@@ -505,6 +515,94 @@ export type Database = {
           },
           {
             foreignKeyName: "payments_payment_link_id_fkey"
+            columns: ["payment_link_id"]
+            isOneToOne: false
+            referencedRelation: "payment_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          has_overdue_payments: boolean
+          id: string
+          installment_amount: number
+          next_due_date: string | null
+          paid_installments: number
+          patient_id: string
+          payment_frequency: string
+          payment_link_id: string
+          progress: number
+          start_date: string
+          status: string
+          title: string
+          total_amount: number
+          total_installments: number
+          updated_at: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          has_overdue_payments?: boolean
+          id?: string
+          installment_amount: number
+          next_due_date?: string | null
+          paid_installments?: number
+          patient_id: string
+          payment_frequency: string
+          payment_link_id: string
+          progress?: number
+          start_date: string
+          status?: string
+          title: string
+          total_amount: number
+          total_installments: number
+          updated_at?: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          has_overdue_payments?: boolean
+          id?: string
+          installment_amount?: number
+          next_due_date?: string | null
+          paid_installments?: number
+          patient_id?: string
+          payment_frequency?: string
+          payment_link_id?: string
+          progress?: number
+          start_date?: string
+          status?: string
+          title?: string
+          total_amount?: number
+          total_installments?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plans_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plans_payment_link_id_fkey"
             columns: ["payment_link_id"]
             isOneToOne: false
             referencedRelation: "payment_links"
