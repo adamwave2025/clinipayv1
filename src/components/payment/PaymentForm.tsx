@@ -7,7 +7,7 @@ import { paymentFormSchema, PaymentFormValues } from './form/FormSchema';
 import PersonalInfoSection from './form/PersonalInfoSection';
 import PaymentDetailsSection from './form/PaymentDetailsSection';
 import SubmitButton from './form/SubmitButton';
-import { Lock } from 'lucide-react';
+import PaymentSecurityInfo from './PaymentSecurityInfo';
 
 interface PaymentFormProps {
   onSubmit: (data: PaymentFormValues) => void;
@@ -38,7 +38,7 @@ const PaymentForm = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmitForm)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(handleSubmitForm)} className="space-y-6">
         <PersonalInfoSection 
           control={form.control} 
           isLoading={isLoading} 
@@ -50,14 +50,9 @@ const PaymentForm = ({
           onApplePaySuccess={onApplePaySuccess}
         />
         
-        <div className="mt-8">
+        <div className="mt-6">
           <SubmitButton isLoading={isLoading} />
-        </div>
-        
-        {/* Security text below the submit button */}
-        <div className="text-center text-sm text-gray-500 flex items-center justify-center mt-6">
-          <Lock className="h-4 w-4 mr-1 text-green-600" />
-          Secure payment processed by CliniPay
+          <PaymentSecurityInfo />
         </div>
       </form>
     </Form>

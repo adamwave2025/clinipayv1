@@ -32,7 +32,7 @@ const StripeCardElement = ({ onChange, isLoading = false, label = "Card Details"
   return (
     <FormItem>
       <FormLabel className="text-base font-medium">{label}</FormLabel>
-      <div className={`mt-2 p-4 border rounded-md ${isLoading ? 'opacity-50' : ''} bg-white`}>
+      <div className={`mt-2 p-4 border rounded-md ${isLoading ? 'opacity-50' : ''} bg-white h-[72px] flex items-center`}>
         <FormControl>
           <CardElement 
             options={cardElementOptions} 

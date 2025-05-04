@@ -14,7 +14,7 @@ interface PersonalInfoSectionProps {
 const PersonalInfoSection = ({ control, isLoading }: PersonalInfoSectionProps) => {
   return (
     <PaymentSectionContainer title="Your Information">
-      <div className="grid grid-cols-1 gap-5">
+      <div className="grid grid-cols-1 gap-4">
         <FormField
           control={control}
           name="name"
@@ -24,7 +24,7 @@ const PersonalInfoSection = ({ control, isLoading }: PersonalInfoSectionProps) =
               <FormControl>
                 <Input 
                   placeholder="John Smith" 
-                  className="h-12 text-base" 
+                  className="h-11 text-base" 
                   disabled={isLoading}
                   {...field}
                 />
@@ -44,7 +44,7 @@ const PersonalInfoSection = ({ control, isLoading }: PersonalInfoSectionProps) =
                 <Input 
                   placeholder="email@example.com" 
                   type="email" 
-                  className="h-12 text-base"
+                  className="h-11 text-base"
                   disabled={isLoading}
                   {...field}
                 />
@@ -64,7 +64,7 @@ const PersonalInfoSection = ({ control, isLoading }: PersonalInfoSectionProps) =
                 <Input 
                   placeholder="+44 7700 900000" 
                   type="tel"
-                  className="h-12 text-base" 
+                  className="h-11 text-base" 
                   disabled={isLoading}
                   {...field}
                 />
