@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { formatDate, formatCurrency, formatDateTime } from '@/utils/formatters';
 import StatusBadge from '@/components/common/StatusBadge';
@@ -43,26 +44,26 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments, planActivit
 
   const getActivityIcon = (activity: any) => {
     if (activity.type === 'payment') {
-      return <CreditCard className="h-4 w-4 text-blue-500" />;
+      return <CreditCard className="h-4 w-4 text-clinipay-purple" />;
     } else {
-      // Plan activity icons
+      // Plan activity icons - all using our purple branding
       switch (activity.actionType) {
         case 'pause':
-          return <Pause className="h-4 w-4 text-amber-500" />;
+          return <Pause className="h-4 w-4 text-clinipay-purple" />;
         case 'resume':
-          return <Play className="h-4 w-4 text-green-500" />;
+          return <Play className="h-4 w-4 text-clinipay-purple" />;
         case 'cancel':
-          return <X className="h-4 w-4 text-red-500" />;
+          return <X className="h-4 w-4 text-clinipay-purple" />;
         case 'reschedule':
-          return <Calendar className="h-4 w-4 text-purple-500" />;
+          return <Calendar className="h-4 w-4 text-clinipay-purple" />;
         case 'create':
-          return <CheckCircle className="h-4 w-4 text-green-500" />;
+          return <CheckCircle className="h-4 w-4 text-clinipay-purple" />;
         case 'payment_made':
-          return <CreditCard className="h-4 w-4 text-blue-500" />;
+          return <CreditCard className="h-4 w-4 text-clinipay-purple" />;
         case 'reminder_sent':
-          return <Mail className="h-4 w-4 text-gray-500" />;
+          return <Mail className="h-4 w-4 text-clinipay-purple" />;
         default:
-          return <Clock className="h-4 w-4 text-gray-500" />;
+          return <Clock className="h-4 w-4 text-clinipay-purple" />;
       }
     }
   };
