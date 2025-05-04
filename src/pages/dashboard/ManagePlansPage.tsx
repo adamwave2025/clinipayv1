@@ -10,6 +10,7 @@ import {
   ManagePlansDialogs 
 } from './manage-plans';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
+import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
 
 const ManagePlansHeader: React.FC = () => {
   const { handleCreatePlanClick, handleViewPlansClick } = useManagePlansContext();
@@ -54,9 +55,11 @@ const ManagePlansPageContent: React.FC = () => {
 const ManagePlansPage: React.FC = () => {
   return (
     <DashboardLayout userType="clinic">
-      <ManagePlansProvider>
-        <ManagePlansPageContent />
-      </ManagePlansProvider>
+      <DashboardDataProvider>
+        <ManagePlansProvider>
+          <ManagePlansPageContent />
+        </ManagePlansProvider>
+      </DashboardDataProvider>
     </DashboardLayout>
   );
 };
