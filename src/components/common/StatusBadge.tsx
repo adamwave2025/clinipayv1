@@ -14,7 +14,6 @@ const StatusBadge = ({ status, className = '' }: StatusBadgeProps) => {
       case 'paid':
       case 'connected':
       case 'active':
-      case 'completed':
         return 'bg-green-50 text-green-700 border-green-200';
       case 'refunded':
       case 'partially_refunded':
@@ -23,6 +22,7 @@ const StatusBadge = ({ status, className = '' }: StatusBadgeProps) => {
       case 'pending':
         return 'bg-yellow-50 text-yellow-700 border-yellow-200';
       case 'upcoming':
+      case 'completed':
         return 'bg-gradient-primary text-white border-transparent';
       case 'overdue':
         return 'bg-red-50 text-red-700 border-red-200';
