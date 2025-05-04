@@ -1,5 +1,6 @@
+
 import React, { useEffect, useState } from 'react';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatCurrency } from '@/utils/formatters';
 import { supabase } from '@/integrations/supabase/client';
 import { Patient } from '@/hooks/usePatients';
 import {
@@ -9,19 +10,13 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Mail, Phone, Calendar, CreditCard, ArrowLeft } from 'lucide-react';
+import { Mail, Phone, Calendar, CreditCard } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import StatusBadge from '@/components/common/StatusBadge';
-import PaymentLinkActionsSection from '@/components/dashboard/payment-details/PaymentLinkActionsSection';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plan, formatPlanFromDb } from '@/utils/planTypes';
-import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { PlanActivity, formatPlanActivities } from '@/utils/planActivityUtils';
 import PatientNotes from './PatientNotes';
 import PatientActivity from './PatientActivity';
+import PatientPlans from './PatientPlans';
 import { usePlanQuickAccess } from '@/hooks/usePlanQuickAccess';
 import PlanDetailsDialog from '@/components/dashboard/payment-plans/PlanDetailsDialog';
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
@@ -51,20 +46,11 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
   const [planActivities, setPlanActivities] = useState<PlanActivity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingActivities, setLoadingActivities] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('notes');
   
-  // Payment Plans section
-  const [patientPlans, setPatientPlans] = useState<Plan[]>([]);
-  const [loadingPlans, setLoadingPlans] = useState(false);
-  
-  // Use the new hook for plan access
+  // Use the plan quick access hook
+  const planQuickAccess = usePlanQuickAccess();
   const {
-    selectedPlan,
-    planInstallments,
-    planActivities: planDetailActivities,
-    isLoadingInstallments,
-    isLoadingActivities,
     showPlanDetails,
     setShowPlanDetails,
     showCancelDialog,
@@ -75,6 +61,11 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     setShowResumeDialog,
     showRescheduleDialog,
     setShowRescheduleDialog,
+    selectedPlan,
+    planInstallments,
+    planActivities: planDetailActivities,
+    isLoadingInstallments,
+    isLoadingActivities,
     handleViewPlanDetails,
     handleOpenCancelDialog,
     handleOpenPauseDialog,
@@ -86,14 +77,14 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     handleReschedulePlan,
     isPlanPaused,
     isProcessing
-  } = usePlanQuickAccess();
+  } = planQuickAccess;
 
+  // Fetch patient payment history
   useEffect(() => {
     const fetchPatientHistory = async () => {
       if (!patient.id || !open) return;
       
       setIsLoading(true);
-      setError(null);
       
       try {
         // Fetch completed payments
@@ -128,7 +119,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
         
         if (requestsError) throw requestsError;
         
-        // Format completed payments - ensure full timestamp is preserved
+        // Format completed payments
         const formattedPayments = paymentsData.map((payment: any) => ({
           id: payment.id,
           date: payment.paid_at, // Full ISO timestamp
@@ -139,7 +130,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
           status: payment.status
         }));
         
-        // Format payment requests - filter out £0 amounts and ensure full timestamp
+        // Format payment requests - filter out £0 amounts
         const formattedRequests = requestsData
           .map((request: any) => {
             const amount = request.custom_amount || (request.payment_links ? request.payment_links.amount : 0);
@@ -156,27 +147,23 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
           })
           .filter(request => request.amount > 0); // Filter out zero amounts
         
-        // Combine and sort by date (newest first) - verify sorting is working correctly
+        // Combine and sort by date (newest first)
         const combinedHistory = [...formattedPayments, ...formattedRequests].sort((a, b) => {
-          // Ensure we're using proper date objects for comparison
           const dateA = new Date(a.date).getTime();
           const dateB = new Date(b.date).getTime();
           return dateB - dateA; // Newest first
         });
         
-        console.log('Sorted patient payment history:', combinedHistory);
-        
         setPatientPayments(combinedHistory);
       } catch (err: any) {
         console.error('Error fetching patient history:', err);
-        setError('Failed to load payment history');
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchPatientHistory();
-  }, [patient.id, open, showPlanDetails]); // Refetch when plan details dialog closes
+  }, [patient.id, open, showPlanDetails]);
 
   // Fetch plan activities
   useEffect(() => {
@@ -203,60 +190,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     };
     
     fetchPlanActivities();
-  }, [patient.id, open, showPlanDetails]); // Refetch when plan details dialog closes
-
-  // Updated useEffect for fetching patient payment plans directly from plans table
-  useEffect(() => {
-    const fetchPatientPaymentPlans = async () => {
-      if (!patient.id || !open) return;
-      
-      setLoadingPlans(true);
-      
-      try {
-        // Directly query the plans table for this patient
-        const { data, error } = await supabase
-          .from('plans')
-          .select(`
-            *,
-            patients (name),
-            payment_links (title, payment_cycle)
-          `)
-          .eq('patient_id', patient.id);
-
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
-          setPatientPlans([]);
-          setLoadingPlans(false);
-          return;
-        }
-
-        // Format plans using the formatPlanFromDb utility to properly handle monetary values
-        const formattedPlans = data.map(plan => {
-          const formattedPlan = formatPlanFromDb(plan);
-          
-          // Add additional fields needed for display
-          formattedPlan.patientName = plan.patients?.name || 'Unknown Patient';
-          formattedPlan.paymentFrequency = plan.payment_links?.payment_cycle || formattedPlan.paymentFrequency;
-          
-          return formattedPlan;
-        });
-        
-        setPatientPlans(formattedPlans);
-      } catch (err) {
-        console.error('Error fetching patient payment plans:', err);
-      } finally {
-        setLoadingPlans(false);
-      }
-    };
-    
-    fetchPatientPaymentPlans();
-  }, [patient.id, open, showPlanDetails]); // Refetch when plan details dialog closes
-  
-  // Function to get the clinic ID from the patient for notes
-  const getClinicId = () => {
-    return patient.clinic_id || '';
-  };
+  }, [patient.id, open, showPlanDetails]);
   
   return (
     <>
@@ -297,72 +231,20 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
                 
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-5 w-5 text-gray-500" />
-                  <span>Last Payment: <strong>{patient.lastPaymentDate ? formatDate(patient.lastPaymentDate) : 'N/A'}</strong></span>
+                  <span>Last Payment: <strong>{patient.lastPaymentDate ? new Date(patient.lastPaymentDate).toLocaleDateString() : 'N/A'}</strong></span>
                 </div>
               </div>
             </div>
             
-            {/* Payment Plans moved outside tabs */}
-            {patientPlans.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-lg font-medium mb-3">Payment Plans</h3>
-                {loadingPlans ? (
-                  <div className="flex justify-center py-4">
-                    <LoadingSpinner />
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto border rounded-md">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Plan Name</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Progress</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Next Payment</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {patientPlans.map((plan) => (
-                          <TableRow 
-                            key={plan.id}
-                            className="cursor-pointer hover:bg-muted"
-                            onClick={() => handleViewPlanDetails(plan)}
-                          >
-                            <TableCell className="font-medium">{plan.title || plan.planName}</TableCell>
-                            <TableCell>{formatCurrency(plan.totalAmount || 0)}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                  <div 
-                                    className="h-full bg-gradient-primary rounded-full" 
-                                    style={{ width: `${plan.progress}%` }}
-                                  />
-                                </div>
-                                <span className="text-xs text-gray-500">
-                                  {plan.paidInstallments}/{plan.totalInstallments}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <StatusBadge status={plan.status as any} />
-                            </TableCell>
-                            <TableCell>
-                              {plan.nextDueDate ? formatDate(plan.nextDueDate) : 
-                                (isPlanPaused(plan) ? 'Plan paused' : 'No upcoming payments')}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Payment Plans */}
+            <PatientPlans 
+              patientId={patient.id} 
+              onViewPlanDetails={handleViewPlanDetails} 
+            />
             
             <Separator className="my-6" />
 
-            {/* Updated tabs to Notes / Activity */}
+            {/* Tabs for Notes / Activity */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="mb-4 p-1">
                 <TabsTrigger 
@@ -382,7 +264,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
               <TabsContent value="notes">
                 <PatientNotes 
                   patientId={patient.id}
-                  clinicId={getClinicId()}
+                  clinicId={patient.clinic_id || ''}
                 />
               </TabsContent>
               
@@ -390,6 +272,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
                 <PatientActivity 
                   payments={patientPayments} 
                   planActivities={planActivities} 
+                  isLoading={isLoading || loadingActivities}
                 />
               </TabsContent>
             </Tabs>
@@ -405,8 +288,8 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
         installments={planInstallments}
         activities={planDetailActivities}
         isLoadingActivities={isLoadingActivities}
-        onSendReminder={() => {}} // No-op as we don't need this functionality here
-        onViewPaymentDetails={() => {}} // No-op as we don't need this functionality here
+        onSendReminder={() => {}} // Not needed for this view
+        onViewPaymentDetails={() => {}} // Not needed for this view
         onCancelPlan={handleOpenCancelDialog}
         onPausePlan={handleOpenPauseDialog}
         onResumePlan={handleOpenResumeDialog}
