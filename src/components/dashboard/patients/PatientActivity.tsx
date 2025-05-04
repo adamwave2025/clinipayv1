@@ -1,14 +1,17 @@
+
 import React from 'react';
 import { formatCurrency, formatDateTime } from '@/utils/formatters';
 import StatusBadge from '@/components/common/StatusBadge';
 import { CreditCard, RefreshCcw } from 'lucide-react';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 interface PatientActivityProps {
   payments: any[];
   planActivities: any[]; // We'll keep this prop to maintain compatibility but won't use it
+  isLoading?: boolean;  // Add the isLoading prop to the interface
 }
 
-const PatientActivity: React.FC<PatientActivityProps> = ({ payments }) => {
+const PatientActivity: React.FC<PatientActivityProps> = ({ payments, isLoading = false }) => {
   // Helper function to ensure consistent date parsing with timezone awareness
   const getDateTimestamp = (dateString: string): number => {
     if (!dateString) return 0;
@@ -69,7 +72,11 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments }) => {
     <div>
       <h3 className="text-lg font-medium mb-4">Patient Activity</h3>
       
-      {paymentActivities.length === 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center py-6">
+          <LoadingSpinner />
+        </div>
+      ) : paymentActivities.length === 0 ? (
         <div className="text-center py-6 text-gray-500">
           No payment activity found for this patient
         </div>
