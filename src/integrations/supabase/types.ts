@@ -102,6 +102,44 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_notes: {
+        Row: {
+          clinic_id: string
+          content: string
+          created_at: string
+          created_by_user_id: string | null
+          id: string
+          patient_id: string
+          updated_at: string
+        }
+        Insert: {
+          clinic_id: string
+          content: string
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          patient_id: string
+          updated_at?: string
+        }
+        Update: {
+          clinic_id?: string
+          content?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          patient_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_notes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           clinic_id: string

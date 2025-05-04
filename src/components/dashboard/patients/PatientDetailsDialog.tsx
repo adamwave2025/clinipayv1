@@ -19,8 +19,11 @@ import PaymentLinkActionsSection from '@/components/dashboard/payment-details/Pa
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plan, PlanInstallment } from '@/utils/paymentPlanUtils';
+import { PlanActivity, formatPlanActivities } from '@/utils/planActivityUtils';
 import { groupPaymentSchedulesByPlan, formatPlanInstallments } from '@/utils/paymentPlanUtils';
 import { fetchPaymentSchedules } from '@/services/PaymentScheduleService';
+import PatientNotes from './PatientNotes';
+import PatientActivity from './PatientActivity';
 
 interface PatientPayment {
   id: string;
@@ -41,16 +44,18 @@ interface PatientDetailsDialogProps {
 
 const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogProps) => {
   const [patientPayments, setPatientPayments] = useState<PatientPayment[]>([]);
+  const [planActivities, setPlanActivities] = useState<PlanActivity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('payments');
+  const [activeTab, setActiveTab] = useState('notes');
   
-  // Added for Payment Plans section
+  // Payment Plans section
   const [patientPlans, setPatientPlans] = useState<Plan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [planInstallments, setPlanInstallments] = useState<PlanInstallment[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [showPlanDetails, setShowPlanDetails] = useState(false);
+  const [loadingActivities, setLoadingActivities] = useState(false);
 
   useEffect(() => {
     const fetchPatientHistory = async () => {
@@ -137,7 +142,34 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     fetchPatientHistory();
   }, [patient.id, open]);
 
-  // Updated useEffect for fetching patient payment plans - directly using patient data
+  // Fetch plan activities
+  useEffect(() => {
+    const fetchPlanActivities = async () => {
+      if (!patient.id || !open) return;
+      
+      setLoadingActivities(true);
+      
+      try {
+        const { data, error } = await supabase
+          .from('payment_plan_activities')
+          .select('*')
+          .eq('patient_id', patient.id)
+          .order('performed_at', { ascending: false });
+          
+        if (error) throw error;
+        
+        setPlanActivities(formatPlanActivities(data || []));
+      } catch (err: any) {
+        console.error('Error fetching plan activities:', err);
+      } finally {
+        setLoadingActivities(false);
+      }
+    };
+    
+    fetchPlanActivities();
+  }, [patient.id, open]);
+
+  // Updated useEffect for fetching patient payment plans
   useEffect(() => {
     const fetchPatientPaymentPlans = async () => {
       if (!patient.id || !open) return;
@@ -146,7 +178,6 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
       
       try {
         // Get clinic_id directly from the patient record
-        // This fixes the issue where Adam Stokes' plan wasn't showing
         const { data: patientData, error: patientError } = await supabase
           .from('patients')
           .select('clinic_id')
@@ -162,7 +193,6 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
         }
 
         const clinicId = patientData.clinic_id;
-        console.log('Fetching plans for patient:', patient.id, 'with clinic_id:', clinicId);
         
         // Fetch all payment schedules for the clinic
         const scheduleData = await fetchPaymentSchedules(clinicId);
@@ -172,13 +202,10 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
           item.patient_id === patient.id
         );
         
-        console.log('Found schedule data items:', filteredScheduleData.length);
-        
         // Format into plan objects
         const plansMap = groupPaymentSchedulesByPlan(filteredScheduleData);
         const plansArray = Array.from(plansMap.values());
         
-        console.log('Processed plans:', plansArray.length);
         setPatientPlans(plansArray);
       } catch (err) {
         console.error('Error fetching patient payment plans:', err);
@@ -245,6 +272,11 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     setShowPlanDetails(false);
   };
   
+  // Get the clinic ID from the patient for notes
+  const getClinicId = () => {
+    return patient.clinic_id || '';
+  };
+  
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-0">
@@ -300,148 +332,95 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
                 </div>
               </div>
               
+              {/* Payment Plans moved outside tabs */}
+              {patientPlans.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-medium mb-3">Payment Plans</h3>
+                  {loadingPlans ? (
+                    <div className="flex justify-center py-4">
+                      <LoadingSpinner />
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto border rounded-md">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Plan Name</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Progress</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Next Payment</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {patientPlans.map((plan) => (
+                            <TableRow 
+                              key={plan.id}
+                              className="cursor-pointer hover:bg-muted"
+                              onClick={() => handleViewPlanDetails(plan)}
+                            >
+                              <TableCell className="font-medium">{plan.planName}</TableCell>
+                              <TableCell>{formatCurrency(plan.amount)}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                    <div 
+                                      className="h-full bg-gradient-primary rounded-full" 
+                                      style={{ width: `${plan.progress}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-xs text-gray-500">
+                                    {plan.paidInstallments}/{plan.totalInstallments}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <StatusBadge status={plan.status as any} />
+                              </TableCell>
+                              <TableCell>
+                                {plan.nextDueDate ? formatDate(plan.nextDueDate) : 
+                                  (isPlanPaused(plan) ? 'Plan paused' : 'No upcoming payments')}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               <Separator className="my-6" />
 
+              {/* Updated tabs to Notes / Activity */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="mb-4 p-1">
                   <TabsTrigger 
-                    value="payments"
+                    value="notes"
                     className="data-[state=active]:bg-gradient-primary data-[state=active]:text-white"
                   >
-                    Payment History
+                    Notes
                   </TabsTrigger>
                   <TabsTrigger 
-                    value="plans"
+                    value="activity"
                     className="data-[state=active]:bg-gradient-primary data-[state=active]:text-white"
                   >
-                    Payment Plans
+                    Activity
                   </TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="payments">
-                  <div>
-                    <h3 className="text-lg font-medium mb-4">Payment History</h3>
-                    
-                    {isLoading ? (
-                      <div className="flex justify-center py-6">
-                        <LoadingSpinner />
-                      </div>
-                    ) : error ? (
-                      <div className="text-center py-4 text-red-500">
-                        {error}
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Date</TableHead>
-                              <TableHead>Type</TableHead>
-                              <TableHead>Amount</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {patientPayments.length === 0 ? (
-                              <TableRow>
-                                <TableCell colSpan={5} className="text-center py-4">
-                                  No payments found
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              patientPayments.map((payment) => (
-                                <TableRow key={payment.id}>
-                                  <TableCell>{formatDate(payment.date)}</TableCell>
-                                  <TableCell>
-                                    {payment.title || payment.type.charAt(0).toUpperCase() + payment.type.slice(1)}
-                                  </TableCell>
-                                  <TableCell>{formatCurrency(payment.amount)}</TableCell>
-                                  <TableCell>
-                                    <StatusBadge status={payment.status} />
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {payment.status === 'sent' && payment.paymentUrl && (
-                                      <PaymentLinkActionsSection 
-                                        status={payment.status}
-                                        paymentUrl={payment.paymentUrl}
-                                      />
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    )}
-                  </div>
+                <TabsContent value="notes">
+                  <PatientNotes 
+                    patientId={patient.id}
+                    clinicId={getClinicId()}
+                  />
                 </TabsContent>
                 
-                <TabsContent value="plans">
-                  <div>
-                    <h3 className="text-lg font-medium mb-4">Payment Plans</h3>
-                    
-                    {loadingPlans ? (
-                      <div className="flex justify-center py-6">
-                        <LoadingSpinner />
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Plan Name</TableHead>
-                              <TableHead>Amount</TableHead>
-                              <TableHead>Progress</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Next Payment</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {patientPlans.length === 0 ? (
-                              <TableRow>
-                                <TableCell colSpan={5} className="text-center py-4">
-                                  No payment plans found
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              patientPlans.map((plan) => (
-                                <TableRow 
-                                  key={plan.id}
-                                  className="cursor-pointer hover:bg-muted"
-                                  onClick={() => handleViewPlanDetails(plan)}
-                                >
-                                  <TableCell className="font-medium">{plan.planName}</TableCell>
-                                  <TableCell>{formatCurrency(plan.amount)}</TableCell>
-                                  <TableCell>
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                        <div 
-                                          className="h-full bg-gradient-primary rounded-full" 
-                                          style={{ width: `${plan.progress}%` }}
-                                        />
-                                      </div>
-                                      <span className="text-xs text-gray-500">
-                                        {plan.paidInstallments}/{plan.totalInstallments}
-                                      </span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <StatusBadge status={plan.status as any} />
-                                  </TableCell>
-                                  <TableCell>
-                                    {plan.nextDueDate ? formatDate(plan.nextDueDate) : 
-                                      (isPlanPaused(plan) ? 'Plan paused' : 'No upcoming payments')}
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    )}
-                  </div>
+                <TabsContent value="activity">
+                  <PatientActivity 
+                    payments={patientPayments} 
+                    planActivities={planActivities} 
+                  />
                 </TabsContent>
               </Tabs>
             </>
