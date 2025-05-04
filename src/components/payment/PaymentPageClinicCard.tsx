@@ -21,6 +21,7 @@ interface PaymentPageClinicCardProps {
   planTotalAmount?: number;
   totalPaid?: number;
   totalOutstanding?: number;
+  isOverdue?: boolean;
 }
 
 const PaymentPageClinicCard = ({ 
@@ -28,7 +29,8 @@ const PaymentPageClinicCard = ({
   paymentPlan, 
   planTotalAmount, 
   totalPaid, 
-  totalOutstanding 
+  totalOutstanding,
+  isOverdue
 }: PaymentPageClinicCardProps) => {
   // Generate initials for the avatar fallback
   const getInitials = (name: string) => {
@@ -102,6 +104,7 @@ const PaymentPageClinicCard = ({
                 planTotalAmount={planTotalAmount}
                 totalPaid={totalPaid}
                 totalOutstanding={totalOutstanding}
+                isOverdue={isOverdue}
               />
             )}
             <div className="flex items-center justify-between">

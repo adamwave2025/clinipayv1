@@ -1,7 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle } from 'lucide-react'; // Import the missing AlertCircle component
 import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentPageClinicCard from '@/components/payment/PaymentPageClinicCard';
 import CliniPaySecuritySection from '@/components/payment/CliniPaySecuritySection';
@@ -10,7 +9,6 @@ import StripeProvider from '@/components/payment/StripeProvider';
 import PaymentFormContainer from '@/components/payment/PaymentFormContainer';
 import PaymentErrorBoundary from '@/components/payment/PaymentErrorBoundary';
 import PaymentStatusSummaryContent from '@/components/payment/PaymentStatusSummaryContent';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { usePaymentNavigation } from '@/hooks/usePaymentNavigation';
 import { usePaymentInit } from '@/hooks/usePaymentInit';
 import { toast } from 'sonner';
@@ -223,11 +221,6 @@ const PatientPaymentPage = () => {
       </PaymentLayout>
     );
   }
-  
-  // Show overdue notification if applicable
-  if (isOverdue && linkData.paymentPlan) {
-    console.log("Payment plan is overdue, showing payment form with overdue notification");
-  }
 
   const clinicData = linkData.clinic;
   const paymentType = linkData.title || 'Payment';
@@ -265,6 +258,7 @@ const PatientPaymentPage = () => {
             planTotalAmount={planTotalAmount}
             totalPaid={totalPaid}
             totalOutstanding={totalOutstanding}
+            isOverdue={isOverdue}
           />
         )}
         <CliniPaySecuritySection />
@@ -272,16 +266,6 @@ const PatientPaymentPage = () => {
       
       {/* Right Column - Payment Form */}
       <PaymentErrorBoundary linkId={linkId}>
-        {isOverdue && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Payment Overdue</AlertTitle>
-            <AlertDescription>
-              This payment plan has overdue payments. Please contact the clinic if you're having difficulties making payments.
-            </AlertDescription>
-          </Alert>
-        )}
-        
         <StripeProvider>
           <PaymentFormContainer 
             linkId={linkId}
