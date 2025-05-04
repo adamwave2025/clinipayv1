@@ -145,36 +145,6 @@ export const fetchPlanActivities = async (planId: string) => {
   }
 };
 
-export const recordPaymentPlanActivity = async (
-  patientId: string | null,
-  paymentLinkId: string,
-  clinicId: string,
-  actionType: string,
-  details: any = {}
-) => {
-  try {
-    const { data, error } = await supabase
-      .from('payment_plan_activities')
-      .insert({
-        patient_id: patientId || '00000000-0000-0000-0000-000000000000',
-        payment_link_id: paymentLinkId,
-        clinic_id: clinicId,
-        action_type: actionType,
-        details: details,
-        performed_by_user_id: (await supabase.auth.getUser()).data.user?.id
-      });
-    
-    if (error) {
-      console.error('Error recording payment plan activity:', error);
-    }
-    
-    return { success: !error };
-  } catch (error) {
-    console.error('Error recording payment plan activity:', error);
-    return { success: false };
-  }
-};
-
 /**
  * Helper function to determine if an installment has been paid
  * Checks for valid payment_request_id and completed payment
@@ -187,6 +157,47 @@ const isPlanInstallmentPaid = (entry: any): boolean => {
                  entry.payment_requests.payment_id !== null;
   
   return isPaid;
+};
+
+export const recordPaymentPlanActivity = async (
+  planId: string,
+  actionType: PlanActivityType,
+  details: any = {},
+  userId?: string
+) => {
+  try {
+    // First get the plan details to retrieve patient_id and payment_link_id
+    const { data: plan, error: planError } = await supabase
+      .from('plans')
+      .select('patient_id, payment_link_id, clinic_id')
+      .eq('id', planId)
+      .single();
+      
+    if (planError) {
+      console.error('Error fetching plan details for activity:', planError);
+      return { success: false };
+    }
+    
+    const { data, error } = await supabase
+      .from('payment_plan_activities')
+      .insert({
+        patient_id: plan.patient_id,
+        payment_link_id: plan.payment_link_id,
+        clinic_id: plan.clinic_id,
+        action_type: actionType,
+        details: details,
+        performed_by_user_id: userId || (await supabase.auth.getUser()).data.user?.id
+      });
+    
+    if (error) {
+      console.error('Error recording payment plan activity:', error);
+    }
+    
+    return { success: !error };
+  } catch (error) {
+    console.error('Error recording payment plan activity:', error);
+    return { success: false };
+  }
 };
 
 export const cancelPaymentPlan = async (planId: string, userId?: string) => {

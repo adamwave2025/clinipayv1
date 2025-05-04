@@ -1,8 +1,11 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { PlanInstallment, PaymentScheduleItem, formatPlanInstallments, groupPaymentSchedulesByPlan } from '@/utils/paymentPlanUtils';
-import { fetchPlans } from '@/services/PaymentScheduleService';
+import { fetchPlans, fetchPlanInstallments, fetchPlanActivities } from '@/services/PaymentScheduleService';
+import { formatPlanActivities } from '@/utils/planActivityUtils';
+import { toast } from 'sonner';
 
 export const usePlanDataFetcher = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
