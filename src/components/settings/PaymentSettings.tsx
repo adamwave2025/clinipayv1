@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Check, X, Clock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 interface PaymentSettingsProps {
   stripeAccountId: string | null;
@@ -110,7 +111,7 @@ const PaymentSettings = ({
               >
                 {isConnecting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <LoadingSpinner size="sm" className="mr-2" />
                     Connecting...
                   </>
                 ) : (
