@@ -8,6 +8,8 @@ const ManagePlansContent: React.FC = () => {
   const {
     searchQuery,
     setSearchQuery,
+    statusFilter,
+    setStatusFilter,
     plans,
     isLoading,
     handleViewPlanDetails,
@@ -20,6 +22,8 @@ const ManagePlansContent: React.FC = () => {
       <PaymentPlanFilters 
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
       />
       
       {/* Plans Table */}

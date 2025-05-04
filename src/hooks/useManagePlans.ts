@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plan } from '@/utils/planTypes';
 import { usePlanDataFetcher } from './payment-plans/usePlanDataFetcher';
@@ -17,6 +18,7 @@ import { ManagePlansContextType } from '@/contexts/ManagePlansContext';
 export const useManagePlans = (): ManagePlansContextType => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
   
@@ -25,7 +27,7 @@ export const useManagePlans = (): ManagePlansContextType => {
   
   // Use all the smaller hooks
   const { 
-    plans, 
+    plans: allPlans, 
     installments, 
     activities,
     isLoading, 
@@ -59,7 +61,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     handlePausePlan: pausePlan,
     handleResumePlan: resumePlan,
     handleReschedulePlan: reschedulePlan
-  } = usePlanActions(() => fetchPaymentPlans(user.id));
+  } = usePlanActions(() => fetchPaymentPlans(user?.id || ''));
   
   const { handleCreatePlanClick, handleViewPlansClick } = usePlanNavigation();
   
@@ -68,6 +70,26 @@ export const useManagePlans = (): ManagePlansContextType => {
   const pauseActions = usePlanPauseActions(selectedPlan, pausePlan, setShowPlanDetails);
   const resumeActions = usePlanResumeActions(selectedPlan, resumePlan, setShowPlanDetails);
   const rescheduleActions = usePlanRescheduleActions(selectedPlan, reschedulePlan, setShowPlanDetails);
+
+  // Apply filters to get the filtered plans
+  const plans = useMemo(() => {
+    let filtered = [...allPlans];
+    
+    // First apply status filter if not 'all'
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(plan => plan.status === statusFilter);
+    }
+    
+    // Then apply search query if present
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(plan => 
+        plan.patientName.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
+  }, [allPlans, statusFilter, searchQuery]);
 
   // Fetch payment plans on mount
   useEffect(() => {
@@ -121,6 +143,8 @@ export const useManagePlans = (): ManagePlansContextType => {
   return {
     searchQuery,
     setSearchQuery,
+    statusFilter,
+    setStatusFilter,
     selectedPlan,
     showPlanDetails,
     setShowPlanDetails,

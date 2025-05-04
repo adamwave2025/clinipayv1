@@ -8,6 +8,8 @@ export interface ManagePlansContextType {
   // Search and filter state
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  statusFilter: string;
+  setStatusFilter: (status: string) => void;
   
   // Plan data and state
   plans: Plan[];

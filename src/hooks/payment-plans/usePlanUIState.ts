@@ -5,6 +5,7 @@ import { PlanInstallment } from '@/utils/paymentPlanUtils';
 
 export const usePlanUIState = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [showPlanDetails, setShowPlanDetails] = useState(false);
   const [selectedInstallment, setSelectedInstallment] = useState<PlanInstallment | null>(null);
@@ -13,6 +14,8 @@ export const usePlanUIState = () => {
   return {
     searchQuery,
     setSearchQuery,
+    statusFilter,
+    setStatusFilter,
     selectedPlan,
     setSelectedPlan,
     showPlanDetails,
