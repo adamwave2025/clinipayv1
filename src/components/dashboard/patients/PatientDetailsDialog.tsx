@@ -23,6 +23,12 @@ import { PlanActivity, formatPlanActivities } from '@/utils/planActivityUtils';
 import { fetchPaymentSchedules } from '@/services/PaymentScheduleService';
 import PatientNotes from './PatientNotes';
 import PatientActivity from './PatientActivity';
+import { usePlanQuickAccess } from '@/hooks/usePlanQuickAccess';
+import PlanDetailsDialog from '@/components/dashboard/payment-plans/PlanDetailsDialog';
+import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
+import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
+import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDialog';
+import ReschedulePlanDialog from '@/components/dashboard/payment-plans/ReschedulePlanDialog';
 
 interface PatientPayment {
   id: string;
@@ -50,11 +56,37 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
   
   // Payment Plans section
   const [patientPlans, setPatientPlans] = useState<Plan[]>([]);
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-  const [planInstallments, setPlanInstallments] = useState<PlanInstallment[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
-  const [showPlanDetails, setShowPlanDetails] = useState(false);
-  const [loadingActivities, setLoadingActivities] = useState(false);
+  
+  // Use the new hook for plan access
+  const {
+    selectedPlan,
+    planInstallments,
+    planActivities: planDetailActivities,
+    isLoadingInstallments,
+    isLoadingActivities,
+    showPlanDetails,
+    setShowPlanDetails,
+    showCancelDialog,
+    setShowCancelDialog,
+    showPauseDialog,
+    setShowPauseDialog,
+    showResumeDialog,
+    setShowResumeDialog,
+    showRescheduleDialog,
+    setShowRescheduleDialog,
+    handleViewPlanDetails,
+    handleOpenCancelDialog,
+    handleOpenPauseDialog,
+    handleOpenResumeDialog,
+    handleOpenRescheduleDialog,
+    handleCancelPlan,
+    handlePausePlan,
+    handleResumePlan,
+    handleReschedulePlan,
+    isPlanPaused,
+    isProcessing
+  } = usePlanQuickAccess();
 
   useEffect(() => {
     const fetchPatientHistory = async () => {
@@ -144,7 +176,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     };
     
     fetchPatientHistory();
-  }, [patient.id, open]);
+  }, [patient.id, open, showPlanDetails]); // Refetch when plan details dialog closes
 
   // Fetch plan activities
   useEffect(() => {
@@ -171,7 +203,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     };
     
     fetchPlanActivities();
-  }, [patient.id, open]);
+  }, [patient.id, open, showPlanDetails]); // Refetch when plan details dialog closes
 
   // Updated useEffect for fetching patient payment plans
   useEffect(() => {
@@ -219,62 +251,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     };
     
     fetchPatientPaymentPlans();
-  }, [patient.id, open]);
-
-  // Function to handle viewing plan details
-  const handleViewPlanDetails = async (plan: Plan) => {
-    setSelectedPlan(plan);
-    
-    try {
-      const [patientId, paymentLinkId] = plan.id.split('_');
-      
-      if (!patientId || !paymentLinkId) {
-        throw new Error('Invalid plan ID');
-      }
-      
-      // Fetch installments for this plan from Supabase
-      const { data: rawInstallments, error } = await supabase
-        .from('payment_schedule')
-        .select(`
-          id,
-          amount,
-          due_date,
-          payment_number,
-          total_payments,
-          status,
-          payment_request_id,
-          payment_requests (
-            id,
-            payment_id,
-            paid_at,
-            status
-          )
-        `)
-        .eq('patient_id', patientId)
-        .eq('payment_link_id', paymentLinkId)
-        .order('payment_number', { ascending: true });
-        
-      if (error) throw error;
-      
-      // Format installments for display
-      const formattedInstallments = formatPlanInstallments(rawInstallments);
-      setPlanInstallments(formattedInstallments);
-      setShowPlanDetails(true);
-    } catch (err) {
-      console.error('Error fetching plan details:', err);
-    }
-  };
-
-  // Function to determine if a plan is paused
-  const isPlanPaused = (plan: Plan | null) => {
-    if (!plan) return false;
-    return plan.status === 'paused';
-  };
-
-  // Function to go back from plan details to plans list
-  const handleBackToPlans = () => {
-    setShowPlanDetails(false);
-  };
+  }, [patient.id, open, showPlanDetails]); // Refetch when plan details dialog closes
   
   // Function to get the clinic ID from the patient for notes
   const getClinicId = () => {
@@ -282,222 +259,198 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
   };
   
   return (
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-0">
-        <div className="p-6">
-          {/* Header with back button when showing plan details */}
-          {showPlanDetails ? (
-            <div className="flex items-center mb-4">
-              <Button variant="ghost" size="sm" onClick={handleBackToPlans} className="mr-2">
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back to Plans
-              </Button>
-            </div>
-          ) : (
+    <>
+      <Sheet open={open} onOpenChange={onClose}>
+        <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-0">
+          <div className="p-6">
             <SheetHeader className="text-left mb-6">
               <SheetTitle className="text-2xl">{patient.name}</SheetTitle>
               <p className="text-sm text-muted-foreground">Patient information and payment details</p>
             </SheetHeader>
-          )}
 
-          {!showPlanDetails ? (
-            <>
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Contact Information</h3>
-                  
-                  {patient.email && (
-                    <div className="flex items-center space-x-2">
-                      <Mail className="h-5 w-5 text-gray-500" />
-                      <span>{patient.email}</span>
-                    </div>
-                  )}
-                  
-                  {patient.phone && (
-                    <div className="flex items-center space-x-2">
-                      <Phone className="h-5 w-5 text-gray-500" />
-                      <span>{patient.phone}</span>
-                    </div>
-                  )}
-                </div>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Contact Information</h3>
                 
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Payment Summary</h3>
-                  
+                {patient.email && (
                   <div className="flex items-center space-x-2">
-                    <CreditCard className="h-5 w-5 text-gray-500" />
-                    <span>Total Spent: <strong>{formatCurrency(patient.totalSpent || 0)}</strong></span>
+                    <Mail className="h-5 w-5 text-gray-500" />
+                    <span>{patient.email}</span>
                   </div>
-                  
+                )}
+                
+                {patient.phone && (
                   <div className="flex items-center space-x-2">
-                    <Calendar className="h-5 w-5 text-gray-500" />
-                    <span>Last Payment: <strong>{patient.lastPaymentDate ? formatDate(patient.lastPaymentDate) : 'N/A'}</strong></span>
+                    <Phone className="h-5 w-5 text-gray-500" />
+                    <span>{patient.phone}</span>
                   </div>
-                </div>
+                )}
               </div>
               
-              {/* Payment Plans moved outside tabs */}
-              {patientPlans.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium mb-3">Payment Plans</h3>
-                  {loadingPlans ? (
-                    <div className="flex justify-center py-4">
-                      <LoadingSpinner />
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto border rounded-md">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Plan Name</TableHead>
-                            <TableHead>Amount</TableHead>
-                            <TableHead>Progress</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Next Payment</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {patientPlans.map((plan) => (
-                            <TableRow 
-                              key={plan.id}
-                              className="cursor-pointer hover:bg-muted"
-                              onClick={() => handleViewPlanDetails(plan)}
-                            >
-                              <TableCell className="font-medium">{plan.title || plan.planName}</TableCell>
-                              <TableCell>{formatCurrency(plan.totalAmount || plan.amount || 0)}</TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                    <div 
-                                      className="h-full bg-gradient-primary rounded-full" 
-                                      style={{ width: `${plan.progress}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-xs text-gray-500">
-                                    {plan.paidInstallments}/{plan.totalInstallments}
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <StatusBadge status={plan.status as any} />
-                              </TableCell>
-                              <TableCell>
-                                {plan.nextDueDate ? formatDate(plan.nextDueDate) : 
-                                  (isPlanPaused(plan) ? 'Plan paused' : 'No upcoming payments')}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Payment Summary</h3>
+                
+                <div className="flex items-center space-x-2">
+                  <CreditCard className="h-5 w-5 text-gray-500" />
+                  <span>Total Spent: <strong>{formatCurrency(patient.totalSpent || 0)}</strong></span>
                 </div>
-              )}
-              
-              <Separator className="my-6" />
-
-              {/* Updated tabs to Notes / Activity */}
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="mb-4 p-1">
-                  <TabsTrigger 
-                    value="notes"
-                    className="data-[state=active]:bg-gradient-primary data-[state=active]:text-white"
-                  >
-                    Notes
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="activity"
-                    className="data-[state=active]:bg-gradient-primary data-[state=active]:text-white"
-                  >
-                    Activity
-                  </TabsTrigger>
-                </TabsList>
                 
-                <TabsContent value="notes">
-                  <PatientNotes 
-                    patientId={patient.id}
-                    clinicId={getClinicId()}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="activity">
-                  <PatientActivity 
-                    payments={patientPayments} 
-                    planActivities={planActivities} 
-                  />
-                </TabsContent>
-              </Tabs>
-            </>
-          ) : selectedPlan && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold">{selectedPlan.title || selectedPlan.planName}</h2>
-                <p className="text-sm text-muted-foreground">
-                  Payment plan details
-                </p>
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-5 w-5 text-gray-500" />
+                  <span>Last Payment: <strong>{patient.lastPaymentDate ? formatDate(patient.lastPaymentDate) : 'N/A'}</strong></span>
+                </div>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Total Amount</p>
-                  <p className="font-medium">{formatCurrency(selectedPlan.totalAmount || selectedPlan.amount || 0)}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Progress</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-28 h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-gradient-primary rounded-full" 
-                        style={{ width: `${selectedPlan.progress}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-gray-500">
-                      {selectedPlan.paidInstallments}/{selectedPlan.totalInstallments}
-                    </span>
+            </div>
+            
+            {/* Payment Plans moved outside tabs */}
+            {patientPlans.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-medium mb-3">Payment Plans</h3>
+                {loadingPlans ? (
+                  <div className="flex justify-center py-4">
+                    <LoadingSpinner />
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <StatusBadge status={selectedPlan.status as any} />
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="text-md font-semibold mb-2">Installments</h3>
-                <div className="border rounded-md">
-                  <ScrollArea className="h-[280px]">
+                ) : (
+                  <div className="overflow-x-auto border rounded-md">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Due Date</TableHead>
+                          <TableHead>Plan Name</TableHead>
                           <TableHead>Amount</TableHead>
+                          <TableHead>Progress</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Paid Date</TableHead>
+                          <TableHead>Next Payment</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {planInstallments.map((installment) => (
+                        {patientPlans.map((plan) => (
                           <TableRow 
-                            key={installment.id}
+                            key={plan.id}
+                            className="cursor-pointer hover:bg-muted"
+                            onClick={() => handleViewPlanDetails(plan)}
                           >
-                            <TableCell>{installment.dueDate}</TableCell>
-                            <TableCell>{formatCurrency(installment.amount)}</TableCell>
+                            <TableCell className="font-medium">{plan.title || plan.planName}</TableCell>
+                            <TableCell>{formatCurrency(plan.totalAmount || plan.amount || 0)}</TableCell>
                             <TableCell>
-                              <StatusBadge status={installment.status as any} />
+                              <div className="flex items-center gap-2">
+                                <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-gradient-primary rounded-full" 
+                                    style={{ width: `${plan.progress}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs text-gray-500">
+                                  {plan.paidInstallments}/{plan.totalInstallments}
+                                </span>
+                              </div>
                             </TableCell>
-                            <TableCell>{installment.paidDate || '-'}</TableCell>
+                            <TableCell>
+                              <StatusBadge status={plan.status as any} />
+                            </TableCell>
+                            <TableCell>
+                              {plan.nextDueDate ? formatDate(plan.nextDueDate) : 
+                                (isPlanPaused(plan) ? 'Plan paused' : 'No upcoming payments')}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
-                  </ScrollArea>
-                </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
+            )}
+            
+            <Separator className="my-6" />
+
+            {/* Updated tabs to Notes / Activity */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="mb-4 p-1">
+                <TabsTrigger 
+                  value="notes"
+                  className="data-[state=active]:bg-gradient-primary data-[state=active]:text-white"
+                >
+                  Notes
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="activity"
+                  className="data-[state=active]:bg-gradient-primary data-[state=active]:text-white"
+                >
+                  Activity
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="notes">
+                <PatientNotes 
+                  patientId={patient.id}
+                  clinicId={getClinicId()}
+                />
+              </TabsContent>
+              
+              <TabsContent value="activity">
+                <PatientActivity 
+                  payments={patientPayments} 
+                  planActivities={planActivities} 
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Plan Details Dialog */}
+      <PlanDetailsDialog
+        showPlanDetails={showPlanDetails}
+        setShowPlanDetails={setShowPlanDetails}
+        selectedPlan={selectedPlan}
+        installments={planInstallments}
+        activities={planDetailActivities}
+        isLoadingActivities={isLoadingActivities}
+        onSendReminder={() => {}} // No-op as we don't need this functionality here
+        onViewPaymentDetails={() => {}} // No-op as we don't need this functionality here
+        onCancelPlan={handleOpenCancelDialog}
+        onPausePlan={handleOpenPauseDialog}
+        onResumePlan={handleOpenResumeDialog}
+        onReschedulePlan={handleOpenRescheduleDialog}
+        isPlanPaused={isPlanPaused}
+      />
+
+      {/* Plan Action Dialogs */}
+      <CancelPlanDialog
+        showDialog={showCancelDialog}
+        setShowDialog={setShowCancelDialog}
+        onConfirm={handleCancelPlan}
+        planName={selectedPlan?.title || ''}
+        patientName={selectedPlan?.patientName || ''}
+        isProcessing={isProcessing}
+      />
+
+      <PausePlanDialog
+        showDialog={showPauseDialog}
+        setShowDialog={setShowPauseDialog}
+        onConfirm={handlePausePlan}
+        planName={selectedPlan?.title || ''}
+        patientName={selectedPlan?.patientName || ''}
+        isProcessing={isProcessing}
+      />
+
+      <ResumePlanDialog
+        showDialog={showResumeDialog}
+        setShowDialog={setShowResumeDialog}
+        onConfirm={handleResumePlan}
+        planName={selectedPlan?.title || ''}
+        patientName={selectedPlan?.patientName || ''}
+        isProcessing={isProcessing}
+      />
+
+      <ReschedulePlanDialog
+        showDialog={showRescheduleDialog}
+        setShowDialog={setShowRescheduleDialog}
+        onConfirm={handleReschedulePlan}
+        planName={selectedPlan?.title || ''}
+        patientName={selectedPlan?.patientName || ''}
+        isProcessing={isProcessing}
+      />
+    </>
   );
 };
 
