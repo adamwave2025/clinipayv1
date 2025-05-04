@@ -36,9 +36,9 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
     const patientPhone = payment.patientPhone ? `"${payment.patientPhone.replace(/"/g, '""')}"` : '""';
     const amount = payment.amount ? formatCurrency(payment.amount).replace('£', '') : '0.00';
     
-    // Format platform fee if available
+    // Format platform fee if available, dividing by 100 to convert from cents
     const platformFee = payment.platformFee 
-      ? formatCurrency(payment.platformFee).replace('£', '') 
+      ? formatCurrency(payment.platformFee / 100).replace('£', '') 
       : '0.00';
     
     const reference = payment.reference ? `"${payment.reference}"` : '""';
