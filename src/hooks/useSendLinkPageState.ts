@@ -24,7 +24,7 @@ export function useSendLinkPageState() {
   const [regularLinks, setRegularLinks] = useState<PaymentLink[]>([]);
   const [paymentPlans, setPaymentPlans] = useState<PaymentLink[]>([]);
   const { isLoading, sendPaymentLink } = usePaymentLinkSender();
-  const [isSchedulingPlan, setIsSchedulingPlan] = useState(false); // New state for payment plan scheduling
+  const [isSchedulingPlan, setIsSchedulingPlan] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState<SendLinkFormData>({
     patientName: '',
@@ -37,6 +37,7 @@ export function useSendLinkPageState() {
   });
   const [isPaymentPlan, setIsPaymentPlan] = useState(false);
   const [isCreatingNewPatient, setIsCreatingNewPatient] = useState(false);
+  const [creatingPatientInProgress, setCreatingPatientInProgress] = useState(false);
 
   // Separate payment links and payment plans
   useEffect(() => {
@@ -157,9 +158,23 @@ export function useSendLinkPageState() {
     setShowConfirmation(true);
   };
 
-  // Enhanced createOrGetPatient function with better error handling and validation
+  // Enhanced createOrGetPatient function with better error handling and verification
   const createOrGetPatient = async (): Promise<string | null> => {
+    // Prevent concurrent calls to patient creation
+    if (creatingPatientInProgress) {
+      console.log('Patient creation already in progress, waiting...');
+      // Wait a moment for the previous call to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      // If we have a patient ID already, return it
+      if (selectedPatient?.id) {
+        console.log('Patient was created during wait period:', selectedPatient.id);
+        return selectedPatient.id;
+      }
+    }
+    
+    setCreatingPatientInProgress(true);
     console.log('Starting createOrGetPatient process');
+    
     try {
       // Get the clinic id from the user
       const { data: userData, error: userError } = await supabase
@@ -183,9 +198,35 @@ export function useSendLinkPageState() {
       const clinicId = userData.clinic_id;
       console.log('Using clinic ID:', clinicId);
       
-      // If we have a selected patient, return their ID
-      if (selectedPatient) {
+      // If we have a selected patient, verify it's complete and return their ID
+      if (selectedPatient && selectedPatient.id) {
         console.log('Using existing selected patient:', selectedPatient.id);
+        
+        // Verify that selectedPatient has all required properties
+        const requiredProps = ['id', 'name', 'email', 'phone', 'created_at', 'updated_at'];
+        const isMissingProps = requiredProps.some(prop => !(prop in selectedPatient));
+        
+        if (isMissingProps) {
+          console.log('Selected patient is missing properties, fetching complete patient record');
+          
+          // Fetch the complete patient record
+          const { data: completePatient, error: fetchError } = await supabase
+            .from('patients')
+            .select('*')
+            .eq('id', selectedPatient.id)
+            .single();
+            
+          if (fetchError) {
+            console.error('Error fetching complete patient record:', fetchError);
+            throw new Error('Could not get complete patient details');
+          }
+          
+          if (completePatient) {
+            // Update the selected patient with the complete record
+            setSelectedPatient(completePatient);
+          }
+        }
+        
         return selectedPatient.id;
       }
       
@@ -196,7 +237,7 @@ export function useSendLinkPageState() {
         // Check if patient with this email already exists to prevent duplicates
         const { data: existingPatient, error: lookupError } = await supabase
           .from('patients')
-          .select('id, name, email, phone, notes, created_at, updated_at')
+          .select('*')  // Select all fields to ensure we have a complete patient record
           .eq('clinic_id', clinicId)
           .eq('email', formData.patientEmail)
           .maybeSingle();
@@ -222,13 +263,13 @@ export function useSendLinkPageState() {
             email: formData.patientEmail,
             phone: formData.patientPhone || null
           })
-          .select('*')
+          .select('*')  // Select all fields to get the complete patient record
           .single();
         
         if (patientError) {
           console.error('Error creating patient:', patientError);
           toast.error('Could not create new patient');
-          throw new Error('Could not create new patient');
+          throw new Error(`Could not create new patient: ${patientError.message}`);
         }
         
         if (!newPatient || !newPatient.id) {
@@ -243,8 +284,32 @@ export function useSendLinkPageState() {
         setSelectedPatient(newPatient);
         setIsCreatingNewPatient(false);
         
-        // Add a small delay to ensure DB consistency
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // Verify the patient was actually created in the database to prevent race conditions
+        let verificationAttempts = 0;
+        const maxVerificationAttempts = 3;
+        
+        while (verificationAttempts < maxVerificationAttempts) {
+          // Add a small delay to ensure DB consistency
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          const { data: verifiedPatient, error: verifyError } = await supabase
+            .from('patients')
+            .select('*')
+            .eq('id', newPatient.id)
+            .single();
+            
+          if (verifiedPatient) {
+            console.log('Successfully verified patient creation:', verifiedPatient.id);
+            return verifiedPatient.id;
+          }
+          
+          console.log(`Verification attempt ${verificationAttempts + 1} failed, retrying...`);
+          verificationAttempts++;
+        }
+        
+        if (verificationAttempts >= maxVerificationAttempts) {
+          throw new Error('Could not verify patient creation after multiple attempts');
+        }
         
         return newPatient.id;
       }
@@ -255,6 +320,8 @@ export function useSendLinkPageState() {
       console.error('Error in createOrGetPatient:', error);
       toast.error(`Patient error: ${error.message}`);
       return null;
+    } finally {
+      setCreatingPatientInProgress(false);
     }
   };
 
@@ -481,6 +548,9 @@ export function useSendLinkPageState() {
       return { success: false };
     }
 
+    // Create a loading toast that we can update later
+    const loadingToastId = toast.loading('Creating patient record and scheduling plan...');
+
     try {
       setIsSchedulingPlan(true);
       console.log('Starting payment plan scheduling process');
@@ -498,7 +568,11 @@ export function useSendLinkPageState() {
 
       // Create or get patient ID first - CRITICAL STEP
       console.log('Creating or getting patient...');
+      toast.dismiss(loadingToastId);
+      const patientCreationToastId = toast.loading('Creating or updating patient record...');
+      
       const patientId = await createOrGetPatient();
+      toast.dismiss(patientCreationToastId);
       
       if (!patientId) {
         console.error('Could not obtain valid patient ID');
@@ -508,6 +582,7 @@ export function useSendLinkPageState() {
       }
 
       console.log('Using patient ID:', patientId);
+      const planCreationToastId = toast.loading('Setting up payment plan...');
 
       // Get the clinic id from the user
       const { data: userData, error: userError } = await supabase
@@ -518,6 +593,7 @@ export function useSendLinkPageState() {
 
       if (userError) {
         console.error('Error getting clinic ID:', userError);
+        toast.dismiss(planCreationToastId);
         toast.error('Failed to schedule payment plan');
         setIsSchedulingPlan(false);
         return { success: false };
@@ -542,6 +618,7 @@ export function useSendLinkPageState() {
 
       if (clinicError) {
         console.error('Error getting clinic data:', clinicError);
+        toast.dismiss(planCreationToastId);
         toast.error('Failed to schedule payment plan');
         setIsSchedulingPlan(false);
         return { success: false };
@@ -564,12 +641,15 @@ export function useSendLinkPageState() {
       let firstPaymentRequest = null;
       if (isFirstPaymentToday) {
         try {
+          toast.dismiss(planCreationToastId);
+          const firstPaymentToastId = toast.loading('Creating first payment request...');
           firstPaymentRequest = await createPaymentRequest(
             clinicId,
             patientId, // Using validated patientId
             selectedLink.id,
             `Payment 1 of ${selectedLink.paymentCount} is due.`
           );
+          toast.dismiss(firstPaymentToastId);
           console.log('Created first payment request for today:', firstPaymentRequest.id);
         } catch (reqError: any) {
           console.error('Error creating first payment request:', reqError);
@@ -584,6 +664,8 @@ export function useSendLinkPageState() {
       // IMPORTANT: Set the next_due_date to the first payment's due date
       const firstPaymentDueDate = schedule[0].due_date;
       
+      toast.dismiss(planCreationToastId);
+      const finalToastId = toast.loading('Finalizing payment plan...');
       console.log('Creating plan record in database...');
       const { data: planData, error: planError } = await supabase
         .from('plans')
@@ -609,6 +691,7 @@ export function useSendLinkPageState() {
 
       if (planError) {
         console.error('Error creating payment plan:', planError);
+        toast.dismiss(finalToastId);
         toast.error(`Failed to create payment plan: ${planError.message}`);
         setIsSchedulingPlan(false);
         return { success: false };
@@ -618,6 +701,7 @@ export function useSendLinkPageState() {
       
       if (!planData || !planData.id) {
         console.error('Plan created but no ID returned');
+        toast.dismiss(finalToastId);
         toast.error('Payment plan creation failed');
         setIsSchedulingPlan(false);
         return { success: false };
@@ -657,6 +741,7 @@ export function useSendLinkPageState() {
 
       if (scheduleError) {
         console.error('Error creating payment schedule:', scheduleError);
+        toast.dismiss(finalToastId);
         toast.error(`Failed to schedule payment plan: ${scheduleError.message}`);
         setIsSchedulingPlan(false);
         return { success: false };
@@ -684,6 +769,8 @@ export function useSendLinkPageState() {
 
       // If the first payment is due today, send it immediately using the existing request ID
       if (isFirstPaymentToday && firstPaymentRequest) {
+        toast.dismiss(finalToastId);
+        const sendPaymentToastId = toast.loading('Sending first payment notification...');
         const firstPayment = schedule[0];
         try {
           const sentSuccessfully = await sendImmediatePayment(
@@ -695,6 +782,7 @@ export function useSendLinkPageState() {
             firstPaymentRequest.id // Pass the existing payment request ID
           );
           
+          toast.dismiss(sendPaymentToastId);
           if (sentSuccessfully) {
             toast.success('Payment plan scheduled and first payment sent immediately');
           } else {
@@ -702,9 +790,11 @@ export function useSendLinkPageState() {
           }
         } catch (sendError: any) {
           console.error('Error sending immediate payment:', sendError);
+          toast.dismiss(sendPaymentToastId);
           toast.success('Payment plan scheduled successfully, but first payment notification failed');
         }
       } else {
+        toast.dismiss(finalToastId);
         toast.success('Payment plan scheduled successfully');
       }
 
@@ -714,6 +804,7 @@ export function useSendLinkPageState() {
       return { success: true };
     } catch (error: any) {
       console.error('Error scheduling payment plan:', error);
+      toast.dismiss(loadingToastId);
       toast.error(`Failed to schedule payment plan: ${error.message}`);
       setIsSchedulingPlan(false);
       return { success: false };
