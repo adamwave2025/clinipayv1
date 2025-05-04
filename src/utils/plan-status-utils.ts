@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -52,3 +53,90 @@ export async function refreshPlanDisplay() {
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Check if a payment plan is currently overdue and update its status if needed
+ * @param planId The ID of the plan to check
+ */
+export async function checkAndUpdatePlanOverdueStatus(planId: string) {
+  try {
+    console.log(`Checking overdue status for plan ${planId}...`);
+    
+    // Fetch the current plan data
+    const { data: plan, error: planError } = await supabase
+      .from('plans')
+      .select('*')
+      .eq('id', planId)
+      .single();
+      
+    if (planError) {
+      console.error('Error fetching plan data:', planError);
+      return { success: false, error: planError };
+    }
+    
+    // Fetch all schedule entries for this plan
+    const { data: scheduleEntries, error: entriesError } = await supabase
+      .from('payment_schedule')
+      .select('*')
+      .eq('plan_id', planId)
+      .order('due_date', { ascending: true });
+      
+    if (entriesError) {
+      console.error('Error fetching schedule entries:', entriesError);
+      return { success: false, error: entriesError };
+    }
+    
+    // Check if any entries are overdue
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Start of day for accurate comparison
+    
+    const hasOverduePayments = scheduleEntries.some(entry => {
+      const dueDate = new Date(entry.due_date);
+      dueDate.setHours(0, 0, 0, 0); // Start of day for accurate comparison
+      return entry.status !== 'paid' && entry.status !== 'cancelled' && dueDate < now;
+    });
+    
+    // If the overdue status has changed, update the plan
+    if (hasOverduePayments !== plan.has_overdue_payments || 
+       (hasOverduePayments && plan.status !== 'overdue' && 
+        plan.status !== 'paused' && plan.status !== 'cancelled')) {
+      
+      // Determine the new status
+      let newStatus = plan.status;
+      if (hasOverduePayments && plan.status !== 'paused' && plan.status !== 'cancelled') {
+        newStatus = 'overdue';
+      } else if (!hasOverduePayments && plan.status === 'overdue') {
+        newStatus = 'active';
+      }
+      
+      // Update the plan
+      const { error: updateError } = await supabase
+        .from('plans')
+        .update({
+          has_overdue_payments: hasOverduePayments,
+          status: newStatus
+        })
+        .eq('id', planId);
+        
+      if (updateError) {
+        console.error('Error updating plan status:', updateError);
+        return { success: false, error: updateError };
+      }
+      
+      console.log(`Updated plan status from ${plan.status} to ${newStatus}`);
+      return { 
+        success: true, 
+        updated: true,
+        oldStatus: plan.status,
+        newStatus,
+        hasOverduePayments
+      };
+    }
+    
+    return { success: true, updated: false };
+  } catch (err: any) {
+    console.error('Exception checking plan overdue status:', err);
+    return { success: false, error: err.message };
+  }
+}
+

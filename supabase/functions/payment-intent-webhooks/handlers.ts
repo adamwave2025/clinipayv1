@@ -228,30 +228,23 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
                   
                   // Calculate new progress percentage
                   const progress = Math.floor((paidInstallments / totalInstallments) * 100) || 0;
-                  
-                  // Determine the new status
-                  let newStatus = planData.status;
-                  
-                  // If all installments are paid, mark as completed
-                  if (paidInstallments >= totalInstallments) {
-                    newStatus = 'completed';
-                  } 
-                  // If some installments are paid but not all, mark as active (unless it's already marked as overdue or paused)
-                  else if (paidInstallments > 0 && newStatus === 'pending') {
-                    newStatus = 'active';
-                  }
-                  
-                  // Find the next due date from remaining unpaid installments
-                  let nextDueDate = null;
-                  
-                  // Get all schedule entries for this plan to find next due date
+
+                  // Get all schedule entries for this plan to find next due date and check for overdue
                   const { data: allScheduleEntries, error: entriesError } = await supabaseClient
                     .from("payment_schedule")
                     .select("*")
                     .eq("plan_id", scheduleData.plan_id)
                     .order("due_date", { ascending: true });
-                    
-                  if (!entriesError && allScheduleEntries) {
+                  
+                  if (entriesError) {
+                    console.error("Error fetching all schedule entries:", entriesError);
+                    throw entriesError;
+                  }
+                  
+                  // Find the next due date from remaining unpaid installments
+                  let nextDueDate = null;
+                  
+                  if (allScheduleEntries) {
                     // Find first unpaid entry
                     const unpaidEntry = allScheduleEntries.find(entry => 
                       entry.status !== 'paid' && entry.status !== 'cancelled'
@@ -260,41 +253,86 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
                     if (unpaidEntry) {
                       nextDueDate = unpaidEntry.due_date;
                     }
-                  } else {
-                    console.error("Error fetching all schedule entries:", entriesError);
-                  }
-                  
-                  // Check for overdue status on remaining entries
-                  const now = new Date();
-                  now.setHours(0, 0, 0, 0); // Start of day for accurate comparison
-                  
-                  const hasOverduePayments = allScheduleEntries ? allScheduleEntries.some(entry => {
-                    const dueDate = new Date(entry.due_date);
-                    dueDate.setHours(0, 0, 0, 0); // Start of day for accurate comparison
-                    return entry.status !== 'paid' && entry.status !== 'cancelled' && dueDate < now;
-                  }) : false;
-                  
-                  // If plan is active but has overdue payments, mark as overdue (unless paused or cancelled)
-                  if (hasOverduePayments && newStatus !== 'paused' && newStatus !== 'cancelled') {
-                    newStatus = 'overdue';
-                  }
-                  
-                  // Update the plan with new values
-                  const { error: planUpdateError } = await supabaseClient
-                    .from("plans")
-                    .update({
-                      paid_installments: paidInstallments,
-                      progress: progress,
-                      next_due_date: nextDueDate,
-                      status: newStatus,
-                      has_overdue_payments: hasOverduePayments
-                    })
-                    .eq("id", scheduleData.plan_id);
-                  
-                  if (planUpdateError) {
-                    console.error("Error updating plan record:", planUpdateError);
-                  } else {
-                    console.log(`Successfully updated plan record. New status: ${newStatus}, Progress: ${progress}%, Next due date: ${nextDueDate}`);
+
+                    // Check for overdue status on remaining entries
+                    const now = new Date();
+                    now.setHours(0, 0, 0, 0); // Start of day for accurate comparison
+                    
+                    const hasOverduePayments = allScheduleEntries.some(entry => {
+                      const dueDate = new Date(entry.due_date);
+                      dueDate.setHours(0, 0, 0, 0); // Start of day for accurate comparison
+                      return entry.status !== 'paid' && entry.status !== 'cancelled' && dueDate < now;
+                    });
+                    
+                    // Determine the new status
+                    let newStatus = planData.status;
+                    let statusChanged = false;
+                    const oldStatus = planData.status;
+                    
+                    // If all installments are paid, mark as completed
+                    if (paidInstallments >= totalInstallments) {
+                      newStatus = 'completed';
+                      statusChanged = newStatus !== oldStatus;
+                    } 
+                    // If no installments are overdue but plan was previously overdue, mark as active
+                    else if (!hasOverduePayments && planData.status === 'overdue') {
+                      newStatus = 'active';
+                      statusChanged = true;
+                      console.log("Plan status changed from overdue to active - no more overdue payments");
+                    }
+                    // If some installments are paid but not all, mark as active (unless it's already overdue or paused)
+                    else if (paidInstallments > 0 && planData.status === 'pending') {
+                      newStatus = 'active';
+                      statusChanged = true;
+                    }
+                    // If plan still has overdue payments, maintain overdue status
+                    else if (hasOverduePayments && newStatus !== 'paused' && newStatus !== 'cancelled') {
+                      newStatus = 'overdue';
+                    }
+                    
+                    // Update the plan with new values
+                    const { error: planUpdateError } = await supabaseClient
+                      .from("plans")
+                      .update({
+                        paid_installments: paidInstallments,
+                        progress: progress,
+                        next_due_date: nextDueDate,
+                        status: newStatus,
+                        has_overdue_payments: hasOverduePayments
+                      })
+                      .eq("id", scheduleData.plan_id);
+                    
+                    if (planUpdateError) {
+                      console.error("Error updating plan record:", planUpdateError);
+                    } else {
+                      console.log(`Successfully updated plan record. New status: ${newStatus}, Progress: ${progress}%, Has overdue payments: ${hasOverduePayments}, Next due date: ${nextDueDate || 'None'}`);
+                      
+                      // If status changed, record this in the activity log
+                      if (statusChanged) {
+                        const activityPayload = {
+                          patient_id: scheduleData.patient_id,
+                          payment_link_id: scheduleData.payment_link_id,
+                          clinic_id: scheduleData.clinic_id,
+                          action_type: "status_update",
+                          details: {
+                            old_status: oldStatus,
+                            new_status: newStatus,
+                            reason: `Status updated after payment of installment ${scheduleData.payment_number}`,
+                            payment_id: paymentId
+                          }
+                        };
+                        
+                        const { error: activityError } = await supabaseClient
+                          .from("payment_plan_activities")
+                          .insert(activityPayload);
+                          
+                        if (activityError) {
+                          console.error("Error recording status change activity:", activityError);
+                        } else {
+                          console.log(`Successfully recorded status change from ${oldStatus} to ${newStatus} in plan history`);
+                        }
+                      }
+                    }
                   }
                 }
               } catch (planError) {
