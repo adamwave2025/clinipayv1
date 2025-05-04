@@ -26,10 +26,8 @@ const PaymentDetailsCard = ({ details, className = '', title }: PaymentDetailsCa
             className={`${detail.colSpan ? `col-span-${detail.colSpan}` : ''} ${detail.className || ''}`}
           >
             <p className="text-sm text-gray-500">{detail.label}</p>
-            <p className={`font-medium ${typeof detail.value === 'number' ? 'font-bold' : ''}`}>
-              {typeof detail.value === 'number' && !String(detail.value).startsWith('£') ? 
-                `£${detail.value.toFixed(2)}` : 
-                detail.value}
+            <p className="font-medium">
+              {detail.value}
             </p>
           </div>
         ))}

@@ -21,6 +21,7 @@ import PlanActionsDropdown from './PlanActionsDropdown';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import StatusBadge from '@/components/common/StatusBadge';
 import ActivityLog from './ActivityLog';
+import { formatCurrency } from '@/utils/formatters';
 
 interface PlanDetailsDialogProps {
   showPlanDetails: boolean;
@@ -92,7 +93,7 @@ const PlanDetailsDialog = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Total Amount</p>
-              <p className="font-medium">£{selectedPlan.totalAmount.toFixed(2)}</p>
+              <p className="font-medium">{formatCurrency(selectedPlan.totalAmount)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Progress</p>
@@ -144,7 +145,7 @@ const PlanDetailsDialog = ({
                           "cursor-pointer hover:bg-muted transition-colors" : ""}
                       >
                         <TableCell>{installment.dueDate}</TableCell>
-                        <TableCell>£{installment.amount.toFixed(2)}</TableCell>
+                        <TableCell>{formatCurrency(installment.amount)}</TableCell>
                         <TableCell>
                           <StatusBadge status={installment.status as any} />
                         </TableCell>

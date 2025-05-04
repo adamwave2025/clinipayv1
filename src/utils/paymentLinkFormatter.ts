@@ -13,7 +13,7 @@ import { PaymentLink } from '@/types/payment';
 export const formatPaymentLinks = (data: any[]): PaymentLink[] => data.map(link => ({
   id: link.id,
   title: link.title || '',
-  amount: (link.amount || 0) / 100, // Convert cents to standard currency units
+  amount: link.amount || 0, // Keep the original amount from database (in cents)
   type: link.type || 'other',
   description: link.description || '',
   url: `${window.location.origin}/payment/${link.id}`,
@@ -22,5 +22,5 @@ export const formatPaymentLinks = (data: any[]): PaymentLink[] => data.map(link 
   paymentPlan: link.payment_plan || false,
   paymentCount: link.payment_count,
   paymentCycle: link.payment_cycle,
-  planTotalAmount: link.plan_total_amount ? link.plan_total_amount / 100 : undefined // Convert cents to standard currency units
+  planTotalAmount: link.plan_total_amount // Keep the original plan total amount (in cents)
 }));

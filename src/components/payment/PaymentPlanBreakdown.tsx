@@ -1,6 +1,7 @@
 
 import React from 'react';
 import PaymentDetailsCard from './PaymentDetailsCard';
+import { formatCurrency } from '@/utils/formatters';
 
 interface PaymentPlanBreakdownProps {
   planTotalAmount: number;
@@ -14,9 +15,9 @@ const PaymentPlanBreakdown = ({
   totalOutstanding 
 }: PaymentPlanBreakdownProps) => {
   const details = [
-    { label: 'Plan Total', value: planTotalAmount },
-    { label: 'Total Paid', value: totalPaid },
-    { label: 'Total Outstanding', value: totalOutstanding }
+    { label: 'Plan Total', value: formatCurrency(planTotalAmount) },
+    { label: 'Total Paid', value: formatCurrency(totalPaid) },
+    { label: 'Total Outstanding', value: formatCurrency(totalOutstanding) }
   ];
 
   return (
