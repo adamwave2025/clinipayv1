@@ -25,7 +25,7 @@ const PaymentFormSection: React.FC<PaymentFormSectionProps> = ({
   onApplePaySuccess
 }) => {
   return (
-    <Card className="card-shadow">
+    <Card className="card-shadow h-full">
       <CardContent className="p-6">
         <h2 className="text-xl font-bold text-center mb-6 text-gray-800">
           Complete Your Payment

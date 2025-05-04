@@ -19,8 +19,6 @@ const StripeCardElement = ({ onChange, isLoading = false, label = "Card Details"
         '::placeholder': {
           color: '#aab7c4',
         },
-        iconColor: '#9b87f5',
-        lineHeight: '40px',
       },
       invalid: {
         color: '#ef4444',
@@ -31,8 +29,8 @@ const StripeCardElement = ({ onChange, isLoading = false, label = "Card Details"
 
   return (
     <FormItem>
-      <FormLabel className="text-base font-medium">{label}</FormLabel>
-      <div className={`mt-2 p-4 border rounded-md ${isLoading ? 'opacity-50' : ''} bg-white h-[72px] flex items-center`}>
+      <FormLabel>{label}</FormLabel>
+      <div className={`mt-1 p-3 border rounded-md ${isLoading ? 'opacity-50' : ''}`}>
         <FormControl>
           <CardElement 
             options={cardElementOptions} 
