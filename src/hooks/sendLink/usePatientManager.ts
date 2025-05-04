@@ -34,7 +34,7 @@ export function usePatientManager() {
     }
     
     setCreatingPatientInProgress(true);
-    const patientLoadingToast = toast.loading('Creating patient record...');
+    // Silent loading toast - no need to show this to the user
     
     try {
       // Get the clinic ID first
@@ -45,7 +45,6 @@ export function usePatientManager() {
         .single();
 
       if (userError || !userData?.clinic_id) {
-        toast.dismiss(patientLoadingToast);
         toast.error('Could not determine clinic ID');
         return null;
       }
@@ -63,8 +62,7 @@ export function usePatientManager() {
       
       if (existingPatient) {
         console.log('Found existing patient with same email:', existingPatient.id);
-        toast.dismiss(patientLoadingToast);
-        toast.success('Found existing patient record');
+        // No success toast needed here - we'll show it at the end of the full process
         return existingPatient.id;
       }
       
@@ -82,7 +80,6 @@ export function usePatientManager() {
       
       if (patientError || !newPatient) {
         console.error('Error creating patient:', patientError);
-        toast.dismiss(patientLoadingToast);
         toast.error(`Could not create new patient: ${patientError?.message || 'Unknown error'}`);
         return null;
       }
@@ -98,17 +95,14 @@ export function usePatientManager() {
           
       if (verifyError || !verifiedPatient) {
         console.error('Error verifying patient creation:', verifyError);
-        toast.dismiss(patientLoadingToast);
         toast.error('Could not verify patient creation');
         return null;
       }
       
-      toast.dismiss(patientLoadingToast);
-      toast.success('Patient created successfully');
+      // No success toast needed here - we'll show it at the end of the full process
       return verifiedPatient.id;
     } catch (error: any) {
       console.error('Error in createOrGetPatient:', error);
-      toast.dismiss(patientLoadingToast);
       toast.error(`Patient error: ${error.message}`);
       return null;
     } finally {

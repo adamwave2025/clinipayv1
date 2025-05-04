@@ -40,14 +40,7 @@ export function usePaymentLinkSender() {
         paymentLinks
       });
       
-      if (result.success) {
-        console.log('Payment link sent successfully');
-        toast.success('Payment link sent successfully');
-      } else {
-        console.error('Failed to send payment link');
-        toast.error('Failed to send payment link');
-      }
-      
+      // No toasts here - we'll show one comprehensive toast at the end in useSendLinkPageState
       return result;
     } catch (error) {
       console.error('Error sending payment link:', error);

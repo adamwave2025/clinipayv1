@@ -71,6 +71,8 @@ export function useSendLinkPageState() {
     
     setIsProcessing(true);
     
+    const loadingToast = toast.loading('Processing payment request...');
+    
     try {
       console.log('Starting payment link sending process...');
       console.log('Form data:', {
@@ -91,6 +93,7 @@ export function useSendLinkPageState() {
 
       if (!patientId) {
         console.error('Failed to create or get patient');
+        toast.dismiss(loadingToast);
         toast.error('Could not create or find patient record');
         setIsProcessing(false);
         return;
@@ -103,15 +106,20 @@ export function useSendLinkPageState() {
         // For payment plans, get the selected plan details
         const selectedLink = [...regularLinks, ...paymentPlans].find(link => link.id === formData.selectedLink);
         if (!selectedLink) {
+          toast.dismiss(loadingToast);
           toast.error('Selected payment plan not found');
           setIsProcessing(false);
           return;
         }
         
         // Schedule the plan with the verified patient ID
+        toast.dismiss(loadingToast); // Dismiss the generic loading toast
         const result = await handleSchedulePaymentPlan(patientId, formData, selectedLink);
         
         if (result.success) {
+          toast.success(`Payment plan scheduled successfully for ${formData.patientName}`, {
+            description: `Plan: ${selectedLink.title || 'Payment Plan'}`
+          });
           resetForm();
           setShowConfirmation(false);
         }
@@ -123,16 +131,34 @@ export function useSendLinkPageState() {
           patientId
         });
         
+        // Find the selected payment link for the success message
+        const selectedLink = formData.selectedLink ? 
+          [...regularLinks, ...paymentPlans].find(link => link.id === formData.selectedLink) : 
+          null;
+          
+        const amount = selectedLink ? 
+          selectedLink.amount.toFixed(2) : 
+          (formData.customAmount ? formData.customAmount : 'unknown');
+          
+        const linkTitle = selectedLink ? selectedLink.title : 'Custom payment';
+        
+        toast.dismiss(loadingToast); // Dismiss the generic loading toast
+        
         if (result.success) {
+          toast.success(`Payment request sent to ${formData.patientName}`, {
+            description: `${linkTitle}: £${amount}`
+          });
           resetForm();
           setShowConfirmation(false);
         }
       }
     } catch (error: any) {
       console.error('Error in handleSendPaymentLink:', error);
+      toast.dismiss(loadingToast);
       toast.error(`Failed to process request: ${error.message}`);
     } finally {
       setIsProcessing(false);
+      if (toast.dismiss) toast.dismiss(loadingToast);
     }
   };
 
