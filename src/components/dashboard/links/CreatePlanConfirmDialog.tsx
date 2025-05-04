@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { LinkFormData } from '@/hooks/useCreateLinkForm';
 import { Check } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, amountToCents } from '@/utils/formatters';
 
 interface CreatePlanConfirmDialogProps {
   open: boolean;

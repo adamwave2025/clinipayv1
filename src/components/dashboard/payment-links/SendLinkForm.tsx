@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +26,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import PatientCombobox from '@/components/dashboard/patients/PatientCombobox';
 import { Patient } from '@/hooks/usePatients';
 import { PaymentLink } from '@/types/payment';
+import { formatCurrency } from '@/utils/formatters';
 
 interface SendLinkFormProps {
   isLoading: boolean;
@@ -142,7 +144,7 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
                   <SelectLabel>Payment Links</SelectLabel>
                   {paymentLinks.map(link => (
                     <SelectItem key={link.id} value={link.id}>
-                      {link.title} - £{link.amount.toFixed(2)}
+                      {link.title} - {formatCurrency(link.amount)}
                     </SelectItem>
                   ))}
                 </SelectGroup>
@@ -153,7 +155,7 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
                   <SelectLabel>Payment Plans</SelectLabel>
                   {paymentPlans.map(plan => (
                     <SelectItem key={plan.id} value={plan.id}>
-                      {plan.title} - £{plan.amount.toFixed(2)}{plan.paymentCount ? ` × ${plan.paymentCount}` : ''}
+                      {plan.title} - {formatCurrency(plan.amount)}{plan.paymentCount ? ` × ${plan.paymentCount}` : ''}
                     </SelectItem>
                   ))}
                 </SelectGroup>

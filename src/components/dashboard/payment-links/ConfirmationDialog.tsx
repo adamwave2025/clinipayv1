@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Dialog, 
@@ -11,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { formatCurrency } from '@/utils/formatters';
 
 interface ConfirmationDialogProps {
   open: boolean;
@@ -62,19 +62,18 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   };
 
   const getPlanDetails = () => {
-    if (!selectedPaymentLink?.paymentCount || !selectedPaymentLink.amount) return null;
+    if (!selectedPaymentLink?.paymentCount || selectedPaymentLink.amount === undefined) return null;
     
     // Each payment is the full amount, not divided
-    const individualAmount = selectedPaymentLink.amount;
-    return `${selectedPaymentLink.paymentCount} × £${individualAmount.toFixed(2)} ${formatCycle(selectedPaymentLink.paymentCycle)} payments`;
+    return `${selectedPaymentLink.paymentCount} × ${formatCurrency(selectedPaymentLink.amount)} ${formatCycle(selectedPaymentLink.paymentCycle)} payments`;
   };
 
   const getPlanTotal = () => {
-    if (!selectedPaymentLink?.paymentCount || !selectedPaymentLink.amount) return null;
+    if (!selectedPaymentLink?.paymentCount || selectedPaymentLink.amount === undefined) return null;
     
     // Calculate total plan value
     const totalAmount = selectedPaymentLink.amount * selectedPaymentLink.paymentCount;
-    return `£${totalAmount.toFixed(2)}`;
+    return formatCurrency(totalAmount);
   };
 
   return (

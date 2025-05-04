@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { PaymentLink } from '@/types/payment';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
@@ -8,6 +7,7 @@ import { usePaymentPlanScheduler } from './sendLink/usePaymentPlanScheduler';
 import { usePaymentLinkSender } from './sendLink/usePaymentLinkSender';
 import { useFormValidation } from './sendLink/useFormValidation';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/utils/formatters';
 
 export function useSendLinkPageState() {
   const { paymentLinks: allPaymentLinks, isLoading: isLoadingLinks } = usePaymentLinks();
@@ -168,8 +168,8 @@ export function useSendLinkPageState() {
     : null;
   
   const paymentAmount = selectedPaymentLink 
-    ? `£${selectedPaymentLink.amount.toFixed(2)}` 
-    : (formData.customAmount ? `£${Number(formData.customAmount).toFixed(2)}` : '');
+    ? formatCurrency(selectedPaymentLink.amount)
+    : (formData.customAmount ? formatCurrency(Number(formData.customAmount)) : '');
 
   return {
     showConfirmation,
