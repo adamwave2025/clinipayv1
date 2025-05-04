@@ -172,6 +172,71 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
         // Don't throw error here, we already recorded the payment
       } else {
         console.log(`Payment request ${requestId} marked as paid`);
+        
+        // Check if this payment is part of a payment plan by looking up in payment_schedule
+        try {
+          // First, get the payment schedule entry associated with this payment request
+          const { data: scheduleData, error: scheduleError } = await supabaseClient
+            .from("payment_schedule")
+            .select(`
+              id, 
+              patient_id, 
+              payment_link_id, 
+              clinic_id,
+              payment_number,
+              total_payments,
+              payment_frequency
+            `)
+            .eq("payment_request_id", requestId)
+            .single();
+            
+          if (scheduleError) {
+            console.log("No payment schedule entry found for this request, not a payment plan payment");
+          } else if (scheduleData) {
+            console.log(`Found payment schedule entry: payment ${scheduleData.payment_number} of ${scheduleData.total_payments}`);
+            
+            // Record payment activity in the payment plan activity log
+            const activityPayload = {
+              patient_id: scheduleData.patient_id,
+              payment_link_id: scheduleData.payment_link_id,
+              clinic_id: scheduleData.clinic_id,
+              action_type: "payment_made",
+              details: {
+                payment_reference: paymentReference,
+                amount: amountInPounds,
+                payment_date: new Date().toISOString(),
+                payment_number: scheduleData.payment_number,
+                total_payments: scheduleData.total_payments,
+                payment_id: paymentId
+              }
+            };
+            
+            console.log("Recording payment activity in plan history:", JSON.stringify(activityPayload));
+            
+            const { error: activityError } = await supabaseClient
+              .from("payment_plan_activities")
+              .insert(activityPayload);
+              
+            if (activityError) {
+              console.error("Error recording payment activity:", activityError);
+            } else {
+              console.log("Successfully recorded payment activity in plan history");
+            }
+            
+            // Also update the payment schedule status if not already updated
+            const { error: updateScheduleError } = await supabaseClient
+              .from("payment_schedule")
+              .update({ status: "paid" })
+              .eq("id", scheduleData.id);
+              
+            if (updateScheduleError) {
+              console.error("Error updating payment schedule status:", updateScheduleError);
+            }
+          }
+        } catch (scheduleError) {
+          console.error("Error checking for payment plan:", scheduleError);
+          // Continue with the rest of the payment processing
+        }
       }
     }
     
