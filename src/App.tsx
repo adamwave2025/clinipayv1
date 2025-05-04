@@ -30,6 +30,7 @@ import PaymentHistoryPage from "./pages/dashboard/PaymentHistoryPage";
 import PatientsPage from "./pages/dashboard/PatientsPage";
 import ManagePlansPage from "./pages/dashboard/ManagePlansPage";
 import PaymentPlansPage from "./pages/dashboard/PaymentPlansPage";
+import HelpPage from "./pages/dashboard/HelpPage";
 
 // Admin Pages
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
@@ -105,6 +106,11 @@ const App = () => (
             <Route path="/dashboard/settings" element={
               <RoleBasedRoute allowedRoles={['clinic']}>
                 <SettingsPage />
+              </RoleBasedRoute>
+            } />
+            <Route path="/dashboard/help" element={
+              <RoleBasedRoute allowedRoles={['clinic']}>
+                <HelpPage />
               </RoleBasedRoute>
             } />
             <Route path="/dashboard/payment-history" element={

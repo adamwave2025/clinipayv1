@@ -1,5 +1,5 @@
 
-import { Home, Link as LinkIcon, Send, Settings, Users, Clock, CreditCard, Calendar } from 'lucide-react';
+import { Home, Link as LinkIcon, Send, Settings, Users, Clock, CreditCard, Calendar, HelpCircle } from 'lucide-react';
 import React from 'react';
 
 export interface SidebarLink {
@@ -52,6 +52,11 @@ export const getClinicItems = (): SidebarItem[] => [
     to: '/dashboard/patients', 
     label: 'Patients', 
     icon: <Users className="w-5 h-5" /> 
+  },
+  { 
+    to: '/dashboard/help', 
+    label: 'Help', 
+    icon: <HelpCircle className="w-5 h-5" /> 
   },
   { 
     to: '/dashboard/settings', 
