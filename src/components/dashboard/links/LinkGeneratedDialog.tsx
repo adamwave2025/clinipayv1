@@ -115,16 +115,10 @@ const LinkGeneratedDialog = ({
             className="btn-gradient w-full" 
             asChild
           >
-            {isPaymentPlan ? (
-              <Link to="/dashboard/manage-plans" className="flex items-center justify-center">
-                View Payment Plans
-              </Link>
-            ) : (
-              <Link to="/dashboard/send-link" className="flex items-center justify-center">
-                <Send className="mr-2 h-4 w-4" />
-                Request Payment
-              </Link>
-            )}
+            <Link to="/dashboard/send-link" className="flex items-center justify-center">
+              <Send className="mr-2 h-4 w-4" />
+              Request Payment
+            </Link>
           </Button>
         </DialogFooter>
       </DialogContent>
