@@ -57,6 +57,24 @@ export interface PlanInstallment {
   paymentRequestId?: string;
 }
 
+/**
+ * Helper function to determine if an installment has been paid
+ * Checks for valid payment_request_id and completed payment
+ */
+const isPlanInstallmentPaid = (entry: PaymentScheduleItem): boolean => {
+  // Check if the payment_request_id exists and payment_id exists in the payment_requests object
+  const isPaid = (entry.status === 'sent' || entry.status === 'processed' || entry.status === 'paid') && 
+                 entry.payment_request_id !== null && 
+                 entry.payment_requests !== null &&
+                 entry.payment_requests.payment_id !== null;
+  
+  if (isPaid) {
+    console.log(`Installment ${entry.id} (payment ${entry.payment_number}) is considered paid`);
+  }
+  
+  return isPaid;
+};
+
 export const groupPaymentSchedulesByPlan = (scheduleItems: PaymentScheduleItem[]): Map<string, Plan> => {
   const plansByPatient = new Map<string, Plan>();
   
@@ -95,7 +113,7 @@ export const groupPaymentSchedulesByPlan = (scheduleItems: PaymentScheduleItem[]
     // Only mark as overdue if the due date is BEFORE today (not equal to today)
     const isOverdue = (entry.status === 'pending' || entry.status === 'processed' || entry.status === 'sent') && 
                      dueDateStart < now && 
-                     !entry.payment_requests?.payment_id;
+                     !isPlanInstallmentPaid(entry);
     
     if (isOverdue) {
       plan.hasOverduePayments = true;
@@ -110,13 +128,12 @@ export const groupPaymentSchedulesByPlan = (scheduleItems: PaymentScheduleItem[]
       totalPayments: entry.total_payments,
       paymentRequestId: entry.payment_request_id,
       requestStatus: entry.payment_requests?.status,
-      isOverdue: isOverdue
+      isOverdue: isOverdue,
+      isPaid: isPlanInstallmentPaid(entry)
     });
     
-    // Count paid installments
-    const isPaid = (entry.status === 'sent' && entry.payment_requests?.payment_id) || 
-                   entry.payment_requests?.status === 'paid';
-    if (isPaid) {
+    // Count paid installments using the consistent isPlanInstallmentPaid helper
+    if (isPlanInstallmentPaid(entry)) {
       plan.paidInstallments += 1;
     }
   });
@@ -162,9 +179,13 @@ export const groupPaymentSchedulesByPlan = (scheduleItems: PaymentScheduleItem[]
     }
     
     // Find the next due date (first non-paid, non-cancelled, non-paused installment)
+    // Using our consistent payment check instead of just status
     const upcoming = plan.schedule.find(entry => 
-      entry.status !== 'paid' && entry.status !== 'cancelled' && entry.status !== 'paused');
+      !entry.isPaid && entry.status !== 'cancelled' && entry.status !== 'paused');
+    
     plan.nextDueDate = upcoming ? upcoming.dueDate : null;
+    
+    console.log(`Plan ${plan.planName} status: ${plan.status}, next due date: ${plan.nextDueDate}`);
   });
   
   return plansByPatient;
@@ -177,10 +198,15 @@ export const formatPlanInstallments = (installmentData: any[]): PlanInstallment[
       ? format(parseISO(item.payment_requests.paid_at), 'yyyy-MM-dd')
       : null;
       
+    // Use the same paid detection logic as in groupPaymentSchedulesByPlan
+    const isPaid = (item.status === 'sent' || item.status === 'processed' || item.status === 'paid') &&
+                   item.payment_request_id !== null && 
+                   item.payment_requests !== null &&
+                   item.payment_requests.payment_id !== null;
+    
     // Determine status accurately - FIXED: normalize date comparisons
     const now = startOfDay(new Date()); // Reset time to start of day
     const due = startOfDay(parseISO(item.due_date)); // Reset time to start of day
-    const isPaid = item.payment_requests?.payment_id || item.payment_requests?.status === 'paid';
     
     let status;
     
@@ -213,3 +239,4 @@ export const formatPlanInstallments = (installmentData: any[]): PlanInstallment[
     };
   });
 };
+
