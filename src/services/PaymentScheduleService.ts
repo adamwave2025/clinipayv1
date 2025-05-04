@@ -674,13 +674,16 @@ export const reschedulePaymentPlan = async (
     const updateResults = await Promise.all(updatePromises);
     console.log('Update results:', updateResults);
     
+    // Determine the appropriate plan status based on payment history and due dates
+    const newStatus = await determinePlanStatus(planId, unpaidInstallments);
+    
     // Update the plan with the new start date and next due date
     const { error: planUpdateError } = await supabase
       .from('plans')
       .update({ 
         start_date: formatDateToYYYYMMDD(startDate),
         next_due_date: formatDateToYYYYMMDD(startDate),
-        status: 'active'
+        status: newStatus
       })
       .eq('id', planId);
       
@@ -696,6 +699,7 @@ export const reschedulePaymentPlan = async (
         installments_affected: unpaidInstallments.length,
         paid_installments_unaffected: paidInstallments.length,
         new_start_date: formatDateToYYYYMMDD(newStartDate),
+        new_status: newStatus,
         changes: changes
       },
       userId
@@ -1082,3 +1086,45 @@ export const recalculateAllPlanDueDates = async () => {
     return { success: false, error };
   }
 };
+
+/**
+ * Determines the appropriate plan status based on payment history and due dates
+ * @param planId The plan ID to check
+ * @param unpaidInstallments Array of unpaid installments
+ * @returns The appropriate status ('pending', 'active', or 'overdue')
+ */
+async function determinePlanStatus(planId: string, unpaidInstallments: any[]): Promise<string> {
+  // Count the number of paid installments for this plan
+  const { data: paidInstallmentsData, error: countError } = await supabase
+    .from('payment_schedule')
+    .select('id')
+    .eq('plan_id', planId)
+    .not('payment_requests.payment_id', 'is', null)
+    .order('payment_number', { ascending: true });
+    
+  if (countError) {
+    console.error('Error counting paid installments:', countError);
+    // Default to 'pending' if we can't determine
+    return 'pending';
+  }
+  
+  const paidCount = paidInstallmentsData?.length || 0;
+  
+  // Check if any installments are already overdue
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const hasOverduePayments = unpaidInstallments.some(installment => {
+    const dueDate = new Date(installment.due_date);
+    return dueDate < today;
+  });
+  
+  // Determine status based on payment history and overdue status
+  if (hasOverduePayments) {
+    return 'overdue';
+  } else if (paidCount > 0) {
+    return 'active';
+  } else {
+    return 'pending';
+  }
+}
