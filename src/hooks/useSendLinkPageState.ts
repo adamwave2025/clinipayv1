@@ -158,103 +158,61 @@ export function useSendLinkPageState() {
     setShowConfirmation(true);
   };
 
-  // Enhanced createOrGetPatient function with better error handling and verification
+  // Simplified function to create or get patient - focused on completion before returning
   const createOrGetPatient = async (): Promise<string | null> => {
-    // Prevent concurrent calls to patient creation
+    // If we already have a patient with an ID, return it immediately
+    if (selectedPatient?.id) {
+      console.log('Using existing selected patient:', selectedPatient.id);
+      return selectedPatient.id;
+    }
+    
+    // Prevent concurrent patient creation
     if (creatingPatientInProgress) {
-      console.log('Patient creation already in progress, waiting...');
-      // Wait a moment for the previous call to complete
-      await new Promise(resolve => setTimeout(resolve, 500));
-      // If we have a patient ID already, return it
-      if (selectedPatient?.id) {
-        console.log('Patient was created during wait period:', selectedPatient.id);
-        return selectedPatient.id;
-      }
+      toast.error('Patient creation already in progress');
+      return null;
     }
     
     setCreatingPatientInProgress(true);
-    console.log('Starting createOrGetPatient process');
+    const patientLoadingToast = toast.loading('Creating patient record...');
     
     try {
-      // Get the clinic id from the user
+      // Get the clinic ID first
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('clinic_id')
         .eq('id', (await supabase.auth.getUser()).data.user?.id)
         .single();
 
-      if (userError) {
-        console.error('Error getting clinic ID:', userError);
+      if (userError || !userData?.clinic_id) {
+        toast.dismiss(patientLoadingToast);
         toast.error('Could not determine clinic ID');
-        throw new Error('Could not determine clinic ID');
-      }
-
-      if (!userData?.clinic_id) {
-        console.error('No clinic_id found for user');
-        toast.error('No clinic associated with your account');
-        throw new Error('No clinic associated with this user');
+        return null;
       }
 
       const clinicId = userData.clinic_id;
-      console.log('Using clinic ID:', clinicId);
       
-      // If we have a selected patient, verify it's complete and return their ID
-      if (selectedPatient && selectedPatient.id) {
-        console.log('Using existing selected patient:', selectedPatient.id);
-        
-        // Verify that selectedPatient has all required properties
-        const requiredProps = ['id', 'name', 'email', 'phone', 'created_at', 'updated_at'];
-        const isMissingProps = requiredProps.some(prop => !(prop in selectedPatient));
-        
-        if (isMissingProps) {
-          console.log('Selected patient is missing properties, fetching complete patient record');
-          
-          // Fetch the complete patient record
-          const { data: completePatient, error: fetchError } = await supabase
-            .from('patients')
-            .select('*')
-            .eq('id', selectedPatient.id)
-            .single();
-            
-          if (fetchError) {
-            console.error('Error fetching complete patient record:', fetchError);
-            throw new Error('Could not get complete patient details');
-          }
-          
-          if (completePatient) {
-            // Update the selected patient with the complete record
-            setSelectedPatient(completePatient);
-          }
-        }
-        
-        return selectedPatient.id;
-      }
-      
-      // If we're creating a new patient, insert them into the database
+      // If we're creating a new patient, do that now - return early if we fail
       if (isCreatingNewPatient && formData.patientName && formData.patientEmail) {
         console.log('Creating new patient:', formData.patientName);
         
-        // Check if patient with this email already exists to prevent duplicates
-        const { data: existingPatient, error: lookupError } = await supabase
+        // Check for existing patient with this email
+        const { data: existingPatient } = await supabase
           .from('patients')
-          .select('*')  // Select all fields to ensure we have a complete patient record
+          .select('*')
           .eq('clinic_id', clinicId)
           .eq('email', formData.patientEmail)
           .maybeSingle();
         
-        if (lookupError) {
-          console.error('Error checking for existing patient:', lookupError);
-        }
-        
         if (existingPatient) {
           console.log('Found existing patient with same email:', existingPatient.id);
-          // Update selected patient reference with the complete Patient object
           setSelectedPatient(existingPatient);
           setIsCreatingNewPatient(false);
+          toast.dismiss(patientLoadingToast);
+          toast.success('Found existing patient record');
           return existingPatient.id;
         }
         
-        // Create the patient
+        // Create the new patient
         const { data: newPatient, error: patientError } = await supabase
           .from('patients')
           .insert({
@@ -263,61 +221,44 @@ export function useSendLinkPageState() {
             email: formData.patientEmail,
             phone: formData.patientPhone || null
           })
-          .select('*')  // Select all fields to get the complete patient record
+          .select('*')
           .single();
         
-        if (patientError) {
-          console.error('Error creating patient:', patientError);
+        if (patientError || !newPatient) {
+          toast.dismiss(patientLoadingToast);
           toast.error('Could not create new patient');
-          throw new Error(`Could not create new patient: ${patientError.message}`);
-        }
-        
-        if (!newPatient || !newPatient.id) {
-          console.error('Patient created but no ID returned');
-          toast.error('Patient creation failed');
-          throw new Error('Patient created but no ID returned');
+          return null;
         }
         
         console.log('Successfully created new patient with ID:', newPatient.id);
         
-        // Update selected patient and return ID
+        // Verify patient creation by fetching it again
+        const { data: verifiedPatient } = await supabase
+          .from('patients')
+          .select('*')
+          .eq('id', newPatient.id)
+          .single();
+          
+        if (!verifiedPatient) {
+          toast.dismiss(patientLoadingToast);
+          toast.error('Could not verify patient creation');
+          return null;
+        }
+        
+        // Update the selected patient state
         setSelectedPatient(newPatient);
         setIsCreatingNewPatient(false);
         
-        // Verify the patient was actually created in the database to prevent race conditions
-        let verificationAttempts = 0;
-        const maxVerificationAttempts = 3;
-        
-        while (verificationAttempts < maxVerificationAttempts) {
-          // Add a small delay to ensure DB consistency
-          await new Promise(resolve => setTimeout(resolve, 300));
-          
-          const { data: verifiedPatient, error: verifyError } = await supabase
-            .from('patients')
-            .select('*')
-            .eq('id', newPatient.id)
-            .single();
-            
-          if (verifiedPatient) {
-            console.log('Successfully verified patient creation:', verifiedPatient.id);
-            return verifiedPatient.id;
-          }
-          
-          console.log(`Verification attempt ${verificationAttempts + 1} failed, retrying...`);
-          verificationAttempts++;
-        }
-        
-        if (verificationAttempts >= maxVerificationAttempts) {
-          throw new Error('Could not verify patient creation after multiple attempts');
-        }
-        
+        toast.dismiss(patientLoadingToast);
+        toast.success('Patient created successfully');
         return newPatient.id;
       }
       
-      console.log('No patient created or selected');
+      toast.dismiss(patientLoadingToast);
       return null;
     } catch (error: any) {
       console.error('Error in createOrGetPatient:', error);
+      toast.dismiss(patientLoadingToast);
       toast.error(`Patient error: ${error.message}`);
       return null;
     } finally {
@@ -354,7 +295,6 @@ export function useSendLinkPageState() {
     return schedule;
   };
 
-  // Updated createPaymentRequest function with better error handling
   const createPaymentRequest = async (
     clinicId: string, 
     patientId: string | null, 
@@ -448,7 +388,7 @@ export function useSendLinkPageState() {
         // Create a new payment request
         paymentRequest = await createPaymentRequest(
           clinicId,
-          patientId,
+          patientId, // Using validated patientId
           selectedLink.id,
           `Payment ${paymentScheduleEntry.payment_number} of ${paymentScheduleEntry.total_payments} is due.`
         );
@@ -541,60 +481,39 @@ export function useSendLinkPageState() {
     }
   };
 
-  const handleSchedulePaymentPlan = async () => {
-    // Prevent multiple form submissions
+  // Simplified handleSchedulePaymentPlan that assumes patient is already created
+  const handleSchedulePaymentPlan = async (patientId: string) => {
     if (isSchedulingPlan) {
       console.log('Schedule already in progress, preventing duplicate submission');
       return { success: false };
     }
 
-    // Create a loading toast that we can update later
-    const loadingToastId = toast.loading('Creating patient record and scheduling plan...');
+    const loadingToastId = toast.loading('Scheduling payment plan...');
 
     try {
       setIsSchedulingPlan(true);
-      console.log('Starting payment plan scheduling process');
+      console.log('Starting payment plan scheduling with patient ID:', patientId);
       
       const selectedLink = [...regularLinks, ...paymentPlans].find(link => link.id === formData.selectedLink);
       
       if (!selectedLink || !selectedLink.paymentPlan || !selectedLink.paymentCount) {
         console.error('Invalid payment plan selected:', selectedLink);
+        toast.dismiss(loadingToastId);
         toast.error('Invalid payment plan selected');
         setIsSchedulingPlan(false);
         return { success: false };
       }
 
-      console.log('Selected payment plan:', selectedLink);
-
-      // Create or get patient ID first - CRITICAL STEP
-      console.log('Creating or getting patient...');
-      toast.dismiss(loadingToastId);
-      const patientCreationToastId = toast.loading('Creating or updating patient record...');
-      
-      const patientId = await createOrGetPatient();
-      toast.dismiss(patientCreationToastId);
-      
-      if (!patientId) {
-        console.error('Could not obtain valid patient ID');
-        toast.error('Could not create or find patient record');
-        setIsSchedulingPlan(false);
-        return { success: false };
-      }
-
-      console.log('Using patient ID:', patientId);
-      const planCreationToastId = toast.loading('Setting up payment plan...');
-
-      // Get the clinic id from the user
+      // Get the clinic id from the user - we know patient ID is valid now
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('clinic_id')
         .eq('id', (await supabase.auth.getUser()).data.user?.id)
         .single();
 
-      if (userError) {
-        console.error('Error getting clinic ID:', userError);
-        toast.dismiss(planCreationToastId);
-        toast.error('Failed to schedule payment plan');
+      if (userError || !userData?.clinic_id) {
+        toast.dismiss(loadingToastId);
+        toast.error('Failed to get clinic information');
         setIsSchedulingPlan(false);
         return { success: false };
       }
@@ -617,9 +536,8 @@ export function useSendLinkPageState() {
         .single();
 
       if (clinicError) {
-        console.error('Error getting clinic data:', clinicError);
-        toast.dismiss(planCreationToastId);
-        toast.error('Failed to schedule payment plan');
+        toast.dismiss(loadingToastId);
+        toast.error('Failed to get clinic information');
         setIsSchedulingPlan(false);
         return { success: false };
       }
@@ -641,11 +559,11 @@ export function useSendLinkPageState() {
       let firstPaymentRequest = null;
       if (isFirstPaymentToday) {
         try {
-          toast.dismiss(planCreationToastId);
+          toast.dismiss(loadingToastId);
           const firstPaymentToastId = toast.loading('Creating first payment request...');
           firstPaymentRequest = await createPaymentRequest(
             clinicId,
-            patientId, // Using validated patientId
+            patientId,
             selectedLink.id,
             `Payment 1 of ${selectedLink.paymentCount} is due.`
           );
@@ -653,20 +571,17 @@ export function useSendLinkPageState() {
           console.log('Created first payment request for today:', firstPaymentRequest.id);
         } catch (reqError: any) {
           console.error('Error creating first payment request:', reqError);
-          // Continue with scheduling even if the request creation fails
           toast.warning('Could not create first payment notification, but will continue scheduling plan');
         }
       }
       
       // Create a new plan record in the plans table
       const totalAmount = selectedLink.amount * selectedLink.paymentCount;
-      
-      // IMPORTANT: Set the next_due_date to the first payment's due date
       const firstPaymentDueDate = schedule[0].due_date;
       
-      toast.dismiss(planCreationToastId);
+      toast.dismiss(loadingToastId);
       const finalToastId = toast.loading('Finalizing payment plan...');
-      console.log('Creating plan record in database...');
+      
       const { data: planData, error: planError } = await supabase
         .from('plans')
         .insert({
@@ -683,36 +598,26 @@ export function useSendLinkPageState() {
           payment_frequency: selectedLink.paymentCycle || 'monthly',
           progress: 0,
           start_date: format(formData.startDate, 'yyyy-MM-dd'),
-          next_due_date: firstPaymentDueDate, // Set next_due_date to the first payment's due date
+          next_due_date: firstPaymentDueDate,
           created_by: (await supabase.auth.getUser()).data.user?.id
         })
         .select()
         .single();
 
-      if (planError) {
-        console.error('Error creating payment plan:', planError);
+      if (planError || !planData) {
         toast.dismiss(finalToastId);
-        toast.error(`Failed to create payment plan: ${planError.message}`);
+        toast.error('Failed to create payment plan');
         setIsSchedulingPlan(false);
         return { success: false };
       }
 
       console.log('Created plan record:', planData);
       
-      if (!planData || !planData.id) {
-        console.error('Plan created but no ID returned');
-        toast.dismiss(finalToastId);
-        toast.error('Payment plan creation failed');
-        setIsSchedulingPlan(false);
-        return { success: false };
-      }
-      
       // Create a timestamp to identify this batch of schedule entries
       const batchCreationTime = new Date().toISOString();
       
       // Create schedule entries
       const scheduleEntries = schedule.map((entry, index) => {
-        // The first payment should be marked as 'sent' and linked to the payment request if it's due today
         const isFirst = index === 0;
         const status = (isFirst && isFirstPaymentToday) ? 'sent' : 'pending';
         
@@ -720,7 +625,7 @@ export function useSendLinkPageState() {
           clinic_id: clinicId,
           patient_id: patientId,
           payment_link_id: selectedLink.id,
-          plan_id: planData.id, // Link to the new plan
+          plan_id: planData.id,
           payment_request_id: (isFirst && isFirstPaymentToday && firstPaymentRequest) ? firstPaymentRequest.id : null,
           amount: entry.amount,
           due_date: entry.due_date,
@@ -733,16 +638,14 @@ export function useSendLinkPageState() {
         };
       });
 
-      console.log('Creating payment schedule entries...');
       // Insert all schedule entries
       const { error: scheduleError } = await supabase
         .from('payment_schedule')
         .insert(scheduleEntries);
 
       if (scheduleError) {
-        console.error('Error creating payment schedule:', scheduleError);
         toast.dismiss(finalToastId);
-        toast.error(`Failed to schedule payment plan: ${scheduleError.message}`);
+        toast.error('Failed to schedule payment plan');
         setIsSchedulingPlan(false);
         return { success: false };
       }
@@ -750,9 +653,9 @@ export function useSendLinkPageState() {
       // Record the "Plan Created" activity
       try {
         await recordPaymentPlanActivity(
-          planData.id,  // Use plan ID as first parameter
-          'create',     // Action type as second parameter
-          {             // Details as third parameter
+          planData.id,
+          'create',
+          {
             start_date: format(formData.startDate, 'yyyy-MM-dd'),
             installments: selectedLink.paymentCount,
             frequency: selectedLink.paymentCycle || 'monthly',
@@ -764,14 +667,14 @@ export function useSendLinkPageState() {
         );
       } catch (activityError: any) {
         console.error('Error recording plan activity:', activityError);
-        // Non-critical error, continue without failing
       }
 
-      // If the first payment is due today, send it immediately using the existing request ID
+      // If the first payment is due today, send it immediately
       if (isFirstPaymentToday && firstPaymentRequest) {
         toast.dismiss(finalToastId);
         const sendPaymentToastId = toast.loading('Sending first payment notification...');
         const firstPayment = schedule[0];
+        
         try {
           const sentSuccessfully = await sendImmediatePayment(
             firstPayment,
@@ -779,7 +682,7 @@ export function useSendLinkPageState() {
             patientId,
             selectedLink,
             formattedAddress,
-            firstPaymentRequest.id // Pass the existing payment request ID
+            firstPaymentRequest.id
           );
           
           toast.dismiss(sendPaymentToastId);
@@ -789,7 +692,6 @@ export function useSendLinkPageState() {
             toast.success('Payment plan scheduled, but there was an issue sending the first payment');
           }
         } catch (sendError: any) {
-          console.error('Error sending immediate payment:', sendError);
           toast.dismiss(sendPaymentToastId);
           toast.success('Payment plan scheduled successfully, but first payment notification failed');
         }
@@ -800,31 +702,40 @@ export function useSendLinkPageState() {
 
       resetForm();
       setShowConfirmation(false);
-      setIsSchedulingPlan(false);
       return { success: true };
     } catch (error: any) {
       console.error('Error scheduling payment plan:', error);
       toast.dismiss(loadingToastId);
       toast.error(`Failed to schedule payment plan: ${error.message}`);
-      setIsSchedulingPlan(false);
       return { success: false };
+    } finally {
+      setIsSchedulingPlan(false);
     }
   };
 
+  // Modified to handle the patient creation process first, then payment operations
   const handleSendPaymentLink = async () => {
-    if (isPaymentPlan) {
-      await handleSchedulePaymentPlan();
-    } else {
-      // For regular payment links, create patient first if needed
-      if (isCreatingNewPatient) {
-        const patientId = await createOrGetPatient();
-        if (!patientId) {
-          toast.error('Could not create patient record');
-          return;
-        }
+    // Step 1: Create or get the patient first
+    let patientId: string | null = null;
+    
+    // If we need to create a patient or verify their ID
+    if (isCreatingNewPatient || !selectedPatient?.id) {
+      patientId = await createOrGetPatient();
+      if (!patientId) {
+        toast.error('Could not create or find patient record');
+        return;
       }
-      
-      // Use existing functionality for regular payment links
+    } else if (selectedPatient?.id) {
+      // We already have a valid patient ID
+      patientId = selectedPatient.id;
+    }
+    
+    // Step 2: Now that we have a valid patient ID, proceed with the appropriate action
+    if (isPaymentPlan) {
+      // For payment plans, call the schedule function with the patient ID
+      await handleSchedulePaymentPlan(patientId);
+    } else {
+      // For regular payment links, use existing functionality
       const result = await sendPaymentLink({ 
         formData, 
         paymentLinks: [...regularLinks, ...paymentPlans] 
@@ -832,7 +743,7 @@ export function useSendLinkPageState() {
       
       if (result.success) {
         resetForm();
-        setShowConfirmation(false); // Close the dialog after successful submission
+        setShowConfirmation(false);
       }
     }
   };
