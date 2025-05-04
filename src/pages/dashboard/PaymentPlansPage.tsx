@@ -34,6 +34,9 @@ const PaymentPlansPage = () => {
     handleViewActivePlansClick
   } = usePaymentPlans();
 
+  // Add status filter state
+  const [statusFilter, setStatusFilter] = React.useState('all');
+
   const handleCreatePlanClick = () => {
     navigate('/dashboard/create-link');
   };
@@ -69,6 +72,8 @@ const PaymentPlansPage = () => {
         <PaymentPlanFilters 
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
         />
         
         {/* Plans Table */}
