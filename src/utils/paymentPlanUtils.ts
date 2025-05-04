@@ -78,6 +78,9 @@ const findNextDueDate = (entries: PaymentScheduleItem[]): string | null => {
 /**
  * Group payment schedules by plan
  * This is for backwards compatibility with code that still uses the old grouping method
+ * 
+ * NOTE: The database stores monetary values in cents (1/100 of currency unit)
+ * So we need to divide by 100 when formatting amounts for display
  */
 export const groupPaymentSchedulesByPlan = (scheduleData: PaymentScheduleItem[]): Map<string, Plan> => {
   const plans = new Map<string, Plan>();
@@ -106,7 +109,7 @@ export const groupPaymentSchedulesByPlan = (scheduleData: PaymentScheduleItem[])
       title: firstEntry.payment_links?.title || 'Payment Plan',
       status: 'pending',
       totalAmount: 0,
-      installmentAmount: firstEntry.amount || 0,
+      installmentAmount: (firstEntry.amount || 0) / 100, // Convert cents to standard currency units
       totalInstallments: firstEntry.total_payments || 0,
       paidInstallments: 0,
       progress: 0,
@@ -156,11 +159,11 @@ export const groupPaymentSchedulesByPlan = (scheduleData: PaymentScheduleItem[])
     
     // Update total amount if available from payment_links
     if (firstEntry.payment_links?.plan_total_amount) {
-      plan.totalAmount = firstEntry.payment_links.plan_total_amount;
-      plan.amount = firstEntry.payment_links.plan_total_amount; // For backwards compatibility
+      plan.totalAmount = firstEntry.payment_links.plan_total_amount / 100; // Convert cents to standard currency units
+      plan.amount = firstEntry.payment_links.plan_total_amount / 100; // For backwards compatibility
     } else {
-      plan.totalAmount = (firstEntry.amount || 0) * (firstEntry.total_payments || 1);
-      plan.amount = (firstEntry.amount || 0) * (firstEntry.total_payments || 1);
+      plan.totalAmount = ((firstEntry.amount || 0) * (firstEntry.total_payments || 1)) / 100; // Convert cents to standard currency units
+      plan.amount = ((firstEntry.amount || 0) * (firstEntry.total_payments || 1)) / 100; // For backwards compatibility
     }
     
     // Update progress
@@ -196,7 +199,7 @@ export const groupPaymentSchedulesByPlan = (scheduleData: PaymentScheduleItem[])
       title: entry.payment_links?.title || 'Payment Plan',
       status: 'pending',
       totalAmount: 0,
-      installmentAmount: entry.amount || 0,
+      installmentAmount: (entry.amount || 0) / 100, // Convert cents to standard currency units
       totalInstallments: entry.total_payments || 0,
       paidInstallments: 0,
       progress: 0,
@@ -243,11 +246,11 @@ export const groupPaymentSchedulesByPlan = (scheduleData: PaymentScheduleItem[])
     
     // Update total amount if available from payment_links
     if (entry.payment_links?.plan_total_amount) {
-      plan.totalAmount = entry.payment_links.plan_total_amount;
-      plan.amount = entry.payment_links.plan_total_amount; // For backwards compatibility
+      plan.totalAmount = entry.payment_links.plan_total_amount / 100; // Convert cents to standard currency units
+      plan.amount = entry.payment_links.plan_total_amount / 100; // For backwards compatibility
     } else {
-      plan.totalAmount = (entry.amount || 0) * (entry.total_payments || 1);
-      plan.amount = (entry.amount || 0) * (entry.total_payments || 1);
+      plan.totalAmount = ((entry.amount || 0) * (entry.total_payments || 1)) / 100; // Convert cents to standard currency units
+      plan.amount = ((entry.amount || 0) * (entry.total_payments || 1)) / 100; // For backwards compatibility
     }
     
     // Update progress
@@ -304,7 +307,7 @@ export const formatPlanInstallments = (installmentData: any[]): PlanInstallment[
     return {
       id: item.id,
       dueDate,
-      amount: item.amount,
+      amount: (item.amount || 0) / 100, // Convert cents to standard currency units
       status,
       paidDate,
       paymentNumber: item.payment_number,

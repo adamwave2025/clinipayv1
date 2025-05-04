@@ -51,8 +51,8 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
       title: dbPlan.title || 'Payment Plan',
       description: dbPlan.description || '',
       status: dbPlan.status,
-      totalAmount: dbPlan.total_amount || 0,
-      installmentAmount: dbPlan.installment_amount || 0,
+      totalAmount: (dbPlan.total_amount || 0) / 100, // Convert cents to standard currency units
+      installmentAmount: (dbPlan.installment_amount || 0) / 100, // Convert cents to standard currency units
       totalInstallments: dbPlan.total_installments,
       paidInstallments: dbPlan.paid_installments || 0,
       progress: dbPlan.progress || 0,
@@ -64,7 +64,7 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
       updatedAt: dbPlan.updated_at,
       // Set backward compatibility fields
       planName: dbPlan.title || 'Payment Plan',
-      amount: dbPlan.total_amount || 0
+      amount: (dbPlan.total_amount || 0) / 100 // Convert cents to standard currency units
     };
   }
   
@@ -78,8 +78,8 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
     title: dbPlan.title || 'Payment Plan',
     description: dbPlan.description || '',
     status: dbPlan.status,
-    totalAmount: dbPlan.total_amount || 0,
-    installmentAmount: dbPlan.installment_amount || 0,
+    totalAmount: (dbPlan.total_amount || 0) / 100, // Convert cents to standard currency units
+    installmentAmount: (dbPlan.installment_amount || 0) / 100, // Convert cents to standard currency units
     totalInstallments: dbPlan.total_installments,
     paidInstallments: dbPlan.paid_installments || 0,
     progress: dbPlan.progress || 0,
@@ -91,6 +91,6 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
     updatedAt: dbPlan.updated_at,
     // Set backward compatibility fields
     planName: dbPlan.title || 'Payment Plan',
-    amount: dbPlan.total_amount || 0
+    amount: (dbPlan.total_amount || 0) / 100 // Convert cents to standard currency units
   };
 };
