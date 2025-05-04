@@ -45,9 +45,9 @@ export function useCreateLinkForm({
   const [formData, setFormData] = useState<LinkFormData>({
     paymentTitle: '',
     amount: '',
-    paymentType: 'deposit',
+    paymentType: 'payment_plan',
     description: '',
-    paymentPlan: false,
+    paymentPlan: true,
     paymentCount: '',
     paymentCycle: 'monthly',
   });

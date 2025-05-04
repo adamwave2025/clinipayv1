@@ -77,10 +77,10 @@ const LinkFormFields: React.FC<LinkFormFieldsProps> = ({
             <SelectValue placeholder="Select payment type" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="payment_plan">Payment Plan</SelectItem>
             <SelectItem value="deposit">Deposit</SelectItem>
             <SelectItem value="treatment">Treatment</SelectItem>
             <SelectItem value="consultation">Consultation</SelectItem>
-            <SelectItem value="payment_plan">Payment Plan</SelectItem>
             <SelectItem value="other">Other</SelectItem>
           </SelectContent>
         </Select>
