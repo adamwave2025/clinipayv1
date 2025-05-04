@@ -1,3 +1,4 @@
+
 import { format, parseISO, isAfter, startOfDay } from 'date-fns';
 import { Plan } from './planTypes';
 
@@ -60,6 +61,21 @@ const isPlanInstallmentPaid = (entry: PaymentScheduleItem): boolean => {
 };
 
 /**
+ * Find the next unpaid due date from a list of schedule entries
+ * Returns the earliest unpaid due date, or null if all are paid
+ */
+const findNextDueDate = (entries: PaymentScheduleItem[]): string | null => {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  
+  const unpaidEntries = entries
+    .filter(entry => !isPlanInstallmentPaid(entry))
+    .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+    
+  return unpaidEntries.length > 0 ? unpaidEntries[0].due_date : null;
+};
+
+/**
  * Group payment schedules by plan
  * This is for backwards compatibility with code that still uses the old grouping method
  */
@@ -114,18 +130,18 @@ export const groupPaymentSchedulesByPlan = (scheduleData: PaymentScheduleItem[])
       if (isPlanInstallmentPaid(entry)) {
         plan.paidInstallments++;
       }
-      
-      // Get next unpaid due date
-      if (!isPlanInstallmentPaid(entry) && (!plan.nextDueDate || new Date(entry.due_date) < new Date(plan.nextDueDate))) {
-        plan.nextDueDate = entry.due_date;
-      }
-      
-      // Check for overdue payments
-      const now = new Date();
-      if (!isPlanInstallmentPaid(entry) && new Date(entry.due_date) < now) {
-        plan.hasOverduePayments = true;
-      }
     });
+    
+    // Find next due date from the unpaid entries
+    plan.nextDueDate = findNextDueDate(entries);
+    
+    // Check for overdue payments
+    const now = new Date();
+    const hasOverdue = entries.some(e => 
+      !isPlanInstallmentPaid(e) && 
+      new Date(e.due_date) < now
+    );
+    plan.hasOverduePayments = hasOverdue;
     
     // Update plan status
     if (entries.some(e => e.status === 'cancelled')) {

@@ -388,7 +388,10 @@ export const pausePaymentPlan = async (planId: string, userId?: string) => {
     // Also update the plan status to paused
     const { error: planUpdateError } = await supabase
       .from('plans')
-      .update({ status: 'paused' })
+      .update({ 
+        status: 'paused',
+        next_due_date: null // Clear next_due_date when plan is paused
+      })
       .eq('id', planId);
       
     if (planUpdateError) {
@@ -859,6 +862,9 @@ export const recordPaymentRefund = async (
               status: planData.progress === 100 ? 'active' : undefined
             })
             .eq('id', scheduleEntry.plan_id);
+            
+          // Update the next_due_date as well
+          await updatePlanNextDueDate(scheduleEntry.plan_id);
         }
       }
     }
@@ -955,5 +961,124 @@ export const fetchPlans = async (userId: string) => {
   } catch (error) {
     console.error('Error in fetchPlans:', error);
     return [];
+  }
+};
+
+/**
+ * Update the next_due_date for a plan based on the payment schedule
+ * @param planId The ID of the plan to update
+ * @returns {Promise<boolean>} Success status
+ */
+export const updatePlanNextDueDate = async (planId: string): Promise<boolean> => {
+  try {
+    // Get all installments for the plan, sorted by due_date
+    const { data: installments, error: fetchError } = await supabase
+      .from('payment_schedule')
+      .select(`
+        id, 
+        due_date, 
+        status, 
+        payment_request_id,
+        payment_requests (
+          payment_id,
+          status,
+          paid_at
+        )
+      `)
+      .eq('plan_id', planId)
+      .order('due_date', { ascending: true });
+      
+    if (fetchError) {
+      console.error('Error fetching installments:', fetchError);
+      return false;
+    }
+    
+    if (!installments || installments.length === 0) {
+      console.log('No installments found for plan:', planId);
+      return false;
+    }
+    
+    // Find the next unpaid installment
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Reset time to start of day
+    
+    // Helper function to determine if an installment has been paid
+    const isPaid = (item: any) => {
+      return (item.status === 'sent' || item.status === 'processed' || item.status === 'paid') && 
+             item.payment_request_id !== null && 
+             item.payment_requests !== null &&
+             item.payment_requests.payment_id !== null;
+    };
+    
+    // Find unpaid installments
+    const unpaidInstallments = installments
+      .filter(item => !isPaid(item) && item.status !== 'cancelled' && item.status !== 'paused')
+      .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+    
+    // If all installments are paid, there's no next due date
+    if (unpaidInstallments.length === 0) {
+      // All paid or cancelled, update plan with null next_due_date
+      const { error: updateError } = await supabase
+        .from('plans')
+        .update({ next_due_date: null })
+        .eq('id', planId);
+        
+      if (updateError) {
+        console.error('Error updating plan next_due_date to null:', updateError);
+        return false;
+      }
+      
+      return true;
+    }
+    
+    // Get the earliest unpaid installment
+    const nextInstallment = unpaidInstallments[0];
+    const nextDueDate = nextInstallment.due_date;
+    
+    // Update the plan with the new next_due_date
+    const { error: updateError } = await supabase
+      .from('plans')
+      .update({ next_due_date: nextDueDate })
+      .eq('id', planId);
+      
+    if (updateError) {
+      console.error('Error updating plan next_due_date:', updateError);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error updating plan next_due_date:', error);
+    return false;
+  }
+};
+
+// Add function to recalculate next due dates for existing plans
+export const recalculateAllPlanDueDates = async () => {
+  try {
+    // Fetch all active plans
+    const { data: plans, error: planError } = await supabase
+      .from('plans')
+      .select('id')
+      .in('status', ['active', 'pending', 'overdue']);
+      
+    if (planError) {
+      console.error('Error fetching plans for recalculation:', planError);
+      return { success: false };
+    }
+    
+    if (!plans || plans.length === 0) {
+      console.log('No plans found for recalculation');
+      return { success: true, count: 0 };
+    }
+    
+    // Update each plan's next_due_date
+    const updatePromises = plans.map(plan => updatePlanNextDueDate(plan.id));
+    await Promise.all(updatePromises);
+    
+    return { success: true, count: plans.length };
+  } catch (error) {
+    console.error('Error recalculating plan due dates:', error);
+    return { success: false, error };
   }
 };

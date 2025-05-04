@@ -1,3 +1,4 @@
+
 // Define a proper Plan type mapped to our database schema
 export interface Plan {
   id: string;
@@ -57,7 +58,7 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
       progress: dbPlan.progress || 0,
       paymentFrequency: dbPlan.payment_frequency,
       startDate: dbPlan.start_date,
-      nextDueDate: dbPlan.next_due_date,
+      nextDueDate: dbPlan.next_due_date || null,
       hasOverduePayments: dbPlan.has_overdue_payments || false,
       createdAt: dbPlan.created_at,
       updatedAt: dbPlan.updated_at,
@@ -84,7 +85,7 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
     progress: dbPlan.progress || 0,
     paymentFrequency: dbPlan.payment_frequency,
     startDate: dbPlan.start_date,
-    nextDueDate: dbPlan.next_due_date,
+    nextDueDate: dbPlan.next_due_date || null,
     hasOverduePayments: dbPlan.has_overdue_payments || false,
     createdAt: dbPlan.created_at,
     updatedAt: dbPlan.updated_at,

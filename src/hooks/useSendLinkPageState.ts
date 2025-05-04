@@ -443,6 +443,10 @@ export function useSendLinkPageState() {
       
       // Create a new plan record in the plans table
       const totalAmount = selectedLink.amount * selectedLink.paymentCount;
+      
+      // IMPORTANT: Set the next_due_date to the first payment's due date
+      const firstPaymentDueDate = schedule[0].due_date;
+      
       const { data: planData, error: planError } = await supabase
         .from('plans')
         .insert({
@@ -459,6 +463,7 @@ export function useSendLinkPageState() {
           payment_frequency: selectedLink.paymentCycle || 'monthly',
           progress: 0,
           start_date: format(formData.startDate, 'yyyy-MM-dd'),
+          next_due_date: firstPaymentDueDate, // Set next_due_date to the first payment's due date
           created_by: (await supabase.auth.getUser()).data.user?.id
         })
         .select()

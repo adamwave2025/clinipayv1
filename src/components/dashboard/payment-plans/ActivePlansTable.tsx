@@ -13,6 +13,7 @@ import { Plus } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import StatusBadge from '@/components/common/StatusBadge';
+import { format } from 'date-fns';
 
 interface ActivePlansTableProps {
   isLoading: boolean;
@@ -28,6 +29,16 @@ const ActivePlansTable = ({
   onViewPlanDetails 
 }: ActivePlansTableProps) => {
   const navigate = useNavigate();
+  
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '-';
+    try {
+      return format(new Date(dateString), 'dd/MM/yyyy');
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '-';
+    }
+  };
   
   return (
     <Card>
@@ -89,7 +100,7 @@ const ActivePlansTable = ({
                     <StatusBadge status={plan.status} />
                   </TableCell>
                   <TableCell>
-                    {plan.nextDueDate ? new Date(plan.nextDueDate).toLocaleDateString() : '-'}
+                    {formatDate(plan.nextDueDate)}
                   </TableCell>
                 </TableRow>
               ))}
