@@ -28,12 +28,12 @@ export const getClinicItems = (): SidebarItem[] => [
     links: [
       {
         to: '/dashboard/create-link',
-        label: 'Create Payment',
+        label: 'Create Payment / Plan',
         icon: <LinkIcon className="w-5 h-5" />
       },
       {
         to: '/dashboard/send-link',
-        label: 'Request Payment',
+        label: 'Request Payment / Plan',
         icon: <Send className="w-5 h-5" />
       },
       {
@@ -77,3 +77,4 @@ export const getAdminLinks = (): SidebarLink[] => [
     icon: <Settings className="w-5 h-5" /> 
   },
 ];
+
