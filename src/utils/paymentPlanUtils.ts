@@ -1,4 +1,3 @@
-
 import { format, parseISO, isAfter, startOfDay } from 'date-fns';
 import { Plan } from './planTypes';
 
@@ -12,6 +11,7 @@ export interface PaymentScheduleItem {
   total_payments: number;
   status: string;
   payment_request_id?: string;
+  plan_id?: string; // Added to link schedule entries to plans
   created_at?: string; 
   payment_requests?: {
     id: string;
@@ -42,6 +42,7 @@ export interface PlanInstallment {
   paymentNumber: number;
   totalPayments: number;
   paymentRequestId?: string;
+  planId?: string;
 }
 
 /**
@@ -65,16 +66,113 @@ const isPlanInstallmentPaid = (entry: PaymentScheduleItem): boolean => {
 export const groupPaymentSchedulesByPlan = (scheduleData: PaymentScheduleItem[]): Map<string, Plan> => {
   const plans = new Map<string, Plan>();
   
+  // First try to group by plan_id if available
+  const planGroups = new Map<string, PaymentScheduleItem[]>();
   scheduleData.forEach(entry => {
-    // Skip entries without patient_id or payment_link_id
-    if (!entry.patient_id || !entry.payment_link_id) return;
+    if (entry.plan_id) {
+      const items = planGroups.get(entry.plan_id) || [];
+      items.push(entry);
+      planGroups.set(entry.plan_id, items);
+    }
+  });
+  
+  // Process existing plan IDs first
+  planGroups.forEach((entries, planId) => {
+    if (entries.length === 0) return;
+    
+    const firstEntry = entries[0];
+    const plan: Plan = {
+      id: planId,
+      patientId: firstEntry.patient_id || '',
+      patientName: firstEntry.patients?.name || 'Unknown Patient',
+      clinicId: '', // Will be set from the patient record if needed
+      paymentLinkId: firstEntry.payment_link_id,
+      title: firstEntry.payment_links?.title || 'Payment Plan',
+      status: 'pending',
+      totalAmount: 0,
+      installmentAmount: firstEntry.amount || 0,
+      totalInstallments: firstEntry.total_payments || 0,
+      paidInstallments: 0,
+      progress: 0,
+      paymentFrequency: '',
+      startDate: '',
+      nextDueDate: null,
+      hasOverduePayments: false,
+      // Backward compatibility fields
+      planName: firstEntry.payment_links?.title || 'Payment Plan',
+      amount: 0
+    };
+    
+    // Process entries for this plan
+    entries.forEach(entry => {
+      // Calculate first payment and next due date
+      if (!plan.startDate || new Date(entry.due_date) < new Date(plan.startDate)) {
+        plan.startDate = entry.due_date;
+      }
+      
+      // Count paid installments and update status
+      if (isPlanInstallmentPaid(entry)) {
+        plan.paidInstallments++;
+      }
+      
+      // Get next unpaid due date
+      if (!isPlanInstallmentPaid(entry) && (!plan.nextDueDate || new Date(entry.due_date) < new Date(plan.nextDueDate))) {
+        plan.nextDueDate = entry.due_date;
+      }
+      
+      // Check for overdue payments
+      const now = new Date();
+      if (!isPlanInstallmentPaid(entry) && new Date(entry.due_date) < now) {
+        plan.hasOverduePayments = true;
+      }
+    });
+    
+    // Update plan status
+    if (entries.some(e => e.status === 'cancelled')) {
+      plan.status = 'cancelled';
+    } else if (entries.some(e => e.status === 'paused')) {
+      plan.status = 'paused';
+    } else if (plan.hasOverduePayments) {
+      plan.status = 'overdue';
+    } else if (plan.paidInstallments > 0) {
+      plan.status = 'active';
+    }
+    
+    // Update total amount if available from payment_links
+    if (firstEntry.payment_links?.plan_total_amount) {
+      plan.totalAmount = firstEntry.payment_links.plan_total_amount;
+      plan.amount = firstEntry.payment_links.plan_total_amount; // For backwards compatibility
+    } else {
+      plan.totalAmount = (firstEntry.amount || 0) * (firstEntry.total_payments || 1);
+      plan.amount = (firstEntry.amount || 0) * (firstEntry.total_payments || 1);
+    }
+    
+    // Update progress
+    plan.progress = Math.floor((plan.paidInstallments / plan.totalInstallments) * 100) || 0;
+    
+    // If all installments are paid, mark as completed
+    if (plan.paidInstallments === plan.totalInstallments) {
+      plan.status = 'completed';
+    }
+    
+    // Update the plan in the map
+    plans.set(planId, plan);
+  });
+  
+  // Handle legacy entries without plan_id (backward compatibility)
+  scheduleData.forEach(entry => {
+    // Skip entries without patient_id or payment_link_id or if already processed with plan_id
+    if (!entry.patient_id || !entry.payment_link_id || entry.plan_id) return;
     
     // Create a unique key for this plan
-    const planId = `${entry.patient_id}_${entry.payment_link_id}`;
+    const legacyPlanId = `${entry.patient_id}_${entry.payment_link_id}`;
+    
+    // Skip if we already have this plan from plan_id grouping
+    if (plans.has(legacyPlanId)) return;
     
     // Get existing plan or create a new one
-    let plan = plans.get(planId) || {
-      id: planId,
+    let plan = plans.get(legacyPlanId) || {
+      id: legacyPlanId,
       patientId: entry.patient_id,
       patientName: entry.patients?.name || 'Unknown Patient',
       clinicId: '', // Will be set from the patient record if needed
@@ -145,7 +243,7 @@ export const groupPaymentSchedulesByPlan = (scheduleData: PaymentScheduleItem[])
     }
     
     // Update the plan in the map
-    plans.set(planId, plan);
+    plans.set(legacyPlanId, plan);
   });
   
   return plans;
@@ -195,7 +293,8 @@ export const formatPlanInstallments = (installmentData: any[]): PlanInstallment[
       paidDate,
       paymentNumber: item.payment_number,
       totalPayments: item.total_payments,
-      paymentRequestId: item.payment_request_id
+      paymentRequestId: item.payment_request_id,
+      planId: item.plan_id
     };
   });
 };

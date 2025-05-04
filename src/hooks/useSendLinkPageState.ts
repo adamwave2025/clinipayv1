@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Patient } from '@/hooks/usePatients';
 import { PaymentLink } from '@/types/payment';
@@ -441,6 +442,38 @@ export function useSendLinkPageState() {
         }
       }
       
+      // Create a new plan record in the plans table
+      const totalAmount = selectedLink.amount * selectedLink.paymentCount;
+      const { data: planData, error: planError } = await supabase
+        .from('plans')
+        .insert({
+          clinic_id: clinicId,
+          patient_id: selectedPatient?.id || null,
+          payment_link_id: selectedLink.id,
+          title: selectedLink.title || 'Payment Plan',
+          description: selectedLink.description,
+          status: 'pending',
+          total_amount: totalAmount,
+          installment_amount: selectedLink.amount,
+          total_installments: selectedLink.paymentCount,
+          paid_installments: 0,
+          payment_frequency: selectedLink.paymentCycle || 'monthly',
+          progress: 0,
+          start_date: format(formData.startDate, 'yyyy-MM-dd'),
+          created_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .select()
+        .single();
+
+      if (planError) {
+        console.error('Error creating payment plan:', planError);
+        toast.error('Failed to create payment plan');
+        setIsSchedulingPlan(false);
+        return { success: false };
+      }
+
+      console.log('Created plan record:', planData);
+      
       // Create a timestamp to identify this batch of schedule entries
       const batchCreationTime = new Date().toISOString();
       
@@ -448,12 +481,13 @@ export function useSendLinkPageState() {
       const scheduleEntries = schedule.map((entry, index) => {
         // The first payment should be marked as 'sent' and linked to the payment request if it's due today
         const isFirst = index === 0;
-        const status = (isFirst && isFirstPaymentToday) ? 'sent' : 'pending'; // CHANGED: Using 'sent' status instead of 'processed'
+        const status = (isFirst && isFirstPaymentToday) ? 'sent' : 'pending';
         
         return {
           clinic_id: clinicId,
-          patient_id: selectedPatient?.id,
+          patient_id: selectedPatient?.id || null,
           payment_link_id: selectedLink.id,
+          plan_id: planData.id, // Link to the new plan
           payment_request_id: (isFirst && isFirstPaymentToday && firstPaymentRequest) ? firstPaymentRequest.id : null,
           amount: entry.amount,
           due_date: entry.due_date,
@@ -461,8 +495,8 @@ export function useSendLinkPageState() {
           total_payments: entry.total_payments,
           payment_frequency: entry.payment_frequency,
           status: status,
-          created_at: batchCreationTime, // Add the same timestamp to all entries in this batch
-          updated_at: batchCreationTime  // Add the same timestamp to all entries in this batch
+          created_at: batchCreationTime,
+          updated_at: batchCreationTime
         };
       });
 
@@ -479,7 +513,6 @@ export function useSendLinkPageState() {
       }
 
       // Record the "Plan Created" activity
-      const userId = (await supabase.auth.getUser()).data.user?.id;
       await recordPaymentPlanActivity(
         selectedPatient?.id || null,
         selectedLink.id,
@@ -489,7 +522,7 @@ export function useSendLinkPageState() {
           start_date: format(formData.startDate, 'yyyy-MM-dd'),
           installments: selectedLink.paymentCount,
           frequency: selectedLink.paymentCycle || 'monthly',
-          total_amount: selectedLink.amount * selectedLink.paymentCount,
+          total_amount: totalAmount,
           installment_amount: selectedLink.amount,
           patient_name: formData.patientName,
           patient_email: formData.patientEmail
@@ -579,7 +612,7 @@ export function useSendLinkPageState() {
     isPaymentPlan,
     selectedPaymentLink,
     paymentAmount,
-    isSchedulingPlan, // Expose the new state
+    isSchedulingPlan,
     handleChange,
     handleSelectChange,
     handleDateChange,

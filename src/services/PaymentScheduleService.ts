@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { formatPlanFromDb } from '@/utils/planTypes';
 import { toast } from 'sonner';
 import { PlanActivityType } from '@/utils/planActivityUtils';
 
@@ -145,41 +146,32 @@ export const fetchPlanActivities = async (planId: string) => {
 };
 
 export const recordPaymentPlanActivity = async (
-  planId: string,
-  actionType: PlanActivityType,
-  details: any,
-  userId?: string
+  patientId: string | null,
+  paymentLinkId: string,
+  clinicId: string,
+  actionType: string,
+  details: any = {}
 ) => {
   try {
-    // Get plan details first
-    const { data: plan, error: planError } = await supabase
-      .from('plans')
-      .select('patient_id, payment_link_id, clinic_id')
-      .eq('id', planId)
-      .single();
-      
-    if (planError) {
-      console.error('Error fetching plan for activity recording:', planError);
-      return { success: false, error: planError };
-    }
-    
     const { data, error } = await supabase
       .from('payment_plan_activities')
       .insert({
-        patient_id: plan.patient_id,
-        payment_link_id: plan.payment_link_id,
-        clinic_id: plan.clinic_id,
+        patient_id: patientId || '00000000-0000-0000-0000-000000000000',
+        payment_link_id: paymentLinkId,
+        clinic_id: clinicId,
         action_type: actionType,
-        performed_by_user_id: userId,
-        details: { ...details, plan_id: planId }
-      })
-      .select();
-      
-    if (error) throw error;
-    return { success: true, data };
+        details: details,
+        performed_by_user_id: (await supabase.auth.getUser()).data.user?.id
+      });
+    
+    if (error) {
+      console.error('Error recording payment plan activity:', error);
+    }
+    
+    return { success: !error };
   } catch (error) {
     console.error('Error recording payment plan activity:', error);
-    return { success: false, error };
+    return { success: false };
   }
 };
 
@@ -843,5 +835,59 @@ export const recordPaymentRefund = async (
   } catch (error) {
     console.error('Error recording payment refund:', error);
     return { success: false, error: String(error) };
+  }
+};
+
+// Fetch plans from the plans table
+export const fetchPlans = async (userId: string) => {
+  try {
+    // First get the clinic ID
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('clinic_id')
+      .eq('id', userId)
+      .single();
+      
+    if (userError) {
+      console.error('Error fetching user data:', userError);
+      return [];
+    }
+
+    const clinicId = userData.clinic_id;
+    
+    // Fetch plans from the plans table
+    const { data: plans, error: plansError } = await supabase
+      .from('plans')
+      .select(`
+        *,
+        patients (
+          id,
+          name,
+          email,
+          phone
+        ),
+        payment_links (
+          id,
+          title,
+          amount,
+          description,
+          payment_count,
+          payment_cycle,
+          plan_total_amount
+        )
+      `)
+      .eq('clinic_id', clinicId)
+      .order('created_at', { ascending: false });
+    
+    if (plansError) {
+      console.error('Error fetching plans:', plansError);
+      return [];
+    }
+    
+    // Convert to Plan objects using the formatPlanFromDb function
+    return plans.map(plan => formatPlanFromDb(plan));
+  } catch (error) {
+    console.error('Error in fetchPlans:', error);
+    return [];
   }
 };

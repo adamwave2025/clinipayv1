@@ -39,6 +39,35 @@ export interface PlanInstallment {
 
 // Helper function to format a plan from the database into our frontend format
 export const formatPlanFromDb = (dbPlan: any): Plan => {
+  // If the plan comes directly from the plans table
+  if ('patient_id' in dbPlan) {
+    return {
+      id: dbPlan.id,
+      patientId: dbPlan.patient_id,
+      patientName: dbPlan.patients?.name || 'Unknown Patient',
+      clinicId: dbPlan.clinic_id,
+      paymentLinkId: dbPlan.payment_link_id,
+      title: dbPlan.title || 'Payment Plan',
+      description: dbPlan.description || '',
+      status: dbPlan.status,
+      totalAmount: dbPlan.total_amount || 0,
+      installmentAmount: dbPlan.installment_amount || 0,
+      totalInstallments: dbPlan.total_installments,
+      paidInstallments: dbPlan.paid_installments || 0,
+      progress: dbPlan.progress || 0,
+      paymentFrequency: dbPlan.payment_frequency,
+      startDate: dbPlan.start_date,
+      nextDueDate: dbPlan.next_due_date,
+      hasOverduePayments: dbPlan.has_overdue_payments || false,
+      createdAt: dbPlan.created_at,
+      updatedAt: dbPlan.updated_at,
+      // Set backward compatibility fields
+      planName: dbPlan.title || 'Payment Plan',
+      amount: dbPlan.total_amount || 0
+    };
+  }
+  
+  // Otherwise use the original formatting logic
   return {
     id: dbPlan.id,
     patientId: dbPlan.patient_id,
