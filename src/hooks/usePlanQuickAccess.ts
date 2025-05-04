@@ -52,7 +52,10 @@ export const usePlanQuickAccess = () => {
           amount,
           status,
           payment_request_id,
-          plan_id
+          plan_id,
+          payment_requests (
+            id, status, payment_id, paid_at
+          )
         `)
         .eq('plan_id', plan.id)
         .order('payment_number', { ascending: true });
