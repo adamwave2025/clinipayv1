@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, CreditCard, Bell, Shield } from 'lucide-react';
+import { User, CreditCard, Bell, Shield, HelpCircle } from 'lucide-react';
 import { useClinicData } from '@/hooks/useClinicData';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -13,9 +13,10 @@ import ProfileTab from './ProfileTab';
 import PaymentSettings from '@/components/settings/PaymentSettings';
 import NotificationSettings from '@/components/settings/NotificationSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
+import HelpSettings from '@/components/settings/HelpSettings';
 import { handlePaymentAction } from './PaymentActions';
 
-const VALID_TABS = ['profile', 'payments', 'notifications', 'security'];
+const VALID_TABS = ['profile', 'payments', 'notifications', 'security', 'help'];
 
 const SettingsContainer = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -57,7 +58,7 @@ const SettingsContainer = () => {
       />
       
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid grid-cols-4 max-w-2xl mb-6">
+        <TabsList className="grid grid-cols-5 max-w-3xl mb-6">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Profile</span>
@@ -73,6 +74,10 @@ const SettingsContainer = () => {
           <TabsTrigger value="security" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
             <span className="hidden sm:inline">Security</span>
+          </TabsTrigger>
+          <TabsTrigger value="help" className="flex items-center gap-2">
+            <HelpCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">Help</span>
           </TabsTrigger>
         </TabsList>
         
@@ -101,6 +106,10 @@ const SettingsContainer = () => {
         
         <TabsContent value="security">
           <SecuritySettings />
+        </TabsContent>
+        
+        <TabsContent value="help">
+          <HelpSettings />
         </TabsContent>
       </Tabs>
     </DashboardLayout>
