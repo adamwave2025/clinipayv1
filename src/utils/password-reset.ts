@@ -131,36 +131,30 @@ export const resetPassword = async (
       };
     }
     
-    // Update the user password in auth.users (through auth API)
-    const { error: authError } = await supabase.auth.updateUser({
-      password,
+    // Call the update-user-password edge function to update the password
+    const { data, error } = await supabase.functions.invoke('update-user-password', {
+      method: 'POST',
+      body: { userId, token, password }
     });
     
-    if (authError) {
-      console.error('Error updating password:', authError);
+    if (error) {
+      console.error('Error updating password via edge function:', error);
       return { 
         success: false, 
-        error: authError.message || 'Failed to update password' 
+        error: error.message || 'Failed to update password' 
       };
     }
     
-    // Clear the verification token from our users table
-    const { error: clearTokenError } = await supabase
-      .from('users')
-      .update({ 
-        verification_token: null,
-        token_expires_at: null
-      })
-      .eq('id', userId);
-    
-    if (clearTokenError) {
-      console.error('Error clearing reset token:', clearTokenError);
-      // Non-critical error, continue with success flow
+    if (!data.success) {
+      return { 
+        success: false, 
+        error: data.error || 'Failed to update password' 
+      };
     }
     
     return { 
       success: true, 
-      message: 'Password updated successfully' 
+      message: data.message || 'Password updated successfully' 
     };
   } catch (error: any) {
     console.error('Error updating password:', error);
