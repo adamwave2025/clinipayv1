@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Clock, RotateCw, PauseCircle, PlayCircle, XCircle, CalendarIcon, CheckCircle2, CreditCard } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { formatDateTime } from '@/utils/formatters';
 
 interface ActivityLogProps {
   activities: PlanActivity[];
@@ -158,7 +159,9 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading }) => {
                       </span>
                       {/* Badge removed from here */}
                     </div>
-                    <span className="text-xs text-gray-500">{activity.performedAt}</span>
+                    <span className="text-xs text-gray-500">
+                      {formatDateTime(activity.performedAt, 'en-GB')}
+                    </span>
                   </div>
                   {renderActivityDetails(activity)}
                 </div>
