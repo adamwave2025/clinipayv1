@@ -1,4 +1,17 @@
 
+export interface RawClinicData {
+  id: string;
+  clinic_name?: string;
+  logo_url?: string;
+  email?: string;
+  phone?: string;
+  address_line_1?: string;
+  address_line_2?: string;
+  city?: string;
+  postcode?: string;
+  stripe_status?: string;
+}
+
 export interface PaymentLinkData {
   id: string;
   title?: string;
@@ -24,5 +37,6 @@ export interface PaymentLinkData {
   planTotalAmount?: number;
   totalPaid?: number;
   totalOutstanding?: number;
+  customAmount?: number; // Added to match the usage in PaymentLinkFormatter
   hasOverduePayments?: boolean; // From plans table has_overdue_payments flag
 }

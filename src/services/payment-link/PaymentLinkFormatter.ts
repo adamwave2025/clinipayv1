@@ -98,6 +98,7 @@ export const PaymentLinkFormatter = {
       type: linkData.type || 'other',
       description: linkData.description,
       status: status,
+      isRequest: false, // Add the missing isRequest property
       clinic: ClinicFormatter.formatClinicData(clinicData),
       ...planData
     };

@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AlertCircle } from 'lucide-react'; // Import the missing AlertCircle component
 import PaymentLayout from '@/components/layouts/PaymentLayout';
 import PaymentPageClinicCard from '@/components/payment/PaymentPageClinicCard';
 import CliniPaySecuritySection from '@/components/payment/CliniPaySecuritySection';

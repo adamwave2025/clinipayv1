@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentLinkData } from '@/types/paymentLink';
+import { PaymentLink } from '@/types/payment';
 
 export const PaymentLinkService = {
   async fetchPaymentLink(linkId: string): Promise<PaymentLinkData | null> {
@@ -48,7 +49,7 @@ export const PaymentLinkService = {
           .select('status, has_overdue_payments, total_amount, next_due_date')
           .eq('payment_link_id', linkId)
           .maybeSingle();
-
+          
         if (!planError && plan) {
           status = plan.status; // Get status from plans table
           paymentPlanDetails = plan;
@@ -281,7 +282,7 @@ export const PaymentLinkService = {
     }
   },
 
-  async fetchLinks(userId: string) {
+  async fetchLinks(userId: string): Promise<{ activeLinks: any[], archivedLinks: any[], clinicId: string }> {
     try {
       // Fetch user's clinic ID
       const { data: userData, error: userError } = await supabase
@@ -292,7 +293,7 @@ export const PaymentLinkService = {
         
       if (userError) {
         console.error('Error fetching user data:', userError);
-        return { activeLinks: [], archivedLinks: [] };
+        return { activeLinks: [], archivedLinks: [], clinicId: '' };
       }
       
       const clinicId = userData.clinic_id;
@@ -307,7 +308,7 @@ export const PaymentLinkService = {
         
       if (activeError) {
         console.error('Error fetching active payment links:', activeError);
-        return { activeLinks: [], archivedLinks: [] };
+        return { activeLinks: [], archivedLinks: [], clinicId };
       }
       
       // Fetch archived payment links
@@ -320,13 +321,13 @@ export const PaymentLinkService = {
         
       if (archivedError) {
         console.error('Error fetching archived payment links:', archivedError);
-        return { activeLinks: [], archivedLinks: [] };
+        return { activeLinks: [], archivedLinks: [], clinicId };
       }
       
-      return { activeLinks, archivedLinks };
+      return { activeLinks, archivedLinks, clinicId };
     } catch (error) {
       console.error('Error fetching payment links:', error);
-      return { activeLinks: [], archivedLinks: [] };
+      return { activeLinks: [], archivedLinks: [], clinicId: '' };
     }
   },
   
@@ -366,5 +367,48 @@ export const PaymentLinkService = {
       console.error('Error unarchiving payment link:', error);
       return { success: false, error: 'Failed to unarchive payment link' };
     }
+  },
+
+  async createLink(linkData: Partial<PaymentLink>, clinicId: string) {
+    console.log('PaymentLinkService: Creating link with data:', {
+      ...linkData,
+      clinic_id: clinicId
+    });
+    
+    // Ensure all required fields for payment plans are present
+    if (linkData.paymentPlan) {
+      if (!linkData.paymentCount || !linkData.paymentCycle) {
+        throw new Error('Payment plan requires payment count and cycle');
+      }
+      
+      // Calculate total amount if not provided
+      if (!linkData.planTotalAmount && linkData.amount && linkData.paymentCount) {
+        linkData.planTotalAmount = linkData.amount * linkData.paymentCount;
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('payment_links')
+      .insert({
+        clinic_id: clinicId,
+        title: linkData.title,
+        amount: linkData.amount,
+        type: linkData.type,
+        description: linkData.description,
+        is_active: true,
+        payment_plan: linkData.paymentPlan || false,
+        payment_count: linkData.paymentCount,
+        payment_cycle: linkData.paymentCycle,
+        plan_total_amount: linkData.planTotalAmount
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating payment link:', error);
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 };

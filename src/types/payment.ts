@@ -1,6 +1,5 @@
-
 // If we need to add or modify types, let's create a file for this
-import { PaymentLinkData, RawClinicData } from './paymentLink';
+import { PaymentLinkData } from './paymentLink';
 
 export interface Payment {
   id: string;
