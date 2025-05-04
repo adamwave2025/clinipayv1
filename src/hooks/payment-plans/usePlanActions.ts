@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   cancelPaymentPlan, 
@@ -14,21 +13,16 @@ import { Plan } from '@/utils/planTypes';
 export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleSendReminder = async (installmentId: string) => {
+  const handleSendReminder = async (installmentId: string): Promise<void> => {
     try {
       setIsProcessing(true);
       const result = await sendPaymentReminder(installmentId);
       
-      if (result.success) {
-        toast.success('Payment reminder sent successfully');
-      } else {
-        toast.error('Failed to send payment reminder');
-      }
-      
-      return result;
+      // Already displaying toast in the service
+      return;
     } catch (error) {
       toast.error('Failed to send payment reminder');
-      return { success: false, error };
+      return;
     } finally {
       setIsProcessing(false);
     }

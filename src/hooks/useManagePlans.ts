@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plan } from '@/utils/planTypes';
@@ -55,7 +54,7 @@ export const useManagePlans = (): ManagePlansContextType => {
   // Pass fetchPaymentPlans directly as it returns Promise<Plan[]>
   const { 
     isProcessing,
-    handleSendReminder, 
+    handleSendReminder: sendReminder, 
     handleCancelPlan: cancelPlan, 
     handlePausePlan: pausePlan,
     handleResumePlan: resumePlan,
@@ -90,6 +89,12 @@ export const useManagePlans = (): ManagePlansContextType => {
       setShowPlanDetails(false); // Close the plan details dialog
       setShowPaymentDetails(true); // Open the payment details dialog
     }
+  };
+
+  // Create a wrapper for sendReminder that adapts the return type
+  const handleSendReminder = async (installmentId: string): Promise<void> => {
+    await sendReminder(installmentId);
+    // Void return type, so no return statement needed
   };
 
   // Refund functionality
