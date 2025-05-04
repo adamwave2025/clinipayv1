@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Payment, PaymentLink } from '@/types/payment';
 import { toast } from 'sonner';
@@ -86,12 +85,20 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const openRefundDialog = (paymentId: string) => {
+    console.log('Opening refund dialog with payment ID:', paymentId);
     setPaymentToRefund(paymentId);
     setRefundDialogOpen(true);
   };
 
-  const handleRefund = async (amount?: number) => {
-    if (!paymentToRefund) return;
+  const handleRefund = async (amount?: number, paymentId?: string) => {
+    // Use the provided paymentId if available, otherwise fall back to the state variable
+    const refundPaymentId = paymentId || paymentToRefund;
+    console.log('Handling refund for payment ID:', refundPaymentId, 'amount:', amount);
+    
+    if (!refundPaymentId) {
+      console.error('No payment ID provided for refund');
+      return;
+    }
     
     // Create a unique ID for the toast to allow dismissal
     const loadingToastId = toast.loading('Processing refund...');
@@ -99,15 +106,19 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       setIsProcessingRefund(true);
       
-      const payment = payments.find(p => p.id === paymentToRefund);
-      if (!payment) throw new Error('Payment not found');
+      const payment = payments.find(p => p.id === refundPaymentId);
+      if (!payment) {
+        console.error('Payment not found for ID:', refundPaymentId);
+        throw new Error('Payment not found');
+      }
+      console.log('Found payment to refund:', payment);
       
       const refundAmount = amount || payment.amount;
       const epsilon = 0.001;
       const isFullRefund = Math.abs(payment.amount - refundAmount) < epsilon;
 
       // Process the refund through the service
-      const result = await PaymentRefundService.processRefund(paymentToRefund, refundAmount);
+      const result = await PaymentRefundService.processRefund(refundPaymentId, refundAmount);
       
       // Always dismiss the loading toast
       toast.dismiss(loadingToastId);
@@ -119,7 +130,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
       // Update the local state with the refunded payment
       setPayments(PaymentRefundService.getUpdatedPaymentAfterRefund(
         payments, 
-        paymentToRefund, 
+        refundPaymentId, 
         refundAmount
       ));
       

@@ -92,17 +92,24 @@ export const useManagePlans = () => {
 
   // Refund functionality
   const openRefundDialog = () => {
+    console.log('Opening refund dialog for payment:', paymentData?.id);
     if (paymentData && paymentData.id) {
       setPaymentToRefund(paymentData.id);
       setRefundDialogOpen(true);
+    } else {
+      console.error('No payment data available for refund');
     }
   };
 
   const processRefund = (amount?: number) => {
+    console.log('Processing refund for payment:', paymentToRefund, 'amount:', amount);
     if (paymentToRefund) {
-      handleRefund(amount);
+      // Explicitly pass the payment ID to handleRefund
+      handleRefund(amount, paymentToRefund);
       // We'll close the payment details modal after refund
       setShowPaymentDetails(false);
+    } else {
+      console.error('No payment ID available for refund');
     }
   };
 

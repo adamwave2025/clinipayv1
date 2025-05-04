@@ -18,7 +18,7 @@ interface DashboardContextType {
   setRefundDialogOpen: (open: boolean) => void;
   handlePaymentClick: (payment: Payment) => void;
   openRefundDialog: (paymentId: string) => void;
-  handleRefund: (amount?: number) => void;
+  handleRefund: (amount?: number, paymentId?: string) => void;
   archivePaymentLink: (linkId: string) => Promise<{ success: boolean; error?: string }>;
   unarchivePaymentLink: (linkId: string) => Promise<{ success: boolean; error?: string }>;
 }
