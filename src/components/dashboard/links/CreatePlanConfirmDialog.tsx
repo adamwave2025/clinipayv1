@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { LinkFormData } from '@/hooks/useCreateLinkForm';
 import { Check } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { formatCurrency } from '@/utils/formatters';
 
 interface CreatePlanConfirmDialogProps {
   open: boolean;
@@ -28,12 +29,6 @@ const CreatePlanConfirmDialog = ({
   isLoading
 }: CreatePlanConfirmDialogProps) => {
   if (!formData) return null;
-
-  // Format displayed amount correctly (input values are already in decimal format)
-  const formatAmount = (amountStr: string) => {
-    const amount = parseFloat(amountStr);
-    return !isNaN(amount) ? amount.toFixed(2) : '0.00';
-  };
 
   // Calculate total amount
   const totalAmount = formData.paymentPlan && formData.paymentCount && formData.amount
@@ -64,10 +59,10 @@ const CreatePlanConfirmDialog = ({
           <div className="space-y-2">
             <h3 className="font-medium text-lg">{formData.paymentTitle}</h3>
             <div className="text-sm space-y-1">
-              <p><span className="font-medium">Amount per payment:</span> £{formatAmount(formData.amount)}</p>
+              <p><span className="font-medium">Amount per payment:</span> {formatCurrency(parseFloat(formData.amount))}</p>
               <p><span className="font-medium">Number of payments:</span> {formData.paymentCount}</p>
               <p><span className="font-medium">Frequency:</span> {getFrequencyText(formData.paymentCycle)}</p>
-              <p><span className="font-medium">Total value:</span> £{totalAmount.toFixed(2)}</p>
+              <p><span className="font-medium">Total value:</span> {formatCurrency(totalAmount)}</p>
               {formData.description && (
                 <p className="mt-2 text-gray-600">{formData.description}</p>
               )}

@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { formatCurrency } from '@/utils/formatters';
 
 interface PaymentPlanFieldsProps {
   paymentCount: string;
@@ -29,8 +30,8 @@ const PaymentPlanFields: React.FC<PaymentPlanFieldsProps> = ({
 }) => {
   // Calculate total amount properly handling decimal values
   const totalAmount = !isNaN(parseFloat(amount) * Number(paymentCount)) 
-    ? (parseFloat(amount) * Number(paymentCount)).toFixed(2) 
-    : '0.00';
+    ? parseFloat(amount) * Number(paymentCount) 
+    : 0;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -70,7 +71,7 @@ const PaymentPlanFields: React.FC<PaymentPlanFieldsProps> = ({
       
       <div className="col-span-1 md:col-span-2">
         <p className="text-xs text-gray-500">
-          Total plan value: £{totalAmount}
+          Total plan value: {formatCurrency(totalAmount)}
         </p>
       </div>
     </div>

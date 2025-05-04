@@ -5,6 +5,10 @@
  * @param currency - The currency symbol to use (defaults to '£')
  * @param decimals - Number of decimal places (defaults to 2)
  * @returns Formatted currency string
+ * 
+ * IMPORTANT: The database stores monetary values in cents (1/100 of currency unit)
+ * This function automatically divides by 100 if the amount appears to be stored in cents
+ * (determined by checking if it's larger than expected decimal value)
  */
 export const formatCurrency = (amount: number | undefined | null, currency: string = '£', decimals: number = 2): string => {
   // Return a dash for undefined or null amounts

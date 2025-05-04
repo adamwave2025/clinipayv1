@@ -14,6 +14,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import StatusBadge from '@/components/common/StatusBadge';
 import { format } from 'date-fns';
+import { formatCurrency } from '@/utils/formatters';
 
 interface ActivePlansTableProps {
   isLoading: boolean;
@@ -82,7 +83,7 @@ const ActivePlansTable = ({
                 >
                   <TableCell className="font-medium">{plan.patientName}</TableCell>
                   <TableCell>{plan.planName}</TableCell>
-                  <TableCell>£{plan.amount.toFixed(2)}</TableCell>
+                  <TableCell>{formatCurrency(plan.amount)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="w-28 h-2 bg-gray-200 rounded-full overflow-hidden">
