@@ -12,6 +12,7 @@ import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDia
 import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
 import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDialog';
 import ReschedulePlanDialog from '@/components/dashboard/payment-plans/ReschedulePlanDialog';
+import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 import { useManagePlans } from '@/hooks/useManagePlans';
 
 const ManagePlansPage = () => {
@@ -36,6 +37,11 @@ const ManagePlansPage = () => {
     paymentData,
     handleViewPaymentDetails,
     handleBackToPlans,
+    // Refund properties
+    refundDialogOpen,
+    setRefundDialogOpen,
+    openRefundDialog,
+    processRefund,
     // Cancel plan properties
     showCancelDialog,
     setShowCancelDialog,
@@ -125,6 +131,16 @@ const ManagePlansPage = () => {
         setShowDialog={setShowPaymentDetails}
         paymentData={paymentData}
         onBack={handleBackToPlans}
+        onRefund={openRefundDialog}
+      />
+
+      {/* Payment Refund Dialog */}
+      <PaymentRefundDialog
+        open={refundDialogOpen}
+        onOpenChange={setRefundDialogOpen}
+        onConfirm={processRefund}
+        paymentAmount={paymentData?.amount || 0}
+        patientName={paymentData?.patientName || ''}
       />
 
       {/* Cancel Plan Dialog */}

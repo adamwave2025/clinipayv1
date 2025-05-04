@@ -12,10 +12,16 @@ import { usePlanCancelActions } from './payment-plans/usePlanCancelActions';
 import { usePlanPauseActions } from './payment-plans/usePlanPauseActions';
 import { usePlanResumeActions } from './payment-plans/usePlanResumeActions';
 import { usePlanRescheduleActions } from './payment-plans/usePlanRescheduleActions';
+import { useDashboardData } from '@/components/dashboard/DashboardDataProvider';
 
 export const useManagePlans = () => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
+  
+  // Get dashboard data for refund functionality
+  const { handleRefund } = useDashboardData();
   
   // Use all the smaller hooks
   const { 
@@ -85,6 +91,22 @@ export const useManagePlans = () => {
     }
   };
 
+  // Refund functionality
+  const openRefundDialog = () => {
+    if (paymentData && paymentData.id) {
+      setPaymentToRefund(paymentData.id);
+      setRefundDialogOpen(true);
+    }
+  };
+
+  const processRefund = (amount?: number) => {
+    if (paymentToRefund) {
+      handleRefund(amount);
+      // We'll close the payment details modal after refund
+      setShowPaymentDetails(false);
+    }
+  };
+
   return {
     searchQuery,
     setSearchQuery,
@@ -106,6 +128,12 @@ export const useManagePlans = () => {
     paymentData,
     handleViewPaymentDetails,
     handleBackToPlans,
+    // Refund properties
+    refundDialogOpen,
+    setRefundDialogOpen,
+    paymentToRefund,
+    openRefundDialog,
+    processRefund,
     // Cancel plan properties
     ...cancelActions,
     // Pause plan properties

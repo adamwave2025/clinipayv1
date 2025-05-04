@@ -6,19 +6,22 @@ import { Payment } from '@/types/payment';
 import { ArrowLeft } from 'lucide-react';
 import PaymentDetailsCard from '@/components/payment/PaymentDetailsCard';
 import StatusBadge from '@/components/common/StatusBadge';
+import PaymentActionsSection from '@/components/dashboard/payment-details/PaymentActionsSection';
 
 interface InstallmentPaymentDialogProps {
   showDialog: boolean;
   setShowDialog: (show: boolean) => void;
   paymentData: Payment | null;
   onBack: () => void;
+  onRefund?: () => void;
 }
 
 const InstallmentPaymentDialog = ({
   showDialog,
   setShowDialog,
   paymentData,
-  onBack
+  onBack,
+  onRefund
 }: InstallmentPaymentDialogProps) => {
   if (!paymentData) return null;
 
@@ -58,6 +61,12 @@ const InstallmentPaymentDialog = ({
               { label: 'Reference', value: paymentData.reference || 'Not available' },
               { label: 'Type', value: 'Payment Plan Installment' }
             ]}
+          />
+
+          {/* Add PaymentActionsSection for refund functionality */}
+          <PaymentActionsSection
+            status={paymentData.status}
+            onRefund={onRefund}
           />
         </div>
       </DialogContent>
