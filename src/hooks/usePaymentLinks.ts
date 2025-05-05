@@ -5,6 +5,7 @@ import { PaymentLink } from '@/types/payment';
 import { toast } from 'sonner';
 import { PaymentLinkService } from '@/services/PaymentLinkService';
 import { formatPaymentLinks } from '@/utils/paymentLinkFormatter';
+import { getUserClinicId } from '@/utils/userUtils';
 
 // Type guard to check if result has an error property
 const hasError = (result: { success: boolean } | { success: boolean; error: any }): 
@@ -30,7 +31,14 @@ export function usePaymentLinks() {
     setError(null);
 
     try {
-      const result = await PaymentLinkService.fetchLinks(user.id);
+      // Get the clinic ID associated with this user
+      const clinicId = await getUserClinicId();
+      
+      if (!clinicId) {
+        throw new Error('Could not determine your clinic ID. Please contact support.');
+      }
+      
+      const result = await PaymentLinkService.fetchLinks(clinicId);
       
       setPaymentLinks(formatPaymentLinks(result.activeLinks));
       setArchivedLinks(formatPaymentLinks(result.archivedLinks));
@@ -105,6 +113,14 @@ export function usePaymentLinks() {
     try {
       console.log('Original link data:', linkData);
       
+      // Get the clinic ID associated with this user
+      const clinicId = await getUserClinicId();
+      
+      if (!clinicId) {
+        toast.error('Could not determine your clinic ID');
+        return { success: false, error: 'Clinic ID not found' };
+      }
+      
       // Convert camelCase to snake_case for database compatibility
       const dbLinkData = {
         title: linkData.title,
@@ -115,7 +131,7 @@ export function usePaymentLinks() {
         payment_count: linkData.paymentCount,
         payment_cycle: linkData.paymentCycle,
         plan_total_amount: linkData.planTotalAmount,
-        clinic_id: user.id
+        clinic_id: clinicId // Use the fetched clinic ID
       };
       
       console.log('Converting to database format:', dbLinkData);

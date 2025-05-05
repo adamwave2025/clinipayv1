@@ -1,7 +1,9 @@
+
 import { toast } from 'sonner';
 import { PaymentLink } from '@/types/payment';
 import { PaymentLinkService } from '@/services/PaymentLinkService';
 import { formatPaymentLinks } from '@/utils/paymentLinkFormatter';
+import { getUserClinicId } from '@/utils/userUtils';
 
 export const PaymentPlanService = {
   async fetchPaymentPlans(clinicId: string, showArchived: boolean = false) {

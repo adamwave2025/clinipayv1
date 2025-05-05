@@ -79,11 +79,16 @@ export const PaymentLinkService = {
     try {
       console.log('Creating link with data:', linkData);
       
+      // Ensure a clinic_id is provided
+      if (!linkData.clinic_id) {
+        throw new Error('No clinic_id provided');
+      }
+      
       // Ensure we're using snake_case keys for the database
       const { data, error } = await supabase
         .from('payment_links')
         .insert([linkData])
-        .select()
+        .select();
 
       if (error) {
         console.error('Supabase error creating payment link:', error);
