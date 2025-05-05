@@ -64,25 +64,29 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments, isLoading =
     }
   };
 
-  // New function to determine payment type (Payment Plan, Reusable Link, or Direct)
+  // Updated function to only return "Payment Plan" or "Reusable Link"
   const getPaymentType = (payment: any) => {
     if (payment.type === 'payment_plan') {
       return 'Payment Plan';
-    } else if (payment.paymentLinkId) {
-      return 'Reusable Link';
     } else {
-      return 'Direct Payment';
+      return 'Reusable Link';
     }
   };
 
+  // Updated function to always display the link title or a better fallback
   const getPaymentDetails = (payment: any) => {
-    // Format the payment details, now focusing on payment title
+    // First try to use the linkTitle which is the clearest indicator of the payment link name
     if (payment.linkTitle) {
       return payment.linkTitle;
     }
     
-    // Fallback to type if no title available
-    return payment.type ? `${payment.type.charAt(0).toUpperCase()}${payment.type.slice(1)}` : 'Payment';
+    // If we have a title property, use that
+    if (payment.title) {
+      return payment.title;
+    }
+    
+    // If no title is available, use a fallback that doesn't mention the type
+    return 'Payment';
   };
 
   return (
