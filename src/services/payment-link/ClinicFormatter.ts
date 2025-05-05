@@ -42,5 +42,30 @@ export const ClinicFormatter = {
         stripeStatus: clinicData.stripe_status || 'not_connected'
       };
     }
+  },
+
+  /**
+   * Format clinic address from raw clinic data
+   * @param clinicData Raw clinic data
+   * @returns Formatted address string or empty string if no address components
+   */
+  formatAddress(clinicData: RawClinicData | null): string {
+    if (!clinicData) {
+      return '';
+    }
+
+    try {
+      // Build the address string if components exist
+      let addressParts = [];
+      if (clinicData.address_line_1) addressParts.push(clinicData.address_line_1);
+      if (clinicData.address_line_2) addressParts.push(clinicData.address_line_2);
+      if (clinicData.city) addressParts.push(clinicData.city);
+      if (clinicData.postcode) addressParts.push(clinicData.postcode);
+      
+      return addressParts.length > 0 ? addressParts.join(', ') : '';
+    } catch (error) {
+      console.error('ClinicFormatter: Error formatting clinic address:', error);
+      return '';
+    }
   }
 };
