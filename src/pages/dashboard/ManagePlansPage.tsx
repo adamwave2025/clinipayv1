@@ -102,8 +102,17 @@ const ManagePlansPageContent: React.FC = () => {
     isArchiveView,
     toggleArchiveView,
     handleArchivePlan,
-    handleUnarchivePlan
+    handleUnarchivePlan,
+    fetchPaymentPlans
   } = usePaymentPlans();
+
+  // Refresh payment plans when view mode changes
+  useEffect(() => {
+    if (isViewMode) {
+      console.log('View mode enabled, fetching payment plans');
+      fetchPaymentPlans();
+    }
+  }, [isViewMode, fetchPaymentPlans]);
 
   // State for archive dialog
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
@@ -134,6 +143,13 @@ const ManagePlansPageContent: React.FC = () => {
       setPlanToArchive(null);
     }
   };
+
+  console.log('ManagePlansPageContent render:', {
+    isViewMode,
+    paymentPlansCount: paymentPlans.length,
+    filteredPaymentPlansCount: filteredPaymentPlans.length,
+    isPaymentPlansLoading
+  });
   
   return (
     <>

@@ -14,7 +14,7 @@ export const formatPaymentLinks = (data: any[]): PaymentLink[] => data.map(link 
   id: link.id,
   title: link.title || '',
   amount: link.amount || 0, // Keep the original amount from database (in cents)
-  type: link.type || 'other',
+  type: link.type || 'payment_plan', // Default to payment_plan for plans
   description: link.description || '',
   url: `${window.location.origin}/payment/${link.id}`,
   createdAt: new Date(link.created_at).toLocaleDateString(),

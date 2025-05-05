@@ -36,6 +36,13 @@ const PaymentPlansTable = ({
   isArchiveView,
   toggleArchiveView
 }: PaymentPlansTableProps) => {
+  console.log('PaymentPlansTable props:', { 
+    filteredPlansCount: filteredPlans.length,
+    isLoading, 
+    paymentPlansCount: paymentPlans.length,
+    isArchiveView 
+  });
+  
   return (
     <Card>
       <CardHeader className="pb-3 flex flex-row items-center justify-between">

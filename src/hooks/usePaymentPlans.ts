@@ -29,14 +29,22 @@ export const usePaymentPlans = () => {
         return;
       }
       
-      const { plans, error } = await PaymentPlanService.fetchPaymentPlans(user.id, isArchiveView);
+      // Use clinic_id directly from user for better consistency
+      const clinicId = user.id;
+      console.log(`Fetching payment plans for clinic ID: ${clinicId}, archived: ${isArchiveView}`);
+      
+      const { plans, error } = await PaymentPlanService.fetchPaymentPlans(clinicId, isArchiveView);
       
       if (error) {
         toast.error('Failed to load payment plans');
+        console.error('Error fetching payment plans:', error);
       } else {
         console.log(`${isArchiveView ? 'Archived' : 'Active'} payment plans fetched:`, plans);
         setPaymentPlans(plans);
       }
+    } catch (e) {
+      console.error('Exception in fetchPaymentPlans:', e);
+      toast.error('An error occurred while loading payment plans');
     } finally {
       setIsLoading(false);
     }
@@ -47,21 +55,33 @@ export const usePaymentPlans = () => {
   
   // Handle archiving a plan
   const handleArchivePlan = async (plan: PaymentLink) => {
-    const { success } = await PaymentPlanService.archivePlan(plan);
-    
-    if (success) {
-      // Refresh the plans list
-      await fetchPaymentPlans();
+    try {
+      const { success } = await PaymentPlanService.archivePlan(plan);
+      
+      if (success) {
+        toast.success(`Plan "${plan.title}" archived successfully`);
+        // Refresh the plans list
+        await fetchPaymentPlans();
+      }
+    } catch (e) {
+      console.error('Error archiving plan:', e);
+      toast.error('Failed to archive plan');
     }
   };
 
   // Handle unarchiving a plan
   const handleUnarchivePlan = async (plan: PaymentLink) => {
-    const { success } = await PaymentPlanService.unarchivePlan(plan);
-    
-    if (success) {
-      // Refresh the plans list
-      await fetchPaymentPlans();
+    try {
+      const { success } = await PaymentPlanService.unarchivePlan(plan);
+      
+      if (success) {
+        toast.success(`Plan "${plan.title}" restored successfully`);
+        // Refresh the plans list
+        await fetchPaymentPlans();
+      }
+    } catch (e) {
+      console.error('Error unarchiving plan:', e);
+      toast.error('Failed to restore plan');
     }
   };
 
