@@ -13,16 +13,14 @@ import { PaymentLink } from '@/types/payment';
  * @returns Array of formatted PaymentLink objects
  */
 export const formatPaymentLinks = (data: any[]): PaymentLink[] => data.map(link => {
-  // CRITICAL: Ensure payment_plan is properly converted to boolean
-  // Check if it's explicitly true/false first, then fall back to truthy check
-  const isPaymentPlan = typeof link.payment_plan === 'boolean' 
-    ? link.payment_plan 
-    : link.payment_plan === true || link.payment_plan === 'true';
-
+  // Improved handling for payment_plan boolean
+  // First check for explicit boolean, then handle other cases
+  const isPaymentPlan = link.type === 'payment_plan' || link.payment_plan === true;
+  
   console.log(`Formatting payment link ${link.id}:`, {
     title: link.title,
     type: link.type,
-    payment_plan: link.payment_plan,
+    payment_plan_raw: link.payment_plan,
     converted_payment_plan: isPaymentPlan,
     payment_count: link.payment_count,
     payment_cycle: link.payment_cycle,

@@ -15,6 +15,7 @@ import LinkFormFields from '../links/LinkFormFields';
 import { useCreateLinkForm, LinkFormData } from '@/hooks/useCreateLinkForm';
 import CreatePlanConfirmDialog from '../links/CreatePlanConfirmDialog';
 import { PaymentLink } from '@/types/payment';
+import { PaymentLinkService } from '@/services/PaymentLinkService';
 
 interface CreatePlanSheetProps {
   open: boolean;
@@ -53,7 +54,7 @@ const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
     setShowConfirmDialog(true);
   };
   
-  // Create the plan after confirmation
+  // Create the plan after confirmation - DIRECT IMPLEMENTATION WITHOUT USING createPaymentLink
   const handleConfirmSubmit = async () => {
     setShowConfirmDialog(false);
     setIsLoading(true);
@@ -77,27 +78,35 @@ const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
       const amountInCents = Math.round(amountValue * 100);
       const paymentCountNum = Number(paymentCount);
       
-      // CRITICAL: Ensure payment_plan is explicitly set to true as a boolean value
-      // and all required payment plan fields are included
+      // Use direct service call instead of going through the hook
+      // This bypasses any confusion in data transformation layers
       const planData = {
         title: paymentTitle,
         amount: amountInCents,
         description,
         type: 'payment_plan',
-        payment_plan: true, // FIXED: Explicitly set as boolean true
+        payment_plan: true, // Explicitly set as boolean true
         payment_count: paymentCountNum,
         payment_cycle: paymentCycle,
         plan_total_amount: Math.round(amountValue * 100 * paymentCountNum)
       };
       
-      console.log('Creating plan with explicit data:', planData);
+      console.log('Creating plan with direct PaymentLinkService call:', planData);
       
-      const result = await createPaymentLink(planData);
+      // Direct call to service instead of using the hook
+      const { data, error } = await PaymentLinkService.createLink(planData);
       
-      if (result.success) {
+      if (error) {
+        toast.error(error || 'Failed to create payment plan');
+        setIsLoading(false);
+        return;
+      }
+      
+      if (data) {
+        console.log('Payment plan created successfully:', data);
         handleLinkGenerated();
       } else {
-        toast.error(result.error || 'Failed to create payment plan');
+        toast.error('No data returned from payment plan creation');
         setIsLoading(false);
       }
     } catch (error) {

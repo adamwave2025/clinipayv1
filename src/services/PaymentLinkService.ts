@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPaymentLinks } from '@/utils/paymentLinkFormatter';
@@ -77,8 +76,8 @@ export const PaymentLinkService = {
 
   async createLink(linkData: any) {
     try {
-      // Improved logging to debug payment plan issues
-      console.log('Creating link with original data:', JSON.stringify(linkData, null, 2));
+      // Enhanced logging to debug payment plan issues
+      console.log('PaymentLinkService: Creating link with original data:', JSON.stringify(linkData, null, 2));
       
       // Ensure a clinic_id is provided
       if (!linkData.clinic_id) {
@@ -88,41 +87,24 @@ export const PaymentLinkService = {
       // Make a copy to prevent modifying original data
       const dataToInsert = { ...linkData };
       
-      // CRITICAL: Handle the payment_plan field explicitly
-      // Ensure payment_plan is a boolean true if specified
-      if (dataToInsert.payment_plan === true || dataToInsert.payment_plan === 'true') {
-        // Explicitly set to boolean true
+      // CRITICAL FIX: Force payment_plan to true for payment_plan type
+      if (dataToInsert.type === 'payment_plan') {
+        // Force payment_plan to be boolean true, not a string or anything else
         dataToInsert.payment_plan = true;
+        console.log('Forcing payment_plan to TRUE for payment_plan type');
         
-        console.log('Creating payment plan with validated properties:', {
-          payment_plan: dataToInsert.payment_plan,
-          payment_count: dataToInsert.payment_count,
-          payment_cycle: dataToInsert.payment_cycle,
-          plan_total_amount: dataToInsert.plan_total_amount
-        });
-        
-        // Validate required payment plan fields
+        // Ensure all required fields for payment plans are present
         if (!dataToInsert.payment_count || !dataToInsert.payment_cycle) {
           throw new Error('Payment plan requires payment_count and payment_cycle');
         }
-        
-        // Ensure payment_count is a number
-        if (typeof dataToInsert.payment_count === 'string') {
-          dataToInsert.payment_count = parseInt(dataToInsert.payment_count, 10);
-        }
-        
-        // Calculate plan_total_amount if not provided
-        if (!dataToInsert.plan_total_amount && dataToInsert.amount && dataToInsert.payment_count) {
-          dataToInsert.plan_total_amount = dataToInsert.amount * dataToInsert.payment_count;
-        }
       } else {
-        // Explicitly set to false if not a payment plan
+        // For non-payment plans, explicitly set to false
         dataToInsert.payment_plan = false;
       }
       
-      console.log('Final data being sent to database:', JSON.stringify(dataToInsert, null, 2));
+      console.log('FINAL DATA TO INSERT:', JSON.stringify(dataToInsert, null, 2));
       
-      // Insert data into database
+      // Insert data into database with specific type definitions
       const { data, error } = await supabase
         .from('payment_links')
         .insert([dataToInsert])
@@ -133,7 +115,20 @@ export const PaymentLinkService = {
         throw error;
       }
       
-      console.log('Link created successfully:', data);
+      if (!data || data.length === 0) {
+        throw new Error('No data returned from payment link creation');
+      }
+      
+      // Verify the payment_plan flag was set correctly
+      console.log('DATA RETURNED FROM DB:', JSON.stringify(data, null, 2));
+      
+      if (dataToInsert.payment_plan === true && data[0].payment_plan !== true) {
+        console.error('WARNING: payment_plan was true in request but not true in response!', {
+          requestedValue: dataToInsert.payment_plan,
+          returnedValue: data[0].payment_plan
+        });
+      }
+      
       return { data, error: null };
     } catch (error: any) {
       console.error("Error creating payment link:", error.message);
@@ -162,7 +157,6 @@ export const PaymentLinkService = {
     }
   },
 
-  // Add missing methods
   async fetchPaymentRequest(requestId: string) {
     try {
       const { data, error } = await supabase
