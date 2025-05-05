@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -141,7 +140,7 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
             <SelectContent>
               {paymentLinks.length > 0 && (
                 <SelectGroup>
-                  <SelectLabel>Payment Links</SelectLabel>
+                  <SelectLabel>Reusable Links</SelectLabel>
                   {paymentLinks.map(link => (
                     <SelectItem key={link.id} value={link.id}>
                       {link.title} - {formatCurrency(link.amount)}
@@ -152,7 +151,7 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
               
               {paymentPlans.length > 0 && (
                 <SelectGroup>
-                  <SelectLabel>Payment Plans</SelectLabel>
+                  <SelectLabel>Recurring Payments</SelectLabel>
                   {paymentPlans.map(plan => (
                     <SelectItem key={plan.id} value={plan.id}>
                       {plan.title} - {formatCurrency(plan.amount)}{plan.paymentCount ? ` × ${plan.paymentCount}` : ''}
