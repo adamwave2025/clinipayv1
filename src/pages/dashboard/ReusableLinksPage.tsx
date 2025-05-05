@@ -101,7 +101,7 @@ const ReusableLinksPage = () => {
       <PageHeader 
         title="Reusable Payment Links" 
         description="Manage your reusable payment links that can be sent to patients"
-        actions={
+        action={
           <div className="flex items-center gap-2">
             <Button 
               variant="outline" 
