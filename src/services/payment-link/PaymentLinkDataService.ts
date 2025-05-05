@@ -43,11 +43,18 @@ export class PaymentLinkDataService {
             
           if (!paymentsError && paymentsData) {
             // Calculate the total paid amount
-            const totalPaid = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
-            console.log(`PaymentLinkDataService: Total paid amount: ${totalPaid} for payment link ID: ${paymentLinkId}`);
+            const totalPaidAmount = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
+            console.log(`PaymentLinkDataService: Total paid amount: ${totalPaidAmount} for payment link ID: ${paymentLinkId}`);
             
             // Add the total paid to the request data
-            requestData.total_paid = totalPaid;
+            // Use a direct property assignment instead of trying to modify 'requestData.total_paid'
+            const updatedRequestData = {
+              ...requestData,
+              total_paid_amount: totalPaidAmount
+            };
+            
+            console.log("PaymentLinkDataService: Successfully fetched payment request data with total paid");
+            return updatedRequestData;
           } else if (paymentsError) {
             console.error("PaymentLinkDataService: Error fetching payments:", paymentsError);
           }
@@ -95,11 +102,18 @@ export class PaymentLinkDataService {
           
         if (!paymentsError && paymentsData) {
           // Calculate the total paid amount
-          const totalPaid = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
-          console.log(`PaymentLinkDataService: Total paid amount: ${totalPaid} for payment link ID: ${linkId}`);
+          const totalPaidAmount = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
+          console.log(`PaymentLinkDataService: Total paid amount: ${totalPaidAmount} for payment link ID: ${linkId}`);
           
           // Add the total paid to the link data
-          linkData.total_paid = totalPaid;
+          // Use a direct property assignment instead of modifying 'linkData.total_paid'
+          const updatedLinkData = {
+            ...linkData,
+            total_paid_amount: totalPaidAmount
+          };
+          
+          console.log("PaymentLinkDataService: Successfully fetched payment link data with total paid");
+          return updatedLinkData;
         } else if (paymentsError) {
           console.error("PaymentLinkDataService: Error fetching payments:", paymentsError);
         }

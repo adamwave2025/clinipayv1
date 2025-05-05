@@ -231,8 +231,8 @@ const PatientPaymentPage = () => {
   const totalPaid = linkData.totalPaid || 0;
   const totalOutstanding = linkData.totalOutstanding || 0;
   
-  // Get the payment link ID for payment plans
-  const paymentLinkId = linkData.isRequest ? linkData.payment_link_id : linkData.id;
+  // Get the payment link ID for payment plans - use the payment_link_id property if available
+  const paymentLinkId = linkData.payment_link_id || linkData.id;
 
   // Prepare default values from payment request patient info
   const defaultValues = linkData?.isRequest ? {

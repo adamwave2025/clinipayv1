@@ -51,7 +51,8 @@ export const PaymentLinkFormatter = {
       
       if (paymentPlan) {
         // Get total paid amount either from our query or default to 0
-        const totalPaid = (requestData.total_paid || 0) / 100; // Convert cents to standard currency units
+        // Use total_paid_amount instead of total_paid
+        const totalPaid = (requestData.total_paid_amount || 0) / 100; // Convert cents to standard currency units
         const planTotalAmount = (linkData.plan_total_amount || 0) / 100; // Convert cents to standard currency units
         const totalOutstanding = Math.max(0, planTotalAmount - totalPaid); // Ensure we don't have negative outstanding
         
@@ -61,7 +62,8 @@ export const PaymentLinkFormatter = {
           paymentPlan: true,
           planTotalAmount: planTotalAmount,
           totalPaid: totalPaid,
-          totalOutstanding: totalOutstanding
+          totalOutstanding: totalOutstanding,
+          payment_link_id: requestData.payment_link_id // Include the payment_link_id for payment plans
         };
       }
       
@@ -97,7 +99,8 @@ export const PaymentLinkFormatter = {
     
     if (paymentPlan) {
       // Get total paid amount either from our query or default to 0
-      const totalPaid = (linkData.total_paid || 0) / 100; // Convert cents to standard currency units
+      // Use total_paid_amount instead of total_paid
+      const totalPaid = (linkData.total_paid_amount || 0) / 100; // Convert cents to standard currency units
       const planTotalAmount = (linkData.plan_total_amount || 0) / 100; // Convert cents to standard currency units
       const totalOutstanding = Math.max(0, planTotalAmount - totalPaid); // Ensure we don't have negative outstanding
       
@@ -107,7 +110,8 @@ export const PaymentLinkFormatter = {
         paymentPlan: true,
         planTotalAmount: planTotalAmount,
         totalPaid: totalPaid,
-        totalOutstanding: totalOutstanding
+        totalOutstanding: totalOutstanding,
+        payment_link_id: linkData.id // Use the link's own ID as the payment_link_id
       };
     }
 

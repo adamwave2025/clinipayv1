@@ -39,4 +39,5 @@ export interface PaymentLinkData {
   totalOutstanding?: number;
   customAmount?: number; // Added to match the usage in PaymentLinkFormatter
   hasOverduePayments?: boolean; // From plans table has_overdue_payments flag
+  payment_link_id?: string; // Added this property to fix the TypeScript error
 }
