@@ -12,6 +12,30 @@ import {
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
 import PaymentPlansTable from '@/components/dashboard/payment-plans/PaymentPlansTable';
+import { Plan } from '@/utils/planTypes';
+import { PaymentLink } from '@/types/payment';
+
+// Adapter function to convert Plan objects to PaymentLink format
+const convertPlansToPaymentLinks = (plans: Plan[]): PaymentLink[] => {
+  return plans.map(plan => ({
+    id: plan.id,
+    title: plan.title || plan.planName || '',
+    description: plan.description || '',
+    amount: plan.installmentAmount,
+    planTotalAmount: plan.totalAmount,
+    paymentCount: plan.totalInstallments,
+    paymentCycle: plan.paymentFrequency,
+    type: 'payment_plan', // Adding the missing required field
+    isRequest: false,
+    status: plan.status,
+    clinic: {
+      id: plan.clinicId,
+      name: '', // Default value, not displayed in table
+      stripeStatus: ''
+    },
+    paymentPlan: true
+  }));
+};
 
 const ManagePlansHeader: React.FC = () => {
   const { handleCreatePlanClick, handleViewPlansClick, isViewMode, setIsViewMode } = useManagePlansContext();
@@ -52,14 +76,17 @@ const ManagePlansHeader: React.FC = () => {
 const ManagePlansPageContent: React.FC = () => {
   const { isViewMode, plans, isLoading, searchQuery, setSearchQuery, handleCreatePlanClick } = useManagePlansContext();
   
+  // Convert Plan[] to PaymentLink[] for the PaymentPlansTable
+  const paymentLinksFormat = convertPlansToPaymentLinks(plans);
+  
   return (
     <>
       <ManagePlansHeader />
       {isViewMode ? (
         <PaymentPlansTable
-          filteredPlans={plans}
+          filteredPlans={paymentLinksFormat}
           isLoading={isLoading}
-          paymentPlans={plans}
+          paymentPlans={paymentLinksFormat}
           onCreatePlanClick={handleCreatePlanClick}
           onEditPlan={() => {}}
           onDeletePlan={() => {}}
