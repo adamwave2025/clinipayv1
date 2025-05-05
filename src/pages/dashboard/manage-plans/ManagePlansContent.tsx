@@ -16,6 +16,9 @@ const ManagePlansContent: React.FC = () => {
     handleCreatePlanClick
   } = useManagePlansContext();
 
+  // Calculate the total number of plans (unfiltered) to determine when to show the button
+  const totalPlanCount = plans.length;
+
   return (
     <div className="space-y-6">
       {/* Filters */}
@@ -30,8 +33,10 @@ const ManagePlansContent: React.FC = () => {
       <ActivePlansTable 
         isLoading={isLoading}
         plans={plans}
+        totalPlanCount={totalPlanCount} // Pass the total plan count
         onCreatePlanClick={handleCreatePlanClick}
         onViewPlanDetails={handleViewPlanDetails}
+        statusFilter={statusFilter} // Pass the current status filter
       />
     </div>
   );

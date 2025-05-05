@@ -19,15 +19,19 @@ import { formatCurrency } from '@/utils/formatters';
 interface ActivePlansTableProps {
   isLoading: boolean;
   plans: any[];
+  totalPlanCount: number; // Add total plan count to determine empty state
   onCreatePlanClick: () => void;
   onViewPlanDetails: (plan: any) => void;
+  statusFilter: string; // Add current status filter
 }
 
 const ActivePlansTable = ({ 
   isLoading, 
   plans, 
+  totalPlanCount,
   onCreatePlanClick, 
-  onViewPlanDetails 
+  onViewPlanDetails,
+  statusFilter
 }: ActivePlansTableProps) => {
   const navigate = useNavigate();
   
@@ -39,6 +43,18 @@ const ActivePlansTable = ({
       console.error('Error formatting date:', error);
       return '-';
     }
+  };
+  
+  // Function to generate the appropriate empty state message based on filter
+  const getEmptyStateMessage = () => {
+    // If there are no plans at all
+    if (totalPlanCount === 0) {
+      return "No active payment plans found. Schedule a patient payment plan to get started.";
+    }
+    
+    // If there are plans, but none match the current filter
+    const filterLabel = statusFilter === 'all' ? '' : statusFilter;
+    return `No ${filterLabel} payment plans found.`;
   };
   
   return (
@@ -53,14 +69,16 @@ const ActivePlansTable = ({
           </div>
         ) : plans.length === 0 ? (
           <div className="py-8 text-center text-gray-500">
-            <p>No active payment plans found. Schedule a patient payment plan to get started.</p>
-            <Button 
-              className="mt-4 btn-gradient" 
-              onClick={() => navigate('/dashboard/send-link')}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Request Payment
-            </Button>
+            <p>{getEmptyStateMessage()}</p>
+            {totalPlanCount === 0 && ( // Only show button if there are NO plans at all
+              <Button 
+                className="mt-4 btn-gradient" 
+                onClick={() => navigate('/dashboard/send-link')}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Request Payment
+              </Button>
+            )}
           </div>
         ) : (
           <Table>
