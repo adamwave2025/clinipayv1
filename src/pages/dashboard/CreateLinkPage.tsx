@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -111,7 +110,7 @@ const CreateLinkPage = () => {
     <DashboardLayout userType="clinic">
       <PageHeader 
         title="Create Payment" 
-        description="Generate a secure payment link or create a payment plan"
+        description="Generate a secure reusable payment link or create a payment plan"
       />
       
       <CreateLinkForm 

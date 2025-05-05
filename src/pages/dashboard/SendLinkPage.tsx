@@ -33,7 +33,7 @@ const SendLinkPage = () => {
     <DashboardLayout userType="clinic">
       <PageHeader 
         title="Request Payment" 
-        description="Email a payment link directly to your patient"
+        description="Send a reusable payment link or payment plan to your patient"
       />
       
       <Card className="card-shadow max-w-2xl mx-auto">
