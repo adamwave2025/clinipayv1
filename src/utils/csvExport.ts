@@ -1,3 +1,4 @@
+
 /**
  * Utility functions for exporting data to CSV format
  */
@@ -35,25 +36,27 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
     const patientName = payment.patientName ? `"${payment.patientName.replace(/"/g, '""')}"` : '""';
     const patientEmail = payment.patientEmail ? `"${payment.patientEmail.replace(/"/g, '""')}"` : '""';
     const patientPhone = payment.patientPhone ? `"${payment.patientPhone.replace(/"/g, '""')}"` : '""';
-    const amount = payment.amount ? formatCurrency(payment.amount).replace('£', '') : '0.00';
     
-    // Format platform fee if available
+    // Format amount to always show 2 decimal places (e.g., 4000.00)
+    const amount = payment.amount ? (payment.amount).toFixed(2) : '0.00';
+    
+    // Format platform fee to always show as a full decimal value (e.g., 80.00)
+    // The platform fee is stored in cents, so we need to convert to a decimal value
     let platformFee = '0.00';
     if (payment.platformFee) {
-      // The platform fee should already be in cents, so convert to decimal for display
-      platformFee = formatCurrency(payment.platformFee / 100).replace('£', '');
+      platformFee = (payment.platformFee / 100).toFixed(2);
     }
     
-    // Use the database's net_amount field if available, otherwise calculate it
+    // Calculate net amount correctly
     let netAmount = '0.00';
     if (payment.netAmount) {
       // If we have a pre-calculated net amount from the database, use that
-      netAmount = formatCurrency(payment.netAmount).replace('£', '');
+      netAmount = payment.netAmount.toFixed(2);
     } else if (payment.amount) {
       // Fallback calculation if netAmount isn't available
-      // Convert platform fee from cents to decimal currency unit to match amount
+      // Convert platform fee from cents to decimal to match amount units
       const platformFeeDecimal = payment.platformFee ? payment.platformFee / 100 : 0;
-      netAmount = formatCurrency(payment.amount - platformFeeDecimal).replace('£', '');
+      netAmount = (payment.amount - platformFeeDecimal).toFixed(2);
     }
     
     const reference = payment.reference ? `"${payment.reference}"` : '""';
@@ -61,13 +64,8 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
     // Get the payment title or description
     const name = payment.linkTitle || payment.type || 'Unknown';
     
-    // Determine payment type (reusable link, payment plan, or direct)
-    let paymentType = 'Direct Payment';
-    if (payment.type === 'payment_plan') {
-      paymentType = 'Payment Plan';
-    } else {
-      paymentType = 'Reusable Link';
-    }
+    // Determine payment type (reusable link or payment plan)
+    let paymentType = payment.type === 'payment_plan' ? 'Payment Plan' : 'Reusable Link';
     
     const status = payment.status || 'Unknown';
     
