@@ -1,3 +1,4 @@
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { generatePaymentReference } from "./utils.ts";
@@ -30,10 +31,13 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       return;
     }
 
-    // Convert the amount from cents to pounds with precision
+    // Store the original amount in cents as received from Stripe
+    const amountInCents = paymentIntent.amount;
+    
+    // Convert to pounds only for logging purposes
     const amountInPounds = paymentIntent.amount / 100;
     
-    console.log(`Payment for clinic: ${clinicId}, amount: ${amountInPounds} (original: ${paymentIntent.amount} cents)`);
+    console.log(`Payment for clinic: ${clinicId}, amount: ${amountInPounds} (original: ${amountInCents} cents)`);
     
     // Generate a payment reference if one doesn't exist
     const paymentReference = existingReference || generatePaymentReference();
@@ -113,10 +117,10 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       }
     }
     
-    // Prepare payment record data
+    // Prepare payment record data - IMPORTANT: Store all monetary values as cents/pence
     const paymentData = {
       clinic_id: clinicId,
-      amount_paid: amountInPounds,
+      amount_paid: amountInCents, // FIXED: Store as integer cents, not converted to pounds
       paid_at: new Date().toISOString(),
       patient_name: patientName || "Unknown",
       patient_email: patientEmail || null,
@@ -325,7 +329,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
               action_type: "payment_made",
               details: {
                 payment_reference: paymentReference,
-                amount: amountInPounds,
+                amount: amountInCents, // FIXED: Store as integer (cents)
                 payment_date: new Date().toISOString(),
                 payment_number: scheduleData.payment_number,
                 total_payments: scheduleData.total_payments,
@@ -382,7 +386,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
           },
           payment: {
             reference: paymentReference,
-            amount: amountInPounds,
+            amount: amountInCents, // FIXED: Store as integer (cents)
             refund_amount: null,
             payment_link: `https://clinipay.co.uk/payment-receipt/${paymentId}`,
             message: "Your payment was successful"
@@ -425,15 +429,15 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
           },
           payment: {
             reference: paymentReference,
-            amount: amountInPounds,
+            amount: amountInCents, // FIXED: Store as integer (cents)
             refund_amount: null,
             payment_link: `https://clinipay.co.uk/payment-receipt/${paymentId}`,
             message: "Payment received successfully",
             financial_details: {
-              gross_amount: amountInPounds,
-              stripe_fee: stripeFeeInCents / 100, // Convert from cents to pounds
-              platform_fee: platformFeeInCents / 100, // Convert from cents to pounds
-              net_amount: netAmountInCents / 100 // Convert from cents to pounds
+              gross_amount: amountInCents, // FIXED: Store as integer (cents)
+              stripe_fee: stripeFeeInCents,
+              platform_fee: platformFeeInCents,
+              net_amount: netAmountInCents
             }
           },
           clinic: {
@@ -534,7 +538,7 @@ export async function handlePaymentIntentFailed(paymentIntent: any, supabaseClie
           },
           payment: {
             reference: "N/A",
-            amount: paymentIntent.amount / 100,
+            amount: paymentIntent.amount, // Store as integer (cents)
             refund_amount: null,
             payment_link: paymentLinkId ? `https://clinipay.co.uk/payment/${paymentLinkId}` : null,
             message: `Your payment has failed: ${failureMessage}`
