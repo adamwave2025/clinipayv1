@@ -1,32 +1,32 @@
 
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plan } from '@/utils/planTypes';
 import { usePlanDataFetcher } from './payment-plans/usePlanDataFetcher';
-import { usePaymentDetailsFetcher } from './payment-plans/usePaymentDetailsFetcher';
 import { usePlanActions } from './payment-plans/usePlanActions';
-import { usePlanUIState } from './payment-plans/usePlanUIState';
-import { usePlanNavigation } from './payment-plans/usePlanNavigation';
 import { usePlanDetailsView } from './payment-plans/usePlanDetailsView';
 import { usePlanCancelActions } from './payment-plans/usePlanCancelActions';
 import { usePlanPauseActions } from './payment-plans/usePlanPauseActions';
 import { usePlanResumeActions } from './payment-plans/usePlanResumeActions';
 import { usePlanRescheduleActions } from './payment-plans/usePlanRescheduleActions';
-import { useDashboardData } from '@/components/dashboard/DashboardDataProvider';
 import { ManagePlansContextType } from '@/contexts/ManagePlansContext';
+import { useSearchFilterState } from './payment-plans/useSearchFilterState';
+import { useRefundState } from './payment-plans/useRefundState';
+import { useViewModeState } from './payment-plans/useViewModeState';
+import { useEnhancedNavigation } from './payment-plans/useEnhancedNavigation';
+import { useInstallmentHandler } from './payment-plans/useInstallmentHandler';
 
 export const useManagePlans = (): ManagePlansContextType => {
   const { user } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
-  const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
-  const [isViewMode, setIsViewMode] = useState(false);
-  
-  // Get dashboard data for refund functionality
-  const { handleRefund } = useDashboardData();
   
   // Use all the smaller hooks
+  const { searchQuery, setSearchQuery, statusFilter, setStatusFilter } = useSearchFilterState();
+  const { isViewMode, setIsViewMode, handleCreatePlanClick, handleViewPlansClick } = useEnhancedNavigation();
+  const { 
+    refundDialogOpen, setRefundDialogOpen, paymentToRefund,
+    openRefundDialog, processRefund 
+  } = useRefundState();
+  
   const { 
     plans: allPlans, 
     installments, 
@@ -37,7 +37,14 @@ export const useManagePlans = (): ManagePlansContextType => {
     fetchPlanInstallmentsData 
   } = usePlanDataFetcher();
   
-  const { paymentData, setPaymentData, fetchPaymentDataForInstallment } = usePaymentDetailsFetcher();
+  const {
+    selectedInstallment,
+    setSelectedInstallment,
+    showPaymentDetails,
+    setShowPaymentDetails,
+    paymentData,
+    handleViewPaymentDetails
+  } = useInstallmentHandler();
   
   // Use plan details view hook
   const { 
@@ -45,10 +52,6 @@ export const useManagePlans = (): ManagePlansContextType => {
     setSelectedPlan,
     showPlanDetails, 
     setShowPlanDetails,
-    selectedInstallment,
-    setSelectedInstallment,
-    showPaymentDetails,
-    setShowPaymentDetails,
     isPlanPaused,
     handleViewPlanDetails: viewPlanDetails,
     handleBackToPlans
@@ -63,8 +66,6 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleResumePlan: resumePlan,
     handleReschedulePlan: reschedulePlan
   } = usePlanActions(() => fetchPaymentPlans(user?.id || ''));
-  
-  const { handleCreatePlanClick, handleViewPlansClick } = usePlanNavigation();
   
   // Use specialized action hooks
   const cancelActions = usePlanCancelActions(selectedPlan, cancelPlan, setShowPlanDetails);
@@ -102,17 +103,6 @@ export const useManagePlans = (): ManagePlansContextType => {
   const handleViewPlanDetails = async (plan: Plan) => {
     return viewPlanDetails(plan, fetchPlanInstallmentsData);
   };
-  
-  const handleViewPaymentDetails = async (installment: any) => {
-    setSelectedInstallment(installment);
-    
-    const payment = await fetchPaymentDataForInstallment(installment);
-    if (payment) {
-      setPaymentData(payment);
-      setShowPlanDetails(false); // Close the plan details dialog
-      setShowPaymentDetails(true); // Open the payment details dialog
-    }
-  };
 
   // Create a wrapper for sendReminder that adapts the return type
   const handleSendReminder = async (installmentId: string): Promise<void> => {
@@ -120,80 +110,62 @@ export const useManagePlans = (): ManagePlansContextType => {
     // Void return type, so no return statement needed
   };
 
-  // Refund functionality
-  const openRefundDialog = () => {
-    if (paymentData && paymentData.id) {
-      setPaymentToRefund(paymentData.id);
-      setRefundDialogOpen(true);
-    } else {
-      console.error('No payment data available for refund');
-    }
-  };
-
-  const processRefund = (amount?: number) => {
-    if (paymentToRefund) {
-      // Explicitly pass the payment ID to handleRefund
-      handleRefund(amount, paymentToRefund);
-      // We'll close the payment details modal after refund
-      setShowPaymentDetails(false);
-    } else {
-      console.error('No payment ID available for refund');
-    }
-  };
-
-  // Update handleCreatePlanClick wrapper to reset view mode
-  const wrappedHandleCreatePlanClick = () => {
-    setIsViewMode(false);
-    handleCreatePlanClick();
-  };
-
-  // Update handleViewPlansClick wrapper to set view mode
-  const wrappedHandleViewPlansClick = () => {
-    setIsViewMode(true);
-    handleViewPlansClick();
+  // Override the refund functionality to handle the payment details view
+  const enhancedOpenRefundDialog = () => {
+    openRefundDialog(paymentData);
+    // We'll close the payment details modal after refund in processRefund
   };
 
   return {
+    // Search and filter state
     searchQuery,
     setSearchQuery,
     statusFilter,
     setStatusFilter,
-    selectedPlan,
-    showPlanDetails,
-    setShowPlanDetails,
+    
+    // Plan data
     plans,
     isLoading,
     installments,
     activities,
     isLoadingActivities,
-    handleViewPlanDetails,
-    handleCreatePlanClick: wrappedHandleCreatePlanClick,
-    handleViewPlansClick: wrappedHandleViewPlansClick,
-    handleSendReminder,
-    // Payment details properties
+    
+    // Selected plan state
+    selectedPlan,
+    showPlanDetails,
+    setShowPlanDetails,
+    
+    // Payment details state
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    handleViewPaymentDetails,
     selectedInstallment,
-    handleBackToPlans,
-    // View mode toggle state
+    
+    // View mode state
     isViewMode,
     setIsViewMode,
+    
+    // Action handlers
+    handleViewPlanDetails,
+    handleCreatePlanClick,
+    handleViewPlansClick,
+    handleSendReminder,
+    handleViewPaymentDetails,
+    handleBackToPlans,
+    
     // Refund properties
     refundDialogOpen,
     setRefundDialogOpen,
     paymentToRefund,
-    openRefundDialog,
+    openRefundDialog: enhancedOpenRefundDialog,
     processRefund,
-    // Cancel plan properties
+    
+    // Include all plan action properties
     ...cancelActions,
-    // Pause plan properties
     ...pauseActions,
-    // Resume plan properties
     ...resumeActions,
-    // Reschedule plan properties
     ...rescheduleActions,
+    
     // Plan state helpers
     isPlanPaused,
     isProcessing
