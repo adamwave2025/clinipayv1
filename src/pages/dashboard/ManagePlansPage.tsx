@@ -14,7 +14,7 @@ import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvi
 import PaymentPlansTable from '@/components/dashboard/payment-plans/PaymentPlansTable';
 import { Plan } from '@/utils/planTypes';
 import { PaymentLink } from '@/types/payment';
-import CreateLinkDialog from '@/components/dashboard/links/CreateLinkDialog';
+import CreatePlanSheet from '@/components/dashboard/payment-plans/CreatePlanSheet';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 
 // Adapter function to convert Plan objects to PaymentLink format
@@ -42,59 +42,60 @@ const convertPlansToPaymentLinks = (plans: Plan[]): PaymentLink[] => {
 const ManagePlansHeader: React.FC = () => {
   const { handleViewPlansClick, isViewMode, setIsViewMode } = useManagePlansContext();
   const { createPaymentLink } = usePaymentLinks();
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createSheetOpen, setCreateSheetOpen] = useState(false);
   
   const handleCreatePlanClick = () => {
-    setCreateDialogOpen(true);
+    setCreateSheetOpen(true);
   };
   
   return (
-    <PageHeader 
-      title="Payment Plans" 
-      description="Create and manage payment plans for your patients"
-      action={
-        <div className="flex space-x-2">
-          {isViewMode ? (
-            <>
+    <>
+      <PageHeader 
+        title="Payment Plans" 
+        description="Create and manage payment plans for your patients"
+        action={
+          <div className="flex space-x-2">
+            {isViewMode ? (
+              <>
+                <Button 
+                  variant="outline"
+                  className="flex items-center"
+                  onClick={() => setIsViewMode(false)}
+                >
+                  <UserRound className="mr-2 h-4 w-4" />
+                  Active Plans
+                </Button>
+                <Button 
+                  className="btn-gradient flex items-center"
+                  onClick={handleCreatePlanClick}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Create Plan
+                </Button>
+              </>
+            ) : (
               <Button 
                 variant="outline"
                 className="flex items-center"
-                onClick={() => setIsViewMode(false)}
+                onClick={() => {
+                  handleViewPlansClick();
+                  setIsViewMode(true);
+                }}
               >
-                <UserRound className="mr-2 h-4 w-4" />
-                Active Plans
+                <Calendar className="mr-2 h-4 w-4" />
+                View Plans
               </Button>
-              <Button 
-                className="btn-gradient flex items-center"
-                onClick={handleCreatePlanClick}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create Plan
-              </Button>
-              
-              <CreateLinkDialog
-                open={createDialogOpen}
-                onOpenChange={setCreateDialogOpen}
-                createPaymentLink={createPaymentLink}
-                defaultPaymentType="payment_plan"
-              />
-            </>
-          ) : (
-            <Button 
-              variant="outline"
-              className="flex items-center"
-              onClick={() => {
-                handleViewPlansClick();
-                setIsViewMode(true);
-              }}
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              View Plans
-            </Button>
-          )}
-        </div>
-      }
-    />
+            )}
+          </div>
+        }
+      />
+
+      <CreatePlanSheet
+        open={createSheetOpen}
+        onOpenChange={setCreateSheetOpen}
+        createPaymentLink={createPaymentLink}
+      />
+    </>
   );
 };
 

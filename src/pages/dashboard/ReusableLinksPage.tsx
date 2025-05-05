@@ -13,7 +13,7 @@ import { PaymentLink } from '@/types/payment';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Archive, ArchiveRestore, PlusCircle } from 'lucide-react';
-import CreateLinkDialog from '@/components/dashboard/links/CreateLinkDialog';
+import CreateLinkSheet from '@/components/dashboard/links/CreateLinkSheet';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import {
   Pagination,
@@ -51,7 +51,7 @@ const ReusableLinksPage = () => {
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [linkToArchive, setLinkToArchive] = useState<PaymentLink | null>(null);
   const [isArchiveLoading, setIsArchiveLoading] = useState(false);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createSheetOpen, setCreateSheetOpen] = useState(false);
   
   const handleCopyLink = (url: string) => {
     navigator.clipboard.writeText(url);
@@ -96,7 +96,7 @@ const ReusableLinksPage = () => {
   };
 
   const handleCreateLinkClick = () => {
-    setCreateDialogOpen(true);
+    setCreateSheetOpen(true);
   };
 
   const handleLinkCreated = () => {
@@ -214,9 +214,9 @@ const ReusableLinksPage = () => {
             isArchiveView={isArchiveView}
           />
 
-          <CreateLinkDialog
-            open={createDialogOpen}
-            onOpenChange={setCreateDialogOpen}
+          <CreateLinkSheet
+            open={createSheetOpen}
+            onOpenChange={setCreateSheetOpen}
             onLinkCreated={handleLinkCreated}
             createPaymentLink={createPaymentLink}
             defaultPaymentType="deposit"

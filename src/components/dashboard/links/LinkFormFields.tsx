@@ -20,13 +20,17 @@ interface LinkFormFieldsProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onSelectChange: (name: string, value: string) => void;
   isLoading: boolean;
+  showPaymentTypeSelect?: boolean;
+  hidePlanOption?: boolean;
 }
 
 const LinkFormFields: React.FC<LinkFormFieldsProps> = ({
   formData,
   onChange,
   onSelectChange,
-  isLoading
+  isLoading,
+  showPaymentTypeSelect = true,
+  hidePlanOption = false
 }) => {
   return (
     <div className="space-y-6">
@@ -68,31 +72,35 @@ const LinkFormFields: React.FC<LinkFormFieldsProps> = ({
         )}
       </div>
       
-      <div className="space-y-2">
-        <Label htmlFor="paymentType">Payment Type</Label>
-        <Select
-          value={formData.paymentType}
-          onValueChange={(value) => onSelectChange('paymentType', value)}
-          disabled={isLoading}
-        >
-          <SelectTrigger id="paymentType" className="input-focus">
-            <SelectValue placeholder="Select payment type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectLabel>Recurring Payments</SelectLabel>
-              <SelectItem value="payment_plan">Payment Plan</SelectItem>
-            </SelectGroup>
-            <SelectGroup>
-              <SelectLabel>Reusable Links</SelectLabel>
-              <SelectItem value="deposit">Deposit</SelectItem>
-              <SelectItem value="treatment">Treatment</SelectItem>
-              <SelectItem value="consultation">Consultation</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </div>
+      {showPaymentTypeSelect && (
+        <div className="space-y-2">
+          <Label htmlFor="paymentType">Payment Type</Label>
+          <Select
+            value={formData.paymentType}
+            onValueChange={(value) => onSelectChange('paymentType', value)}
+            disabled={isLoading}
+          >
+            <SelectTrigger id="paymentType" className="input-focus">
+              <SelectValue placeholder="Select payment type" />
+            </SelectTrigger>
+            <SelectContent>
+              {!hidePlanOption && (
+                <SelectGroup>
+                  <SelectLabel>Recurring Payments</SelectLabel>
+                  <SelectItem value="payment_plan">Payment Plan</SelectItem>
+                </SelectGroup>
+              )}
+              <SelectGroup>
+                <SelectLabel>Reusable Links</SelectLabel>
+                <SelectItem value="deposit">Deposit</SelectItem>
+                <SelectItem value="treatment">Treatment</SelectItem>
+                <SelectItem value="consultation">Consultation</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       
       {formData.paymentPlan && (
         <PaymentPlanFields
