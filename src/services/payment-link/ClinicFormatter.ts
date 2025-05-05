@@ -1,27 +1,46 @@
 
 import { RawClinicData } from '@/types/paymentLink';
 
+/**
+ * Formatter for clinic data
+ */
 export const ClinicFormatter = {
-  formatAddress(clinic: RawClinicData): string | undefined {
-    const addressParts = [
-      clinic.address_line_1,
-      clinic.address_line_2,
-      clinic.city,
-      clinic.postcode
-    ].filter(Boolean);
-    
-    return addressParts.length > 0 ? addressParts.join(', ') : undefined;
-  },
+  formatClinicData(clinicData: RawClinicData | null) {
+    if (!clinicData) {
+      console.warn('ClinicFormatter: No clinic data provided to format');
+      return {
+        id: 'unknown',
+        name: 'Unknown Clinic',
+        stripeStatus: 'not_connected'
+      };
+    }
 
-  formatClinicData(clinicData: RawClinicData) {
-    return {
-      id: clinicData.id,
-      name: clinicData.clinic_name || 'Unknown Clinic',
-      logo: clinicData.logo_url || undefined,
-      email: clinicData.email || undefined,
-      phone: clinicData.phone || undefined,
-      address: this.formatAddress(clinicData),
-      stripeStatus: clinicData.stripe_status || undefined
-    };
+    try {
+      // Build the address string if components exist
+      let addressParts = [];
+      if (clinicData.address_line_1) addressParts.push(clinicData.address_line_1);
+      if (clinicData.address_line_2) addressParts.push(clinicData.address_line_2);
+      if (clinicData.city) addressParts.push(clinicData.city);
+      if (clinicData.postcode) addressParts.push(clinicData.postcode);
+      
+      const address = addressParts.length > 0 ? addressParts.join(', ') : undefined;
+      
+      return {
+        id: clinicData.id,
+        name: clinicData.clinic_name || 'Unknown Clinic',
+        logo: clinicData.logo_url,
+        email: clinicData.email,
+        phone: clinicData.phone,
+        address: address,
+        stripeStatus: clinicData.stripe_status || 'not_connected'
+      };
+    } catch (error) {
+      console.error('ClinicFormatter: Error formatting clinic data:', error);
+      return {
+        id: clinicData.id || 'unknown',
+        name: clinicData.clinic_name || 'Unknown Clinic',
+        stripeStatus: clinicData.stripe_status || 'not_connected'
+      };
+    }
   }
 };

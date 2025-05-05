@@ -17,13 +17,25 @@ const PaymentErrorBoundary = ({
 }: PaymentErrorBoundaryProps) => {
   const navigate = useNavigate();
   const [hasError, setHasError] = useState<boolean>(!!errorMessage);
+  const [shouldRedirect, setShouldRedirect] = useState<boolean>(false);
 
   useEffect(() => {
-    if (hasError && !errorMessage) {
-      // If we have an error state but no message, redirect to failed page
+    // Only set hasError if we have an explicit error message
+    if (errorMessage) {
+      setHasError(true);
+      // Give a delay before considering redirect to avoid immediate jumps
+      const timer = setTimeout(() => setShouldRedirect(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [errorMessage]);
+
+  useEffect(() => {
+    // Only redirect if we have both hasError AND shouldRedirect flags
+    if (hasError && shouldRedirect && !errorMessage) {
+      console.log('PaymentErrorBoundary: Redirecting to failed page due to error state');
       navigate(`/payment/failed${linkId ? `?link_id=${linkId}` : ''}`);
     }
-  }, [hasError, navigate, linkId, errorMessage]);
+  }, [hasError, shouldRedirect, navigate, linkId, errorMessage]);
 
   if (errorMessage) {
     return (
@@ -71,6 +83,7 @@ class ErrorCatcher extends React.Component<ErrorCatcherProps, { hasError: boolea
 
   componentDidUpdate(prevProps: ErrorCatcherProps, prevState: { hasError: boolean }) {
     if (this.state.hasError && !prevState.hasError) {
+      console.log('ErrorCatcher: Error detected in payment component');
       this.props.setHasError(true);
     }
   }

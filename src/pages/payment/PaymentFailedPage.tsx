@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
@@ -16,6 +17,7 @@ const PaymentFailedReasons = () => (
       <li>Card has expired or been cancelled</li>
       <li>Transaction was declined by your bank</li>
       <li>Temporary issue with payment processor</li>
+      <li>The payment link may be invalid or expired</li>
     </ul>
   </div>
 );
@@ -25,14 +27,20 @@ const PaymentFailedPage = () => {
   const [searchParams] = useSearchParams();
   const linkId = searchParams.get('link_id');
   const [loading, setLoading] = useState(!!linkId);
+  const [diagnosticInfo, setDiagnosticInfo] = useState<string | null>(null);
   
-  const { linkData, isLoading } = usePaymentLinkData(linkId);
+  const { linkData, isLoading, error } = usePaymentLinkData(linkId);
   
   useEffect(() => {
     if (!isLoading) {
       setLoading(false);
+      if (error) {
+        setDiagnosticInfo(`Error: ${error}`);
+      } else if (!linkData) {
+        setDiagnosticInfo("No payment link data found.");
+      }
     }
-  }, [isLoading]);
+  }, [isLoading, error, linkData]);
 
   const handleTryAgain = () => {
     if (linkId) {
@@ -69,6 +77,12 @@ const PaymentFailedPage = () => {
       />
       
       <PaymentFailedReasons />
+      
+      {diagnosticInfo && (
+        <div className="mt-2 mb-4 p-2 bg-gray-100 rounded-md text-xs text-gray-700 font-mono">
+          {diagnosticInfo}
+        </div>
+      )}
       
       <div className="mt-6 text-center">
         <p className="text-sm text-gray-500">
