@@ -131,6 +131,17 @@ serve(async (req) => {
               sms: !!enhancedPayload.patient.phone
             };
           }
+          
+          // IMPORTANT: Convert monetary values from cents to display currency (pounds/dollars)
+          // This ensures amounts in payment requests are properly formatted
+          if (enhancedPayload.payment && enhancedPayload.payment.amount) {
+            // Convert from cents to pounds/dollars if it appears to be stored in cents
+            // (determined by checking if it's a large integer likely to be in cents)
+            if (Number.isInteger(enhancedPayload.payment.amount) && enhancedPayload.payment.amount >= 1000) {
+              console.log(`💰 Converting amount from cents: ${enhancedPayload.payment.amount} to display currency: ${enhancedPayload.payment.amount / 100}`);
+              enhancedPayload.payment.amount = enhancedPayload.payment.amount / 100;
+            }
+          }
         }
 
         console.log(`📤 Sending notification to webhook: ${webhookUrl.substring(0, 30)}...`);
@@ -224,6 +235,8 @@ serve(async (req) => {
 
 /**
  * Enriches the notification payload with additional data from the database
+ * IMPORTANT: Monetary values in the database are stored in cents (1/100 of currency unit)
+ * This function converts them to display currency (pounds/dollars) before returning
  */
 async function enrichPayloadWithData(supabase, notification) {
   try {
@@ -323,11 +336,17 @@ async function enrichPayloadWithData(supabase, notification) {
       phone: payment.patient_phone || payload.patient_phone
     };
     
-    // Add payment data
+    // IMPORTANT: Convert monetary values from cents to display currency
+    // Add payment data with amounts converted from cents to display currency
+    const amountPaid = payment.amount_paid ? payment.amount_paid / 100 : 0;
+    const refundAmount = payment.refund_amount ? payment.refund_amount / 100 : null;
+    
+    console.log(`💰 Converting amount_paid from cents: ${payment.amount_paid} to display currency: ${amountPaid}`);
+    
     enhancedPayload.payment = {
       reference: payment.payment_ref || "N/A",
-      amount: payment.amount_paid,
-      refund_amount: payment.refund_amount || null,
+      amount: amountPaid, // Converted from cents to pounds/dollars
+      refund_amount: refundAmount, // Converted from cents to pounds/dollars
       payment_link: `https://clinipay.co.uk/payment-receipt/${payment.id}`,
       message: notification.type === 'payment_success' ? 
         "Your payment was successful" : 
@@ -336,11 +355,12 @@ async function enrichPayloadWithData(supabase, notification) {
     
     // For clinic notifications, add financial details
     if (recipientType === 'clinic') {
+      // Convert all financial values from cents to pounds/dollars
       enhancedPayload.payment.financial_details = {
-        gross_amount: payment.amount_paid,
-        stripe_fee: payment.stripe_fee ? payment.stripe_fee / 100 : 0, // Convert from cents to pounds
-        platform_fee: payment.platform_fee ? payment.platform_fee / 100 : 0, // Convert from cents to pounds
-        net_amount: payment.net_amount ? payment.net_amount / 100 : 0 // Convert from cents to pounds
+        gross_amount: amountPaid, // Already converted above
+        stripe_fee: payment.stripe_fee ? payment.stripe_fee / 100 : 0,
+        platform_fee: payment.platform_fee ? payment.platform_fee / 100 : 0,
+        net_amount: payment.net_amount ? payment.net_amount / 100 : 0
       };
     }
     
@@ -352,3 +372,4 @@ async function enrichPayloadWithData(supabase, notification) {
     return notification.payload;
   }
 }
+
