@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Clock, RotateCw, PauseCircle, PlayCircle, XCircle, CalendarIcon, CheckCircle2, CreditCard, RefreshCcw, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { formatDateTime } from '@/utils/formatters';
+import { formatDateTime, formatCurrency } from '@/utils/formatters';
 
 interface ActivityLogProps {
   activities: PlanActivity[];
@@ -111,7 +111,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading }) => {
         return (
           <div className="text-sm">
             <p>Payment {details.payment_number} of {details.total_payments}</p>
-            <p>Amount: £{details.amount?.toFixed(2) || '0.00'}</p>
+            <p>Amount: {formatCurrency(details.amount)}</p>
             <p>Reference: {details.payment_reference || 'N/A'}</p>
             <p>Date: {formatDate(details.payment_date)}</p>
           </div>
@@ -120,7 +120,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading }) => {
         return (
           <div className="text-sm">
             <p>Payment {details.payment_number} of {details.total_payments}</p>
-            <p>Refund amount: £{details.refund_amount?.toFixed(2) || '0.00'}</p>
+            <p>Refund amount: {formatCurrency(details.refund_amount)}</p>
             {details.is_full_refund 
               ? <p>Full refund processed</p> 
               : <p>Partial refund processed</p>}
@@ -132,9 +132,9 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading }) => {
         return (
           <div className="text-sm">
             <p>Start date: {details.start_date || 'N/A'}</p>
-            <p>{details.installments} payments of £{details.installment_amount?.toFixed(2) || '0.00'}</p>
+            <p>{details.installments} payments of {formatCurrency(details.installment_amount)}</p>
             <p>Frequency: {details.frequency || 'monthly'}</p>
-            <p>Total: £{details.total_amount?.toFixed(2) || '0.00'}</p>
+            <p>Total: {formatCurrency(details.total_amount)}</p>
           </div>
         );
       case 'overdue':
