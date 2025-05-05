@@ -159,14 +159,6 @@ const PlanTemplatesView: React.FC<PlanTemplatesViewProps> = ({ onBackToPlans, re
           ) : templates.length === 0 ? (
             <div className="py-8 text-center text-gray-500">
               <p>No {isArchiveView ? 'archived ' : ''}payment plan templates found.</p>
-              {!isArchiveView && (
-                <Button 
-                  className="mt-4 btn-gradient"
-                  onClick={() => toast.info('Create a new payment plan to save it as a template')}
-                >
-                  Create Plan Template
-                </Button>
-              )}
             </div>
           ) : (
             <Table>
