@@ -11,22 +11,20 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { LinkFormData } from './CreateLinkForm';
+import { LinkFormData } from '@/hooks/useCreateLinkForm';
 
 interface LinkGeneratedDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   generatedLink: string | null;
   formData: LinkFormData | null;
-  onReset: () => void;
 }
 
 const LinkGeneratedDialog = ({ 
   open, 
   onOpenChange, 
   generatedLink, 
-  formData,
-  onReset
+  formData
 }: LinkGeneratedDialogProps) => {
   
   const handleCopyLink = () => {
@@ -34,13 +32,6 @@ const LinkGeneratedDialog = ({
       navigator.clipboard.writeText(generatedLink);
       toast.success('Link copied to clipboard');
     }
-  };
-
-  const handleClose = (newOpen: boolean) => {
-    if (!newOpen) {
-      onReset();
-    }
-    onOpenChange(newOpen);
   };
 
   // Check if this is a payment plan
@@ -53,7 +44,7 @@ const LinkGeneratedDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center">

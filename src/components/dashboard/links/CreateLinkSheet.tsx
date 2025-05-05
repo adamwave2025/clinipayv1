@@ -115,7 +115,7 @@ const CreateLinkSheet: React.FC<CreateLinkSheetProps> = ({
       <LinkGeneratedDialog 
         open={showLinkDialog}
         onOpenChange={setShowLinkDialog}
-        paymentLink={generatedLink}
+        generatedLink={generatedLink}
         formData={linkFormData}
       />
     </>

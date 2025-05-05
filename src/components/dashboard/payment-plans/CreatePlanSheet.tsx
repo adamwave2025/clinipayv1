@@ -61,10 +61,10 @@ const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
     if (!pendingFormData) return;
     
     try {
-      const { title, amount, description, paymentCount, paymentCycle } = pendingFormData;
+      const { paymentTitle, amount, description, paymentCount, paymentCycle } = pendingFormData;
       
       const planData = {
-        title,
+        title: paymentTitle,
         amount: parseFloat(amount) * 100, // Convert to cents
         description,
         type: 'payment_plan',
