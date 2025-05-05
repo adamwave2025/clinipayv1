@@ -14,7 +14,7 @@ export const usePaymentPlans = () => {
   
   const { user } = useAuth();
 
-  // Fetch payment plans when user is available or archive view changes
+  // Fetch payment plans when user is available or archive/template view changes
   useEffect(() => {
     if (user) {
       fetchPaymentPlans();

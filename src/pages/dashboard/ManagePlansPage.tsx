@@ -92,7 +92,7 @@ const ManagePlansHeader: React.FC = () => {
 };
 
 const ManagePlansPageContent: React.FC = () => {
-  const { isViewMode, plans, isLoading, searchQuery, setSearchQuery, handleCreatePlanClick, handleViewPlansClick } = useManagePlansContext();
+  const { isViewMode, plans, isLoading, searchQuery, setSearchQuery, handleCreatePlanClick, handleViewPlansClick, setIsViewMode } = useManagePlansContext();
   
   // For view mode, use the usePaymentPlans hook directly
   const { 

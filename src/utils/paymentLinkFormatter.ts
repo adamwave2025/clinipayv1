@@ -15,9 +15,7 @@ import { PaymentLink } from '@/types/payment';
 export const formatPaymentLinks = (data: any[]): PaymentLink[] => data.map(link => {
   // Improved handling for payment_plan boolean
   // First check for explicit boolean, then handle other cases
-  const isPaymentPlan = typeof link.payment_plan === 'boolean' 
-    ? link.payment_plan 
-    : link.type === 'payment_plan' || link.payment_plan === 'true';
+  const isPaymentPlan = link.payment_plan === true || link.payment_plan === 'true' || link.type === 'payment_plan';
   
   console.log(`Formatting payment link ${link.id}:`, {
     title: link.title,

@@ -17,10 +17,12 @@ export const PaymentPlanService = {
       const linksToUse = showArchived ? archivedLinks : activeLinks;
       
       // Filter and format the links to only get payment plans
-      // When formatPaymentLinks runs, it will convert snake_case db fields to camelCase for frontend use
-      const plans = formatPaymentLinks(linksToUse).filter(link => link.paymentPlan === true);
+      const plans = formatPaymentLinks(linksToUse).filter(link => {
+        console.log(`Link ${link.id}: payment_plan=${link.paymentPlan}, title=${link.title}`);
+        return link.paymentPlan === true;
+      });
       
-      console.log(`Fetched ${plans.length} ${showArchived ? 'archived' : 'active'} payment plans`);
+      console.log(`Fetched ${plans.length} ${showArchived ? 'archived' : 'active'} payment plans (templates: ${isTemplateView})`);
       
       return { plans, error: null };
     } catch (error) {
