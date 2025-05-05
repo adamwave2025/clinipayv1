@@ -98,40 +98,13 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments, isLoading =
           No payment activity found for this patient
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-6">
           {paymentActivities.map((payment, index) => (
-            <div key={`payment-${payment.id}-${index}`} className="flex items-start gap-3 p-3 border rounded-md">
-              <div className="mt-1">
-                {getPaymentIcon(payment)}
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between">
-                  <span className="font-medium">{getPaymentDescription(payment)}</span>
-                  <StatusBadge status={payment.status} />
-                </div>
-                
-                {/* Payment title and type */}
-                <div className="flex items-center mt-1 text-sm text-gray-600">
-                  <span>{getPaymentDetails(payment)}</span>
-                  <span className="mx-2">•</span>
-                  <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full">
-                    {getPaymentType(payment)}
-                  </span>
-                </div>
-                
-                {/* Reference - now displayed more prominently */}
-                {payment.reference && (
-                  <PaymentReferenceDisplay 
-                    reference={payment.reference}
-                    className="mt-2"
-                  />
-                )}
-                
-                {/* Date and time with proper formatting */}
-                <p className="text-xs text-gray-500 mt-2">
-                  {formatDateTime(payment.date, 'en-GB', 'Europe/London')}
-                </p>
-              </div>
+            <div key={`payment-${payment.id}-${index}`} className="mb-4">
+              <p className="font-medium">{getPaymentDetails(payment)}</p>
+              <p>Payment type: {getPaymentType(payment)}</p>
+              {payment.reference && <p>Ref: {payment.reference}</p>}
+              <p>{formatDateTime(payment.date, 'en-GB', 'Europe/London')}</p>
             </div>
           ))}
         </div>
