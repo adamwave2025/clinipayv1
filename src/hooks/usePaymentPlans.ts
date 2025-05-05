@@ -31,14 +31,9 @@ export const usePaymentPlans = () => {
         return;
       }
       
-      // Get the clinic ID correctly from the user object
-      // CRITICAL FIX: Use user.clinic_id if available, otherwise get it from the helper function
-      let clinicId = user.clinic_id;
-      
-      // If clinic_id isn't directly on the user object, fetch it
-      if (!clinicId) {
-        clinicId = await getUserClinicId();
-      }
+      // FIXED: The User type doesn't have clinic_id property, so we need to use getUserClinicId instead
+      // This gets the clinic ID from the users table in the database
+      let clinicId = await getUserClinicId();
       
       if (!clinicId) {
         console.error('Could not determine clinic ID for payment plans');
