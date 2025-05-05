@@ -225,15 +225,18 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
           <div className="p-6">
             <SheetHeader className="text-left mb-6">
               <div className="flex justify-between items-center">
-                <SheetTitle className="text-2xl">{currentPatient.name}</SheetTitle>
-                <Button 
-                  variant="outline" 
-                  size="icon"
-                  onClick={() => setShowEditDialog(true)}
-                  title="Edit Patient"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
+                <SheetTitle className="text-2xl flex items-center">
+                  {currentPatient.name}
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => setShowEditDialog(true)}
+                    title="Edit Patient"
+                    className="ml-2 h-8 w-8"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </SheetTitle>
               </div>
               <p className="text-sm text-muted-foreground">Patient information and payment details</p>
             </SheetHeader>
