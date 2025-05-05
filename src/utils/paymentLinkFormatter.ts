@@ -13,19 +13,32 @@ import { PaymentLink } from '@/types/payment';
  * @returns Array of formatted PaymentLink objects
  */
 export const formatPaymentLinks = (data: any[]): PaymentLink[] => data.map(link => {
-  // Ensure payment_plan is properly converted to boolean
-  const isPaymentPlan = link.payment_plan === true;
+  // CRITICAL: Ensure payment_plan is properly converted to boolean
+  // Check if it's explicitly true/false first, then fall back to truthy check
+  const isPaymentPlan = typeof link.payment_plan === 'boolean' 
+    ? link.payment_plan 
+    : link.payment_plan === true || link.payment_plan === 'true';
+
+  console.log(`Formatting payment link ${link.id}:`, {
+    title: link.title,
+    type: link.type,
+    payment_plan: link.payment_plan,
+    converted_payment_plan: isPaymentPlan,
+    payment_count: link.payment_count,
+    payment_cycle: link.payment_cycle,
+    plan_total_amount: link.plan_total_amount
+  });
 
   return {
     id: link.id,
     title: link.title || '',
     amount: link.amount || 0, // Keep the original amount from database (in cents)
-    type: link.type || 'payment_plan', // Default to payment_plan for plans
+    type: link.type || (isPaymentPlan ? 'payment_plan' : 'deposit'), // Default based on payment plan status
     description: link.description || '',
     url: `${window.location.origin}/payment/${link.id}`,
     createdAt: new Date(link.created_at).toLocaleDateString(),
-    isActive: link.is_active,
-    paymentPlan: isPaymentPlan, // Make sure this is a boolean
+    isActive: link.is_active !== false, // Default to active if not specified
+    paymentPlan: isPaymentPlan, // Properly converted boolean value
     paymentCount: isPaymentPlan ? link.payment_count : undefined,
     paymentCycle: isPaymentPlan ? link.payment_cycle : undefined,
     planTotalAmount: isPaymentPlan ? link.plan_total_amount : undefined // Keep the original plan total amount (in cents)

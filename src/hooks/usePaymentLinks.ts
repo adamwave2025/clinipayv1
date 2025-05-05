@@ -111,7 +111,7 @@ export function usePaymentLinks() {
     }
 
     try {
-      console.log('Original link data:', linkData);
+      console.log('Original link data before processing:', linkData);
       
       // Get the clinic ID associated with this user
       const clinicId = await getUserClinicId();
@@ -121,7 +121,8 @@ export function usePaymentLinks() {
         return { success: false, error: 'Clinic ID not found' };
       }
       
-      // Ensure paymentPlan is a boolean
+      // CRITICAL: Ensure paymentPlan is properly handled as a boolean value
+      // Check if this is explicitly a payment plan
       const isPaymentPlan = linkData.paymentPlan === true;
       
       // Convert camelCase to snake_case for database compatibility
@@ -130,12 +131,27 @@ export function usePaymentLinks() {
         amount: linkData.amount,
         type: linkData.type,
         description: linkData.description,
-        payment_plan: isPaymentPlan, // Ensure this is a boolean
-        clinic_id: clinicId // Use the fetched clinic ID
+        payment_plan: isPaymentPlan, // Explicitly set as boolean value
+        clinic_id: clinicId
       };
       
       // Only add payment plan fields if it's a payment plan
       if (isPaymentPlan) {
+        console.log('Preparing payment plan data with fields:', {
+          paymentCount: linkData.paymentCount,
+          paymentCycle: linkData.paymentCycle,
+          planTotalAmount: linkData.planTotalAmount
+        });
+        
+        // Validate required payment plan fields
+        if (!linkData.paymentCount) {
+          return { success: false, error: 'Payment count is required for payment plans' };
+        }
+        
+        if (!linkData.paymentCycle) {
+          return { success: false, error: 'Payment cycle is required for payment plans' };
+        }
+        
         dbLinkData.payment_count = linkData.paymentCount;
         dbLinkData.payment_cycle = linkData.paymentCycle;
         dbLinkData.plan_total_amount = linkData.planTotalAmount;

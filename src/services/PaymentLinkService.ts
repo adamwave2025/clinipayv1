@@ -77,34 +77,55 @@ export const PaymentLinkService = {
 
   async createLink(linkData: any) {
     try {
-      console.log('Creating link with data:', linkData);
+      // Improved logging to debug payment plan issues
+      console.log('Creating link with original data:', JSON.stringify(linkData, null, 2));
       
       // Ensure a clinic_id is provided
       if (!linkData.clinic_id) {
         throw new Error('No clinic_id provided');
       }
       
-      // Validate payment plan data if it's a payment plan
-      if (linkData.payment_plan === true) {
-        // Convert string "true" to boolean true if needed
-        linkData.payment_plan = true;
+      // Make a copy to prevent modifying original data
+      const dataToInsert = { ...linkData };
+      
+      // CRITICAL: Handle the payment_plan field explicitly
+      // Ensure payment_plan is a boolean true if specified
+      if (dataToInsert.payment_plan === true || dataToInsert.payment_plan === 'true') {
+        // Explicitly set to boolean true
+        dataToInsert.payment_plan = true;
         
-        console.log('Creating payment plan with properties:', {
-          payment_plan: linkData.payment_plan,
-          payment_count: linkData.payment_count,
-          payment_cycle: linkData.payment_cycle,
-          plan_total_amount: linkData.plan_total_amount
+        console.log('Creating payment plan with validated properties:', {
+          payment_plan: dataToInsert.payment_plan,
+          payment_count: dataToInsert.payment_count,
+          payment_cycle: dataToInsert.payment_cycle,
+          plan_total_amount: dataToInsert.plan_total_amount
         });
         
-        if (!linkData.payment_count || !linkData.payment_cycle) {
+        // Validate required payment plan fields
+        if (!dataToInsert.payment_count || !dataToInsert.payment_cycle) {
           throw new Error('Payment plan requires payment_count and payment_cycle');
         }
+        
+        // Ensure payment_count is a number
+        if (typeof dataToInsert.payment_count === 'string') {
+          dataToInsert.payment_count = parseInt(dataToInsert.payment_count, 10);
+        }
+        
+        // Calculate plan_total_amount if not provided
+        if (!dataToInsert.plan_total_amount && dataToInsert.amount && dataToInsert.payment_count) {
+          dataToInsert.plan_total_amount = dataToInsert.amount * dataToInsert.payment_count;
+        }
+      } else {
+        // Explicitly set to false if not a payment plan
+        dataToInsert.payment_plan = false;
       }
       
-      // Ensure we're using snake_case keys for the database
+      console.log('Final data being sent to database:', JSON.stringify(dataToInsert, null, 2));
+      
+      // Insert data into database
       const { data, error } = await supabase
         .from('payment_links')
-        .insert([linkData])
+        .insert([dataToInsert])
         .select();
 
       if (error) {
