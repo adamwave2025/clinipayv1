@@ -25,6 +25,7 @@ import NotFound from "./pages/NotFound";
 import DashboardPage from "./pages/dashboard/DashboardPage";
 import CreateLinkPage from "./pages/dashboard/CreateLinkPage";
 import SendLinkPage from "./pages/dashboard/SendLinkPage";
+import ReusableLinksPage from "./pages/dashboard/ReusableLinksPage";
 import SettingsPage from "./pages/dashboard/SettingsPage";
 import PaymentHistoryPage from "./pages/dashboard/PaymentHistoryPage";
 import PatientsPage from "./pages/dashboard/PatientsPage";
@@ -101,6 +102,11 @@ const App = () => (
             <Route path="/dashboard/send-link" element={
               <RoleBasedRoute allowedRoles={['clinic']}>
                 <SendLinkPage />
+              </RoleBasedRoute>
+            } />
+            <Route path="/dashboard/reusable-links" element={
+              <RoleBasedRoute allowedRoles={['clinic']}>
+                <ReusableLinksPage />
               </RoleBasedRoute>
             } />
             <Route path="/dashboard/settings" element={

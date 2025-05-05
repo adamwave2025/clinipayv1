@@ -37,6 +37,11 @@ export const getClinicItems = (): SidebarItem[] => [
         icon: <Send className="w-5 h-5" />
       },
       {
+        to: '/dashboard/reusable-links',
+        label: 'Reusable Links',
+        icon: <LinkIcon className="w-5 h-5" />
+      },
+      {
         to: '/dashboard/manage-plans',
         label: 'Payment Plans',
         icon: <Calendar className="w-5 h-5" />
