@@ -20,8 +20,7 @@ export const PaymentPlanService = {
       // When formatPaymentLinks runs, it will convert snake_case db fields to camelCase for frontend use
       const plans = formatPaymentLinks(linksToUse).filter(link => link.paymentPlan === true);
       
-      console.log(`Fetched ${showArchived ? 'archived' : 'active'} payment plans:`, plans); // Debug output
-      console.log(`Total plans found: ${plans.length}`);
+      console.log(`Fetched ${plans.length} ${showArchived ? 'archived' : 'active'} payment plans`);
       
       return { plans, error: null };
     } catch (error) {
