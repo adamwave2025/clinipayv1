@@ -54,14 +54,14 @@ const LaunchPadCard = ({
     },
     {
       id: 'create-link',
-      title: 'Create your first payment link',
-      description: 'Create a payment link to share with patients',
+      title: 'Create your first reusable payment link or payment plan',
+      description: 'Create a reusable payment link or payment plan to share with patients',
       completed: paymentLinksExist,
     },
     {
       id: 'send-link',
-      title: 'Send your first payment link',
-      description: 'Share your payment link with a patient',
+      title: 'Request your first payment',
+      description: 'Request a payment using a reusable link or payment plan',
       completed: hasSentPaymentLink,
     },
   ];
