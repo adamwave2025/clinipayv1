@@ -1,30 +1,24 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { ArrowLeft, Archive, ArchiveRestore } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { PaymentLink } from '@/types/payment';
 import { PaymentLinkService } from '@/services/PaymentLinkService';
 import { formatPaymentLinks } from '@/utils/paymentLinkFormatter';
 import { getUserClinicId } from '@/utils/userUtils';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table';
+import { Card } from '@/components/ui/card';
 import ArchivePlanDialog from './ArchivePlanDialog';
-import { formatCurrency } from '@/utils/formatters';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import TemplateHeader from './components/TemplateHeader';
+import TemplateContent from './components/TemplateContent';
 
 interface PlanTemplatesViewProps {
   onBackToPlans: () => void;
-  refreshTrigger?: number; // Add optional refresh trigger
+  refreshTrigger?: number;
 }
 
-const PlanTemplatesView: React.FC<PlanTemplatesViewProps> = ({ onBackToPlans, refreshTrigger = 0 }) => {
+const PlanTemplatesView: React.FC<PlanTemplatesViewProps> = ({ 
+  onBackToPlans, 
+  refreshTrigger = 0 
+}) => {
   const [templates, setTemplates] = useState<PaymentLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isArchiveView, setIsArchiveView] = useState(false);
@@ -76,7 +70,7 @@ const PlanTemplatesView: React.FC<PlanTemplatesViewProps> = ({ onBackToPlans, re
   // Initial load and when archive view changes or refresh is triggered
   useEffect(() => {
     fetchTemplates();
-  }, [isArchiveView, refreshTrigger]); // Add refreshTrigger to dependencies
+  }, [isArchiveView, refreshTrigger]);
 
   // Toggle between archived and active templates
   const toggleArchiveView = () => {
@@ -128,73 +122,16 @@ const PlanTemplatesView: React.FC<PlanTemplatesViewProps> = ({ onBackToPlans, re
     <div className="space-y-4">
       {/* Content */}
       <Card className="shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>
-            {isArchiveView ? 'Archived Plan Templates' : 'Payment Plan Templates'}
-          </CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={toggleArchiveView}
-            className="gap-1"
-          >
-            {isArchiveView ? (
-              <>
-                <ArchiveRestore className="h-4 w-4" />
-                <span className="hidden sm:inline">View Active</span>
-              </>
-            ) : (
-              <>
-                <Archive className="h-4 w-4" />
-                <span className="hidden sm:inline">View Archive</span>
-              </>
-            )}
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="py-8 text-center text-gray-500">
-              Loading plan templates...
-            </div>
-          ) : templates.length === 0 ? (
-            <div className="py-8 text-center text-gray-500">
-              <p>No {isArchiveView ? 'archived ' : ''}payment plan templates found.</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Template Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Installments</TableHead>
-                  <TableHead>Frequency</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {templates.map(template => (
-                  <TableRow key={template.id}>
-                    <TableCell className="font-medium">{template.title}</TableCell>
-                    <TableCell>{template.description || '-'}</TableCell>
-                    <TableCell>{formatCurrency(template.planTotalAmount || 0)}</TableCell>
-                    <TableCell>{template.paymentCount || '-'}</TableCell>
-                    <TableCell>{template.paymentCycle || '-'}</TableCell>
-                    <TableCell>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleArchiveTemplate(template)}
-                      >
-                        {isArchiveView ? 'Restore' : 'Archive'}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
+        <TemplateHeader 
+          isArchiveView={isArchiveView} 
+          toggleArchiveView={toggleArchiveView} 
+        />
+        <TemplateContent 
+          templates={templates}
+          isLoading={isLoading}
+          isArchiveView={isArchiveView}
+          handleArchiveTemplate={handleArchiveTemplate}
+        />
       </Card>
 
       {/* Archive Confirmation Dialog */}
