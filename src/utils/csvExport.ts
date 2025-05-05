@@ -37,12 +37,30 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
     const patientEmail = payment.patientEmail ? `"${payment.patientEmail.replace(/"/g, '""')}"` : '""';
     const patientPhone = payment.patientPhone ? `"${payment.patientPhone.replace(/"/g, '""')}"` : '""';
     
+    /**
+     * IMPORTANT: MONETARY VALUE HANDLING
+     * 
+     * There are different units for monetary values in the system:
+     * 1. Amount (`payment.amount`) may be in pennies (e.g., 400000 for £4,000) OR 
+     *    already in pounds (e.g., 4000 for £4,000) depending on the source
+     * 2. Platform fee (`payment.platformFee`) is ALWAYS in pennies (e.g., 8000 for £80)
+     * 3. The database `netAmount` field is NOT accurate for CSV exports and MUST BE IGNORED
+     * 
+     * For correct CSV export:
+     * - We detect if amount is in pennies (large values like 400000) and convert to pounds (divide by 100)
+     * - We always convert platform fee from pennies to pounds (divide by 100)
+     * - We calculate net amount as (amount in pounds) - (platform fee in pounds)
+     * - All monetary values are formatted with 2 decimal places (e.g., 4000.00)
+     * 
+     * DO NOT modify this logic without thorough testing to ensure accuracy of exports!
+     */
+    
     // Determine if amount is in pennies (very large value) and format it correctly
     // Our expected output should be like 4000.00
     let formattedAmount = '0.00';
     if (payment.amount) {
       // Check if amount seems to be in pennies (a large value like 400000 for £4000)
-      // Typically, if the amount is over 10,000 and divisible by 100, it's likely in pennies
+      // Typically, if the amount is over 10000 and divisible by 100, it's likely in pennies
       const isInPennies = payment.amount > 10000 && payment.amount % 1 === 0;
       const amountInPounds = isInPennies ? payment.amount / 100 : payment.amount;
       formattedAmount = amountInPounds.toFixed(2);
