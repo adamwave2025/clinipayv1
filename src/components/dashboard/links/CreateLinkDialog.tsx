@@ -160,10 +160,6 @@ const CreateLinkDialog = ({
         onOpenChange={setShowConfirmation}
         generatedLink={generatedLink}
         formData={formData}
-        onReset={() => {
-          resetForm();
-          onOpenChange(false);
-        }}
       />
       
       <CreatePlanConfirmDialog
