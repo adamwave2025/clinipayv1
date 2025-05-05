@@ -16,6 +16,7 @@ import { useCreateLinkForm, LinkFormData } from '@/hooks/useCreateLinkForm';
 import CreatePlanConfirmDialog from '../links/CreatePlanConfirmDialog';
 import { PaymentLink } from '@/types/payment';
 import { PaymentLinkService } from '@/services/PaymentLinkService';
+import { getUserClinicId } from '@/utils/userUtils';
 
 interface CreatePlanSheetProps {
   open: boolean;
@@ -71,6 +72,15 @@ const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
         return;
       }
 
+      // Get the clinic ID for the current user - critical fix
+      const clinicId = await getUserClinicId();
+      
+      if (!clinicId) {
+        toast.error('Could not determine your clinic ID. Please refresh the page and try again.');
+        setIsLoading(false);
+        return;
+      }
+
       // Parse amount as float first to handle proper decimal values
       const amountValue = parseFloat(amount);
       
@@ -81,6 +91,7 @@ const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
       // Use direct service call instead of going through the hook
       // This bypasses any confusion in data transformation layers
       const planData = {
+        clinic_id: clinicId, // Add the clinic ID to the plan data
         title: paymentTitle,
         amount: amountInCents,
         description,
