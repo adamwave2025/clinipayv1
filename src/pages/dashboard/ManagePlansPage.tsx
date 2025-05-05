@@ -1,5 +1,6 @@
+
 import React, { useState, useCallback } from 'react';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -18,7 +19,8 @@ const ManagePlansHeader: React.FC<{
   isTemplateView: boolean;
   onCreatePlanClick: () => void;
   onViewTemplatesClick: () => void;
-}> = ({ isTemplateView, onCreatePlanClick, onViewTemplatesClick }) => {
+  onBackToPlans: () => void;
+}> = ({ isTemplateView, onCreatePlanClick, onViewTemplatesClick, onBackToPlans }) => {
   return (
     <PageHeader 
       title="Payment Plans" 
@@ -26,13 +28,23 @@ const ManagePlansHeader: React.FC<{
       action={
         <div className="flex space-x-2">
           {isTemplateView ? (
-            <Button 
-              className="btn-gradient flex items-center"
-              onClick={onCreatePlanClick}
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create Plan
-            </Button>
+            <>
+              <Button 
+                variant="outline"
+                onClick={onBackToPlans}
+                className="flex items-center"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Patient Plans
+              </Button>
+              <Button 
+                className="btn-gradient flex items-center"
+                onClick={onCreatePlanClick}
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create Plan
+              </Button>
+            </>
           ) : (
             <Button 
               variant="outline"
@@ -79,6 +91,7 @@ const ManagePlansPageContent: React.FC = () => {
         isTemplateView={isTemplateView}
         onCreatePlanClick={handleCreatePlanClick}
         onViewTemplatesClick={handleViewTemplatesClick}
+        onBackToPlans={handleBackToPlans}
       />
 
       {isTemplateView ? (

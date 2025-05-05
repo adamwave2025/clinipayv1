@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { useFilteredPaymentLinks } from '@/hooks/useFilteredPaymentLinks';
 import ReusableLinkFilters from '@/components/dashboard/links/ReusableLinkFilters';
@@ -114,36 +114,35 @@ const ReusableLinksPage = () => {
         title="Reusable Payment Links" 
         description="Manage your reusable payment links that can be sent to patients"
         action={
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={toggleArchiveView}
-              className="gap-1"
-            >
-              {isArchiveView ? (
-                <>
-                  <ArchiveRestore className="h-4 w-4" />
-                  <span className="hidden sm:inline">View Active</span>
-                </>
-              ) : (
-                <>
-                  <Archive className="h-4 w-4" />
-                  <span className="hidden sm:inline">View Archive</span>
-                </>
-              )}
-            </Button>
-            {!isArchiveView && (
-              <Button className="btn-gradient" size="sm" onClick={handleCreateLinkClick}>
-                <PlusCircle className="h-4 w-4 mr-1" />
-                Create Reusable Link
-              </Button>
-            )}
-          </div>
+          <Button className="btn-gradient" size="sm" onClick={handleCreateLinkClick}>
+            <PlusCircle className="h-4 w-4 mr-1" />
+            Create Reusable Link
+          </Button>
         }
       />
       
       <Card className="card-shadow">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>{isArchiveView ? 'Archived Reusable Links' : 'Reusable Payment Links'}</CardTitle>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={toggleArchiveView}
+            className="gap-1"
+          >
+            {isArchiveView ? (
+              <>
+                <ArchiveRestore className="h-4 w-4" />
+                <span className="hidden sm:inline">View Active</span>
+              </>
+            ) : (
+              <>
+                <Archive className="h-4 w-4" />
+                <span className="hidden sm:inline">View Archive</span>
+              </>
+            )}
+          </Button>
+        </CardHeader>
         <CardContent className="p-6">
           <ReusableLinkFilters
             searchQuery={searchQuery}
