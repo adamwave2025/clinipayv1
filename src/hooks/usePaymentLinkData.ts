@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { PaymentLinkData } from '@/types/paymentLink';
 import { PaymentLinkService } from '@/services/PaymentLinkService';
 import { PaymentLinkDataService } from '@/services/payment-link/PaymentLinkDataService';
+import { PaymentLinkFormatter } from '@/services/payment-link/PaymentLinkFormatter';
 
 export function usePaymentLinkData(linkId: string | undefined | null) {
   const [linkData, setLinkData] = useState<PaymentLinkData | null>(null);
@@ -27,9 +28,13 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
         // If we found a payment request
         if (requestData) {
           console.log('Found payment request:', requestData);
-          setLinkData(requestData);
-          setIsLoading(false);
-          return;
+          // Format the request data before setting state
+          const formattedRequestData = PaymentLinkFormatter.formatPaymentRequest(requestData);
+          if (formattedRequestData) {
+            setLinkData(formattedRequestData);
+            setIsLoading(false);
+            return;
+          }
         }
         
         // If not a payment request, try to find as a regular payment link
@@ -39,7 +44,13 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
           throw new Error('Payment link not found');
         }
 
-        setLinkData(linkData);
+        // Format the link data before setting state
+        const formattedLinkData = PaymentLinkFormatter.formatPaymentLink(linkData);
+        if (!formattedLinkData) {
+          throw new Error('Failed to format payment link data');
+        }
+        
+        setLinkData(formattedLinkData);
       } catch (error: any) {
         console.error('Error fetching payment link/request:', error);
         setError(error.message);
