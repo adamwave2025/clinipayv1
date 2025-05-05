@@ -6,10 +6,10 @@ import { formatPaymentLinks } from '@/utils/paymentLinkFormatter';
 import { getUserClinicId } from '@/utils/userUtils';
 
 export const PaymentPlanService = {
-  async fetchPaymentPlans(clinicId: string, showArchived: boolean = false) {
+  async fetchPaymentPlans(clinicId: string, showArchived: boolean = false, isTemplateView: boolean = false) {
     try {
       // Get fresh data directly from the service
-      console.log(`PaymentPlanService: Fetching ${showArchived ? 'archived' : 'active'} plans for clinic ${clinicId}`);
+      console.log(`PaymentPlanService: Fetching ${showArchived ? 'archived' : 'active'} ${isTemplateView ? 'plan templates' : 'patient plans'} for clinic ${clinicId}`);
       
       const { activeLinks, archivedLinks } = await PaymentLinkService.fetchLinks(clinicId);
       

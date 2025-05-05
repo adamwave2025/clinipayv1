@@ -9,7 +9,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Archive, PlusCircle, ArrowUpRight } from 'lucide-react';
+import { Archive, PlusCircle, ArrowUpRight, ArrowLeft } from 'lucide-react';
 import { PaymentLink } from '@/types/payment';
 import { formatCurrency } from '@/utils/formatters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +24,8 @@ interface PaymentPlansTableProps {
   onUnarchivePlan: (plan: PaymentLink) => void;
   isArchiveView: boolean;
   toggleArchiveView: () => void;
+  onBackToActivePlans?: () => void;
+  isTemplateView?: boolean;
 }
 
 const PaymentPlansTable = ({
@@ -34,38 +36,55 @@ const PaymentPlansTable = ({
   onArchivePlan,
   onUnarchivePlan,
   isArchiveView,
-  toggleArchiveView
+  toggleArchiveView,
+  onBackToActivePlans,
+  isTemplateView = true
 }: PaymentPlansTableProps) => {
   console.log('PaymentPlansTable props:', { 
     filteredPlansCount: filteredPlans.length,
     isLoading, 
     paymentPlansCount: paymentPlans.length,
-    isArchiveView 
+    isArchiveView,
+    isTemplateView
   });
   
   return (
     <Card>
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <CardTitle>
-          {isArchiveView ? 'Archived Payment Plans' : 'All Payment Plans'}
+          {isArchiveView 
+            ? 'Archived Plan Templates' 
+            : (isTemplateView ? 'All Plan Templates' : 'All Payment Plans')}
         </CardTitle>
-        <Button 
-          variant="outline"
-          onClick={toggleArchiveView}
-          className="flex items-center"
-        >
-          {isArchiveView ? (
-            <>
-              <ArrowUpRight className="mr-2 h-4 w-4" />
-              View Active Plans
-            </>
-          ) : (
-            <>
-              <Archive className="mr-2 h-4 w-4" />
-              View Archived
-            </>
+        <div className="flex gap-2">
+          {onBackToActivePlans && (
+            <Button 
+              variant="outline"
+              onClick={onBackToActivePlans}
+              className="flex items-center"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Active Plans
+            </Button>
           )}
-        </Button>
+          <Button 
+            variant="outline"
+            onClick={toggleArchiveView}
+            className="flex items-center"
+          >
+            {isArchiveView ? (
+              <>
+                <ArrowUpRight className="mr-2 h-4 w-4" />
+                View Active Templates
+              </>
+            ) : (
+              <>
+                <Archive className="mr-2 h-4 w-4" />
+                View Archived
+              </>
+            )}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Calendar, UserRound, Archive } from 'lucide-react';
+import { PlusCircle, Calendar, UserRound, Archive, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -75,7 +75,7 @@ const ManagePlansHeader: React.FC = () => {
                 }}
               >
                 <Calendar className="mr-2 h-4 w-4" />
-                View Plans
+                View Plan Templates
               </Button>
             )}
           </div>
@@ -92,7 +92,7 @@ const ManagePlansHeader: React.FC = () => {
 };
 
 const ManagePlansPageContent: React.FC = () => {
-  const { isViewMode, plans, isLoading, searchQuery, setSearchQuery, handleCreatePlanClick } = useManagePlansContext();
+  const { isViewMode, plans, isLoading, searchQuery, setSearchQuery, handleCreatePlanClick, handleViewPlansClick } = useManagePlansContext();
   
   // For view mode, use the usePaymentPlans hook directly
   const { 
@@ -125,6 +125,10 @@ const ManagePlansPageContent: React.FC = () => {
   const onArchivePlan = (plan: PaymentLink) => {
     setPlanToArchive(plan);
     setShowArchiveDialog(true);
+  };
+  
+  const handleBackToActivePlans = () => {
+    setIsViewMode(false);
   };
 
   const confirmArchivePlan = async () => {
@@ -164,6 +168,9 @@ const ManagePlansPageContent: React.FC = () => {
             onUnarchivePlan={onArchivePlan}
             isArchiveView={isArchiveView}
             toggleArchiveView={toggleArchiveView}
+            onBackToActivePlans={handleBackToActivePlans}
+            isTemplateView={true}
+            onCreatePlanClick={handleCreatePlanClick}
           />
           <ArchivePlanDialog
             open={showArchiveDialog}
