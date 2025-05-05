@@ -8,9 +8,13 @@ interface PaymentSourceSectionProps {
 }
 
 const PaymentSourceSection = ({ payment }: PaymentSourceSectionProps) => {
+  // Determine if this is a payment plan or a regular payment link
+  const isPaymentPlan = payment.type === 'payment_plan';
+  const sourceType = isPaymentPlan ? 'Payment Plan' : 'Reusable Link';
+  
   return (
     <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-      <h4 className="text-sm font-medium text-gray-700 mb-2">Payment Source</h4>
+      <h4 className="text-sm font-medium text-gray-700 mb-1">Payment Source: {sourceType}</h4>
       
       {/* Show payment link title prominently if available */}
       {payment.linkTitle && (
