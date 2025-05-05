@@ -117,7 +117,7 @@ const ReschedulePlanDialog = ({
           </Button>
           <Button 
             onClick={handleConfirm}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="btn-gradient"
             disabled={isProcessing}
           >
             {isProcessing ? (
