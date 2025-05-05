@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { PlusCircle, Calendar } from 'lucide-react';
+import { PlusCircle, Calendar, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -47,13 +47,23 @@ const ManagePlansHeader: React.FC = () => {
       action={
         <div className="flex space-x-2">
           {isViewMode ? (
-            <Button 
-              className="btn-gradient flex items-center"
-              onClick={handleCreatePlanClick}
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create Plan
-            </Button>
+            <>
+              <Button 
+                variant="outline"
+                className="flex items-center"
+                onClick={() => setIsViewMode(false)}
+              >
+                <UserRound className="mr-2 h-4 w-4" />
+                Active Plans
+              </Button>
+              <Button 
+                className="btn-gradient flex items-center"
+                onClick={handleCreatePlanClick}
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create Plan
+              </Button>
+            </>
           ) : (
             <Button 
               variant="outline"
