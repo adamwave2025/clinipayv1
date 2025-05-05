@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -151,7 +152,7 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
               
               {paymentPlans.length > 0 && (
                 <SelectGroup>
-                  <SelectLabel>Recurring Payments</SelectLabel>
+                  <SelectLabel>Payment Plans</SelectLabel>
                   {paymentPlans.map(plan => (
                     <SelectItem key={plan.id} value={plan.id}>
                       {plan.title} - {formatCurrency(plan.amount)}{plan.paymentCount ? ` × ${plan.paymentCount}` : ''}
