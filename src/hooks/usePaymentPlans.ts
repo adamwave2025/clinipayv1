@@ -70,7 +70,6 @@ export const usePaymentPlans = () => {
     setIsArchiveView(prev => !prev);
   };
 
-  // Return everything combined
   return {
     paymentPlans,
     filteredPlans,

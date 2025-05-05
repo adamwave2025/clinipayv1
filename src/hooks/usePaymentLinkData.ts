@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { PaymentLinkData } from '@/types/paymentLink';
 import { PaymentLinkService } from '@/services/PaymentLinkService';
+import { PaymentLinkDataService } from '@/services/payment-link/PaymentLinkDataService';
 
 export function usePaymentLinkData(linkId: string | undefined | null) {
   const [linkData, setLinkData] = useState<PaymentLinkData | null>(null);
@@ -21,7 +22,7 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
 
       try {
         // First, try to see if this is a payment request
-        const requestData = await PaymentLinkService.fetchPaymentRequest(linkId);
+        const requestData = await PaymentLinkDataService.fetchPaymentRequestWithClinic(linkId);
         
         // If we found a payment request
         if (requestData) {
@@ -32,7 +33,7 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
         }
         
         // If not a payment request, try to find as a regular payment link
-        const linkData = await PaymentLinkService.fetchPaymentLink(linkId);
+        const linkData = await PaymentLinkDataService.fetchPaymentLinkWithClinic(linkId);
 
         if (!linkData) {
           throw new Error('Payment link not found');

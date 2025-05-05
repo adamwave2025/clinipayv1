@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPaymentLinks } from '@/utils/paymentLinkFormatter';
@@ -112,4 +113,49 @@ export const PaymentLinkService = {
       return { data: null, error: error.message };
     }
   },
+
+  // Add missing methods
+  async fetchPaymentRequest(requestId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('payment_requests')
+        .select(`
+          *,
+          clinics:clinic_id (*)
+        `)
+        .eq('id', requestId)
+        .single();
+        
+      if (error) {
+        throw error;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching payment request:', error);
+      return null;
+    }
+  },
+  
+  async fetchPaymentLink(linkId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('payment_links')
+        .select(`
+          *,
+          clinics:clinic_id (*)
+        `)
+        .eq('id', linkId)
+        .single();
+        
+      if (error) {
+        throw error;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching payment link:', error);
+      return null;
+    }
+  }
 };

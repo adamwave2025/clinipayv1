@@ -18,7 +18,6 @@ export function usePaymentLinks() {
   const [isLoading, setIsLoading] = useState(true);
   const [isArchiveLoading, setIsArchiveLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [clinicId, setClinicId] = useState<string | null>(null);
   const { user } = useAuth();
 
   const fetchPaymentLinks = async () => {
@@ -35,7 +34,6 @@ export function usePaymentLinks() {
       
       setPaymentLinks(formatPaymentLinks(result.activeLinks));
       setArchivedLinks(formatPaymentLinks(result.archivedLinks));
-      setClinicId(result.clinicId);
     } catch (error: any) {
       console.error('Error fetching payment links:', error);
       setError(error.message);
@@ -53,7 +51,7 @@ export function usePaymentLinks() {
     setIsArchiveLoading(true);
     
     try {
-      const result = await PaymentLinkService.archivePaymentLink(linkId);
+      const result = await PaymentLinkService.archiveLink(linkId);
       
       if (!result.success) {
         // Use type guard to safely access error property
@@ -80,7 +78,7 @@ export function usePaymentLinks() {
     setIsArchiveLoading(true);
     
     try {
-      const result = await PaymentLinkService.unarchivePaymentLink(linkId);
+      const result = await PaymentLinkService.unarchiveLink(linkId);
       
       if (!result.success) {
         // Use type guard to safely access error property
@@ -99,19 +97,22 @@ export function usePaymentLinks() {
   };
 
   const createPaymentLink = async (linkData: Omit<PaymentLink, 'id' | 'url' | 'createdAt' | 'isActive'>) => {
-    if (!user || !clinicId) {
+    if (!user) {
       toast.error('You must be logged in to create payment links');
       return { success: false };
     }
 
     try {
-      const result = await PaymentLinkService.createLink(linkData, clinicId);
+      const result = await PaymentLinkService.createLink({
+        ...linkData,
+        clinic_id: user.id
+      });
       
-      if (!result) {
-        throw new Error('Failed to create payment link');
+      if (!result || result.error) {
+        throw new Error(result?.error || 'Failed to create payment link');
       }
       
-      const formattedLink = formatPaymentLinks([result])[0];
+      const formattedLink = formatPaymentLinks([result.data[0]])[0];
       
       // Refresh the payment links list
       await fetchPaymentLinks();
@@ -119,7 +120,7 @@ export function usePaymentLinks() {
       return { 
         success: true, 
         paymentLink: formattedLink,
-        data: result
+        data: result.data[0]
       };
     } catch (error: any) {
       toast.error(`Failed to create payment link: ${error.message}`);

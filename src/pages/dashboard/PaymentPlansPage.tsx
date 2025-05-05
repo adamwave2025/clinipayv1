@@ -7,11 +7,7 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import PaymentPlanFilters from '@/components/dashboard/payment-plans/PaymentPlanFilters';
 import PaymentPlansTable from '@/components/dashboard/payment-plans/PaymentPlansTable';
-import DeletePlanDialog from '@/components/dashboard/payment-plans/DeletePlanDialog';
-import EditPlanDialog from '@/components/dashboard/payment-plans/EditPlanDialog';
-import ActivePlansTable from '@/components/dashboard/payment-plans/ActivePlansTable';
 import { usePaymentPlans } from '@/hooks/usePaymentPlans';
-import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
 
 const PaymentPlansPage = () => {
   const navigate = useNavigate();
@@ -21,18 +17,10 @@ const PaymentPlansPage = () => {
     isLoading,
     searchQuery,
     setSearchQuery,
-    planToDelete,
-    planToEdit,
-    showDeleteDialog,
-    setShowDeleteDialog,
-    showEditDialog,
-    setShowEditDialog,
-    editFormData,
-    handleEditPlan,
-    handleDeletePlan,
-    confirmDeletePlan,
-    handleEditFormChange,
-    saveEditedPlan
+    isArchiveView,
+    toggleArchiveView,
+    handleArchivePlan,
+    handleUnarchivePlan
   } = usePaymentPlans();
 
   // Add status filter state
@@ -61,12 +49,14 @@ const PaymentPlansPage = () => {
       />
       
       <div className="space-y-6">
-        {/* Active Plans Table */}
-        <ActivePlansTable 
+        <PaymentPlansTable
+          filteredPlans={filteredPlans}
           isLoading={isLoading}
-          plans={filteredPlans}
-          onCreatePlanClick={handleCreatePlanClick}
-          onViewPlanDetails={handleEditPlan}
+          paymentPlans={paymentPlans}
+          onArchivePlan={handleArchivePlan}
+          onUnarchivePlan={handleUnarchivePlan}
+          isArchiveView={isArchiveView}
+          toggleArchiveView={toggleArchiveView}
         />
         
         {/* Filters */}
@@ -77,23 +67,6 @@ const PaymentPlansPage = () => {
           onStatusFilterChange={setStatusFilter}
         />
       </div>
-
-      {/* Delete Confirmation Dialog */}
-      <DeletePlanDialog 
-        isOpen={showDeleteDialog}
-        onOpenChange={setShowDeleteDialog}
-        planToDelete={planToDelete}
-        onConfirmDelete={confirmDeletePlan}
-      />
-
-      {/* Edit Plan Dialog */}
-      <EditPlanDialog 
-        isOpen={showEditDialog}
-        onOpenChange={setShowEditDialog}
-        formData={editFormData}
-        onFormChange={handleEditFormChange}
-        onSaveChanges={saveEditedPlan}
-      />
     </DashboardLayout>
   );
 };
