@@ -37,26 +37,35 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
     const patientEmail = payment.patientEmail ? `"${payment.patientEmail.replace(/"/g, '""')}"` : '""';
     const patientPhone = payment.patientPhone ? `"${payment.patientPhone.replace(/"/g, '""')}"` : '""';
     
-    // Format amount to always show 2 decimal places (e.g., 4000.00)
-    const amount = payment.amount ? (payment.amount).toFixed(2) : '0.00';
+    // Determine if amount is in pennies (very large value) and format it correctly
+    // Our expected output should be like 4000.00
+    let formattedAmount = '0.00';
+    if (payment.amount) {
+      // Check if amount seems to be in pennies (a large value like 400000 for £4000)
+      // Typically, if the amount is over 10,000 and divisible by 100, it's likely in pennies
+      const isInPennies = payment.amount > 10000 && payment.amount % 1 === 0;
+      const amountInPounds = isInPennies ? payment.amount / 100 : payment.amount;
+      formattedAmount = amountInPounds.toFixed(2);
+    }
     
-    // Format platform fee to always show as a full decimal value (e.g., 80.00)
-    // The platform fee is stored in cents, so we need to convert to a decimal value
+    // Format platform fee - always stored in pennies (cents)
     let platformFee = '0.00';
     if (payment.platformFee) {
       platformFee = (payment.platformFee / 100).toFixed(2);
     }
     
-    // Calculate net amount correctly
+    // Calculate net amount directly from amount and platform fee
+    // Note: Disregard the database netAmount field as instructed
     let netAmount = '0.00';
-    if (payment.netAmount) {
-      // If we have a pre-calculated net amount from the database, use that
-      netAmount = payment.netAmount.toFixed(2);
-    } else if (payment.amount) {
-      // Fallback calculation if netAmount isn't available
-      // Convert platform fee from cents to decimal to match amount units
+    if (payment.amount) {
+      // Get amount in pounds for calculation
+      const isInPennies = payment.amount > 10000 && payment.amount % 1 === 0;
+      const amountInPounds = isInPennies ? payment.amount / 100 : payment.amount;
+      
+      // Platform fee is already converted to pounds above
       const platformFeeDecimal = payment.platformFee ? payment.platformFee / 100 : 0;
-      netAmount = (payment.amount - platformFeeDecimal).toFixed(2);
+      
+      netAmount = (amountInPounds - platformFeeDecimal).toFixed(2);
     }
     
     const reference = payment.reference ? `"${payment.reference}"` : '""';
@@ -74,7 +83,7 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
       patientName,
       patientEmail,
       patientPhone,
-      amount,
+      formattedAmount,
       platformFee,
       netAmount,
       reference,
