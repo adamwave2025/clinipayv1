@@ -1,6 +1,4 @@
 
-
-
 /**
  * Formats a numeric amount as a currency with the proper symbol and decimal places
  * @param amount - The numeric amount to format
@@ -59,13 +57,13 @@ export const formatDate = (dateString: string | Date, locales: string = 'en-GB')
  * Formats a date string into a standardized display format including time
  * @param dateString - ISO date string or date object
  * @param locales - Locale for formatting (defaults to 'en-GB')
- * @param timeZone - Optional timezone (defaults to browser's local timezone)
+ * @param timeZone - Optional timezone (defaults to 'Europe/London' for UK time)
  * @returns Formatted date and time string
  */
 export const formatDateTime = (
   dateString: string | Date, 
   locales: string = 'en-GB', 
-  timeZone?: string
+  timeZone: string = 'Europe/London'
 ): string => {
   if (!dateString) return 'N/A';
   
@@ -109,4 +107,3 @@ export const amountToCents = (amount: string | number): number => {
 export const centsToAmount = (cents: number): number => {
   return cents / 100;
 };
-

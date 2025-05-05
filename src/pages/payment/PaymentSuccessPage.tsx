@@ -98,7 +98,7 @@ const PaymentSuccessPage = () => {
       const details: PaymentDetail[] = [
         { label: 'Amount Paid', value: `£${linkData.amount.toFixed(2)}` },
         { label: 'Date', value: new Date().toLocaleDateString() },
-        { label: 'Clinic', value: linkData.clinic.name },
+        // Removed the redundant clinic name as it's in the ClinicInformationCard
       ];
       
       // Add the payment title if available
@@ -106,8 +106,7 @@ const PaymentSuccessPage = () => {
         details.push({ label: 'Payment For', value: linkData.title });
       }
       
-      // Add payment type after the title
-      details.push({ label: 'Payment Type', value: linkData.type.charAt(0).toUpperCase() + linkData.type.slice(1) });
+      // Removed the payment type as it's only for clinics
       
       setPaymentDetails(details);
     }

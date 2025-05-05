@@ -91,7 +91,7 @@ const LinkFormFields: React.FC<LinkFormFieldsProps> = ({
                 </SelectGroup>
               )}
               <SelectGroup>
-                <SelectLabel>Reusable Links</SelectLabel>
+                {/* Removed the "Reusable Links" SelectLabel here */}
                 <SelectItem value="deposit">Deposit</SelectItem>
                 <SelectItem value="treatment">Treatment</SelectItem>
                 <SelectItem value="consultation">Consultation</SelectItem>

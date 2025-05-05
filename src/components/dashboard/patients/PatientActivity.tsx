@@ -65,7 +65,19 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments, isLoading =
   };
 
   const getPaymentDetails = (payment: any) => {
-    return payment.title || payment.reference || 'Payment';
+    // Format the payment details including reference when available
+    const details = [];
+    
+    if (payment.title) {
+      details.push(payment.title);
+    }
+    
+    // Add payment reference if available
+    if (payment.reference) {
+      details.push(`Ref: ${payment.reference}`);
+    }
+    
+    return details.length > 0 ? details.join(' • ') : 'Payment';
   };
 
   return (
@@ -96,7 +108,7 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments, isLoading =
                   <p className="text-sm text-gray-600 mt-1">{getPaymentDetails(payment)}</p>
                 )}
                 <p className="text-xs text-gray-500 mt-1">
-                  {formatDateTime(payment.date)}
+                  {formatDateTime(payment.date, 'en-GB', 'Europe/London')}
                 </p>
               </div>
             </div>
