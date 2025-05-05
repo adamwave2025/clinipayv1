@@ -14,9 +14,13 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Force schema cache refresh by making a dummy call
 // This helps resolve issues with cache mismatches between code and database
 try {
-  supabase.from('payment_links').select('count').limit(1).then(() => {
+  // Convert the promise chain to use a proper Promise type with explicit type annotation
+  const promise: Promise<void> = supabase.from('payment_links').select('count').limit(1).then(() => {
     console.log('Supabase schema cache refreshed');
-  }).catch((e) => {
+  });
+  
+  // Now we can call .catch() on the explicit Promise type
+  promise.catch((e) => {
     console.log('Schema refresh attempted but failed:', e);
   });
 } catch (e) {
