@@ -1,4 +1,3 @@
-
 /**
  * Utility functions for exporting data to CSV format
  */
@@ -45,10 +44,13 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
       platformFee = formatCurrency(payment.platformFee / 100).replace('£', '');
     }
     
-    // Calculate net amount correctly (amount - platformFee)
-    // Need to ensure both are in the same units
+    // Use the database's net_amount field if available, otherwise calculate it
     let netAmount = '0.00';
-    if (payment.amount) {
+    if (payment.netAmount) {
+      // If we have a pre-calculated net amount from the database, use that
+      netAmount = formatCurrency(payment.netAmount).replace('£', '');
+    } else if (payment.amount) {
+      // Fallback calculation if netAmount isn't available
       // Convert platform fee from cents to decimal currency unit to match amount
       const platformFeeDecimal = payment.platformFee ? payment.platformFee / 100 : 0;
       netAmount = formatCurrency(payment.amount - platformFeeDecimal).replace('£', '');
@@ -114,4 +116,3 @@ export const downloadCsv = (csvData: string, filename: string): void => {
   // Release the URL object
   URL.revokeObjectURL(url);
 };
-

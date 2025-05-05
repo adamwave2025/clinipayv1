@@ -1,3 +1,4 @@
+
 // If we need to add or modify types, let's create a file for this
 import { PaymentLinkData } from './paymentLink';
 
@@ -8,6 +9,7 @@ export interface Payment {
   patientPhone?: string;
   amount: number;
   platformFee?: number; // Added platform fee property
+  netAmount?: number; // Added net amount property
   date: string;
   status: 'paid' | 'refunded' | 'sent' | 'partially_refunded';
   type: 'deposit' | 'treatment' | 'consultation' | 'payment_plan' | 'other';
