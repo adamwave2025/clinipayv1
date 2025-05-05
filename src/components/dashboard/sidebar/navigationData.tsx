@@ -43,7 +43,7 @@ export const getClinicItems = (): SidebarItem[] => [
       },
       {
         to: '/dashboard/manage-plans',
-        label: 'Payment Plans',
+        label: 'Manage Plans',
         icon: <Calendar className="w-5 h-5" />
       },
       {
