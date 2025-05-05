@@ -12,34 +12,39 @@ import { PaymentLink } from '@/types/payment';
  * @param data - Raw payment link data from API
  * @returns Array of formatted PaymentLink objects
  */
-export const formatPaymentLinks = (data: any[]): PaymentLink[] => data.map(link => {
-  // Improved handling for payment_plan boolean
-  // First check for explicit boolean, then handle other cases
-  const isPaymentPlan = link.payment_plan === true || link.payment_plan === 'true' || link.type === 'payment_plan';
+export const formatPaymentLinks = (data: any[]): PaymentLink[] => {
+  console.log(`Formatting ${data.length} payment links`);
   
-  console.log(`Formatting payment link ${link.id}:`, {
-    title: link.title,
-    type: link.type,
-    payment_plan_raw: link.payment_plan,
-    payment_plan_type: typeof link.payment_plan,
-    converted_payment_plan: isPaymentPlan,
-    payment_count: link.payment_count,
-    payment_cycle: link.payment_cycle,
-    plan_total_amount: link.plan_total_amount
-  });
+  return data.map(link => {
+    // First check if this is definitively a payment plan based on multiple data points
+    const isPaymentPlan = 
+      link.payment_plan === true || 
+      link.type === 'payment_plan' || 
+      (link.payment_count && link.payment_cycle);
+    
+    // Debug each link's payment plan status
+    console.log(`Link ${link.id}: ${link.title}`, {
+      type: link.type,
+      payment_plan_raw: link.payment_plan,
+      payment_plan_type: typeof link.payment_plan,
+      payment_count: link.payment_count,
+      payment_cycle: link.payment_cycle,
+      is_payment_plan: isPaymentPlan
+    });
 
-  return {
-    id: link.id,
-    title: link.title || '',
-    amount: link.amount || 0, // Keep the original amount from database (in cents)
-    type: link.type || (isPaymentPlan ? 'payment_plan' : 'deposit'), // Default based on payment plan status
-    description: link.description || '',
-    url: `${window.location.origin}/payment/${link.id}`,
-    createdAt: new Date(link.created_at).toLocaleDateString(),
-    isActive: link.is_active !== false, // Default to active if not specified
-    paymentPlan: isPaymentPlan, // Properly converted boolean value
-    paymentCount: isPaymentPlan ? link.payment_count : undefined,
-    paymentCycle: isPaymentPlan ? link.payment_cycle : undefined,
-    planTotalAmount: isPaymentPlan ? link.plan_total_amount : undefined // Keep the original plan total amount (in cents)
-  };
-});
+    return {
+      id: link.id,
+      title: link.title || '',
+      amount: link.amount || 0, // Original amount in cents
+      type: link.type || (isPaymentPlan ? 'payment_plan' : 'deposit'), // Default based on payment plan status
+      description: link.description || '',
+      url: `${window.location.origin}/payment/${link.id}`,
+      createdAt: new Date(link.created_at).toLocaleDateString(),
+      isActive: link.is_active !== false, // Default to active if not specified
+      paymentPlan: isPaymentPlan, // Now a properly calculated boolean value
+      paymentCount: isPaymentPlan ? link.payment_count : undefined,
+      paymentCycle: isPaymentPlan ? link.payment_cycle : undefined,
+      planTotalAmount: isPaymentPlan ? link.plan_total_amount : undefined // Original amount in cents
+    };
+  });
+};

@@ -1,0 +1,220 @@
+
+import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { PaymentLink } from '@/types/payment';
+import { PaymentLinkService } from '@/services/PaymentLinkService';
+import { formatPaymentLinks } from '@/utils/paymentLinkFormatter';
+import { getUserClinicId } from '@/utils/userUtils';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
+import ArchivePlanDialog from './ArchivePlanDialog';
+import { formatCurrency } from '@/utils/formatters';
+
+interface PlanTemplatesViewProps {
+  onBackToPlans: () => void;
+}
+
+const PlanTemplatesView: React.FC<PlanTemplatesViewProps> = ({ onBackToPlans }) => {
+  const [templates, setTemplates] = useState<PaymentLink[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isArchiveView, setIsArchiveView] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [planToArchive, setPlanToArchive] = useState<PaymentLink | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
+
+  // Load template data directly from the payment_links table
+  const fetchTemplates = async () => {
+    setIsLoading(true);
+    try {
+      // Get the clinic ID
+      const clinicId = await getUserClinicId();
+      
+      if (!clinicId) {
+        console.error('Could not determine clinic ID');
+        toast.error('Failed to load templates - clinic ID not found');
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log(`Fetching payment plan templates for clinic ID: ${clinicId}, archived: ${isArchiveView}`);
+      
+      // Fetch payment links
+      const { activeLinks, archivedLinks } = await PaymentLinkService.fetchLinks(clinicId);
+      
+      // Use archived or active links based on the view setting
+      const linksToUse = isArchiveView ? archivedLinks : activeLinks;
+      
+      // Filter to only include payment plans and format them
+      const formattedTemplates = formatPaymentLinks(linksToUse).filter(link => {
+        // Debug log each link to help troubleshoot
+        console.log(`Link ${link.id}: type=${link.type}, paymentPlan=${link.paymentPlan}, title=${link.title}`);
+        
+        // Only include links that are payment plans
+        return link.paymentPlan === true;
+      });
+      
+      console.log(`Found ${formattedTemplates.length} payment plan templates`);
+      setTemplates(formattedTemplates);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+      toast.error('Failed to load plan templates');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Initial load and when archive view changes
+  useEffect(() => {
+    fetchTemplates();
+  }, [isArchiveView]);
+
+  // Toggle between archived and active templates
+  const toggleArchiveView = () => {
+    setIsArchiveView(prev => !prev);
+  };
+
+  // Handle archiving a template
+  const handleArchiveTemplate = (template: PaymentLink) => {
+    setPlanToArchive(template);
+    setShowArchiveDialog(true);
+  };
+
+  // Confirm archive action
+  const confirmArchiveAction = async () => {
+    if (!planToArchive) return;
+    
+    setIsArchiving(true);
+    try {
+      if (isArchiveView) {
+        // Unarchive
+        const { success } = await PaymentLinkService.unarchiveLink(planToArchive.id);
+        if (success) {
+          toast.success(`Plan template "${planToArchive.title}" restored successfully`);
+          await fetchTemplates();
+        } else {
+          toast.error('Failed to restore plan template');
+        }
+      } else {
+        // Archive
+        const { success } = await PaymentLinkService.archiveLink(planToArchive.id);
+        if (success) {
+          toast.success(`Plan template "${planToArchive.title}" archived successfully`);
+          await fetchTemplates();
+        } else {
+          toast.error('Failed to archive plan template');
+        }
+      }
+    } catch (error) {
+      console.error('Error with archive/unarchive:', error);
+      toast.error('An error occurred');
+    } finally {
+      setIsArchiving(false);
+      setShowArchiveDialog(false);
+      setPlanToArchive(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={onBackToPlans}
+          className="flex items-center gap-1"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to Patient Plans
+        </Button>
+        
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={toggleArchiveView}
+          >
+            {isArchiveView ? 'View Active Templates' : 'View Archived Templates'}
+          </Button>
+        </div>
+      </div>
+      
+      {/* Content */}
+      <div className="bg-white rounded-lg border shadow-sm p-6">
+        <h2 className="text-xl font-semibold mb-4">
+          {isArchiveView ? 'Archived Plan Templates' : 'Payment Plan Templates'}
+        </h2>
+        
+        {isLoading ? (
+          <div className="py-8 text-center text-gray-500">
+            Loading plan templates...
+          </div>
+        ) : templates.length === 0 ? (
+          <div className="py-8 text-center text-gray-500">
+            <p>No {isArchiveView ? 'archived ' : ''}payment plan templates found.</p>
+            {!isArchiveView && (
+              <Button 
+                className="mt-4 btn-gradient"
+                onClick={() => toast.info('Create a new payment plan to save it as a template')}
+              >
+                Create Plan Template
+              </Button>
+            )}
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Template Name</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Installments</TableHead>
+                <TableHead>Frequency</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {templates.map(template => (
+                <TableRow key={template.id}>
+                  <TableCell className="font-medium">{template.title}</TableCell>
+                  <TableCell>{template.description || '-'}</TableCell>
+                  <TableCell>{formatCurrency(template.planTotalAmount || 0)}</TableCell>
+                  <TableCell>{template.paymentCount || '-'}</TableCell>
+                  <TableCell>{template.paymentCycle || '-'}</TableCell>
+                  <TableCell>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleArchiveTemplate(template)}
+                    >
+                      {isArchiveView ? 'Restore' : 'Archive'}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+
+      {/* Archive Confirmation Dialog */}
+      <ArchivePlanDialog
+        open={showArchiveDialog}
+        onOpenChange={setShowArchiveDialog}
+        onConfirm={confirmArchiveAction}
+        plan={planToArchive}
+        isLoading={isArchiving}
+        isUnarchive={isArchiveView}
+      />
+    </div>
+  );
+};
+
+export default PlanTemplatesView;
