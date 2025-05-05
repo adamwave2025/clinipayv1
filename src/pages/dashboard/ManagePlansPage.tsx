@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { PlusCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { PlusCircle, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -11,9 +11,10 @@ import {
 } from './manage-plans';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
+import PaymentPlansTable from '@/components/dashboard/payment-plans/PaymentPlansTable';
 
 const ManagePlansHeader: React.FC = () => {
-  const { handleCreatePlanClick } = useManagePlansContext();
+  const { handleCreatePlanClick, handleViewPlansClick, isViewMode, setIsViewMode } = useManagePlansContext();
   
   return (
     <PageHeader 
@@ -21,13 +22,27 @@ const ManagePlansHeader: React.FC = () => {
       description="Create and manage payment plans for your patients"
       action={
         <div className="flex space-x-2">
-          <Button 
-            className="btn-gradient flex items-center"
-            onClick={handleCreatePlanClick}
-          >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create Plan
-          </Button>
+          {isViewMode ? (
+            <Button 
+              className="btn-gradient flex items-center"
+              onClick={handleCreatePlanClick}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Plan
+            </Button>
+          ) : (
+            <Button 
+              variant="outline"
+              className="flex items-center"
+              onClick={() => {
+                handleViewPlansClick();
+                setIsViewMode(true);
+              }}
+            >
+              <Calendar className="mr-2 h-4 w-4" />
+              View Plans
+            </Button>
+          )}
         </div>
       }
     />
@@ -35,10 +50,23 @@ const ManagePlansHeader: React.FC = () => {
 };
 
 const ManagePlansPageContent: React.FC = () => {
+  const { isViewMode, plans, isLoading, searchQuery, setSearchQuery, handleCreatePlanClick } = useManagePlansContext();
+  
   return (
     <>
       <ManagePlansHeader />
-      <ManagePlansContent />
+      {isViewMode ? (
+        <PaymentPlansTable
+          filteredPlans={plans}
+          isLoading={isLoading}
+          paymentPlans={plans}
+          onCreatePlanClick={handleCreatePlanClick}
+          onEditPlan={() => {}}
+          onDeletePlan={() => {}}
+        />
+      ) : (
+        <ManagePlansContent />
+      )}
       <ManagePlansDialogs />
     </>
   );

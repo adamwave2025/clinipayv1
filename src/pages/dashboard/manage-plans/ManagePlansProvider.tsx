@@ -1,14 +1,14 @@
 
 import React from 'react';
-import ManagePlansContext from '@/contexts/ManagePlansContext';
 import { useManagePlans } from '@/hooks/useManagePlans';
+import ManagePlansContext, { ManagePlansContextType } from '@/contexts/ManagePlansContext';
 
 interface ManagePlansProviderProps {
   children: React.ReactNode;
 }
 
 export const ManagePlansProvider: React.FC<ManagePlansProviderProps> = ({ children }) => {
-  const managePlansState = useManagePlans();
+  const managePlansState: ManagePlansContextType = useManagePlans();
   
   return (
     <ManagePlansContext.Provider value={managePlansState}>

@@ -29,6 +29,10 @@ export interface ManagePlansContextType {
   paymentData: Payment | null;
   selectedInstallment: any | null;
   
+  // View mode toggle state
+  isViewMode: boolean;
+  setIsViewMode: (isViewMode: boolean) => void;
+  
   // Action handlers
   handleViewPlanDetails: (plan: Plan) => Promise<void>;
   handleCreatePlanClick: () => void;

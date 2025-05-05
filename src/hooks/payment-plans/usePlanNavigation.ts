@@ -8,7 +8,7 @@ export const usePlanNavigation = () => {
     navigate('/dashboard/create-link');
   };
 
-  // Restore this function to navigate back to manage-plans page
+  // Navigate back to manage-plans page
   const handleViewPlansClick = () => {
     navigate('/dashboard/manage-plans');
   };

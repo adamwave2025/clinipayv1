@@ -21,6 +21,7 @@ export const useManagePlans = (): ManagePlansContextType => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
+  const [isViewMode, setIsViewMode] = useState(false);
   
   // Get dashboard data for refund functionality
   const { handleRefund } = useDashboardData();
@@ -140,6 +141,18 @@ export const useManagePlans = (): ManagePlansContextType => {
     }
   };
 
+  // Update handleCreatePlanClick wrapper to reset view mode
+  const wrappedHandleCreatePlanClick = () => {
+    setIsViewMode(false);
+    handleCreatePlanClick();
+  };
+
+  // Update handleViewPlansClick wrapper to set view mode
+  const wrappedHandleViewPlansClick = () => {
+    setIsViewMode(true);
+    handleViewPlansClick();
+  };
+
   return {
     searchQuery,
     setSearchQuery,
@@ -154,8 +167,8 @@ export const useManagePlans = (): ManagePlansContextType => {
     activities,
     isLoadingActivities,
     handleViewPlanDetails,
-    handleCreatePlanClick,
-    handleViewPlansClick, // Restore this function
+    handleCreatePlanClick: wrappedHandleCreatePlanClick,
+    handleViewPlansClick: wrappedHandleViewPlansClick,
     handleSendReminder,
     // Payment details properties
     showPaymentDetails,
@@ -164,6 +177,9 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleViewPaymentDetails,
     selectedInstallment,
     handleBackToPlans,
+    // View mode toggle state
+    isViewMode,
+    setIsViewMode,
     // Refund properties
     refundDialogOpen,
     setRefundDialogOpen,
