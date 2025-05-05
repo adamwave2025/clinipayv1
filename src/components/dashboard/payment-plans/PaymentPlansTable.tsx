@@ -9,7 +9,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2, PlusCircle } from 'lucide-react';
+import { Archive, PlusCircle, ArrowUpRight } from 'lucide-react';
 import { PaymentLink } from '@/types/payment';
 import { formatCurrency } from '@/utils/formatters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,9 +19,11 @@ interface PaymentPlansTableProps {
   filteredPlans: PaymentLink[];
   isLoading: boolean;
   paymentPlans: PaymentLink[];
-  onCreatePlanClick: () => void;
-  onEditPlan: (plan: PaymentLink) => void;
-  onDeletePlan: (plan: PaymentLink) => void;
+  onCreatePlanClick?: () => void;
+  onArchivePlan: (plan: PaymentLink) => void;
+  onUnarchivePlan: (plan: PaymentLink) => void;
+  isArchiveView: boolean;
+  toggleArchiveView: () => void;
 }
 
 const PaymentPlansTable = ({
@@ -29,19 +31,33 @@ const PaymentPlansTable = ({
   isLoading,
   paymentPlans,
   onCreatePlanClick,
-  onEditPlan,
-  onDeletePlan
+  onArchivePlan,
+  onUnarchivePlan,
+  isArchiveView,
+  toggleArchiveView
 }: PaymentPlansTableProps) => {
   return (
     <Card>
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
-        <CardTitle>All Payment Plans</CardTitle>
+        <CardTitle>
+          {isArchiveView ? 'Archived Payment Plans' : 'All Payment Plans'}
+        </CardTitle>
         <Button 
-          className="btn-gradient" 
-          onClick={onCreatePlanClick}
+          variant="outline"
+          onClick={toggleArchiveView}
+          className="flex items-center"
         >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Create Plan
+          {isArchiveView ? (
+            <>
+              <ArrowUpRight className="mr-2 h-4 w-4" />
+              View Active Plans
+            </>
+          ) : (
+            <>
+              <Archive className="mr-2 h-4 w-4" />
+              View Archived
+            </>
+          )}
         </Button>
       </CardHeader>
       <CardContent>
@@ -54,13 +70,20 @@ const PaymentPlansTable = ({
           <div className="py-8 text-center text-gray-500">
             {paymentPlans.length === 0 ? (
               <>
-                <p>No payment plans found. Create your first payment plan to get started.</p>
-                <Button 
-                  className="mt-4 btn-gradient" 
-                  onClick={onCreatePlanClick}
-                >
-                  Create First Payment Plan
-                </Button>
+                <p>
+                  {isArchiveView 
+                    ? 'No archived payment plans found.' 
+                    : 'No payment plans found. Create your first payment plan to get started.'}
+                </p>
+                {!isArchiveView && onCreatePlanClick && (
+                  <Button 
+                    className="mt-4 btn-gradient" 
+                    onClick={onCreatePlanClick}
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Create First Payment Plan
+                  </Button>
+                )}
               </>
             ) : (
               <p>No payment plans match your search criteria.</p>
@@ -89,23 +112,27 @@ const PaymentPlansTable = ({
                   <TableCell>{plan.paymentCount || '-'}</TableCell>
                   <TableCell>{formatCurrency(plan.planTotalAmount || 0)}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => onEditPlan(plan)}
-                      >
-                        <Edit className="h-4 w-4" />
-                        <span className="sr-only">Edit</span>
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        onClick={() => onDeletePlan(plan)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Delete</span>
-                      </Button>
+                    <div className="flex justify-end">
+                      {isArchiveView ? (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => onUnarchivePlan(plan)}
+                          className="text-green-500"
+                        >
+                          <ArrowUpRight className="h-4 w-4 mr-1" />
+                          Restore
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => onArchivePlan(plan)}
+                        >
+                          <Archive className="h-4 w-4 mr-1" />
+                          Archive
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
