@@ -36,7 +36,7 @@ const ForgotPasswordPage = () => {
       }
       
       setIsSubmitted(true);
-      toast.success(result.message || 'Password reset instructions sent to your email');
+      // Removed toast notification here as requested
     } catch (error: any) {
       console.error('Error requesting password reset:', error);
       setError(error.message || 'Failed to send reset instructions. Please try again.');
@@ -54,11 +54,11 @@ const ForgotPasswordPage = () => {
       {isSubmitted ? (
         <div className="text-center py-6 space-y-4">
           <div className="bg-green-50 text-green-800 p-4 rounded-md">
-            <p>We've sent password reset instructions to <strong>{email}</strong></p>
-            <p className="text-sm mt-2">Please check your email and follow the link to reset your password.</p>
+            <p>If an account exists for <strong>{email}</strong>, check your email and follow the link to reset your password.</p>
+            <p className="text-sm mt-2">Please check your email inbox and spam folder for instructions.</p>
           </div>
           <p className="text-gray-600 mt-4">
-            Didn't receive an email? Check your spam folder or{' '}
+            Didn't receive an email? {' '}
             <button 
               onClick={() => setIsSubmitted(false)} 
               className="text-blue-600 hover:underline"
