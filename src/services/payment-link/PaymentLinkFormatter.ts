@@ -47,12 +47,23 @@ export const PaymentLinkFormatter = {
       
       // Extract payment plan data if available
       const paymentPlan = linkData.payment_plan || false;
-      const planData = paymentPlan ? {
-        paymentPlan: true,
-        planTotalAmount: (linkData.plan_total_amount || 0) / 100, // Convert cents to standard currency units
-        totalPaid: (requestData.total_paid || 0) / 100, // Convert cents to standard currency units
-        totalOutstanding: (linkData.plan_total_amount || 0 - (requestData.total_paid || 0)) / 100 // Convert cents to standard currency units
-      } : {};
+      let planData = {};
+      
+      if (paymentPlan) {
+        // Get total paid amount either from our query or default to 0
+        const totalPaid = (requestData.total_paid || 0) / 100; // Convert cents to standard currency units
+        const planTotalAmount = (linkData.plan_total_amount || 0) / 100; // Convert cents to standard currency units
+        const totalOutstanding = Math.max(0, planTotalAmount - totalPaid); // Ensure we don't have negative outstanding
+        
+        console.log(`PaymentLinkFormatter: Plan data - Total: ${planTotalAmount}, Paid: ${totalPaid}, Outstanding: ${totalOutstanding}`);
+        
+        planData = {
+          paymentPlan: true,
+          planTotalAmount: planTotalAmount,
+          totalPaid: totalPaid,
+          totalOutstanding: totalOutstanding
+        };
+      }
       
       return {
         id: requestData.id,
@@ -82,12 +93,23 @@ export const PaymentLinkFormatter = {
     
     // Extract payment plan data if available
     const paymentPlan = linkData.payment_plan || false;
-    const planData = paymentPlan ? {
-      paymentPlan: true,
-      planTotalAmount: (linkData.plan_total_amount || 0) / 100, // Convert cents to standard currency units
-      totalPaid: (linkData.total_paid || 0) / 100, // Convert cents to standard currency units
-      totalOutstanding: ((linkData.plan_total_amount || 0) - (linkData.total_paid || 0)) / 100 // Convert cents to standard currency units
-    } : {};
+    let planData = {};
+    
+    if (paymentPlan) {
+      // Get total paid amount either from our query or default to 0
+      const totalPaid = (linkData.total_paid || 0) / 100; // Convert cents to standard currency units
+      const planTotalAmount = (linkData.plan_total_amount || 0) / 100; // Convert cents to standard currency units
+      const totalOutstanding = Math.max(0, planTotalAmount - totalPaid); // Ensure we don't have negative outstanding
+      
+      console.log(`PaymentLinkFormatter: Plan data - Total: ${planTotalAmount}, Paid: ${totalPaid}, Outstanding: ${totalOutstanding}`);
+      
+      planData = {
+        paymentPlan: true,
+        planTotalAmount: planTotalAmount,
+        totalPaid: totalPaid,
+        totalOutstanding: totalOutstanding
+      };
+    }
 
     // Handle link status specifically
     let status = linkData.status;

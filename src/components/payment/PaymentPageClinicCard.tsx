@@ -1,117 +1,92 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building, Mail, Phone, MapPin, Calendar } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { formatCurrency } from '@/utils/formatters';
+import { Mail, Phone } from 'lucide-react';
 import PaymentPlanBreakdown from './PaymentPlanBreakdown';
 
-interface ClinicInfo {
-  name: string;
-  logo: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  paymentType: string;
-  amount: number;
-}
-
 interface PaymentPageClinicCardProps {
-  clinic: ClinicInfo;
+  clinic: {
+    name: string;
+    logo: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    paymentType: string;
+    amount: number;
+  };
   paymentPlan?: boolean;
   planTotalAmount?: number;
   totalPaid?: number;
   totalOutstanding?: number;
   isOverdue?: boolean;
+  paymentLinkId?: string;
 }
 
-const PaymentPageClinicCard = ({ 
-  clinic, 
-  paymentPlan, 
-  planTotalAmount, 
-  totalPaid, 
-  totalOutstanding,
-  isOverdue
-}: PaymentPageClinicCardProps) => {
-  // Generate initials for the avatar fallback
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase();
-  };
-
+const PaymentPageClinicCard: React.FC<PaymentPageClinicCardProps> = ({
+  clinic,
+  paymentPlan = false,
+  planTotalAmount = 0,
+  totalPaid = 0,
+  totalOutstanding = 0,
+  isOverdue = false,
+  paymentLinkId
+}) => {
   return (
-    <Card className="border-none shadow-none bg-white rounded-lg mb-6">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-4 mb-4">
-          <Avatar className="h-16 w-16 border">
-            {clinic.logo ? (
-              <AvatarImage src={clinic.logo} alt={clinic.name} />
-            ) : (
-              <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                {getInitials(clinic.name)}
-              </AvatarFallback>
-            )}
-          </Avatar>
+    <Card className="w-full">
+      <CardContent className="p-6">
+        {/* Clinic Logo and Name */}
+        <div className="flex items-center space-x-4 mb-4">
+          <div className="rounded-full overflow-hidden w-16 h-16 border border-gray-200">
+            <img
+              src={clinic.logo}
+              alt={`${clinic.name} Logo`}
+              className="object-cover w-full h-full"
+            />
+          </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-800">{clinic.name}</h2>
+            <h1 className="text-2xl font-bold">{clinic.name}</h1>
           </div>
         </div>
-
-        <div className="space-y-4 text-sm">
-          {clinic.address && (
-            <div className="flex items-start gap-3">
-              <MapPin className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-gray-500 font-medium">Address</p>
-                <p className="text-gray-700">{clinic.address}</p>
-              </div>
+        
+        {/* Payment information */}
+        <div className="mt-6">
+          <h2 className="text-lg font-medium">{clinic.paymentType}</h2>
+          
+          {paymentPlan ? (
+            <PaymentPlanBreakdown
+              planTotalAmount={planTotalAmount}
+              totalPaid={totalPaid}
+              totalOutstanding={totalOutstanding}
+              isOverdue={isOverdue}
+              paymentLinkId={paymentLinkId}
+            />
+          ) : (
+            <div className="mt-3 text-2xl font-bold">
+              {formatCurrency(clinic.amount)}
             </div>
           )}
-          
+        </div>
+        
+        {/* Clinic Contact Information */}
+        <div className="mt-6 space-y-2">
+          <h3 className="text-md font-medium">Contact Us</h3>
           {clinic.email && (
-            <div className="flex items-start gap-3">
-              <Mail className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-gray-500 font-medium">Email</p>
-                <p className="text-gray-700">{clinic.email}</p>
-              </div>
+            <div className="flex items-center space-x-2 text-gray-600">
+              <Mail className="h-4 w-4" />
+              <span>{clinic.email}</span>
             </div>
           )}
-          
           {clinic.phone && (
-            <div className="flex items-start gap-3">
-              <Phone className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-gray-500 font-medium">Phone</p>
-                <p className="text-gray-700">{clinic.phone}</p>
-              </div>
+            <div className="flex items-center space-x-2 text-gray-600">
+              <Phone className="h-4 w-4" />
+              <span>{clinic.phone}</span>
             </div>
           )}
-          
-          <div className="flex items-start gap-3">
-            <Calendar className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-gray-500 font-medium">Payment for:</p>
-              <p className="text-gray-700">{clinic.paymentType}</p>
+          {clinic.address && (
+            <div className="text-gray-600">
+              <span>{clinic.address}</span>
             </div>
-          </div>
-          
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            {paymentPlan && planTotalAmount && totalPaid !== undefined && totalOutstanding !== undefined && (
-              <PaymentPlanBreakdown
-                planTotalAmount={planTotalAmount}
-                totalPaid={totalPaid}
-                totalOutstanding={totalOutstanding}
-                isOverdue={isOverdue}
-              />
-            )}
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-600">Amount Due:</span>
-              <span className="text-xl font-bold text-primary">£{clinic.amount.toFixed(2)}</span>
-            </div>
-          </div>
+          )}
         </div>
       </CardContent>
     </Card>

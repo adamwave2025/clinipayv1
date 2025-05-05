@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
@@ -231,6 +230,9 @@ const PatientPaymentPage = () => {
   const planTotalAmount = linkData.planTotalAmount;
   const totalPaid = linkData.totalPaid || 0;
   const totalOutstanding = linkData.totalOutstanding || 0;
+  
+  // Get the payment link ID for payment plans
+  const paymentLinkId = linkData.isRequest ? linkData.payment_link_id : linkData.id;
 
   // Prepare default values from payment request patient info
   const defaultValues = linkData?.isRequest ? {
@@ -259,6 +261,7 @@ const PatientPaymentPage = () => {
             totalPaid={totalPaid}
             totalOutstanding={totalOutstanding}
             isOverdue={isOverdue}
+            paymentLinkId={isPaymentPlan ? paymentLinkId : undefined}
           />
         )}
         <CliniPaySecuritySection />
