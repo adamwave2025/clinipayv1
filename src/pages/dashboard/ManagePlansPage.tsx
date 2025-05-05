@@ -17,8 +17,8 @@ const ManagePlansHeader: React.FC = () => {
   
   return (
     <PageHeader 
-      title="Manage Plans" 
-      description="Create new payment plans for your patients"
+      title="Payment Plans" 
+      description="Create and manage payment plans for your patients"
       action={
         <div className="flex space-x-2">
           <Button 
