@@ -5,6 +5,7 @@ import { PaymentLink } from '@/types/payment';
 import { useAuth } from '@/contexts/AuthContext';
 import { PaymentPlanService } from '@/services/PaymentPlanService';
 import { usePaymentPlanSearch } from '@/hooks/usePaymentPlanSearch';
+import { getUserClinicId } from '@/utils/userUtils';
 
 export const usePaymentPlans = () => {
   const [paymentPlans, setPaymentPlans] = useState<PaymentLink[]>([]);
@@ -30,8 +31,22 @@ export const usePaymentPlans = () => {
         return;
       }
       
-      // Use clinic_id directly from user for better consistency
-      const clinicId = user.id;
+      // Get the clinic ID correctly from the user object
+      // CRITICAL FIX: Use user.clinic_id if available, otherwise get it from the helper function
+      let clinicId = user.clinic_id;
+      
+      // If clinic_id isn't directly on the user object, fetch it
+      if (!clinicId) {
+        clinicId = await getUserClinicId();
+      }
+      
+      if (!clinicId) {
+        console.error('Could not determine clinic ID for payment plans');
+        toast.error('Failed to load payment plans - clinic ID not found');
+        setIsLoading(false);
+        return;
+      }
+      
       console.log(`Fetching payment plans for clinic ID: ${clinicId}, archived: ${isArchiveView}, templates: ${isTemplateView}`);
       
       const { plans, error } = await PaymentPlanService.fetchPaymentPlans(clinicId, isArchiveView, isTemplateView);
