@@ -1,7 +1,6 @@
 
 import React from 'react';
 import PaymentStatsCards from './PaymentStatsCards';
-import PaymentLinksCard from './PaymentLinksCard';
 import RecentPaymentsCard from './RecentPaymentsCard';
 import PaymentDetailDialog from './PaymentDetailDialog';
 import PaymentRefundDialog from './payments/PaymentRefundDialog';
@@ -58,14 +57,6 @@ const DashboardContent = () => {
           onPaymentClick={handlePaymentClick}
         />
       </div>
-      
-      <PaymentLinksCard 
-        links={paymentLinks}
-        archivedLinks={archivedLinks}
-        isArchiveLoading={isArchiveLoading}
-        onArchiveLink={archivePaymentLink}
-        onUnarchiveLink={unarchivePaymentLink}
-      />
 
       <PaymentDetailDialog
         payment={selectedPayment}
