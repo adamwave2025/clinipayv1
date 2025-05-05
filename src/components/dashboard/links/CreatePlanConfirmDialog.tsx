@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { LinkFormData } from '@/hooks/useCreateLinkForm';
 import { Check } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { formatCurrency, amountToCents } from '@/utils/formatters';
+import { formatCurrency } from '@/utils/formatters';
 
 interface CreatePlanConfirmDialogProps {
   open: boolean;
@@ -30,7 +30,7 @@ const CreatePlanConfirmDialog = ({
 }: CreatePlanConfirmDialogProps) => {
   if (!formData) return null;
 
-  // Calculate total amount
+  // Calculate total amount properly handling decimal values
   const totalAmount = formData.paymentPlan && formData.paymentCount && formData.amount
     ? parseFloat(formData.amount) * Number(formData.paymentCount)
     : 0;

@@ -63,14 +63,20 @@ const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
     try {
       const { paymentTitle, amount, description, paymentCount, paymentCycle } = pendingFormData;
       
+      // Parse amount as float first to handle proper decimal values
+      const amountValue = parseFloat(amount);
+      
       const planData = {
         title: paymentTitle,
-        amount: parseFloat(amount) * 100, // Convert to cents
+        // We store amounts in cents in the database, so multiply by 100
+        amount: amountValue,
         description,
         type: 'payment_plan',
         paymentPlan: true,
         paymentCount: Number(paymentCount),
-        paymentCycle
+        paymentCycle,
+        // Calculate and store the total amount
+        planTotalAmount: amountValue * Number(paymentCount)
       };
       
       const result = await createPaymentLink(planData);

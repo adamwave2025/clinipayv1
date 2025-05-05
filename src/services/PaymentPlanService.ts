@@ -13,6 +13,8 @@ export const PaymentPlanService = {
       // Filter and format the links
       const plans = formatPaymentLinks(activeLinks).filter(link => link.paymentPlan === true);
       
+      console.log('Fetched payment plans:', plans); // Debug output
+      
       return { plans, error: null };
     } catch (error) {
       console.error('Error fetching payment plans:', error);

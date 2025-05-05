@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { PaymentLink } from '@/types/payment';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,6 +34,7 @@ export const usePaymentPlans = () => {
       if (error) {
         toast.error('Failed to load payment plans');
       } else {
+        console.log('Payment plans fetched:', plans); // Debug output
         setPaymentPlans(plans);
       }
     } finally {
