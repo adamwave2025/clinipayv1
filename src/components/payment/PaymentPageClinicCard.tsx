@@ -93,7 +93,7 @@ const PaymentPageClinicCard = ({
           <div className="flex items-start gap-3">
             <Calendar className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-gray-500 font-medium">Payment Type</p>
+              <p className="text-gray-500 font-medium">Payment for:</p>
               <p className="text-gray-700">{clinic.paymentType}</p>
             </div>
           </div>
