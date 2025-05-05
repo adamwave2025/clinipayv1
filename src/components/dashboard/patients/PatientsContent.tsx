@@ -3,16 +3,19 @@ import React, { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import PatientsTable from './PatientsTable';
 import PatientDetailsDialog from './PatientDetailsDialog';
+import AddPatientDialog from './AddPatientDialog';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Search, UserPlus } from 'lucide-react';
 import { usePatients, Patient } from '@/hooks/usePatients';
 
 const PatientsContent = () => {
-  const { patients, isLoadingPatients, error } = usePatients();
+  const { patients, isLoadingPatients, error, refetchPatients } = usePatients();
   const [search, setSearch] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [addPatientDialogOpen, setAddPatientDialogOpen] = useState(false);
   
   // Filter patients based on search term
   const filteredPatients = useMemo(() => {
@@ -32,12 +35,16 @@ const PatientsContent = () => {
     setDialogOpen(true);
   };
 
+  const handleAddPatientSuccess = () => {
+    refetchPatients();
+  };
+
   return (
     <div className="space-y-6">
       <Card>
         <CardContent className="pt-6">
-          <div className="mb-6">
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div className="relative w-full sm:w-auto flex-1">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search patients by name, email or phone..."
@@ -46,6 +53,14 @@ const PatientsContent = () => {
                 className="pl-9 input-focus w-full"
               />
             </div>
+            
+            <Button 
+              onClick={() => setAddPatientDialogOpen(true)}
+              className="btn-gradient w-full sm:w-auto"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add Patient
+            </Button>
           </div>
           
           {isLoadingPatients ? (
@@ -72,6 +87,12 @@ const PatientsContent = () => {
           onClose={() => setDialogOpen(false)}
         />
       )}
+
+      <AddPatientDialog
+        open={addPatientDialogOpen}
+        onOpenChange={setAddPatientDialogOpen}
+        onSuccess={handleAddPatientSuccess}
+      />
     </div>
   );
 };
