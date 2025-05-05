@@ -1,9 +1,9 @@
-
 import React from 'react';
 import { formatCurrency, formatDateTime } from '@/utils/formatters';
 import StatusBadge from '@/components/common/StatusBadge';
 import { CreditCard, RefreshCcw } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import PaymentReferenceDisplay from '@/components/payment/PaymentReferenceDisplay';
 
 interface PatientActivityProps {
   payments: any[];
@@ -64,20 +64,25 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments, isLoading =
     }
   };
 
+  // New function to determine payment type (Payment Plan, Reusable Link, or Direct)
+  const getPaymentType = (payment: any) => {
+    if (payment.type === 'payment_plan') {
+      return 'Payment Plan';
+    } else if (payment.paymentLinkId) {
+      return 'Reusable Link';
+    } else {
+      return 'Direct Payment';
+    }
+  };
+
   const getPaymentDetails = (payment: any) => {
-    // Format the payment details including reference when available
-    const details = [];
-    
-    if (payment.title) {
-      details.push(payment.title);
+    // Format the payment details, now focusing on payment title
+    if (payment.linkTitle) {
+      return payment.linkTitle;
     }
     
-    // Add payment reference if available
-    if (payment.reference) {
-      details.push(`Ref: ${payment.reference}`);
-    }
-    
-    return details.length > 0 ? details.join(' • ') : 'Payment';
+    // Fallback to type if no title available
+    return payment.type ? `${payment.type.charAt(0).toUpperCase()}${payment.type.slice(1)}` : 'Payment';
   };
 
   return (
@@ -104,10 +109,26 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments, isLoading =
                   <span className="font-medium">{getPaymentDescription(payment)}</span>
                   <StatusBadge status={payment.status} />
                 </div>
-                {getPaymentDetails(payment) && (
-                  <p className="text-sm text-gray-600 mt-1">{getPaymentDetails(payment)}</p>
+                
+                {/* Payment title and type */}
+                <div className="flex items-center mt-1 text-sm text-gray-600">
+                  <span>{getPaymentDetails(payment)}</span>
+                  <span className="mx-2">•</span>
+                  <span className="text-xs px-2 py-0.5 bg-gray-100 rounded-full">
+                    {getPaymentType(payment)}
+                  </span>
+                </div>
+                
+                {/* Reference - now displayed more prominently */}
+                {payment.reference && (
+                  <PaymentReferenceDisplay 
+                    reference={payment.reference}
+                    className="mt-2"
+                  />
                 )}
-                <p className="text-xs text-gray-500 mt-1">
+                
+                {/* Date and time with proper formatting */}
+                <p className="text-xs text-gray-500 mt-2">
                   {formatDateTime(payment.date, 'en-GB', 'Europe/London')}
                 </p>
               </div>
