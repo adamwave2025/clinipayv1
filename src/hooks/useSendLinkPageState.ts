@@ -136,9 +136,10 @@ export function useSendLinkPageState() {
           [...regularLinks, ...paymentPlans].find(link => link.id === formData.selectedLink) : 
           null;
           
-        const amount = selectedLink ? 
-          selectedLink.amount.toFixed(2) : 
-          (formData.customAmount ? formData.customAmount : 'unknown');
+        // Use formatCurrency for proper amount formatting
+        const formattedAmount = selectedLink ? 
+          formatCurrency(selectedLink.amount) : 
+          (formData.customAmount ? formatCurrency(Number(formData.customAmount)) : 'unknown amount');
           
         const linkTitle = selectedLink ? selectedLink.title : 'Custom payment';
         
@@ -146,7 +147,7 @@ export function useSendLinkPageState() {
         
         if (result.success) {
           toast.success(`Payment request sent to ${formData.patientName}`, {
-            description: `${linkTitle}: £${amount}`
+            description: `${linkTitle}: ${formattedAmount}`
           });
           resetForm();
           setShowConfirmation(false);
