@@ -5,7 +5,9 @@ import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -77,11 +79,17 @@ const LinkFormFields: React.FC<LinkFormFieldsProps> = ({
             <SelectValue placeholder="Select payment type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="payment_plan">Payment Plan</SelectItem>
-            <SelectItem value="deposit">Deposit</SelectItem>
-            <SelectItem value="treatment">Treatment</SelectItem>
-            <SelectItem value="consultation">Consultation</SelectItem>
-            <SelectItem value="other">Other</SelectItem>
+            <SelectGroup>
+              <SelectLabel>Recurring Payments</SelectLabel>
+              <SelectItem value="payment_plan">Payment Plan</SelectItem>
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel>Reusable Links</SelectLabel>
+              <SelectItem value="deposit">Deposit</SelectItem>
+              <SelectItem value="treatment">Treatment</SelectItem>
+              <SelectItem value="consultation">Consultation</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectGroup>
           </SelectContent>
         </Select>
       </div>
