@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -90,11 +91,11 @@ const PaymentLinksCard = ({
     <Card className="card-shadow">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>{isArchiveView ? 'Archived Payment Links' : 'Payment Links'}</CardTitle>
+          <CardTitle>{isArchiveView ? 'Archived Reusable Payment Links' : 'Reusable Payment Links'}</CardTitle>
           <CardDescription>
             {isArchiveView 
-              ? 'Your archived payment links' 
-              : 'Your recently created payment links'}
+              ? 'Your archived reusable payment links' 
+              : 'Your recently created reusable payment links'}
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">

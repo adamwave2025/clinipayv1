@@ -52,19 +52,19 @@ const DashboardContent = () => {
       <PaymentStatsCards stats={stats} />
       
       <div className="mb-8">
-        <PaymentLinksCard 
-          links={paymentLinks}
-          archivedLinks={archivedLinks}
-          isArchiveLoading={isArchiveLoading}
-          onArchiveLink={archivePaymentLink}
-          onUnarchiveLink={unarchivePaymentLink}
+        <RecentPaymentsCard 
+          payments={payments} 
+          onRefund={openRefundDialog}
+          onPaymentClick={handlePaymentClick}
         />
       </div>
       
-      <RecentPaymentsCard 
-        payments={payments} 
-        onRefund={openRefundDialog}
-        onPaymentClick={handlePaymentClick}
+      <PaymentLinksCard 
+        links={paymentLinks}
+        archivedLinks={archivedLinks}
+        isArchiveLoading={isArchiveLoading}
+        onArchiveLink={archivePaymentLink}
+        onUnarchiveLink={unarchivePaymentLink}
       />
 
       <PaymentDetailDialog
