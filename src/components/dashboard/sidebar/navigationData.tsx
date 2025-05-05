@@ -1,3 +1,4 @@
+
 import { Home, Link as LinkIcon, Send, Settings, Users, Clock, CreditCard, Calendar, HelpCircle } from 'lucide-react';
 import React from 'react';
 
@@ -26,11 +27,6 @@ export const getClinicItems = (): SidebarItem[] => [
     icon: <CreditCard className="w-5 h-5" />,
     links: [
       {
-        to: '/dashboard/send-link',
-        label: 'Request Payment',
-        icon: <Send className="w-5 h-5" />
-      },
-      {
         to: '/dashboard/reusable-links',
         label: 'Reusable Links',
         icon: <LinkIcon className="w-5 h-5" />
@@ -39,6 +35,11 @@ export const getClinicItems = (): SidebarItem[] => [
         to: '/dashboard/manage-plans',
         label: 'Payment Plans',
         icon: <Calendar className="w-5 h-5" />
+      },
+      {
+        to: '/dashboard/send-link',
+        label: 'Request Payment',
+        icon: <Send className="w-5 h-5" />
       },
       {
         to: '/dashboard/payment-history',
