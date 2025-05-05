@@ -1,9 +1,9 @@
+
 import React from 'react';
 import { formatCurrency, formatDateTime } from '@/utils/formatters';
 import StatusBadge from '@/components/common/StatusBadge';
 import { CreditCard, RefreshCcw } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import PaymentReferenceDisplay from '@/components/payment/PaymentReferenceDisplay';
 
 interface PatientActivityProps {
   payments: any[];
@@ -98,13 +98,26 @@ const PatientActivity: React.FC<PatientActivityProps> = ({ payments, isLoading =
           No payment activity found for this patient
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-3">
           {paymentActivities.map((payment, index) => (
-            <div key={`payment-${payment.id}-${index}`} className="mb-4">
-              <p className="font-medium">{getPaymentDetails(payment)}</p>
-              <p>Payment type: {getPaymentType(payment)}</p>
-              {payment.reference && <p>Ref: {payment.reference}</p>}
-              <p>{formatDateTime(payment.date, 'en-GB', 'Europe/London')}</p>
+            <div key={`payment-${payment.id}-${index}`} className="flex items-start gap-3 p-3 border rounded-md">
+              <div className="mt-1">
+                {getPaymentIcon(payment)}
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between">
+                  <span className="font-medium">{getPaymentDescription(payment)}</span>
+                  <StatusBadge status={payment.status} />
+                </div>
+                
+                {/* Payment details in the requested format */}
+                <div className="mt-2 space-y-1 text-sm">
+                  <p>{getPaymentDetails(payment)}</p>
+                  <p>Payment type: {getPaymentType(payment)}</p>
+                  {payment.reference && <p>Ref: {payment.reference}</p>}
+                  <p>{formatDateTime(payment.date, 'en-GB', 'Europe/London')}</p>
+                </div>
+              </div>
             </div>
           ))}
         </div>
