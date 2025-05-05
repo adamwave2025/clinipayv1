@@ -1,5 +1,6 @@
 
 
+
 /**
  * Formats a numeric amount as a currency with the proper symbol and decimal places
  * @param amount - The numeric amount to format
@@ -23,10 +24,9 @@ export const formatCurrency = (amount: number | undefined | null, currency: stri
   // when the actual value is expected to be a smaller decimal
   let formattedAmount = amount;
   
-  // If the amount appears to be in cents (e.g., 10050 for £100.50), convert it
-  // This heuristic assumes that most payment amounts won't exceed £1000
-  // and that most cent values will be integers
-  if (Number.isInteger(amount) && amount > 1000) {
+  // FIX: Changed condition from `amount > 1000` to `amount >= 1000` to also convert exactly 1000 cents (£10.00)
+  // This ensures all amounts stored in cents get properly converted, including 1000 cents
+  if (Number.isInteger(amount) && amount >= 1000) {
     formattedAmount = amount / 100;
   }
   
