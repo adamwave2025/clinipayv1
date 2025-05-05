@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { formatCurrency } from '@/utils/formatters';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +9,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Mail, Phone, Calendar, CreditCard } from 'lucide-react';
+import { Mail, Phone, Calendar, CreditCard, Pencil } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlanActivity, formatPlanActivities } from '@/utils/planActivityUtils';
@@ -23,6 +22,7 @@ import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDia
 import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
 import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDialog';
 import ReschedulePlanDialog from '@/components/dashboard/payment-plans/ReschedulePlanDialog';
+import EditPatientDialog from './EditPatientDialog';
 
 interface PatientPayment {
   id: string;
@@ -47,6 +47,8 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
   const [isLoading, setIsLoading] = useState(false);
   const [loadingActivities, setLoadingActivities] = useState(false);
   const [activeTab, setActiveTab] = useState('notes');
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [currentPatient, setCurrentPatient] = useState<Patient>(patient);
   
   // Use the plan quick access hook
   const planQuickAccess = usePlanQuickAccess();
@@ -192,13 +194,47 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     fetchPlanActivities();
   }, [patient.id, open, showPlanDetails]);
   
+  useEffect(() => {
+    // Update current patient when patient prop changes
+    setCurrentPatient(patient);
+  }, [patient]);
+
+  const handlePatientUpdated = async () => {
+    // Refresh patient data
+    if (!currentPatient.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('id', currentPatient.id)
+        .single();
+        
+      if (error) throw error;
+      
+      setCurrentPatient(data as Patient);
+    } catch (err) {
+      console.error('Failed to refresh patient data:', err);
+    }
+  };
+  
   return (
     <>
       <Sheet open={open} onOpenChange={onClose}>
         <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-0">
           <div className="p-6">
             <SheetHeader className="text-left mb-6">
-              <SheetTitle className="text-2xl">{patient.name}</SheetTitle>
+              <div className="flex justify-between items-center">
+                <SheetTitle className="text-2xl">{currentPatient.name}</SheetTitle>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => setShowEditDialog(true)}
+                  title="Edit Patient"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
               <p className="text-sm text-muted-foreground">Patient information and payment details</p>
             </SheetHeader>
 
@@ -206,17 +242,17 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">Contact Information</h3>
                 
-                {patient.email && (
+                {currentPatient.email && (
                   <div className="flex items-center space-x-2">
                     <Mail className="h-5 w-5 text-gray-500" />
-                    <span>{patient.email}</span>
+                    <span>{currentPatient.email}</span>
                   </div>
                 )}
                 
-                {patient.phone && (
+                {currentPatient.phone && (
                   <div className="flex items-center space-x-2">
                     <Phone className="h-5 w-5 text-gray-500" />
-                    <span>{patient.phone}</span>
+                    <span>{currentPatient.phone}</span>
                   </div>
                 )}
               </div>
@@ -226,19 +262,19 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
                 
                 <div className="flex items-center space-x-2">
                   <CreditCard className="h-5 w-5 text-gray-500" />
-                  <span>Total Spent: <strong>{formatCurrency(patient.totalSpent || 0)}</strong></span>
+                  <span>Total Spent: <strong>{formatCurrency(currentPatient.totalSpent || 0)}</strong></span>
                 </div>
                 
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-5 w-5 text-gray-500" />
-                  <span>Last Payment: <strong>{patient.lastPaymentDate ? new Date(patient.lastPaymentDate).toLocaleDateString() : 'N/A'}</strong></span>
+                  <span>Last Payment: <strong>{currentPatient.lastPaymentDate ? new Date(currentPatient.lastPaymentDate).toLocaleDateString() : 'N/A'}</strong></span>
                 </div>
               </div>
             </div>
             
             {/* Payment Plans */}
             <PatientPlans 
-              patientId={patient.id} 
+              patientId={currentPatient.id} 
               onViewPlanDetails={handleViewPlanDetails} 
             />
             
@@ -263,8 +299,8 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
               
               <TabsContent value="notes">
                 <PatientNotes 
-                  patientId={patient.id}
-                  clinicId={patient.clinic_id || ''}
+                  patientId={currentPatient.id}
+                  clinicId={currentPatient.clinic_id || ''}
                 />
               </TabsContent>
               
@@ -279,6 +315,14 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Edit Patient Dialog */}
+      <EditPatientDialog
+        patient={currentPatient}
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        onSuccess={handlePatientUpdated}
+      />
 
       {/* Plan Details Dialog */}
       <PlanDetailsDialog
