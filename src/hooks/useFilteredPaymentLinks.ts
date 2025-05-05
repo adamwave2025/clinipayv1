@@ -10,6 +10,7 @@ export function useFilteredPaymentLinks() {
   const [isArchiveView, setIsArchiveView] = useState(false);
 
   const filteredLinks = useMemo(() => {
+    // Get active or archived links based on the current view
     const links = isArchiveView ? archivedLinks : paymentLinks;
 
     return links.filter(link => {
@@ -23,8 +24,11 @@ export function useFilteredPaymentLinks() {
       const matchesType = 
         linkType === 'all' || 
         link.type?.toLowerCase() === linkType.toLowerCase();
+        
+      // Filter out payment plans from the reusable links section
+      const isNotPaymentPlan = !link.paymentPlan;
 
-      return matchesSearch && matchesType;
+      return matchesSearch && matchesType && isNotPaymentPlan;
     });
   }, [paymentLinks, archivedLinks, searchQuery, linkType, isArchiveView]);
 

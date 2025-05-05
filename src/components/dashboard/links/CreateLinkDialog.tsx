@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Dialog,
@@ -124,15 +123,16 @@ const CreateLinkDialog = ({
   };
 
   const handleDialogClose = (open: boolean) => {
-    if (!open) {
-      // Reset dialog state when closing
+    if (!open && !showConfirmation) {
+      // Reset dialog state when closing, but don't close if confirmation dialog is open
       setGeneratedLink(null);
       setFormData(null);
-      setShowConfirmation(false);
       setShowPlanConfirmation(false);
       setIsLoading(false);
+      onOpenChange(open);
+    } else if (open) {
+      onOpenChange(open);
     }
-    onOpenChange(open);
   };
   
   return (

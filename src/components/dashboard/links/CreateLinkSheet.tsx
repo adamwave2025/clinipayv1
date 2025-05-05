@@ -36,14 +36,13 @@ const CreateLinkSheet: React.FC<CreateLinkSheetProps> = ({
   const [showLinkDialog, setShowLinkDialog] = React.useState(false);
   const [linkFormData, setLinkFormData] = React.useState<LinkFormData | null>(null);
   
-  // Reset state when the dialog opens or closes
+  // Reset state when the sheet closes, but not when link is generated
   React.useEffect(() => {
-    if (!open) {
+    if (!open && !showLinkDialog) {
       setIsLoading(false);
       setGeneratedLink('');
-      setShowLinkDialog(false);
     }
-  }, [open]);
+  }, [open, showLinkDialog]);
   
   const handleLinkGenerated = (link: string, formData: LinkFormData) => {
     setGeneratedLink(link);
@@ -67,7 +66,7 @@ const CreateLinkSheet: React.FC<CreateLinkSheetProps> = ({
   const onFormSubmit = async (e: React.FormEvent) => {
     setIsLoading(true);
     await handleSubmit(e);
-    setIsLoading(false);
+    // Don't reset isLoading here, let the handleLinkGenerated function do it
   };
   
   const isPlanMode = formData.paymentPlan;
@@ -105,7 +104,7 @@ const CreateLinkSheet: React.FC<CreateLinkSheetProps> = ({
                 disabled={isLoading}
               >
                 {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
-                Generate Payment Link
+                Generate Reusable Link
               </Button>
             </div>
           </form>

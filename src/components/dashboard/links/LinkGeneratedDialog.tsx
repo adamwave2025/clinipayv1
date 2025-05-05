@@ -34,6 +34,18 @@ const LinkGeneratedDialog = ({
     }
   };
 
+  // Prevent closing the dialog when clicking outside to ensure user can copy the link
+  const handleOpenChange = (newOpen: boolean) => {
+    // Only allow closing through the explicit buttons
+    if (newOpen === false) {
+      // Optional: you can add confirmation here if needed
+      // For now, we'll just let the dialog close when the user clicks a button
+      onOpenChange(newOpen);
+    } else {
+      onOpenChange(newOpen);
+    }
+  };
+
   // Check if this is a payment plan
   const isPaymentPlan = formData?.paymentPlan || false;
 
@@ -44,7 +56,7 @@ const LinkGeneratedDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center">
@@ -109,7 +121,15 @@ const LinkGeneratedDialog = ({
         
         <DialogFooter>
           <Button 
-            className="btn-gradient w-full" 
+            onClick={() => onOpenChange(false)}
+            variant="outline"
+            className="mr-2"
+          >
+            Close
+          </Button>
+          
+          <Button 
+            className="btn-gradient" 
             asChild
           >
             <Link to="/dashboard/send-link" className="flex items-center justify-center">

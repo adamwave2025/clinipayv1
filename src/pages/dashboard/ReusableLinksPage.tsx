@@ -136,7 +136,7 @@ const ReusableLinksPage = () => {
             {!isArchiveView && (
               <Button className="btn-gradient" size="sm" onClick={handleCreateLinkClick}>
                 <PlusCircle className="h-4 w-4 mr-1" />
-                Create Payment
+                Create Reusable Link
               </Button>
             )}
           </div>
