@@ -20,9 +20,10 @@ import { formatCurrency } from '@/utils/formatters';
 
 interface PlanTemplatesViewProps {
   onBackToPlans: () => void;
+  refreshTrigger?: number; // Add optional refresh trigger
 }
 
-const PlanTemplatesView: React.FC<PlanTemplatesViewProps> = ({ onBackToPlans }) => {
+const PlanTemplatesView: React.FC<PlanTemplatesViewProps> = ({ onBackToPlans, refreshTrigger = 0 }) => {
   const [templates, setTemplates] = useState<PaymentLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isArchiveView, setIsArchiveView] = useState(false);
@@ -71,10 +72,10 @@ const PlanTemplatesView: React.FC<PlanTemplatesViewProps> = ({ onBackToPlans }) 
     }
   };
 
-  // Initial load and when archive view changes
+  // Initial load and when archive view changes or refresh is triggered
   useEffect(() => {
     fetchTemplates();
-  }, [isArchiveView]);
+  }, [isArchiveView, refreshTrigger]); // Add refreshTrigger to dependencies
 
   // Toggle between archived and active templates
   const toggleArchiveView = () => {

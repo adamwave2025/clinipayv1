@@ -22,12 +22,14 @@ interface CreatePlanSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   createPaymentLink: (data: any) => Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }>;
+  onPlanCreated?: () => void; // Add callback for when a plan is created
 }
 
 const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
   open,
   onOpenChange,
-  createPaymentLink
+  createPaymentLink,
+  onPlanCreated
 }) => {
   const [isLoading, setIsLoading] = React.useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
@@ -47,6 +49,12 @@ const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
     setIsLoading(false);
     onOpenChange(false); // Close the sheet
     toast.success('Payment plan created successfully');
+    
+    // Call the onPlanCreated callback if provided
+    if (onPlanCreated) {
+      console.log('Calling onPlanCreated callback');
+      onPlanCreated();
+    }
   };
   
   // Show confirmation dialog before creating the plan

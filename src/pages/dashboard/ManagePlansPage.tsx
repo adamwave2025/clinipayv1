@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -62,6 +62,15 @@ const ManagePlansPageContent: React.FC = () => {
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
   const { createPaymentLink } = usePaymentLinks();
   
+  // Add a function to refresh the templates view
+  const [templateRefreshTrigger, setTemplateRefreshTrigger] = useState(0);
+  
+  // Create a callback function to trigger template refresh
+  const refreshTemplates = useCallback(() => {
+    console.log('Triggering templates refresh');
+    setTemplateRefreshTrigger(prev => prev + 1);
+  }, []);
+  
   const handleCreatePlanClick = () => {
     setCreateSheetOpen(true);
   };
@@ -83,7 +92,10 @@ const ManagePlansPageContent: React.FC = () => {
       />
 
       {isTemplateView ? (
-        <PlanTemplatesView onBackToPlans={handleBackToPlans} />
+        <PlanTemplatesView 
+          onBackToPlans={handleBackToPlans} 
+          refreshTrigger={templateRefreshTrigger}
+        />
       ) : (
         <ManagePlansContent />
       )}
@@ -94,6 +106,7 @@ const ManagePlansPageContent: React.FC = () => {
         open={createSheetOpen}
         onOpenChange={setCreateSheetOpen}
         createPaymentLink={createPaymentLink}
+        onPlanCreated={refreshTemplates}
       />
     </>
   );
