@@ -77,43 +77,43 @@ export function usePaymentStats() {
 
       const newStats = { ...stats };
 
+      // Monetary values in the database are stored in cents, divide by 100 to convert to pounds/dollars
       newStats.totalReceivedToday = todayPayments
         .filter(p => p.status === 'paid' || p.status === 'partially_refunded')
         .reduce((sum, p) => {
           // For partially refunded payments, only count the non-refunded portion
-          // Do NOT convert from cents to dollars/pounds - values are already in pounds/dollars
           if (p.status === 'partially_refunded') {
-            return sum + ((p.amount_paid || 0) - (p.refund_amount || 0));
+            return sum + (((p.amount_paid || 0) - (p.refund_amount || 0)) / 100);
           }
-          return sum + (p.amount_paid || 0);
+          return sum + ((p.amount_paid || 0) / 100);
         }, 0);
       
       // Calculate total pending amount from today's pending requests
-      // Do NOT convert from cents to dollars/pounds - values are already in pounds/dollars
+      // Convert from cents to dollars/pounds by dividing by 100
       newStats.totalPendingToday = todayPendingRequests.reduce((sum, pr) => {
         // Use custom_amount if available, otherwise use amount from payment_link
         const requestAmount = pr.custom_amount || (pr.payment_links?.amount || 0);
-        return sum + requestAmount;
+        return sum + (requestAmount / 100);
       }, 0);
       
       newStats.totalReceivedMonth = monthPayments
         .filter(p => p.status === 'paid' || p.status === 'partially_refunded')
         .reduce((sum, p) => {
-          // Do NOT convert from cents to dollars/pounds - values are already in pounds/dollars
+          // Convert from cents to dollars/pounds by dividing by 100
           if (p.status === 'partially_refunded') {
-            return sum + ((p.amount_paid || 0) - (p.refund_amount || 0));
+            return sum + (((p.amount_paid || 0) - (p.refund_amount || 0)) / 100);
           }
-          return sum + (p.amount_paid || 0);
+          return sum + ((p.amount_paid || 0) / 100);
         }, 0);
       
       // Count both fully refunded and partial refund amounts
-      // Do NOT convert from cents to dollars/pounds - values are already in pounds/dollars
+      // Convert from cents to dollars/pounds by dividing by 100
       newStats.totalRefundedMonth = monthPayments
         .reduce((sum, p) => {
           if (p.status === 'refunded') {
-            return sum + (p.amount_paid || 0);
+            return sum + ((p.amount_paid || 0) / 100);
           } else if (p.status === 'partially_refunded') {
-            return sum + (p.refund_amount || 0);
+            return sum + ((p.refund_amount || 0) / 100);
           }
           return sum;
         }, 0);
