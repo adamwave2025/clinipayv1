@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Plus, ListChecks } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -9,7 +9,9 @@ import PaymentPlanFilters from '@/components/dashboard/payment-plans/PaymentPlan
 import PaymentPlansTable from '@/components/dashboard/payment-plans/PaymentPlansTable';
 import DeletePlanDialog from '@/components/dashboard/payment-plans/DeletePlanDialog';
 import EditPlanDialog from '@/components/dashboard/payment-plans/EditPlanDialog';
+import ActivePlansTable from '@/components/dashboard/payment-plans/ActivePlansTable';
 import { usePaymentPlans } from '@/hooks/usePaymentPlans';
+import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
 
 const PaymentPlansPage = () => {
   const navigate = useNavigate();
@@ -30,32 +32,23 @@ const PaymentPlansPage = () => {
     handleDeletePlan,
     confirmDeletePlan,
     handleEditFormChange,
-    saveEditedPlan,
-    handleViewActivePlansClick
+    saveEditedPlan
   } = usePaymentPlans();
 
   // Add status filter state
   const [statusFilter, setStatusFilter] = React.useState('all');
 
   const handleCreatePlanClick = () => {
-    navigate('/dashboard/create-link');
+    navigate('/dashboard/manage-plans');
   };
 
   return (
     <DashboardLayout userType="clinic">
       <PageHeader 
-        title="Manage Payment Plans" 
-        description="View, edit and manage all your payment plans"
+        title="Payment Plans" 
+        description="View and manage active payment plans for your patients"
         action={
           <div className="flex space-x-2">
-            <Button 
-              variant="outline"
-              className="flex items-center"
-              onClick={handleViewActivePlansClick}
-            >
-              <ListChecks className="mr-2 h-4 w-4" />
-              Active Plans
-            </Button>
             <Button 
               className="btn-gradient"
               onClick={handleCreatePlanClick}
@@ -68,22 +61,20 @@ const PaymentPlansPage = () => {
       />
       
       <div className="space-y-6">
+        {/* Active Plans Table */}
+        <ActivePlansTable 
+          isLoading={isLoading}
+          plans={filteredPlans}
+          onCreatePlanClick={handleCreatePlanClick}
+          onViewPlanDetails={handleEditPlan}
+        />
+        
         {/* Filters */}
         <PaymentPlanFilters 
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
-        />
-        
-        {/* Plans Table */}
-        <PaymentPlansTable 
-          filteredPlans={filteredPlans}
-          isLoading={isLoading}
-          paymentPlans={paymentPlans}
-          onCreatePlanClick={handleCreatePlanClick}
-          onEditPlan={handleEditPlan}
-          onDeletePlan={handleDeletePlan}
         />
       </div>
 

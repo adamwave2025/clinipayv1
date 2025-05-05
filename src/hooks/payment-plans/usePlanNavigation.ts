@@ -8,6 +8,7 @@ export const usePlanNavigation = () => {
     navigate('/dashboard/create-link');
   };
 
+  // We maintain this function for compatibility, but it now navigates to the payment plans page
   const handleViewPlansClick = () => {
     navigate('/dashboard/payment-plans');
   };

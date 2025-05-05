@@ -63,7 +63,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleReschedulePlan: reschedulePlan
   } = usePlanActions(() => fetchPaymentPlans(user?.id || ''));
   
-  const { handleCreatePlanClick, handleViewPlansClick } = usePlanNavigation();
+  const { handleCreatePlanClick } = usePlanNavigation();
   
   // Use specialized action hooks
   const cancelActions = usePlanCancelActions(selectedPlan, cancelPlan, setShowPlanDetails);
@@ -155,7 +155,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     isLoadingActivities,
     handleViewPlanDetails,
     handleCreatePlanClick,
-    handleViewPlansClick,
+    handleViewPlansClick: () => {}, // Removed functionality, using empty function
     handleSendReminder,
     // Payment details properties
     showPaymentDetails,

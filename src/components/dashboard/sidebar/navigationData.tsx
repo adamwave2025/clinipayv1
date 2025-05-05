@@ -47,6 +47,11 @@ export const getClinicItems = (): SidebarItem[] => [
         icon: <Calendar className="w-5 h-5" />
       },
       {
+        to: '/dashboard/payment-plans',
+        label: 'Payment Plans',
+        icon: <Calendar className="w-5 h-5" />
+      },
+      {
         to: '/dashboard/payment-history',
         label: 'Payment History',
         icon: <Clock className="w-5 h-5" />

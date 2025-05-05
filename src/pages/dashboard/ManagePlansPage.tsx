@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { PlusCircle, ListChecks } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
@@ -13,22 +13,14 @@ import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
 
 const ManagePlansHeader: React.FC = () => {
-  const { handleCreatePlanClick, handleViewPlansClick } = useManagePlansContext();
+  const { handleCreatePlanClick } = useManagePlansContext();
   
   return (
     <PageHeader 
       title="Manage Plans" 
-      description="Create and manage payment plans for your patients"
+      description="Create new payment plans for your patients"
       action={
         <div className="flex space-x-2">
-          <Button 
-            variant="outline"
-            className="flex items-center"
-            onClick={handleViewPlansClick}
-          >
-            <ListChecks className="mr-2 h-4 w-4" />
-            View Plans
-          </Button>
           <Button 
             className="btn-gradient flex items-center"
             onClick={handleCreatePlanClick}
