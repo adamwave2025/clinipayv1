@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { PaymentLink } from '@/types/payment';
+import { formatCurrency } from '@/utils/formatters'; // Import the formatCurrency utility
 
 interface PaymentLinkDetailsDialogProps {
   open: boolean;
@@ -34,6 +35,19 @@ const PaymentLinkDetailsDialog = ({
     window.open(paymentLink.url, '_blank');
   };
 
+  /**
+   * IMPORTANT: MONETARY VALUE HANDLING
+   * 
+   * The `amount` field in payment links may be stored in different units:
+   * 1. In pennies/cents (e.g., 400000 for £4,000)
+   * 2. Already in pounds/dollars (e.g., 4000 for £4,000)
+   * 
+   * We use the formatCurrency utility which automatically:
+   * - Detects if the amount is in pennies (large integer values) and converts to pounds
+   * - Formats the value with the proper currency symbol and decimal places
+   * 
+   * DO NOT modify this to use direct toFixed() formatting without proper conversion!
+   */
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -44,7 +58,7 @@ const PaymentLinkDetailsDialog = ({
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <h3 className="font-semibold">{paymentLink.title}</h3>
-            <p className="text-lg font-bold">£{Number(paymentLink.amount).toFixed(2)}</p>
+            <p className="text-lg font-bold">{formatCurrency(paymentLink.amount)}</p>
             <p className="text-sm text-gray-500">Type: {paymentLink.type}</p>
             <p className="text-sm text-gray-500">Created: {paymentLink.createdAt}</p>
             
