@@ -7,6 +7,8 @@ import { PaymentLink } from '@/types/payment';
  * NOTE: The database stores monetary values in cents (1/100 of currency unit)
  * So we need to divide by 100 when formatting amounts for display
  * 
+ * This function also converts snake_case database field names to camelCase for frontend use
+ * 
  * @param data - Raw payment link data from API
  * @returns Array of formatted PaymentLink objects
  */

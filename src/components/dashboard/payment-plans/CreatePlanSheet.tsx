@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { toast } from 'sonner';
 import { 
@@ -19,7 +18,7 @@ import { PaymentLink } from '@/types/payment';
 interface CreatePlanSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  createPaymentLink: (data: Omit<PaymentLink, 'id' | 'url' | 'createdAt' | 'isActive'>) => Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }>;
+  createPaymentLink: (data: any) => Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }>;
 }
 
 const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
@@ -66,18 +65,23 @@ const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
       // Parse amount as float first to handle proper decimal values
       const amountValue = parseFloat(amount);
       
+      // We store amounts in cents in the database, so multiply by 100
+      const amountInCents = Math.round(amountValue * 100);
+      
+      // Using snake_case keys for database compatibility
       const planData = {
         title: paymentTitle,
-        // We store amounts in cents in the database, so multiply by 100
-        amount: amountValue,
+        amount: amountInCents,
         description,
         type: 'payment_plan',
-        paymentPlan: true,
-        paymentCount: Number(paymentCount),
-        paymentCycle,
+        payment_plan: true,
+        payment_count: Number(paymentCount),
+        payment_cycle: paymentCycle,
         // Calculate and store the total amount
-        planTotalAmount: amountValue * Number(paymentCount)
+        plan_total_amount: Math.round(amountValue * 100 * Number(paymentCount))
       };
+      
+      console.log('Sending plan data to create payment link:', planData);
       
       const result = await createPaymentLink(planData);
       

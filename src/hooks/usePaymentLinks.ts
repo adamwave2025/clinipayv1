@@ -103,10 +103,24 @@ export function usePaymentLinks() {
     }
 
     try {
-      const result = await PaymentLinkService.createLink({
-        ...linkData,
+      console.log('Original link data:', linkData);
+      
+      // Convert camelCase to snake_case for database compatibility
+      const dbLinkData = {
+        title: linkData.title,
+        amount: linkData.amount,
+        type: linkData.type,
+        description: linkData.description,
+        payment_plan: linkData.paymentPlan,
+        payment_count: linkData.paymentCount,
+        payment_cycle: linkData.paymentCycle,
+        plan_total_amount: linkData.planTotalAmount,
         clinic_id: user.id
-      });
+      };
+      
+      console.log('Converting to database format:', dbLinkData);
+      
+      const result = await PaymentLinkService.createLink(dbLinkData);
       
       if (!result || result.error) {
         throw new Error(result?.error || 'Failed to create payment link');

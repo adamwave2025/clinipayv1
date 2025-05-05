@@ -77,15 +77,20 @@ export const PaymentLinkService = {
 
   async createLink(linkData: any) {
     try {
+      console.log('Creating link with data:', linkData);
+      
+      // Ensure we're using snake_case keys for the database
       const { data, error } = await supabase
         .from('payment_links')
         .insert([linkData])
         .select()
 
       if (error) {
+        console.error('Supabase error creating payment link:', error);
         throw error;
       }
-  
+      
+      console.log('Link created successfully:', data);
       return { data, error: null };
     } catch (error: any) {
       console.error("Error creating payment link:", error.message);

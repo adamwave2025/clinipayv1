@@ -15,7 +15,7 @@ export interface LinkFormData {
 
 interface UseCreateLinkFormProps {
   onLinkGenerated: (link: string, formData: LinkFormData) => void;
-  onCreateLink?: (data: Omit<PaymentLink, 'id' | 'url' | 'createdAt' | 'isActive'>) => Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }>;
+  onCreateLink?: (data: any) => Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }>;
   onSubmit?: (formData: LinkFormData) => void;
   isLoading: boolean;
   defaultPaymentType?: string;
@@ -23,7 +23,8 @@ interface UseCreateLinkFormProps {
 
 // Helper function to transform LinkFormData to PaymentLink format
 // Converts display amounts (e.g., 100.50) to cents (10050) for database storage
-const transformFormDataToPaymentLink = (formData: LinkFormData): Omit<PaymentLink, 'id' | 'url' | 'createdAt' | 'isActive'> => {
+// Now using snake_case for database compatibility
+const transformFormDataToPaymentLink = (formData: LinkFormData): any => {
   // Parse amount as float and multiply by 100 to convert to cents
   const amountInCents = Math.round(parseFloat(formData.amount) * 100);
   
@@ -32,15 +33,16 @@ const transformFormDataToPaymentLink = (formData: LinkFormData): Omit<PaymentLin
     ? amountInCents * Number(formData.paymentCount) 
     : undefined;
   
+  // Using snake_case keys for database compatibility
   return {
     title: formData.paymentTitle,
     amount: amountInCents,
     type: formData.paymentType,
     description: formData.description,
-    paymentPlan: formData.paymentPlan,
-    paymentCount: formData.paymentPlan ? Number(formData.paymentCount) : undefined,
-    paymentCycle: formData.paymentPlan ? formData.paymentCycle : undefined,
-    planTotalAmount: planTotalAmountInCents
+    payment_plan: formData.paymentPlan,
+    payment_count: formData.paymentPlan ? Number(formData.paymentCount) : undefined,
+    payment_cycle: formData.paymentPlan ? formData.paymentCycle : undefined,
+    plan_total_amount: planTotalAmountInCents
   };
 };
 
@@ -126,8 +128,7 @@ export function useCreateLinkForm({
     if (onCreateLink) {
       // Use Supabase to create the link
       try {
-        // Transform the form data to the expected PaymentLink format
-        // This now handles converting display amounts to cents
+        // Transform the form data to the expected PaymentLink format with snake_case keys
         const paymentData = transformFormDataToPaymentLink(formData);
         
         console.log('Creating payment link with data:', paymentData);

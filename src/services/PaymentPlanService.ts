@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { PaymentLink } from '@/types/payment';
 import { PaymentLinkService } from '@/services/PaymentLinkService';
@@ -16,6 +15,7 @@ export const PaymentPlanService = {
       const linksToUse = showArchived ? archivedLinks : activeLinks;
       
       // Filter and format the links to only get payment plans
+      // When formatPaymentLinks runs, it will convert snake_case db fields to camelCase for frontend use
       const plans = formatPaymentLinks(linksToUse).filter(link => link.paymentPlan === true);
       
       console.log(`Fetched ${showArchived ? 'archived' : 'active'} payment plans:`, plans); // Debug output
