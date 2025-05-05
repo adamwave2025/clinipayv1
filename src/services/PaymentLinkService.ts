@@ -84,6 +84,23 @@ export const PaymentLinkService = {
         throw new Error('No clinic_id provided');
       }
       
+      // Validate payment plan data if it's a payment plan
+      if (linkData.payment_plan === true) {
+        // Convert string "true" to boolean true if needed
+        linkData.payment_plan = true;
+        
+        console.log('Creating payment plan with properties:', {
+          payment_plan: linkData.payment_plan,
+          payment_count: linkData.payment_count,
+          payment_cycle: linkData.payment_cycle,
+          plan_total_amount: linkData.plan_total_amount
+        });
+        
+        if (!linkData.payment_count || !linkData.payment_cycle) {
+          throw new Error('Payment plan requires payment_count and payment_cycle');
+        }
+      }
+      
       // Ensure we're using snake_case keys for the database
       const { data, error } = await supabase
         .from('payment_links')

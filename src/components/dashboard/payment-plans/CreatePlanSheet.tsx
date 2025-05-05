@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { toast } from 'sonner';
 import { 
@@ -62,11 +63,19 @@ const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
     try {
       const { paymentTitle, amount, description, paymentCount, paymentCycle } = pendingFormData;
       
+      // Validate required fields
+      if (!paymentTitle || !amount || !paymentCount || !paymentCycle) {
+        toast.error('Missing required plan information');
+        setIsLoading(false);
+        return;
+      }
+
       // Parse amount as float first to handle proper decimal values
       const amountValue = parseFloat(amount);
       
       // We store amounts in cents in the database, so multiply by 100
       const amountInCents = Math.round(amountValue * 100);
+      const paymentCountNum = Number(paymentCount);
       
       // Using snake_case keys for database compatibility
       const planData = {
@@ -74,11 +83,11 @@ const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
         amount: amountInCents,
         description,
         type: 'payment_plan',
-        payment_plan: true,
-        payment_count: Number(paymentCount),
+        payment_plan: true, // Explicitly set to true
+        payment_count: paymentCountNum,
         payment_cycle: paymentCycle,
         // Calculate and store the total amount
-        plan_total_amount: Math.round(amountValue * 100 * Number(paymentCount))
+        plan_total_amount: Math.round(amountValue * 100 * paymentCountNum)
       };
       
       console.log('Sending plan data to create payment link:', planData);

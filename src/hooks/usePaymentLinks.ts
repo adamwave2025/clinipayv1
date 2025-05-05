@@ -121,18 +121,25 @@ export function usePaymentLinks() {
         return { success: false, error: 'Clinic ID not found' };
       }
       
+      // Ensure paymentPlan is a boolean
+      const isPaymentPlan = linkData.paymentPlan === true;
+      
       // Convert camelCase to snake_case for database compatibility
-      const dbLinkData = {
+      const dbLinkData: any = {
         title: linkData.title,
         amount: linkData.amount,
         type: linkData.type,
         description: linkData.description,
-        payment_plan: linkData.paymentPlan,
-        payment_count: linkData.paymentCount,
-        payment_cycle: linkData.paymentCycle,
-        plan_total_amount: linkData.planTotalAmount,
+        payment_plan: isPaymentPlan, // Ensure this is a boolean
         clinic_id: clinicId // Use the fetched clinic ID
       };
+      
+      // Only add payment plan fields if it's a payment plan
+      if (isPaymentPlan) {
+        dbLinkData.payment_count = linkData.paymentCount;
+        dbLinkData.payment_cycle = linkData.paymentCycle;
+        dbLinkData.plan_total_amount = linkData.planTotalAmount;
+      }
       
       console.log('Converting to database format:', dbLinkData);
       
