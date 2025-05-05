@@ -21,7 +21,8 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
     'Platform Fee',
     'Net Amount',
     'Reference',
-    'Type',
+    'Name', // Renamed from "Type" to "Name" for clarity
+    'Payment Type', // New column to indicate if it's a payment plan or reusable link
     'Date',
     'Status'
   ];
@@ -37,17 +38,35 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
     const patientPhone = payment.patientPhone ? `"${payment.patientPhone.replace(/"/g, '""')}"` : '""';
     const amount = payment.amount ? formatCurrency(payment.amount).replace('£', '') : '0.00';
     
-    // Format platform fee if available, dividing by 100 to convert from cents
-    const platformFee = payment.platformFee 
-      ? formatCurrency(payment.platformFee / 100).replace('£', '') 
-      : '0.00';
+    // Format platform fee if available
+    let platformFee = '0.00';
+    if (payment.platformFee) {
+      // The platform fee should already be in cents, so convert to decimal for display
+      platformFee = formatCurrency(payment.platformFee / 100).replace('£', '');
+    }
     
-    // Calculate net amount (amount - platform fee)
-    const platformFeeValue = payment.platformFee ? payment.platformFee / 100 : 0;
-    const netAmount = payment.amount ? formatCurrency(payment.amount - platformFeeValue).replace('£', '') : '0.00';
+    // Calculate net amount correctly (amount - platformFee)
+    // Need to ensure both are in the same units
+    let netAmount = '0.00';
+    if (payment.amount) {
+      // Convert platform fee from cents to decimal currency unit to match amount
+      const platformFeeDecimal = payment.platformFee ? payment.platformFee / 100 : 0;
+      netAmount = formatCurrency(payment.amount - platformFeeDecimal).replace('£', '');
+    }
     
     const reference = payment.reference ? `"${payment.reference}"` : '""';
-    const type = payment.linkTitle || payment.type || 'Unknown';
+    
+    // Get the payment title or description
+    const name = payment.linkTitle || payment.type || 'Unknown';
+    
+    // Determine payment type (reusable link, payment plan, or direct)
+    let paymentType = 'Direct Payment';
+    if (payment.type === 'payment_plan') {
+      paymentType = 'Payment Plan';
+    } else {
+      paymentType = 'Reusable Link';
+    }
+    
     const status = payment.status || 'Unknown';
     
     // Create CSV row
@@ -59,7 +78,8 @@ export const generatePaymentsCsv = (payments: Payment[]): string => {
       platformFee,
       netAmount,
       reference,
-      `"${type}"`,
+      `"${name}"`,
+      `"${paymentType}"`,
       `"${payment.date}"`,
       `"${status}"`
     ].join(',');
