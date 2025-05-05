@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Table, 
@@ -101,7 +100,7 @@ const PaymentPlansTable = ({
                     ? 'No archived payment plans found.' 
                     : 'No payment plans found. Create your first payment plan to get started.'}
                 </p>
-                {!isArchiveView && onCreatePlanClick && (
+                {!isArchiveView && onCreatePlanClick && isTemplateView && (
                   <Button 
                     className="mt-4 btn-gradient" 
                     onClick={onCreatePlanClick}

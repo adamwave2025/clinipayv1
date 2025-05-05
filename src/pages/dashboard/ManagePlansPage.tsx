@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,21 +34,12 @@ const ManagePlansHeader: React.FC<{
               Create Plan
             </Button>
           ) : (
-            <>
-              <Button 
-                className="btn-gradient flex items-center"
-                onClick={onCreatePlanClick}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create Plan
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={onViewTemplatesClick}
-              >
-                View Plan Templates
-              </Button>
-            </>
+            <Button 
+              variant="outline"
+              onClick={onViewTemplatesClick}
+            >
+              View Plan Templates
+            </Button>
           )}
         </div>
       }

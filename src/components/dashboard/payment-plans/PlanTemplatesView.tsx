@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
@@ -125,8 +124,8 @@ const PlanTemplatesView: React.FC<PlanTemplatesViewProps> = ({ onBackToPlans, re
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header with action buttons */}
+      <div className="flex items-center justify-end gap-2">
         <Button 
           variant="outline" 
           size="sm" 
@@ -136,15 +135,13 @@ const PlanTemplatesView: React.FC<PlanTemplatesViewProps> = ({ onBackToPlans, re
           <ArrowLeft className="h-4 w-4" /> Back to Patient Plans
         </Button>
         
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={toggleArchiveView}
-          >
-            {isArchiveView ? 'View Active Templates' : 'View Archived Templates'}
-          </Button>
-        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={toggleArchiveView}
+        >
+          {isArchiveView ? 'View Active Templates' : 'View Archived Templates'}
+        </Button>
       </div>
       
       {/* Content */}
