@@ -70,7 +70,7 @@ const HelpSettings = () => {
 
           <h4 className="font-medium mb-3">Video Tutorials</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {/* Video Card 1 */}
+            {/* Video Card 1 - UPDATED TITLE AND DESCRIPTION */}
             <Card className="overflow-hidden">
               <div className="relative bg-gray-100 pt-[56.25%]">
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -78,8 +78,8 @@ const HelpSettings = () => {
                 </div>
               </div>
               <div className="p-4">
-                <h5 className="font-medium">Creating Payment Links</h5>
-                <p className="text-sm text-gray-500 mt-1">Learn how to create and manage payment links</p>
+                <h5 className="font-medium">Creating Reusable Payment Links</h5>
+                <p className="text-sm text-gray-500 mt-1">Learn how to create and manage reusable payment links</p>
                 <Button variant="outline" size="sm" className="mt-3 w-full flex items-center gap-2">
                   <ExternalLink className="h-4 w-4" />
                   Watch Video
