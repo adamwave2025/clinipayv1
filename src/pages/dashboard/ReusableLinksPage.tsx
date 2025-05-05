@@ -122,7 +122,7 @@ const ReusableLinksPage = () => {
       />
       
       <Card className="card-shadow">
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between py-4">
           <CardTitle>{isArchiveView ? 'Archived Reusable Links' : 'Reusable Payment Links'}</CardTitle>
           <Button 
             variant="outline" 
@@ -143,7 +143,7 @@ const ReusableLinksPage = () => {
             )}
           </Button>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="pt-2">
           <ReusableLinkFilters
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
