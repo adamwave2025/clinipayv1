@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusCircle, Calendar, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -16,6 +16,7 @@ import { Plan } from '@/utils/planTypes';
 import { PaymentLink } from '@/types/payment';
 import CreatePlanSheet from '@/components/dashboard/payment-plans/CreatePlanSheet';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
+import { usePaymentPlans } from '@/hooks/usePaymentPlans';
 
 // Adapter function to convert Plan objects to PaymentLink format
 const convertPlansToPaymentLinks = (plans: Plan[]): PaymentLink[] => {
@@ -102,20 +103,29 @@ const ManagePlansHeader: React.FC = () => {
 const ManagePlansPageContent: React.FC = () => {
   const { isViewMode, plans, isLoading, searchQuery, setSearchQuery, handleCreatePlanClick } = useManagePlansContext();
   
+  // For view mode, use the usePaymentPlans hook directly
+  const { 
+    paymentPlans, 
+    filteredPlans: filteredPaymentPlans, 
+    isLoading: isPaymentPlansLoading,
+    handleEditPlan,
+    handleDeletePlan
+  } = usePaymentPlans();
+  
   // Convert Plan[] to PaymentLink[] for the PaymentPlansTable
-  const paymentLinksFormat = convertPlansToPaymentLinks(plans);
+  const patientPlans = convertPlansToPaymentLinks(plans);
   
   return (
     <>
       <ManagePlansHeader />
       {isViewMode ? (
         <PaymentPlansTable
-          filteredPlans={paymentLinksFormat}
-          isLoading={isLoading}
-          paymentPlans={paymentLinksFormat}
+          filteredPlans={filteredPaymentPlans}
+          isLoading={isPaymentPlansLoading}
+          paymentPlans={paymentPlans}
           onCreatePlanClick={handleCreatePlanClick}
-          onEditPlan={() => {}}
-          onDeletePlan={() => {}}
+          onEditPlan={handleEditPlan}
+          onDeletePlan={handleDeletePlan}
         />
       ) : (
         <ManagePlansContent />

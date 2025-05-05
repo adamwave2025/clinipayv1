@@ -1,30 +1,21 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { PaymentLink } from '@/types/payment';
 
 export const usePaymentPlanSearch = (paymentPlans: PaymentLink[]) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredPlans, setFilteredPlans] = useState<PaymentLink[]>([]);
 
-  // Filter plans when search query changes
-  useEffect(() => {
-    if (paymentPlans.length === 0) {
-      setFilteredPlans([]);
-      return;
-    }
-    
+  const filteredPlans = useMemo(() => {
     if (!searchQuery.trim()) {
-      setFilteredPlans(paymentPlans);
-      return;
+      return paymentPlans;
     }
-    
-    const filtered = paymentPlans.filter(plan => 
-      plan.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      plan.description?.toLowerCase().includes(searchQuery.toLowerCase())
+
+    const query = searchQuery.toLowerCase().trim();
+    return paymentPlans.filter(plan => 
+      plan.title?.toLowerCase().includes(query) || 
+      plan.description?.toLowerCase().includes(query)
     );
-    
-    setFilteredPlans(filtered);
-  }, [searchQuery, paymentPlans]);
+  }, [paymentPlans, searchQuery]);
 
   return {
     searchQuery,

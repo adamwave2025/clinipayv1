@@ -9,7 +9,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, PlusCircle } from 'lucide-react';
 import { PaymentLink } from '@/types/payment';
 import { formatCurrency } from '@/utils/formatters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,8 +34,15 @@ const PaymentPlansTable = ({
 }: PaymentPlansTableProps) => {
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <CardTitle>All Payment Plans</CardTitle>
+        <Button 
+          className="btn-gradient" 
+          onClick={onCreatePlanClick}
+        >
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Create Plan
+        </Button>
       </CardHeader>
       <CardContent>
         {isLoading ? (

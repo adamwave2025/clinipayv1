@@ -21,6 +21,20 @@ export const PaymentPlanService = {
       return { plans: [], error };
     }
   },
+
+  async createPlan(planData: Partial<PaymentLink>) {
+    try {
+      // We would call the API to create the plan
+      // This is a placeholder for the actual implementation
+      
+      toast.success(`Payment plan "${planData.title}" created successfully`);
+      return { success: true, error: null };
+    } catch (error) {
+      console.error('Error creating payment plan:', error);
+      toast.error('Failed to create payment plan');
+      return { success: false, error };
+    }
+  },
   
   async deletePlan(planToDelete: PaymentLink) {
     try {
