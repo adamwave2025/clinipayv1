@@ -26,11 +26,6 @@ export const getClinicItems = (): SidebarItem[] => [
     icon: <CreditCard className="w-5 h-5" />,
     links: [
       {
-        to: '/dashboard/create-link',
-        label: 'Create Payment',
-        icon: <LinkIcon className="w-5 h-5" />
-      },
-      {
         to: '/dashboard/send-link',
         label: 'Request Payment',
         icon: <Send className="w-5 h-5" />

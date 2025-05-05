@@ -12,8 +12,9 @@ import ArchiveConfirmDialog from '@/components/dashboard/links/ArchiveConfirmDia
 import { PaymentLink } from '@/types/payment';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Archive, ArchiveRestore } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Archive, ArchiveRestore, PlusCircle } from 'lucide-react';
+import CreateLinkDialog from '@/components/dashboard/links/CreateLinkDialog';
+import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import {
   Pagination,
   PaginationContent,
@@ -41,6 +42,8 @@ const ReusableLinksPage = () => {
     unarchivePaymentLink,
     fetchPaymentLinks
   } = useFilteredPaymentLinks();
+
+  const { createPaymentLink } = usePaymentLinks();
   
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLink, setSelectedLink] = useState<PaymentLink | null>(null);
@@ -48,6 +51,7 @@ const ReusableLinksPage = () => {
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [linkToArchive, setLinkToArchive] = useState<PaymentLink | null>(null);
   const [isArchiveLoading, setIsArchiveLoading] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   
   const handleCopyLink = (url: string) => {
     navigator.clipboard.writeText(url);
@@ -91,6 +95,14 @@ const ReusableLinksPage = () => {
     setCurrentPage(1); // Reset to first page on view change
   };
 
+  const handleCreateLinkClick = () => {
+    setCreateDialogOpen(true);
+  };
+
+  const handleLinkCreated = () => {
+    fetchPaymentLinks();
+  };
+
   // Pagination
   const totalPages = Math.ceil(filteredLinks.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -122,8 +134,9 @@ const ReusableLinksPage = () => {
               )}
             </Button>
             {!isArchiveView && (
-              <Button className="btn-gradient" size="sm" asChild>
-                <Link to="/dashboard/create-link">Create Payment</Link>
+              <Button className="btn-gradient" size="sm" onClick={handleCreateLinkClick}>
+                <PlusCircle className="h-4 w-4 mr-1" />
+                Create Payment
               </Button>
             )}
           </div>
@@ -199,6 +212,14 @@ const ReusableLinksPage = () => {
             paymentLink={linkToArchive}
             isLoading={isArchiveLoading}
             isArchiveView={isArchiveView}
+          />
+
+          <CreateLinkDialog
+            open={createDialogOpen}
+            onOpenChange={setCreateDialogOpen}
+            onLinkCreated={handleLinkCreated}
+            createPaymentLink={createPaymentLink}
+            defaultPaymentType="deposit"
           />
         </CardContent>
       </Card>

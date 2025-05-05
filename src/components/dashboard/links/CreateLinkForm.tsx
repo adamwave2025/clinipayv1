@@ -14,18 +14,28 @@ interface CreateLinkFormProps {
   isLoading: boolean;
   onCreateLink?: (data: Omit<PaymentLink, 'id' | 'url' | 'createdAt' | 'isActive'>) => Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }>;
   onSubmit?: (formData: LinkFormData) => void;
+  defaultPaymentType?: string;
 }
 
-const CreateLinkForm = ({ onLinkGenerated, isLoading, onCreateLink, onSubmit }: CreateLinkFormProps) => {
+const CreateLinkForm = ({ 
+  onLinkGenerated, 
+  isLoading, 
+  onCreateLink, 
+  onSubmit,
+  defaultPaymentType = 'payment_plan'
+}: CreateLinkFormProps) => {
   const { formData, handleChange, handleSelectChange, handleSubmit } = useCreateLinkForm({
     onLinkGenerated, 
     onCreateLink, 
     onSubmit, 
-    isLoading
+    isLoading,
+    defaultPaymentType
   });
 
+  const isPlanMode = formData.paymentPlan;
+
   return (
-    <Card className="card-shadow max-w-2xl mx-auto">
+    <Card className="card-shadow">
       <CardContent className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           <LinkFormFields 
@@ -41,7 +51,7 @@ const CreateLinkForm = ({ onLinkGenerated, isLoading, onCreateLink, onSubmit }: 
             disabled={isLoading}
           >
             {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
-            {formData.paymentPlan ? 'Create Payment Plan' : 'Generate Payment Link'}
+            {isPlanMode ? 'Create Payment Plan' : 'Generate Payment Link'}
           </Button>
         </form>
       </CardContent>

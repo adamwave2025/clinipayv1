@@ -18,6 +18,7 @@ interface UseCreateLinkFormProps {
   onCreateLink?: (data: Omit<PaymentLink, 'id' | 'url' | 'createdAt' | 'isActive'>) => Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }>;
   onSubmit?: (formData: LinkFormData) => void;
   isLoading: boolean;
+  defaultPaymentType?: string;
 }
 
 // Helper function to transform LinkFormData to PaymentLink format
@@ -47,14 +48,17 @@ export function useCreateLinkForm({
   onLinkGenerated, 
   onCreateLink, 
   onSubmit, 
-  isLoading 
+  isLoading,
+  defaultPaymentType = 'payment_plan'
 }: UseCreateLinkFormProps) {
+  const isPlan = defaultPaymentType === 'payment_plan';
+  
   const [formData, setFormData] = useState<LinkFormData>({
     paymentTitle: '',
     amount: '',
-    paymentType: 'payment_plan',
+    paymentType: defaultPaymentType,
     description: '',
-    paymentPlan: true,
+    paymentPlan: isPlan,
     paymentCount: '',
     paymentCycle: 'monthly',
   });

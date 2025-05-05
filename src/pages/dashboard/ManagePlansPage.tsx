@@ -14,6 +14,8 @@ import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvi
 import PaymentPlansTable from '@/components/dashboard/payment-plans/PaymentPlansTable';
 import { Plan } from '@/utils/planTypes';
 import { PaymentLink } from '@/types/payment';
+import CreateLinkDialog from '@/components/dashboard/links/CreateLinkDialog';
+import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 
 // Adapter function to convert Plan objects to PaymentLink format
 const convertPlansToPaymentLinks = (plans: Plan[]): PaymentLink[] => {
@@ -38,7 +40,13 @@ const convertPlansToPaymentLinks = (plans: Plan[]): PaymentLink[] => {
 };
 
 const ManagePlansHeader: React.FC = () => {
-  const { handleCreatePlanClick, handleViewPlansClick, isViewMode, setIsViewMode } = useManagePlansContext();
+  const { handleViewPlansClick, isViewMode, setIsViewMode } = useManagePlansContext();
+  const { createPaymentLink } = usePaymentLinks();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  
+  const handleCreatePlanClick = () => {
+    setCreateDialogOpen(true);
+  };
   
   return (
     <PageHeader 
@@ -63,6 +71,13 @@ const ManagePlansHeader: React.FC = () => {
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Create Plan
               </Button>
+              
+              <CreateLinkDialog
+                open={createDialogOpen}
+                onOpenChange={setCreateDialogOpen}
+                createPaymentLink={createPaymentLink}
+                defaultPaymentType="payment_plan"
+              />
             </>
           ) : (
             <Button 
