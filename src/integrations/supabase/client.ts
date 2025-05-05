@@ -16,8 +16,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 try {
   supabase.from('payment_links').select('count').limit(1).then(() => {
     console.log('Supabase schema cache refreshed');
-  }).catch(() => {
-    console.log('Schema refresh attempted');
+  }).catch((e) => {
+    console.log('Schema refresh attempted but failed:', e);
   });
 } catch (e) {
   console.log('Failed to refresh schema cache', e);
