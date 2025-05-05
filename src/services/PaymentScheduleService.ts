@@ -557,21 +557,38 @@ export const resumePaymentPlan = async (planId: string, resumeDate: Date, userId
  */
 async function determinePlanStatus(planId: string, unpaidInstallments: any[]): Promise<string> {
   try {
-    // Count the number of paid installments for this plan
-    const { data: paidInstallmentsData, error: countError } = await supabase
+    console.log(`Determining status for plan ${planId}...`);
+    
+    // First get all installments for this plan
+    const { data: allInstallments, error: fetchError } = await supabase
       .from('payment_schedule')
-      .select('id')
-      .eq('plan_id', planId)
-      .not('payment_requests.payment_id', 'is', null)
-      .order('payment_number', { ascending: true });
+      .select(`
+        id, 
+        payment_number, 
+        status,
+        payment_request_id,
+        payment_requests (
+          id,
+          payment_id,
+          status
+        )
+      `)
+      .eq('plan_id', planId);
       
-    if (countError) {
-      console.error('Error counting paid installments:', countError);
-      // Default to 'pending' if we can't determine
-      return 'pending';
+    if (fetchError) {
+      console.error('Error fetching installments for plan status check:', fetchError);
+      return 'pending'; // Default if error
     }
     
-    const paidCount = paidInstallmentsData?.length || 0;
+    // Count paid installments - an installment is paid if it has a payment_id in its payment_request
+    const paidInstallments = allInstallments.filter(item => 
+      item.payment_request_id !== null && 
+      item.payment_requests !== null &&
+      item.payment_requests.payment_id !== null
+    );
+    
+    const paidCount = paidInstallments.length;
+    console.log(`Found ${paidCount} paid installments out of ${allInstallments.length} total`);
     
     // Check if any installments are already overdue
     const today = new Date();
@@ -583,17 +600,21 @@ async function determinePlanStatus(planId: string, unpaidInstallments: any[]): P
     });
     
     // Determine status based on payment history and overdue status
+    let newStatus;
     if (hasOverduePayments) {
-      return 'overdue';
+      newStatus = 'overdue';
     } else if (paidCount > 0) {
-      return 'active';
+      newStatus = 'active';
     } else {
-      return 'pending';
+      newStatus = 'pending';
     }
+    
+    console.log(`Determined plan status: ${newStatus} (overdue: ${hasOverduePayments}, paid: ${paidCount})`);
+    return newStatus;
   }
   catch (error) {
     console.error('Error determining plan status:', error);
-    return 'pending';
+    return 'pending'; // Default to pending on error
   }
 }
 
@@ -608,7 +629,7 @@ export const reschedulePaymentPlan = async (
     // Get plan details first
     const { data: plan, error: planError } = await supabase
       .from('plans')
-      .select('patient_id, payment_link_id, clinic_id, payment_frequency')
+      .select('patient_id, payment_link_id, clinic_id, payment_frequency, status')
       .eq('id', planId)
       .single();
       
@@ -646,6 +667,8 @@ export const reschedulePaymentPlan = async (
     // Separate paid and unpaid installments
     const paidInstallments = allInstallments.filter(item => isPlanInstallmentPaid(item));
     const unpaidInstallments = allInstallments.filter(item => !isPlanInstallmentPaid(item));
+    
+    console.log(`Plan has ${paidInstallments.length} paid installments and ${unpaidInstallments.length} unpaid installments`);
     
     if (unpaidInstallments.length === 0) {
       return { success: true, message: 'No unpaid installments found to reschedule' };
@@ -721,6 +744,7 @@ export const reschedulePaymentPlan = async (
     
     // Determine the appropriate plan status based on payment history and due dates
     const newStatus = await determinePlanStatus(planId, unpaidInstallments);
+    console.log(`Determined new plan status after rescheduling: ${newStatus}`);
     
     // Update the plan with the new start date and next due date
     const { error: planUpdateError } = await supabase
