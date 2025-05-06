@@ -110,8 +110,12 @@ export class PlanOperationsService {
   /**
    * Resume a payment plan
    */
-  static async resumePlan(plan: Plan): Promise<boolean> {
+  static async resumePlan(plan: Plan, resumeDate?: Date): Promise<boolean> {
     try {
+      // If resumeDate is not provided, use current date
+      const effectiveResumeDate = resumeDate || new Date();
+      console.log('Resuming plan with date:', effectiveResumeDate);
+      
       // Determine what the plan status should be updated to
       const newStatus = plan.hasOverduePayments ? 'overdue' : 'active';
       
@@ -131,8 +135,19 @@ export class PlanOperationsService {
         .eq('status', 'paused');
         
       if (scheduleUpdateError) throw scheduleUpdateError;
+
+      // 3. Call the PaymentScheduleService endpoint to reschedule payments
+      const { data: schedulingResult, error: schedulingError } = await supabase
+        .rpc('resume_payment_plan', { 
+          plan_id: plan.id, 
+          resume_date: effectiveResumeDate.toISOString().split('T')[0] // Format as YYYY-MM-DD
+        });
       
-      // 3. Add an activity log entry
+      if (schedulingError) {
+        console.error('Error rescheduling payments:', schedulingError);
+      }
+      
+      // 4. Add an activity log entry
       const { error: activityError } = await supabase
         .from('payment_plan_activities')
         .insert({
@@ -143,7 +158,8 @@ export class PlanOperationsService {
           details: {
             plan_name: plan.title || plan.planName,
             previous_status: 'paused',
-            new_status: newStatus
+            new_status: newStatus,
+            resume_date: effectiveResumeDate.toISOString()
           }
         });
       

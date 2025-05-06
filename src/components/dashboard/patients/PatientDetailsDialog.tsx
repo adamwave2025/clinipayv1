@@ -366,7 +366,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
       <ResumePlanDialog
         showDialog={showResumeDialog}
         setShowDialog={setShowResumeDialog}
-        onConfirm={handleResumePlan}
+        onConfirm={(resumeDate) => handleResumePlan(resumeDate)}
         planName={selectedPlan?.title || ''}
         patientName={selectedPlan?.patientName || ''}
         isProcessing={isProcessing}

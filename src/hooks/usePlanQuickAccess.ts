@@ -123,13 +123,14 @@ export const usePlanQuickAccess = () => {
   /**
    * Resume the current plan
    */
-  const handleResumePlan = async () => {
+  const handleResumePlan = async (resumeDate?: Date) => {
     if (!selectedPlan) return;
     
     setIsProcessing(true);
     
     try {
-      const success = await PlanOperationsService.resumePlan(selectedPlan);
+      // Pass the resumeDate parameter to the PlanOperationsService
+      const success = await PlanOperationsService.resumePlan(selectedPlan, resumeDate);
       
       if (success && selectedPlan) {
         // Update local state to reflect the change
