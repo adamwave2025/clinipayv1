@@ -125,6 +125,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     
     // Plan data
     plans,
+    allPlans, // Now we expose allPlans in the return object
     isLoading,
     installments,
     activities,

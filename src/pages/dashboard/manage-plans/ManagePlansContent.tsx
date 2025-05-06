@@ -11,13 +11,14 @@ const ManagePlansContent: React.FC = () => {
     statusFilter,
     setStatusFilter,
     plans,
+    allPlans, // Get the unfiltered plans array
     isLoading,
     handleViewPlanDetails,
     handleCreatePlanClick
   } = useManagePlansContext();
 
-  // Calculate the total number of plans (unfiltered) to determine when to show the button
-  const totalPlanCount = plans.length;
+  // Calculate the total number of plans from the unfiltered allPlans array
+  const totalPlanCount = allPlans.length;
 
   return (
     <div className="space-y-6">

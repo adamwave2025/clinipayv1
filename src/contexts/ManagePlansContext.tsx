@@ -13,6 +13,7 @@ export interface ManagePlansContextType {
   
   // Plan data and state
   plans: Plan[];
+  allPlans: Plan[]; // Add allPlans to expose unfiltered plans
   isLoading: boolean;
   installments: any[];
   activities: PlanActivity[];
