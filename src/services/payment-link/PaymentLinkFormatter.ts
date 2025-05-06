@@ -27,11 +27,15 @@ export const PaymentLinkFormatter = {
       return {
         id: requestData.id,
         title: `Payment for ${requestData.patient_name}`,
-        amount: requestData.custom_amount / 100, // Convert cents to standard currency units
+        // FIXED: Make sure the amount is properly converted from cents
+        amount: Number.isInteger(requestData.custom_amount) && requestData.custom_amount >= 100 ? 
+               requestData.custom_amount / 100 : requestData.custom_amount,
         type: 'custom',
         description: requestData.message || undefined,
         isRequest: true,
-        customAmount: requestData.custom_amount / 100, // Convert cents to standard currency units
+        // FIXED: Same conversion for the customAmount
+        customAmount: Number.isInteger(requestData.custom_amount) && requestData.custom_amount >= 100 ? 
+                    requestData.custom_amount / 100 : requestData.custom_amount,
         patientName: requestData.patient_name,
         patientEmail: requestData.patient_email,
         patientPhone: requestData.patient_phone,
@@ -52,8 +56,13 @@ export const PaymentLinkFormatter = {
       if (paymentPlan) {
         // Get total paid amount either from our query or default to 0
         // Use total_paid_amount instead of total_paid
-        const totalPaid = (requestData.total_paid_amount || 0) / 100; // Convert cents to standard currency units
-        const planTotalAmount = (linkData.plan_total_amount || 0) / 100; // Convert cents to standard currency units
+        // FIXED: Proper cents to currency conversion
+        const totalPaid = Number.isInteger(requestData.total_paid_amount) && requestData.total_paid_amount >= 100 ? 
+                         requestData.total_paid_amount / 100 : (requestData.total_paid_amount || 0);
+        
+        const planTotalAmount = Number.isInteger(linkData.plan_total_amount) && linkData.plan_total_amount >= 100 ? 
+                              linkData.plan_total_amount / 100 : (linkData.plan_total_amount || 0);
+        
         const totalOutstanding = Math.max(0, planTotalAmount - totalPaid); // Ensure we don't have negative outstanding
         
         console.log(`PaymentLinkFormatter: Plan data - Total: ${planTotalAmount}, Paid: ${totalPaid}, Outstanding: ${totalOutstanding}`);
@@ -70,7 +79,9 @@ export const PaymentLinkFormatter = {
       return {
         id: requestData.id,
         title: linkData.title || `Payment for ${requestData.patient_name}`,
-        amount: (linkData.amount || 0) / 100, // Convert cents to standard currency units
+        // FIXED: Proper cents to currency conversion
+        amount: Number.isInteger(linkData.amount) && linkData.amount >= 100 ? 
+               linkData.amount / 100 : (linkData.amount || 0),
         type: linkData.type || 'other',
         description: linkData.description || requestData.message,
         isRequest: true,
@@ -99,9 +110,13 @@ export const PaymentLinkFormatter = {
     
     if (paymentPlan) {
       // Get total paid amount either from our query or default to 0
-      // Use total_paid_amount instead of total_paid
-      const totalPaid = (linkData.total_paid_amount || 0) / 100; // Convert cents to standard currency units
-      const planTotalAmount = (linkData.plan_total_amount || 0) / 100; // Convert cents to standard currency units
+      // FIXED: Proper cents to currency conversion
+      const totalPaid = Number.isInteger(linkData.total_paid_amount) && linkData.total_paid_amount >= 100 ? 
+                       linkData.total_paid_amount / 100 : (linkData.total_paid_amount || 0);
+      
+      const planTotalAmount = Number.isInteger(linkData.plan_total_amount) && linkData.plan_total_amount >= 100 ? 
+                            linkData.plan_total_amount / 100 : (linkData.plan_total_amount || 0);
+      
       const totalOutstanding = Math.max(0, planTotalAmount - totalPaid); // Ensure we don't have negative outstanding
       
       console.log(`PaymentLinkFormatter: Plan data - Total: ${planTotalAmount}, Paid: ${totalPaid}, Outstanding: ${totalOutstanding}`);
@@ -126,7 +141,9 @@ export const PaymentLinkFormatter = {
     return {
       id: linkData.id,
       title: linkData.title || 'Payment',
-      amount: (linkData.amount || 0) / 100, // Convert cents to standard currency units
+      // FIXED: Proper cents to currency conversion
+      amount: Number.isInteger(linkData.amount) && linkData.amount >= 100 ? 
+             linkData.amount / 100 : (linkData.amount || 0),
       type: linkData.type || 'other',
       description: linkData.description,
       status: status,

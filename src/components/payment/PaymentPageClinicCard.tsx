@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/utils/formatters';
@@ -32,11 +33,11 @@ const PaymentPageClinicCard: React.FC<PaymentPageClinicCardProps> = ({
   paymentLinkId
 }) => {
   return (
-    <Card className="w-full">
-      <CardContent className="p-6">
-        {/* Clinic Logo and Name */}
-        <div className="flex items-center space-x-4 mb-4">
-          <div className="rounded-full overflow-hidden w-16 h-16 border border-gray-200">
+    <Card className="w-full overflow-hidden border shadow-md">
+      {/* Clinic Header with Logo and Name */}
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b">
+        <div className="flex items-center space-x-4">
+          <div className="rounded-full overflow-hidden w-16 h-16 border border-gray-200 bg-white flex items-center justify-center shadow-sm">
             <img
               src={clinic.logo}
               alt={`${clinic.name} Logo`}
@@ -44,15 +45,32 @@ const PaymentPageClinicCard: React.FC<PaymentPageClinicCardProps> = ({
             />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">{clinic.name}</h1>
+            <h1 className="text-xl font-bold">{clinic.name}</h1>
           </div>
         </div>
-        
+      </div>
+      
+      <CardContent className="p-6 space-y-6">
         {/* Payment information */}
-        <div className="mt-6">
-          <h2 className="text-lg font-medium">{clinic.paymentType}</h2>
+        <div>
+          <h2 className="text-gray-600 font-medium mb-2">
+            {clinic.paymentType}
+          </h2>
           
-          {paymentPlan ? (
+          {/* Amount Due Section - Highlighted */}
+          <div className="bg-gray-50 rounded-lg p-4 border mb-4">
+            <h3 className="text-sm text-gray-600 uppercase font-medium mb-1">Amount Due</h3>
+            <div className="text-2xl font-bold text-[#9b87f5]">
+              {paymentPlan ? (
+                formatCurrency(clinic.amount)
+              ) : (
+                formatCurrency(clinic.amount)
+              )}
+            </div>
+          </div>
+          
+          {/* Payment Plan Details (if applicable) */}
+          {paymentPlan && (
             <PaymentPlanBreakdown
               planTotalAmount={planTotalAmount}
               totalPaid={totalPaid}
@@ -60,33 +78,35 @@ const PaymentPageClinicCard: React.FC<PaymentPageClinicCardProps> = ({
               isOverdue={isOverdue}
               paymentLinkId={paymentLinkId}
             />
-          ) : (
-            <div className="mt-3 text-2xl font-bold">
-              {formatCurrency(clinic.amount)}
-            </div>
           )}
         </div>
         
         {/* Clinic Contact Information */}
-        <div className="mt-6 space-y-2">
-          <h3 className="text-md font-medium">Contact Us</h3>
-          {clinic.email && (
-            <div className="flex items-center space-x-2 text-gray-600">
-              <Mail className="h-4 w-4" />
-              <span>{clinic.email}</span>
-            </div>
-          )}
-          {clinic.phone && (
-            <div className="flex items-center space-x-2 text-gray-600">
-              <Phone className="h-4 w-4" />
-              <span>{clinic.phone}</span>
-            </div>
-          )}
-          {clinic.address && (
-            <div className="text-gray-600">
-              <span>{clinic.address}</span>
-            </div>
-          )}
+        <div className="pt-4 border-t">
+          <h3 className="text-sm text-gray-600 uppercase font-medium mb-3">Contact Information</h3>
+          <div className="space-y-2">
+            {clinic.email && (
+              <div className="flex items-center space-x-2 text-gray-600">
+                <Mail className="h-4 w-4" />
+                <a href={`mailto:${clinic.email}`} className="hover:text-[#9b87f5] transition-colors">
+                  {clinic.email}
+                </a>
+              </div>
+            )}
+            {clinic.phone && (
+              <div className="flex items-center space-x-2 text-gray-600">
+                <Phone className="h-4 w-4" />
+                <a href={`tel:${clinic.phone}`} className="hover:text-[#9b87f5] transition-colors">
+                  {clinic.phone}
+                </a>
+              </div>
+            )}
+            {clinic.address && (
+              <div className="text-gray-600 pl-6">
+                <span>{clinic.address}</span>
+              </div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
