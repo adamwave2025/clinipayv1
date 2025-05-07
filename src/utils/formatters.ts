@@ -20,6 +20,41 @@ export const formatDate = (date: string | Date | null, formatString: string = 'd
 };
 
 /**
+ * Format a date with time
+ * @param date - The date to format
+ * @param locale - Optional locale
+ * @param timeZone - Optional timezone
+ * @returns Formatted date and time string
+ */
+export const formatDateTime = (
+  date: string | Date | null, 
+  locale: string = 'en-US',
+  timeZone?: string
+): string => {
+  if (!date) return '-';
+  try {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    };
+    
+    if (timeZone) {
+      options.timeZone = timeZone;
+    }
+    
+    return new Intl.DateTimeFormat(locale, options).format(dateObj);
+  } catch (error) {
+    console.error('Error formatting date time:', error);
+    return String(date);
+  }
+};
+
+/**
  * Format a number as currency (£)
  * 
  * IMPORTANT BUGFIX (2025-05-07): Fixed issue with amounts > £1000 displaying incorrectly.
@@ -86,4 +121,14 @@ export const formatPhoneNumber = (phone: string | null | undefined): string => {
   
   // Just add spaces every 4 digits if we don't recognize the format
   return cleaned.replace(/(\d{4})/g, '$1 ').trim();
+};
+
+/**
+ * Capitalize the first letter of a string
+ * @param text - The input string
+ * @returns String with first letter capitalized
+ */
+export const capitalizeFirstLetter = (text: string): string => {
+  if (!text || text.length === 0) return '';
+  return text.charAt(0).toUpperCase() + text.slice(1);
 };

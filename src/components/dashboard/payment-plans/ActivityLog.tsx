@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { PlanActivity, getActionTypeLabel } from '@/utils/planActivityUtils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

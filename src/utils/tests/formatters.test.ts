@@ -2,6 +2,7 @@
 // Unit tests for formatters utility functions
 // Run with: npm test -- formatters.test.ts
 
+import { describe, test, expect } from 'vitest';
 import { formatCurrency } from '../formatters';
 
 describe('formatCurrency', () => {
