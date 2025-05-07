@@ -137,18 +137,14 @@ export class PlanOperationsService {
       if (scheduleUpdateError) throw scheduleUpdateError;
 
       // 3. Call the database function to reschedule payments
-      // Use a POST request to execute the function since it's not in the TypeScript definitions
-      const formattedDate = effectiveResumeDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      // Format date as YYYY-MM-DD
+      const formattedDate = effectiveResumeDate.toISOString().split('T')[0]; 
       
+      // Call the resume_payment_plan RPC function
       const { data: schedulingResult, error: schedulingError } = await supabase
-        .from('_rpc')
-        .select('*')
-        .eq('name', 'resume_payment_plan')
-        .execute({
-          params: {
-            plan_id: plan.id,
-            resume_date: formattedDate
-          }
+        .rpc('resume_payment_plan', { 
+          plan_id: plan.id,
+          resume_date: formattedDate
         });
       
       if (schedulingError) {
