@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
@@ -10,6 +9,7 @@ import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/utils/formatters';
 
 // Define interface matching PaymentDetailsCard's expected props
 interface PaymentDetail {
@@ -96,7 +96,7 @@ const PaymentSuccessPage = () => {
   useEffect(() => {
     if (linkData) {
       const details: PaymentDetail[] = [
-        { label: 'Amount Paid', value: `£${linkData.amount.toFixed(2)}` },
+        { label: 'Amount Paid', value: formatCurrency(linkData.amount) },
         { label: 'Date', value: new Date().toLocaleDateString() },
         // Removed the redundant clinic name as it's in the ClinicInformationCard
       ];

@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/utils/formatters';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle } from 'lucide-react';
+import { validateMonetaryAmount } from '@/utils/formatters';
 
 interface PaymentPageClinicCardProps {
   clinic: {
@@ -32,6 +33,14 @@ const PaymentPageClinicCard = ({
   isOverdue,
   paymentLinkId
 }: PaymentPageClinicCardProps) => {
+  // Validate amounts for debugging purposes only
+  if (paymentPlan) {
+    validateMonetaryAmount(planTotalAmount, 'ClinicCard-planTotalAmount');
+    validateMonetaryAmount(totalPaid, 'ClinicCard-totalPaid');
+    validateMonetaryAmount(totalOutstanding, 'ClinicCard-totalOutstanding');
+  }
+  validateMonetaryAmount(clinic.amount, 'ClinicCard-amount');
+
   return (
     <Card className="card-shadow">
       <CardContent className="p-6">

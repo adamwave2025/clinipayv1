@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
@@ -14,6 +15,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import Logo from '@/components/common/Logo';
 import { CheckCircle2 } from 'lucide-react';
+import { formatCurrency } from '@/utils/formatters';
 
 const PatientPaymentPage = () => {
   const navigate = useNavigate();
@@ -206,7 +208,7 @@ const PatientPaymentPage = () => {
                 title="Payment Completed Successfully"
                 description={
                   linkData.paymentPlan 
-                    ? `Thank you for your payment. This installment has been successfully processed. You have paid £${linkData.totalPaid?.toFixed(2)} of the total £${linkData.planTotalAmount?.toFixed(2)}.` 
+                    ? `Thank you for your payment. This installment has been successfully processed. You have paid ${formatCurrency(linkData.totalPaid)} of the total ${formatCurrency(linkData.planTotalAmount)}.` 
                     : "Thank you for your payment. Your transaction has been successfully processed."
                 }
               />

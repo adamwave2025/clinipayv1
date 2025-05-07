@@ -1,4 +1,3 @@
-
 import { format } from 'date-fns';
 
 /**
@@ -55,6 +54,24 @@ export const formatDateTime = (
 };
 
 /**
+ * CURRENCY FORMATTING GUIDE:
+ * 
+ * 1. For database values (stored in pence/cents):
+ *    - Use formatCurrency(amount)
+ *    - This DIVIDES by 100 to convert pence to pounds
+ *    - Example: formatCurrency(1000) => "£10.00"
+ * 
+ * 2. For user input or already converted values (already in pounds/dollars):
+ *    - Use formatUserInputCurrency(amount)
+ *    - This does NOT divide by 100
+ *    - Example: formatUserInputCurrency(10) => "£10.00"
+ * 
+ * 3. When in doubt, check the origin of your data:
+ *    - Values from API/database => formatCurrency()
+ *    - Values from user input/calculations => formatUserInputCurrency()
+ */
+
+/**
  * Format a number as currency (£)
  * 
  * IMPORTANT: This function assumes all monetary values are stored in pence/cents (1/100 of currency unit)
@@ -69,6 +86,11 @@ export const formatCurrency = (amount: number | null | undefined, currency: stri
   
   // Always convert from pence/cents to pounds/dollars by dividing by 100
   const convertedAmount = amount / 100;
+  
+  // Check if the amount is suspiciously large (might indicate a conversion error)
+  if (convertedAmount > 1000000) {
+    console.warn(`[Currency Warning] Very large amount detected: ${currency}${convertedAmount.toFixed(2)}. This might be a conversion error.`);
+  }
   
   // Format with 2 decimal places and the currency symbol
   return `${currency}${convertedAmount.toFixed(2)}`;
@@ -96,8 +118,52 @@ export const formatUserInputCurrency = (amount: number | string | null | undefin
   // Check if it's a valid number
   if (isNaN(numericAmount)) return `${currency}0.00`;
   
+  // Check if the amount is suspiciously large (might indicate a conversion error)
+  if (numericAmount > 1000000) {
+    console.warn(`[Currency Warning] Very large amount detected in user input currency: ${currency}${numericAmount.toFixed(2)}. This might be an error.`);
+  }
+  
   // Format with 2 decimal places and the currency symbol - without dividing by 100
   return `${currency}${numericAmount.toFixed(2)}`;
+};
+
+/**
+ * Validate a monetary amount for potential errors
+ * This function logs warnings for potentially incorrect monetary values
+ * 
+ * @param amount - The amount to validate
+ * @param context - Description of where this validation is happening
+ * @param isInPence - Whether the amount is expected to be in pence (true) or pounds (false)
+ * @returns boolean indicating if the amount seems valid
+ */
+export const validateMonetaryAmount = (
+  amount: number | null | undefined, 
+  context: string,
+  isInPence: boolean = true
+): boolean => {
+  if (amount === null || amount === undefined) return false;
+  
+  // Define reasonable limits based on whether we expect pence or pounds
+  const minValue = isInPence ? 1 : 0.01; // 1p or £0.01
+  const maxValue = isInPence ? 1000000000 : 10000000; // £10M in pence or pounds
+  
+  // For values in pence, check if they're suspiciously low (might be mistakenly in pounds)
+  if (isInPence && amount < 100 && amount > 0) {
+    console.warn(`[Currency Warning] ${context}: Amount ${amount} seems low for a pence value. Did you mean £${amount}?`);
+  }
+  
+  // For values in pounds, check if they're suspiciously high (might be mistakenly in pence)
+  if (!isInPence && amount > 10000) {
+    console.warn(`[Currency Warning] ${context}: Amount £${amount} seems high. Is this actually a value in pence?`);
+  }
+  
+  // Check if amount is within reasonable range
+  if (amount < minValue || amount > maxValue) {
+    console.warn(`[Currency Warning] ${context}: Amount ${isInPence ? amount + 'p' : '£' + amount} is outside normal range.`);
+    return false;
+  }
+  
+  return true;
 };
 
 /**
