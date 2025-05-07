@@ -58,6 +58,7 @@ export const usePaymentDetailsFetcher = () => {
   return {
     isLoading,
     paymentData,
+    setPaymentData, // Explicitly include this in the return object
     fetchPaymentDetails
   };
 };

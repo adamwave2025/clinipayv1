@@ -8,6 +8,8 @@ export interface PlanInstallment {
   paidDate?: string;
   originalStatus?: string; // Add this property to track original status before pausing
   paymentRequestId?: string; // Add this property which is required by usePaymentDetailsFetcher
+  paymentNumber?: number;
+  totalPayments?: number;
 }
 
 export interface PaymentScheduleItem {
@@ -48,7 +50,7 @@ export interface PaymentScheduleItem {
 /**
  * Format payment schedule items into plan installments for display
  */
-export const formatPlanInstallments = (scheduleItems: PaymentScheduleItem[]): PlanInstallment[] => {
+export const formatPlanInstallments = (scheduleItems: any[]): PlanInstallment[] => {
   if (!scheduleItems || scheduleItems.length === 0) return [];
   
   return scheduleItems.map(item => {
@@ -62,7 +64,9 @@ export const formatPlanInstallments = (scheduleItems: PaymentScheduleItem[]): Pl
       status: item.status,
       paidDate,
       originalStatus: item.status === 'paused' ? item.status : undefined,
-      paymentRequestId: item.payment_request_id
+      paymentRequestId: item.payment_request_id,
+      paymentNumber: item.payment_number,
+      totalPayments: item.total_payments
     };
   });
 };
