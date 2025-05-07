@@ -114,7 +114,7 @@ serve(async (req) => {
           
           // Record this update in the activity log using the new 'overdue' action type
           const { error: activityError } = await supabase
-            .from('payment_plan_activities')
+            .from('payment_activity') // Updated table name here
             .insert({
               patient_id: null,  // Will be populated from the plan data
               payment_link_id: null,  // Will be populated from the plan data

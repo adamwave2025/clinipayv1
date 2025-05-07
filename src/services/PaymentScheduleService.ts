@@ -131,7 +131,7 @@ export const fetchPlanActivities = async (planId: string) => {
     if (planError) throw planError;
     
     const { data, error } = await supabase
-      .from('payment_plan_activities')
+      .from('payment_activity')  // Updated table name here
       .select('*')
       .eq('patient_id', plan.patient_id)
       .eq('payment_link_id', plan.payment_link_id)
@@ -203,7 +203,7 @@ async function recordPlanActivity(
     }
     
     const { data, error } = await supabase
-      .from('payment_plan_activities')
+      .from('payment_activity')  // Updated table name here
       .insert({
         patient_id: plan.patient_id,
         payment_link_id: plan.payment_link_id,
@@ -234,7 +234,7 @@ async function recordPlanActivityLegacy(
 ) {
   try {
     const { data, error } = await supabase
-      .from('payment_plan_activities')
+      .from('payment_activity')  // Updated table name here
       .insert({
         patient_id: patientId || '00000000-0000-0000-0000-000000000000',
         payment_link_id: paymentLinkId,
@@ -836,7 +836,7 @@ export const recordPaymentRefund = async (
   userId?: string
 ) => {
   try {
-    // First, find the payment request associated with this payment
+    // Find the payment request associated with this payment
     const { data: paymentRequest, error: paymentRequestError } = await supabase
       .from('payment_requests')
       .select('id, patient_id, payment_link_id, clinic_id')
@@ -942,44 +942,37 @@ export const recordPaymentRefund = async (
       }
     }
     
-    // Record the refund activity
-    const activityDetails = {
-      plan_id: scheduleEntry.plan_id,
-      payment_number: scheduleEntry.payment_number,
-      total_payments: scheduleEntry.total_payments,
-      refund_amount: refundAmount,
-      is_full_refund: isFullRefund,
-      payment_reference: payment?.payment_ref || '',
-      refund_date: new Date().toISOString(),
-      original_amount: scheduleEntry.amount / 100 // Convert cents to dollars/pounds
-    };
+    // Create a new activity record for the refund
+    const { error: activityError } = await supabase
+      .from('payment_activity')  // Updated table name here
+      .insert({
+        patient_id: paymentRequest.patient_id,
+        payment_link_id: paymentRequest.payment_link_id,
+        clinic_id: paymentRequest.clinic_id,
+        action_type: 'payment_refund',
+        details: {
+          refund_date: new Date().toISOString(),
+          refund_amount: refundAmount,
+          is_full_refund: isFullRefund,
+          payment_id: paymentId,
+          // Add these if scheduleEntry was found successfully
+          ...(scheduleEntry && {
+            payment_number: scheduleEntry.payment_number,
+            total_payments: scheduleEntry.total_payments,
+            patient_name: scheduleEntry.payment_requests?.patient_name
+          })
+        },
+        performed_by_user_id: userId || (await supabase.auth.getUser()).data.user?.id
+      });
     
-    // If we have a plan ID, use the new activity recording function
-    if (scheduleEntry.plan_id) {
-      await recordPaymentPlanActivity(
-        scheduleEntry.plan_id,
-        'payment_refund',
-        activityDetails,
-        userId
-      );
-    } else {
-      // Fall back to the old method
-      await supabase
-        .from('payment_plan_activities')
-        .insert({
-          patient_id: paymentRequest.patient_id,
-          payment_link_id: paymentRequest.payment_link_id,
-          clinic_id: paymentRequest.clinic_id,
-          action_type: 'payment_refund',
-          details: activityDetails,
-          performed_by_user_id: userId
-        });
+    if (activityError) {
+      console.error('Warning: Failed to record refund activity:', activityError);
     }
     
     return { success: true };
   } catch (error) {
     console.error('Error recording payment refund:', error);
-    return { success: false, error: String(error) };
+    return { success: false, error: 'Failed to record payment refund' };
   }
 };
 
