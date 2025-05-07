@@ -1,10 +1,11 @@
+
 import React from 'react';
 import { Plan } from '@/utils/planTypes';
 import CancelPlanDialog from './CancelPlanDialog';
 import PausePlanDialog from './PausePlanDialog';
 import ResumePlanDialog from './ResumePlanDialog';
 import ReschedulePlanDialog from './ReschedulePlanDialog';
-import { useManagePlansContext } from '@/utils/planContext';
+import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 
 interface PlanActionDialogsProps {
   showCancelDialog: boolean;
@@ -104,3 +105,4 @@ const RescheduleDialog = () => {
 };
 
 export default PlanActionDialogs;
+
