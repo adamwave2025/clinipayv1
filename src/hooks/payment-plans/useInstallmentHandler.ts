@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { usePaymentDetailsFetcher } from '../usePaymentDetailsFetcher';
+import { usePaymentDetailsFetcher } from './usePaymentDetailsFetcher';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { Payment } from '@/types/payment';
 import { toast } from 'sonner';
