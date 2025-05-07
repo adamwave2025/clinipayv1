@@ -1,4 +1,3 @@
-
 import { Payment, PaymentLink } from '@/types/payment';
 import { formatDate } from '@/utils/formatters';
 
@@ -43,8 +42,8 @@ export function usePaymentFormatter() {
         patientName: payment.patient_name || 'Unknown Patient',
         patientEmail: payment.patient_email,
         patientPhone: payment.patient_phone || undefined,
-        amount: payment.amount_paid || 0,
-        platformFee: payment.platform_fee || 0, // Include the platform fee
+        amount: payment.amount_paid || 0, // Raw amount in pence/cents - do NOT divide by 100
+        platformFee: payment.platform_fee || 0, // Raw amount in pence/cents - do NOT divide by 100
         date: formatDate(paidDate),
         status: payment.status as any || 'paid',
         type: paymentType,
@@ -68,12 +67,12 @@ export function usePaymentFormatter() {
       // Determine amount - either from custom amount or linked payment link
       let amount = 0;
       if (request.custom_amount) {
-        amount = request.custom_amount;
+        amount = request.custom_amount; // Raw amount in pence/cents - do NOT divide by 100
       } else if (request.payment_link_id) {
         // Find the matching payment link to get its amount
         const paymentLink = paymentLinks.find(link => link.id === request.payment_link_id);
         if (paymentLink) {
-          amount = paymentLink.amount;
+          amount = paymentLink.amount; // Raw amount in pence/cents - do NOT divide by 100
         }
       }
       
@@ -122,7 +121,7 @@ export function usePaymentFormatter() {
         patientName: request.patient_name || 'Unknown Patient',
         patientEmail: request.patient_email,
         patientPhone: request.patient_phone || undefined,
-        amount,
+        amount, // Raw amount in pence/cents - do NOT divide by 100
         date: formatDate(sentDate),
         status: 'sent' as Payment['status'],  // Fix the type error by specifying the exact status
         type: paymentType,

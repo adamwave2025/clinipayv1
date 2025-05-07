@@ -5,7 +5,7 @@ import { PaymentLink } from '@/types/payment';
  * Formats raw payment link data from the API into the PaymentLink interface format
  * 
  * NOTE: The database stores monetary values in cents (1/100 of currency unit)
- * So we need to divide by 100 when formatting amounts for display
+ * Do NOT divide by 100 here - let the formatCurrency utility handle the conversion
  * 
  * This function also converts snake_case database field names to camelCase for frontend use
  * 
@@ -35,7 +35,7 @@ export const formatPaymentLinks = (data: any[]): PaymentLink[] => {
     return {
       id: link.id,
       title: link.title || '',
-      amount: link.amount || 0, // Original amount in cents
+      amount: link.amount || 0, // Raw amount in cents (do NOT divide by 100)
       type: link.type || (isPaymentPlan ? 'payment_plan' : 'deposit'), // Default based on payment plan status
       description: link.description || '',
       url: `${window.location.origin}/payment/${link.id}`,
@@ -44,7 +44,7 @@ export const formatPaymentLinks = (data: any[]): PaymentLink[] => {
       paymentPlan: isPaymentPlan, // Now a properly calculated boolean value
       paymentCount: isPaymentPlan ? link.payment_count : undefined,
       paymentCycle: isPaymentPlan ? link.payment_cycle : undefined,
-      planTotalAmount: isPaymentPlan ? link.plan_total_amount : undefined // Original amount in cents
+      planTotalAmount: isPaymentPlan ? link.plan_total_amount : undefined // Raw amount in cents (do NOT divide by 100)
     };
   });
 };

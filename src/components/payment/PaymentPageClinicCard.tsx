@@ -2,8 +2,8 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/utils/formatters';
-import { Mail, Phone } from 'lucide-react';
-import PaymentPlanBreakdown from './PaymentPlanBreakdown';
+import { Badge } from '@/components/ui/badge';
+import { AlertTriangle } from 'lucide-react';
 
 interface PaymentPageClinicCardProps {
   clinic: {
@@ -13,100 +13,99 @@ interface PaymentPageClinicCardProps {
     phone?: string;
     address?: string;
     paymentType: string;
-    amount: number;
+    amount: number; // Amount in pence/cents
   };
   paymentPlan?: boolean;
-  planTotalAmount?: number;
-  totalPaid?: number;
-  totalOutstanding?: number;
+  planTotalAmount?: number; // Amount in pence/cents
+  totalPaid?: number; // Amount in pence/cents
+  totalOutstanding?: number; // Amount in pence/cents
   isOverdue?: boolean;
   paymentLinkId?: string;
 }
 
-const PaymentPageClinicCard: React.FC<PaymentPageClinicCardProps> = ({
+const PaymentPageClinicCard = ({
   clinic,
-  paymentPlan = false,
-  planTotalAmount = 0,
-  totalPaid = 0,
-  totalOutstanding = 0,
-  isOverdue = false,
+  paymentPlan,
+  planTotalAmount,
+  totalPaid,
+  totalOutstanding,
+  isOverdue,
   paymentLinkId
-}) => {
+}: PaymentPageClinicCardProps) => {
   return (
-    <Card className="w-full overflow-hidden border shadow-md">
-      {/* Clinic Header with Logo and Name */}
-      <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-6 border-b">
-        <div className="flex items-center space-x-4">
-          <div className="rounded-full overflow-hidden w-16 h-16 border border-gray-200 bg-white flex items-center justify-center shadow-sm">
-            <img
-              src={clinic.logo}
-              alt={`${clinic.name} Logo`}
-              className="object-cover w-full h-full"
+    <Card className="card-shadow">
+      <CardContent className="p-6">
+        <div className="flex items-center">
+          {clinic.logo ? (
+            <img 
+              src={clinic.logo} 
+              alt={clinic.name}  
+              className="h-12 w-12 rounded-full mr-3 object-cover"
             />
-          </div>
+          ) : (
+            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-semibold mr-3">
+              {clinic.name.charAt(0)}
+            </div>
+          )}
           <div>
-            <h1 className="text-xl font-bold">{clinic.name}</h1>
+            <h2 className="font-bold text-lg">{clinic.name}</h2>
+            <p className="text-sm text-gray-600">{clinic.paymentType}</p>
           </div>
         </div>
-      </div>
-      
-      <CardContent className="p-6 space-y-6">
-        {/* Payment information */}
-        <div>
-          <h2 className="text-gray-600 font-medium mb-2">
-            {clinic.paymentType}
-          </h2>
-          
-          {/* Amount Due Section - Highlighted */}
-          <div className="bg-gray-50 rounded-lg p-4 border mb-4">
-            <h3 className="text-sm text-gray-600 uppercase font-medium mb-1">Amount Due</h3>
-            <div className="text-2xl font-bold text-[#9b87f5]">
-              {paymentPlan ? (
-                formatCurrency(clinic.amount)
-              ) : (
-                formatCurrency(clinic.amount)
+        
+        {/* Payment Amount Display */}
+        <div className="mt-4 bg-gray-50 p-3 rounded-md">
+          {paymentPlan ? (
+            <div className="space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="font-medium text-gray-600">Total Plan Amount:</span>
+                <span className="font-bold">{formatCurrency(planTotalAmount || 0)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-medium text-gray-600">Amount Paid:</span>
+                <span>{formatCurrency(totalPaid || 0)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-medium text-gray-600">Amount Outstanding:</span>
+                <span className="font-bold">{formatCurrency(totalOutstanding || 0)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-medium text-gray-600">Current Installment:</span>
+                <span className="font-bold">{formatCurrency(clinic.amount)}</span>
+              </div>
+              
+              {isOverdue && (
+                <div className="mt-2 flex items-center gap-2 text-amber-600">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="text-sm font-medium">This payment is overdue</span>
+                </div>
               )}
             </div>
-          </div>
-          
-          {/* Payment Plan Details (if applicable) */}
-          {paymentPlan && (
-            <PaymentPlanBreakdown
-              planTotalAmount={planTotalAmount}
-              totalPaid={totalPaid}
-              totalOutstanding={totalOutstanding}
-              isOverdue={isOverdue}
-              paymentLinkId={paymentLinkId}
-            />
+          ) : (
+            <div className="flex justify-between items-center">
+              <span className="font-medium text-gray-600">Amount Due:</span>
+              <span className="font-bold text-xl">{formatCurrency(clinic.amount)}</span>
+            </div>
           )}
         </div>
         
         {/* Clinic Contact Information */}
-        <div className="pt-4 border-t">
-          <h3 className="text-sm text-gray-600 uppercase font-medium mb-3">Contact Information</h3>
-          <div className="space-y-2">
-            {clinic.email && (
-              <div className="flex items-center space-x-2 text-gray-600">
-                <Mail className="h-4 w-4" />
-                <a href={`mailto:${clinic.email}`} className="hover:text-[#9b87f5] transition-colors">
-                  {clinic.email}
-                </a>
-              </div>
-            )}
-            {clinic.phone && (
-              <div className="flex items-center space-x-2 text-gray-600">
-                <Phone className="h-4 w-4" />
-                <a href={`tel:${clinic.phone}`} className="hover:text-[#9b87f5] transition-colors">
-                  {clinic.phone}
-                </a>
-              </div>
-            )}
-            {clinic.address && (
-              <div className="text-gray-600 pl-6">
-                <span>{clinic.address}</span>
-              </div>
-            )}
-          </div>
+        <div className="mt-4 space-y-2 text-sm">
+          {clinic.email && (
+            <p className="text-gray-600">
+              Email: <span className="font-medium">{clinic.email}</span>
+            </p>
+          )}
+          {clinic.phone && (
+            <p className="text-gray-600">
+              Phone: <span className="font-medium">{clinic.phone}</span>
+            </p>
+          )}
+          {clinic.address && (
+            <p className="text-gray-600">
+              Address: <span className="font-medium">{clinic.address}</span>
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Copy, ExternalLink } from 'lucide-react';
@@ -38,15 +37,10 @@ const PaymentLinkDetailsDialog = ({
   /**
    * IMPORTANT: MONETARY VALUE HANDLING
    * 
-   * The `amount` field in payment links may be stored in different units:
-   * 1. In pennies/cents (e.g., 400000 for £4,000)
-   * 2. Already in pounds/dollars (e.g., 4000 for £4,000)
-   * 
+   * The `amount` field in payment links is stored in pennies/cents (e.g., 1000 for £10.00)
    * We use the formatCurrency utility which automatically:
-   * - Detects if the amount is in pennies (large integer values) and converts to pounds
+   * - Converts from pennies/cents to pounds/dollars by dividing by 100
    * - Formats the value with the proper currency symbol and decimal places
-   * 
-   * DO NOT modify this to use direct toFixed() formatting without proper conversion!
    */
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
