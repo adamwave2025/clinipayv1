@@ -5,7 +5,6 @@ import CancelPlanDialog from './CancelPlanDialog';
 import PausePlanDialog from './PausePlanDialog';
 import ResumePlanDialog from './ResumePlanDialog';
 import ReschedulePlanDialog from './ReschedulePlanDialog';
-import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 
 interface PlanActionDialogsProps {
   showCancelDialog: boolean;
@@ -82,33 +81,17 @@ const PlanActionDialogs: React.FC<PlanActionDialogsProps> = ({
         hasOverduePayments={hasOverduePayments}
       />
 
-      <RescheduleDialog />
+      <ReschedulePlanDialog
+        showDialog={showRescheduleDialog}
+        setShowDialog={setShowRescheduleDialog}
+        onConfirm={handleReschedulePlan}
+        planName={selectedPlan?.title || selectedPlan?.planName || 'Payment Plan'}
+        patientName={selectedPlan?.patientName || 'Patient'}
+        isProcessing={isProcessing}
+        hasSentPayments={hasSentPayments}
+        hasOverduePayments={hasOverduePayments}
+      />
     </>
-  );
-};
-
-const RescheduleDialog = () => {
-  const { 
-    selectedPlan, 
-    showRescheduleDialog, 
-    setShowRescheduleDialog, 
-    handleReschedulePlan, 
-    isProcessing,
-    hasSentPayments,
-    hasOverduePayments
-  } = useManagePlansContext();
-  
-  return (
-    <ReschedulePlanDialog
-      showDialog={showRescheduleDialog}
-      setShowDialog={setShowRescheduleDialog}
-      onConfirm={handleReschedulePlan}
-      planName={selectedPlan?.title || selectedPlan?.planName || 'Payment Plan'}
-      patientName={selectedPlan?.patientName || 'Patient'}
-      isProcessing={isProcessing}
-      hasSentPayments={hasSentPayments}
-      hasOverduePayments={hasOverduePayments || (selectedPlan?.status === 'overdue')}
-    />
   );
 };
 
