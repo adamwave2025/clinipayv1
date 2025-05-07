@@ -31,7 +31,7 @@ export class PlanOperationsService {
       
       // 3. Add an activity log entry
       const { error: activityError } = await supabase
-        .from('payment_plan_activities')
+        .from('payment_activity')
         .insert({
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,
@@ -81,7 +81,7 @@ export class PlanOperationsService {
       
       // 3. Add an activity log entry
       const { error: activityError } = await supabase
-        .from('payment_plan_activities')
+        .from('payment_activity')
         .insert({
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,
@@ -155,7 +155,7 @@ export class PlanOperationsService {
       
       // 4. Add an activity log entry
       const { error: activityError } = await supabase
-        .from('payment_plan_activities')
+        .from('payment_activity')
         .insert({
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,
@@ -250,7 +250,7 @@ export class PlanOperationsService {
       
       // 3. Add an activity log entry
       const { error: activityError } = await supabase
-        .from('payment_plan_activities')
+        .from('payment_activity')
         .insert({
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,

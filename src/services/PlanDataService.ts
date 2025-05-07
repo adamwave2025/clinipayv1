@@ -53,7 +53,7 @@ export class PlanDataService {
     try {
       // Get all activities for this plan
       const { data, error } = await supabase
-        .from('payment_activity')  // Updated table name here
+        .from('payment_activity')
         .select('*')
         .eq('payment_link_id', plan.paymentLinkId)
         .order('performed_at', { ascending: false });
