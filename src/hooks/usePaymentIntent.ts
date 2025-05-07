@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentLinkData } from './usePaymentLinkData';
+import { poundsToPence, validatePenceAmount } from '@/services/CurrencyService';
 
 export function usePaymentIntent() {
   const [isCreatingIntent, setIsCreatingIntent] = useState(false);
@@ -30,15 +31,29 @@ export function usePaymentIntent() {
     
     try {
       console.log('Initiating payment process for link ID:', linkData.id);
-      console.log('Payment amount:', linkData.amount);
-      console.log('Is request payment:', linkData.isRequest ? 'Yes' : 'No');
       
-      // Call the create-payment-intent edge function to get a client secret
+      // IMPORTANT: linkData.amount is already in pence (cents) from the database
+      // Log full details to aid debugging
+      console.log('Payment details:', {
+        amountInPence: linkData.amount,
+        isRequest: linkData.isRequest ? 'Yes' : 'No',
+        clinicId: linkData.clinic.id,
+        paymentLinkId: linkData.id
+      });
+      
+      // Validate the amount to catch potential errors
+      if (!validatePenceAmount(linkData.amount, 'usePaymentIntent')) {
+        console.error('Invalid payment amount detected:', linkData.amount);
+        return { success: false, error: 'Invalid payment amount' };
+      }
+      
+      // Call the create-payment-intent edge function with the CORRECT amount
+      // CRITICAL FIX: The amount is already in cents, DO NOT multiply by 100 again
       const { data: paymentIntentData, error: paymentIntentError } = await supabase.functions.invoke(
         'create-payment-intent', 
         {
           body: JSON.stringify({
-            amount: Math.round(linkData.amount * 100), // Convert to cents for Stripe
+            amount: linkData.amount, // Already in cents for Stripe
             clinicId: linkData.clinic.id,
             paymentLinkId: linkData.isRequest ? null : linkData.id,
             requestId: linkData.isRequest ? linkData.id : null,

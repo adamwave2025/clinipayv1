@@ -18,6 +18,28 @@ export function generatePaymentReference(prefix = "CLN", length = 6) {
   return `${prefix}-${code}`;
 }
 
+// Validate monetary amount for potential errors before processing payments
+export function validatePaymentAmount(amount: number) {
+  // Check minimum amount (at least £0.01 or 1p)
+  if (amount < 1) {
+    console.error(`Payment amount too small: ${amount}p`);
+    return false;
+  }
+  
+  // Check maximum amount (£1,000,000 = 100,000,000p)
+  if (amount > 100000000) {
+    console.error(`Payment amount suspiciously large: ${amount}p (£${amount/100})`);
+    return false;
+  }
+  
+  // Log warning for suspiciously large amounts
+  if (amount > 10000000) { // Over £100,000
+    console.warn(`Unusually large payment amount: ${amount}p (£${amount/100})`);
+  }
+  
+  return true;
+}
+
 // Initialize Stripe client
 export function initStripe(): Stripe {
   const stripeSecretKey = Deno.env.get("SECRET_KEY");

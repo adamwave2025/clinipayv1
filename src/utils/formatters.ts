@@ -1,4 +1,10 @@
 import { format } from 'date-fns';
+import { 
+  penceToPounds, 
+  poundsToPence,
+  validatePenceAmount,
+  validatePoundsAmount
+} from '@/services/CurrencyService';
 
 /**
  * Format a date to a standard string format
@@ -84,13 +90,11 @@ export const formatDateTime = (
 export const formatCurrency = (amount: number | null | undefined, currency: string = '£'): string => {
   if (amount === null || amount === undefined) return `${currency}0.00`;
   
-  // Always convert from pence/cents to pounds/dollars by dividing by 100
-  const convertedAmount = amount / 100;
+  // Validate the amount for debugging
+  validatePenceAmount(amount, 'formatCurrency');
   
-  // Check if the amount is suspiciously large (might indicate a conversion error)
-  if (convertedAmount > 1000000) {
-    console.warn(`[Currency Warning] Very large amount detected: ${currency}${convertedAmount.toFixed(2)}. This might be a conversion error.`);
-  }
+  // Convert from pence to pounds
+  const convertedAmount = penceToPounds(amount);
   
   // Format with 2 decimal places and the currency symbol
   return `${currency}${convertedAmount.toFixed(2)}`;
@@ -118,10 +122,8 @@ export const formatUserInputCurrency = (amount: number | string | null | undefin
   // Check if it's a valid number
   if (isNaN(numericAmount)) return `${currency}0.00`;
   
-  // Check if the amount is suspiciously large (might indicate a conversion error)
-  if (numericAmount > 1000000) {
-    console.warn(`[Currency Warning] Very large amount detected in user input currency: ${currency}${numericAmount.toFixed(2)}. This might be an error.`);
-  }
+  // Validate the amount for debugging
+  validatePoundsAmount(numericAmount, 'formatUserInputCurrency');
   
   // Format with 2 decimal places and the currency symbol - without dividing by 100
   return `${currency}${numericAmount.toFixed(2)}`;
@@ -141,29 +143,11 @@ export const validateMonetaryAmount = (
   context: string,
   isInPence: boolean = true
 ): boolean => {
-  if (amount === null || amount === undefined) return false;
-  
-  // Define reasonable limits based on whether we expect pence or pounds
-  const minValue = isInPence ? 1 : 0.01; // 1p or £0.01
-  const maxValue = isInPence ? 1000000000 : 10000000; // £10M in pence or pounds
-  
-  // For values in pence, check if they're suspiciously low (might be mistakenly in pounds)
-  if (isInPence && amount < 100 && amount > 0) {
-    console.warn(`[Currency Warning] ${context}: Amount ${amount} seems low for a pence value. Did you mean £${amount}?`);
+  if (isInPence) {
+    return validatePenceAmount(amount, context);
+  } else {
+    return validatePoundsAmount(amount, context);
   }
-  
-  // For values in pounds, check if they're suspiciously high (might be mistakenly in pence)
-  if (!isInPence && amount > 10000) {
-    console.warn(`[Currency Warning] ${context}: Amount £${amount} seems high. Is this actually a value in pence?`);
-  }
-  
-  // Check if amount is within reasonable range
-  if (amount < minValue || amount > maxValue) {
-    console.warn(`[Currency Warning] ${context}: Amount ${isInPence ? amount + 'p' : '£' + amount} is outside normal range.`);
-    return false;
-  }
-  
-  return true;
 };
 
 /**
