@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { toast } from 'sonner';
+import { formatCurrency, formatDateTime } from '@/utils/formatters';
 
 export const usePaymentDetailsFetcher = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,12 +20,17 @@ export const usePaymentDetailsFetcher = () => {
         return null;
       }
       
+      console.log('Fetching payment details for request ID:', installment.paymentRequestId);
+      
       // First get the payment request details
       const { data: requestData, error: requestError } = await supabase
         .from('payment_requests')
         .select(`
           id, payment_id, patient_name, patient_email, patient_phone,
-          payments (*)
+          payments (
+            id, amount_paid, status, paid_at, payment_ref, 
+            stripe_payment_id, refund_amount, refunded_at
+          )
         `)
         .eq('id', installment.paymentRequestId)
         .single();
@@ -35,14 +41,27 @@ export const usePaymentDetailsFetcher = () => {
         return null;
       }
       
+      console.log('Payment request data:', requestData);
+      
       // Extract payment information from the request
       const paymentInfo = requestData.payments ? {
-        ...requestData.payments,
+        id: requestData.payments.id,
+        status: requestData.payments.status,
+        amount: requestData.payments.amount_paid, // Map amount_paid to amount
+        date: formatDateTime(requestData.payments.paid_at), // Format the date properly
+        reference: requestData.payments.payment_ref,
+        stripePaymentId: requestData.payments.stripe_payment_id,
+        refundedAmount: requestData.payments.refund_amount,
+        refundedAt: requestData.payments.refunded_at ? formatDateTime(requestData.payments.refunded_at) : null,
         patientName: requestData.patient_name,
         patientEmail: requestData.patient_email,
-        patientPhone: requestData.patient_phone
+        patientPhone: requestData.patient_phone,
+        linkTitle: installment.paymentNumber 
+          ? `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
+          : 'Payment'
       } : null;
       
+      console.log('Formatted payment info:', paymentInfo);
       setPaymentData(paymentInfo);
       return paymentInfo;
       
@@ -58,7 +77,7 @@ export const usePaymentDetailsFetcher = () => {
   return {
     isLoading,
     paymentData,
-    setPaymentData, // Explicitly include this in the return object
+    setPaymentData,
     fetchPaymentDetails
   };
 };

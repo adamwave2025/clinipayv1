@@ -7,6 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import PaymentDetailsCard from '@/components/payment/PaymentDetailsCard';
 import StatusBadge from '@/components/common/StatusBadge';
 import PaymentActionsSection from '@/components/dashboard/payment-details/PaymentActionsSection';
+import { formatCurrency } from '@/utils/formatters';
 
 interface InstallmentPaymentDialogProps {
   showDialog: boolean;
@@ -28,6 +29,9 @@ const InstallmentPaymentDialog = ({
   const handleBack = () => {
     onBack();
   };
+  
+  // For debugging
+  console.log('Payment data in dialog:', paymentData);
 
   return (
     <Dialog open={showDialog} onOpenChange={setShowDialog}>
@@ -56,8 +60,8 @@ const InstallmentPaymentDialog = ({
             details={[
               { label: 'Patient Name', value: paymentData.patientName },
               { label: 'Patient Email', value: paymentData.patientEmail || 'Not provided' },
-              { label: 'Payment Date', value: paymentData.date },
-              { label: 'Payment Amount', value: paymentData.amount },
+              { label: 'Payment Date', value: paymentData.date || 'Not available' },
+              { label: 'Payment Amount', value: paymentData.amount ? formatCurrency(paymentData.amount) : 'Not available' },
               { label: 'Reference', value: paymentData.reference || 'Not available' },
               { label: 'Type', value: 'Payment Plan Installment' }
             ]}
