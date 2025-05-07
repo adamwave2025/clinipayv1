@@ -30,7 +30,7 @@ export const usePlanRescheduleActions = (
       
       // Set state based on whether there are sent or overdue payments
       setHasSentPayments(sentPayments && sentPayments.length > 0);
-      setHasOverduePayments(overduePayments && overduePayments.length > 0 || selectedPlan.status === 'overdue');
+      setHasOverduePayments((overduePayments && overduePayments.length > 0) || selectedPlan.status === 'overdue');
     }
     
     setShowRescheduleDialog(true);

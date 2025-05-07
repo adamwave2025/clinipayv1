@@ -39,9 +39,15 @@ export const usePlanResumeActions = (
       let hadOverduePaymentsWhenPaused = false;
       if (overduePayments && overduePayments.length > 0) {
         const details = overduePayments[0].details;
-        hadOverduePaymentsWhenPaused = details && 
-                                       details.overdue_count && 
-                                       details.overdue_count > 0;
+        
+        // Type check the details object to ensure it's a record with overdue_count
+        if (details && 
+            typeof details === 'object' && 
+            details !== null && 
+            'overdue_count' in details &&
+            typeof details.overdue_count === 'number') {
+          hadOverduePaymentsWhenPaused = details.overdue_count > 0;
+        }
       }
       
       setHasSentPayments(sentPayments && sentPayments.length > 0);
