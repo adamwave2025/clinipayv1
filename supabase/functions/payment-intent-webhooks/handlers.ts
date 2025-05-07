@@ -322,6 +322,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
             }
             
             // Record payment activity in the payment plan activity log
+            // FIXED: Changed payment_plan_activities to payment_activity which is the actual table name
             const activityPayload = {
               patient_id: scheduleData.patient_id,
               payment_link_id: scheduleData.payment_link_id,
@@ -340,7 +341,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
             console.log("Recording payment activity in plan history:", JSON.stringify(activityPayload));
             
             const { error: activityError } = await supabaseClient
-              .from("payment_plan_activities")
+              .from("payment_activity") // FIXED: Changed from payment_plan_activities to payment_activity
               .insert(activityPayload);
               
             if (activityError) {
