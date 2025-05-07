@@ -6,9 +6,14 @@ type StatusType = 'paid' | 'refunded' | 'partially_refunded' | 'sent' | 'connect
 interface StatusBadgeProps {
   status: StatusType;
   className?: string;
+  isReadOnly?: boolean; // Add this prop to indicate if the status cannot be changed
 }
 
-const StatusBadge = ({ status, className = '' }: StatusBadgeProps) => {
+const StatusBadge = ({ 
+  status, 
+  className = '',
+  isReadOnly = false // Default to false for backward compatibility
+}: StatusBadgeProps) => {
   const getStatusStyles = () => {
     switch (status) {
       case 'paid':
@@ -49,14 +54,27 @@ const StatusBadge = ({ status, className = '' }: StatusBadgeProps) => {
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
+  // Determine if this is an immutable status that can't be changed
+  const isPaidOrRefunded = ['paid', 'refunded', 'partially_refunded'].includes(status);
+  
+  // Add a lock icon or visual indicator for read-only statuses
+  const readOnlyIndicator = isReadOnly || isPaidOrRefunded ? (
+    <span className="ml-1 text-xs">
+      🔒
+    </span>
+  ) : null;
+
   return (
     <span 
       className={`
         inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
         border ${getStatusStyles()} ${className}
+        ${isPaidOrRefunded ? 'ring-1 ring-offset-1 ring-green-300' : ''}
       `}
+      title={isPaidOrRefunded ? 'This status cannot be changed' : undefined}
     >
       {getDisplayText()}
+      {readOnlyIndicator}
     </span>
   );
 };

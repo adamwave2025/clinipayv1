@@ -10,6 +10,43 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Check if a payment schedule entry has been paid
+ * This is a safeguard to ensure we never change paid statuses
+ */
+function isSchedulePaid(schedule: any): boolean {
+  return (
+    schedule.payment_request_id !== null && 
+    schedule.payment_requests !== null &&
+    schedule.payment_requests.payment_id !== null
+  );
+}
+
+/**
+ * Get allowed status transitions for a given status
+ */
+function getAllowedStatusTransitions(currentStatus: string): string[] {
+  const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
+    'pending': ['overdue', 'paused', 'cancelled'],
+    'paid': ['refunded', 'partially_refunded'],
+    'overdue': ['paid', 'paused', 'cancelled'],
+    'paused': ['pending', 'cancelled'],
+    'cancelled': [],
+    'refunded': [],
+    'partially_refunded': ['refunded']
+  };
+  
+  return ALLOWED_STATUS_TRANSITIONS[currentStatus] || [];
+}
+
+/**
+ * Check if a status transition is valid
+ */
+function isStatusTransitionValid(currentStatus: string, newStatus: string): boolean {
+  if (currentStatus === newStatus) return true;
+  return getAllowedStatusTransitions(currentStatus).includes(newStatus);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -75,9 +112,8 @@ serve(async (req) => {
         // Check if any payment is overdue
         const overduePayments = schedules.filter(schedule => {
           // Check if the schedule is not paid and due date has passed
-          const isPaid = schedule.payment_request_id !== null && 
-                         schedule.payment_requests !== null &&
-                         schedule.payment_requests.payment_id !== null;
+          // IMPORTANT: Never mark a paid payment as overdue
+          const isPaid = isSchedulePaid(schedule);
           
           // FIXED: Compare dates without the time component
           // Convert both dates to YYYY-MM-DD format and then compare them
@@ -114,7 +150,7 @@ serve(async (req) => {
           
           // Record this update in the activity log using the new 'overdue' action type
           const { error: activityError } = await supabase
-            .from('payment_activity')
+            .from('payment_activity') // Using the correct table name
             .insert({
               patient_id: null,  // Will be populated from the plan data
               payment_link_id: null,  // Will be populated from the plan data

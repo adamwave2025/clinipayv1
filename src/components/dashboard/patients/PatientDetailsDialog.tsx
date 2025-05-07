@@ -173,7 +173,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
       
       try {
         const { data, error } = await supabase
-          .from('payment_activity')
+          .from('payment_activity') // Fixed from payment_plan_activities to payment_activity
           .select('*')
           .eq('patient_id', patient.id)
           .order('performed_at', { ascending: false });

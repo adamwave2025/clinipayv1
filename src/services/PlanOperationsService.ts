@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
+import { isPaymentStatusModifiable, getModifiableStatuses } from '@/utils/paymentStatusUtils';
 
 /**
  * Service for performing operations on payment plans
@@ -21,17 +22,20 @@ export class PlanOperationsService {
       if (planUpdateError) throw planUpdateError;
       
       // 2. Update all pending payment schedules to cancelled
+      // Only update schedules that are in a modifiable state (not paid)
+      const modifiableStatuses = getModifiableStatuses();
+      
       const { error: scheduleUpdateError } = await supabase
         .from('payment_schedule')
         .update({ status: 'cancelled' })
         .eq('plan_id', plan.id)
-        .in('status', ['pending', 'paused']);
+        .in('status', modifiableStatuses);
         
       if (scheduleUpdateError) throw scheduleUpdateError;
       
       // 3. Add an activity log entry
       const { error: activityError } = await supabase
-        .from('payment_activity')
+        .from('payment_activity') // Fixed: Changed from payment_plan_activities to payment_activity
         .insert({
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,
@@ -71,6 +75,7 @@ export class PlanOperationsService {
       if (planUpdateError) throw planUpdateError;
       
       // 2. Update all pending payment schedules to paused
+      // Only update schedules that are in a modifiable state (not paid)
       const { error: scheduleUpdateError } = await supabase
         .from('payment_schedule')
         .update({ status: 'paused' })
@@ -81,7 +86,7 @@ export class PlanOperationsService {
       
       // 3. Add an activity log entry
       const { error: activityError } = await supabase
-        .from('payment_activity')
+        .from('payment_activity') // Fixed: Changed from payment_plan_activities to payment_activity
         .insert({
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,
@@ -128,6 +133,7 @@ export class PlanOperationsService {
       if (planUpdateError) throw planUpdateError;
       
       // 2. Update all paused payment schedules back to pending
+      // Only update schedules that are in a paused state
       const { error: scheduleUpdateError } = await supabase
         .from('payment_schedule')
         .update({ status: 'pending' })
@@ -155,7 +161,7 @@ export class PlanOperationsService {
       
       // 4. Add an activity log entry
       const { error: activityError } = await supabase
-        .from('payment_activity')
+        .from('payment_activity') // Fixed: Changed from payment_plan_activities to payment_activity
         .insert({
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,
@@ -204,12 +210,12 @@ export class PlanOperationsService {
       // We'll manually update the payment schedule by shifting all pending payments
       // based on the difference between the current start date and new start date
       
-      // First, get the current payment schedules
+      // First, get the current payment schedules - only get schedules that can be modified (not paid)
       const { data: schedules, error: schedulesError } = await supabase
         .from('payment_schedule')
         .select('*')
         .eq('plan_id', plan.id)
-        .eq('status', 'pending');
+        .in('status', getModifiableStatuses());
         
       if (schedulesError) throw schedulesError;
       
@@ -250,7 +256,7 @@ export class PlanOperationsService {
       
       // 3. Add an activity log entry
       const { error: activityError } = await supabase
-        .from('payment_activity')
+        .from('payment_activity') // Fixed: Changed from payment_plan_activities to payment_activity
         .insert({
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,

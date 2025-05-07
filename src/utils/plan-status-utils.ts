@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { isPaymentStatusTransitionValid } from './paymentStatusUtils';
 
 // We're assuming this is the function with the error on line 136
 export const recordPaymentOverdue = async (planId: string, details: any) => {
@@ -14,7 +15,7 @@ export const recordPaymentOverdue = async (planId: string, details: any) => {
     
     // Record activity
     const { error: activityError } = await supabase
-      .from('payment_activity') // Changed from payment_plan_activities to payment_activity
+      .from('payment_activity') // Fixed: Changed from payment_plan_activities to payment_activity
       .insert({
         patient_id: planData.patient_id,
         clinic_id: planData.clinic_id,
