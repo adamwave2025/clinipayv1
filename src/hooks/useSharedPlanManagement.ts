@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
@@ -6,6 +5,7 @@ import { PlanActivity } from '@/utils/planActivityUtils';
 import { PlanDataService } from '@/services/PlanDataService';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { isPlanPaused } from '@/utils/planStatusUtils';
+import { supabase } from '@/utils/supabase';
 
 /**
  * Shared hook to manage payment plan operations across different parts of the application.
@@ -29,6 +29,9 @@ export const useSharedPlanManagement = () => {
   const [showPauseDialog, setShowPauseDialog] = useState(false);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+
+  // State to track sent payments during resume operations
+  const [hasSentPayments, setHasSentPayments] = useState(false);
 
   /**
    * View plan details and fetch related data
@@ -78,9 +81,23 @@ export const useSharedPlanManagement = () => {
     setShowPlanDetails(false);
   };
   
-  const handleOpenResumeDialog = () => {
+  const handleOpenResumeDialog = async () => {
+    // Check if there are any paused payments that were previously in 'sent' status
+    if (selectedPlan) {
+      const { data: sentPayments } = await supabase
+        .from('payment_schedule')
+        .select('id')
+        .eq('plan_id', selectedPlan.id)
+        .eq('status', 'paused')
+        .not('payment_request_id', 'is', null);
+      
+      const hasSentPayments = sentPayments && sentPayments.length > 0;
+      
+      // Store this information in state to use in the dialog
+      setHasSentPayments(hasSentPayments);
+    }
+    
     setShowResumeDialog(true);
-    setShowPlanDetails(false);
   };
   
   const handleOpenRescheduleDialog = () => {
@@ -145,6 +162,16 @@ export const useSharedPlanManagement = () => {
     setIsProcessing(true);
     
     try {
+      // Check if there are any paused payments that were previously in 'sent' status
+      const { data: sentPayments } = await supabase
+        .from('payment_schedule')
+        .select('id')
+        .eq('plan_id', selectedPlan.id)
+        .eq('status', 'paused')
+        .not('payment_request_id', 'is', null);
+      
+      const hasSentPayments = sentPayments && sentPayments.length > 0;
+      
       // Pass the resumeDate parameter to the PlanOperationsService
       const success = await PlanOperationsService.resumePlan(selectedPlan, resumeDate);
       
@@ -155,7 +182,12 @@ export const useSharedPlanManagement = () => {
           ...selectedPlan,
           status: newStatus
         });
+        
+        // Refresh the installments to show updated statuses
+        await refreshPlanDetails();
       }
+    } catch (error) {
+      console.error('Error resuming plan:', error);
     } finally {
       setIsProcessing(false);
       setShowResumeDialog(false);
@@ -229,6 +261,9 @@ export const useSharedPlanManagement = () => {
     
     // Status helpers
     isPlanPaused,
-    isProcessing
+    isProcessing,
+    
+    // State to track sent payments during resume operations
+    hasSentPayments
   };
 };

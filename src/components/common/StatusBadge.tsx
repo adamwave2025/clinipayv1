@@ -7,14 +7,21 @@ interface StatusBadgeProps {
   status: StatusType;
   className?: string;
   isReadOnly?: boolean; // Add this prop to indicate if the status cannot be changed
+  originalStatus?: string; // Add originalStatus for displaying paused-sent differently
 }
 
 const StatusBadge = ({ 
   status, 
   className = '',
-  isReadOnly = false // Default to false for backward compatibility
+  isReadOnly = false,
+  originalStatus
 }: StatusBadgeProps) => {
   const getStatusStyles = () => {
+    // Special case for payments that were sent and then paused
+    if (status === 'paused' && originalStatus === 'sent') {
+      return 'bg-amber-50 border-amber-300 text-amber-800';
+    }
+    
     switch (status) {
       case 'paid':
       case 'connected':
@@ -24,6 +31,7 @@ const StatusBadge = ({
       case 'partially_refunded':
         return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'sent':
+        return 'bg-yellow-50 text-yellow-700 border-yellow-200';
       case 'pending':
         return 'bg-yellow-50 text-yellow-700 border-yellow-200';
       case 'upcoming':
@@ -42,6 +50,11 @@ const StatusBadge = ({
   };
 
   const getDisplayText = () => {
+    // Display special text for sent payments that were paused
+    if (status === 'paused' && originalStatus === 'sent') {
+      return 'Paused (Sent)';
+    }
+    
     // Specifically handle Stripe connection statuses
     if (status === 'connected') return 'Connected';
     if (status === 'pending') return 'Pending';
@@ -71,7 +84,7 @@ const StatusBadge = ({
         border ${getStatusStyles()} ${className}
         ${isPaidOrRefunded ? 'ring-1 ring-offset-1 ring-green-300' : ''}
       `}
-      title={isPaidOrRefunded ? 'This status cannot be changed' : undefined}
+      title={originalStatus ? `Original status: ${originalStatus}` : undefined}
     >
       {getDisplayText()}
       {readOnlyIndicator}

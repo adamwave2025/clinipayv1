@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
+import { supabase } from '@/integrations/supabase/client';
 
 export const usePlanResumeActions = (
   selectedPlan: Plan | null,
@@ -8,8 +9,21 @@ export const usePlanResumeActions = (
   setShowPlanDetails: (show: boolean) => void
 ) => {
   const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [hasSentPayments, setHasSentPayments] = useState(false);
 
-  const handleOpenResumeDialog = () => {
+  const handleOpenResumeDialog = async () => {
+    if (selectedPlan) {
+      // Check if there are any paused payments that were previously sent
+      const { data: sentPayments } = await supabase
+        .from('payment_schedule')
+        .select('id')
+        .eq('plan_id', selectedPlan.id)
+        .eq('status', 'paused')
+        .not('payment_request_id', 'is', null);
+      
+      setHasSentPayments(sentPayments && sentPayments.length > 0);
+    }
+    
     setShowResumeDialog(true);
   };
 
@@ -28,6 +42,7 @@ export const usePlanResumeActions = (
     showResumeDialog,
     setShowResumeDialog,
     handleResumePlan: handleConfirmResumePlan,
-    handleOpenResumeDialog
+    handleOpenResumeDialog,
+    hasSentPayments
   };
 };

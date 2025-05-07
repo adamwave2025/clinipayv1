@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Sheet,
@@ -147,7 +146,10 @@ const PlanDetailsDialog = ({
                         <TableCell>{installment.dueDate}</TableCell>
                         <TableCell>{formatCurrency(installment.amount)}</TableCell>
                         <TableCell>
-                          <StatusBadge status={installment.status as any} />
+                          <StatusBadge 
+                            status={installment.status} 
+                            originalStatus={installment.originalStatus} 
+                          />
                         </TableCell>
                         <TableCell>{installment.paidDate || '-'}</TableCell>
                       </TableRow>

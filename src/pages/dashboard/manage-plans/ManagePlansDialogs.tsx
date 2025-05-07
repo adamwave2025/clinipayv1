@@ -1,4 +1,3 @@
-
 import React from 'react';
 import PlanDetailsDialog from '@/components/dashboard/payment-plans/PlanDetailsDialog';
 import InstallmentPaymentDialog from '@/components/dashboard/payment-plans/InstallmentPaymentDialog';
@@ -51,7 +50,8 @@ const ManagePlansDialogs: React.FC = () => {
     handleResumePlan,
     handleReschedulePlan,
     
-    isProcessing
+    isProcessing,
+    hasSentPayments // Add this property
   } = useManagePlansContext();
 
   return (
@@ -107,6 +107,17 @@ const ManagePlansDialogs: React.FC = () => {
         handleResumePlan={handleResumePlan}
         handleReschedulePlan={handleReschedulePlan}
         isProcessing={isProcessing}
+      />
+
+      {/* Resume Plan Dialog */}
+      <ResumePlanDialog
+        showDialog={showResumeDialog}
+        setShowDialog={setShowResumeDialog}
+        onConfirm={(resumeDate) => handleResumePlan(resumeDate)}
+        planName={selectedPlan?.title || ''}
+        patientName={selectedPlan?.patientName || ''}
+        isProcessing={isProcessing}
+        hasSentPayments={hasSentPayments} // Add this prop
       />
     </>
   );

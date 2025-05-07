@@ -66,6 +66,28 @@ export class PlanOperationsService {
    */
   static async pausePlan(plan: Plan): Promise<boolean> {
     try {
+      // Track original statuses for activity log
+      const { data: originalSchedules, error: fetchError } = await supabase
+        .from('payment_schedule')
+        .select('id, status')
+        .eq('plan_id', plan.id)
+        .in('status', getModifiableStatuses());
+        
+      if (fetchError) throw fetchError;
+      
+      // Count of schedules by status type for logging
+      const statusCounts = {
+        pending: 0,
+        sent: 0,
+        overdue: 0
+      };
+      
+      originalSchedules?.forEach(schedule => {
+        if (schedule.status === 'pending') statusCounts.pending++;
+        if (schedule.status === 'sent') statusCounts.sent++;
+        if (schedule.status === 'overdue') statusCounts.overdue++;
+      });
+      
       // 1. Update the plan status in the plans table
       const { error: planUpdateError } = await supabase
         .from('plans')
@@ -74,19 +96,24 @@ export class PlanOperationsService {
       
       if (planUpdateError) throw planUpdateError;
       
-      // 2. Update all pending payment schedules to paused
+      // 2. Update all pending, sent, and overdue payment schedules to paused
       // Only update schedules that are in a modifiable state (not paid)
+      const modifiableStatuses = getModifiableStatuses();
+      
       const { error: scheduleUpdateError } = await supabase
         .from('payment_schedule')
-        .update({ status: 'paused' })
+        .update({ 
+          status: 'paused',
+          updated_at: new Date().toISOString()
+        })
         .eq('plan_id', plan.id)
-        .eq('status', 'pending');
+        .in('status', modifiableStatuses);
         
       if (scheduleUpdateError) throw scheduleUpdateError;
       
-      // 3. Add an activity log entry
+      // 3. Add an activity log entry with detailed information about what was paused
       const { error: activityError } = await supabase
-        .from('payment_activity') // Fixed: Changed from payment_plan_activities to payment_activity
+        .from('payment_activity')
         .insert({
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,
@@ -94,7 +121,11 @@ export class PlanOperationsService {
           action_type: 'pause_plan',
           details: {
             plan_name: plan.title || plan.planName,
-            previous_status: plan.status
+            previous_status: plan.status,
+            installments_affected: originalSchedules?.length || 0,
+            pending_count: statusCounts.pending,
+            sent_count: statusCounts.sent,
+            overdue_count: statusCounts.overdue
           }
         });
       
@@ -121,6 +152,26 @@ export class PlanOperationsService {
       const effectiveResumeDate = resumeDate || new Date();
       console.log('Resuming plan with date:', effectiveResumeDate);
       
+      // Get the current paused payments to track what's being resumed
+      const { data: pausedSchedules, error: fetchError } = await supabase
+        .from('payment_schedule')
+        .select('id, status, payment_request_id')
+        .eq('plan_id', plan.id)
+        .eq('status', 'paused');
+        
+      if (fetchError) throw fetchError;
+      
+      // Count payments with payment requests that need to be reset
+      let sentPaymentsCount = 0;
+      const paymentRequestIds = [];
+      
+      for (const schedule of pausedSchedules || []) {
+        if (schedule.payment_request_id) {
+          sentPaymentsCount++;
+          paymentRequestIds.push(schedule.payment_request_id);
+        }
+      }
+      
       // Determine what the plan status should be updated to
       const newStatus = plan.hasOverduePayments ? 'overdue' : 'active';
       
@@ -132,17 +183,36 @@ export class PlanOperationsService {
       
       if (planUpdateError) throw planUpdateError;
       
-      // 2. Update all paused payment schedules back to pending
-      // Only update schedules that are in a paused state
-      const { error: scheduleUpdateError } = await supabase
+      // 2. Reset any payment requests that were sent but not paid
+      if (paymentRequestIds.length > 0) {
+        const { error: requestUpdateError } = await supabase
+          .from('payment_requests')
+          .update({ 
+            status: 'cancelled',
+            updated_at: new Date().toISOString()
+          })
+          .in('id', paymentRequestIds)
+          .is('payment_id', null); // Only update requests that don't have a payment (not paid)
+          
+        if (requestUpdateError) {
+          console.error('Error updating payment requests:', requestUpdateError);
+        }
+      }
+      
+      // 3. Update previously paused payment schedules to pending status
+      const { error: scheduleStatusUpdateError } = await supabase
         .from('payment_schedule')
-        .update({ status: 'pending' })
+        .update({ 
+          status: 'pending',
+          payment_request_id: null, // Clear payment_request_id for those that were sent
+          updated_at: new Date().toISOString()
+        })
         .eq('plan_id', plan.id)
         .eq('status', 'paused');
         
-      if (scheduleUpdateError) throw scheduleUpdateError;
+      if (scheduleStatusUpdateError) throw scheduleStatusUpdateError;
 
-      // 3. Call the database function to reschedule payments
+      // 4. Call the database function to reschedule payments
       // Format date as YYYY-MM-DD
       const formattedDate = effectiveResumeDate.toISOString().split('T')[0]; 
       
@@ -159,9 +229,9 @@ export class PlanOperationsService {
         console.log('Rescheduling result:', schedulingResult);
       }
       
-      // 4. Add an activity log entry
+      // 5. Add an activity log entry with detailed information
       const { error: activityError } = await supabase
-        .from('payment_activity') // Fixed: Changed from payment_plan_activities to payment_activity
+        .from('payment_activity')
         .insert({
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,
@@ -171,7 +241,10 @@ export class PlanOperationsService {
             plan_name: plan.title || plan.planName,
             previous_status: 'paused',
             new_status: newStatus,
-            resume_date: effectiveResumeDate.toISOString()
+            resume_date: effectiveResumeDate.toISOString(),
+            installments_affected: (pausedSchedules?.length || 0),
+            sent_payments_reset: sentPaymentsCount,
+            days_shifted: schedulingResult?.days_shifted || 0
           }
         });
       

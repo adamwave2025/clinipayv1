@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { Payment } from '@/types/payment';
@@ -76,6 +75,9 @@ export interface ManagePlansContextType {
   // Plan state helpers
   isPlanPaused: (plan: Plan | null) => boolean;
   isProcessing: boolean;
+  
+  // Add this property for handling sent payments
+  hasSentPayments: boolean;
 }
 
 const ManagePlansContext = createContext<ManagePlansContextType | undefined>(undefined);
