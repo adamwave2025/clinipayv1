@@ -18,10 +18,7 @@ import PatientActivity from './PatientActivity';
 import PatientPlans from './PatientPlans';
 import { usePlanQuickAccess } from '@/hooks/usePlanQuickAccess';
 import PlanDetailsDialog from '@/components/dashboard/payment-plans/PlanDetailsDialog';
-import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
-import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
-import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDialog';
-import ReschedulePlanDialog from '@/components/dashboard/payment-plans/ReschedulePlanDialog';
+import PlanActionDialogs from '@/components/dashboard/payment-plans/PlanActionDialogs';
 import EditPatientDialog from './EditPatientDialog';
 
 interface PatientPayment {
@@ -50,7 +47,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [currentPatient, setCurrentPatient] = useState<Patient>(patient);
   
-  // Use the plan quick access hook
+  // Use the plan quick access hook which now uses the shared implementation
   const planQuickAccess = usePlanQuickAccess();
   const {
     showPlanDetails,
@@ -327,7 +324,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
         onSuccess={handlePatientUpdated}
       />
 
-      {/* Plan Details Dialog */}
+      {/* Plan Details Dialog - now using the shared implementation */}
       <PlanDetailsDialog
         showPlanDetails={showPlanDetails}
         setShowPlanDetails={setShowPlanDetails}
@@ -344,40 +341,21 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
         isPlanPaused={isPlanPaused}
       />
 
-      {/* Plan Action Dialogs */}
-      <CancelPlanDialog
-        showDialog={showCancelDialog}
-        setShowDialog={setShowCancelDialog}
-        onConfirm={handleCancelPlan}
-        planName={selectedPlan?.title || ''}
-        patientName={selectedPlan?.patientName || ''}
-        isProcessing={isProcessing}
-      />
-
-      <PausePlanDialog
-        showDialog={showPauseDialog}
-        setShowDialog={setShowPauseDialog}
-        onConfirm={handlePausePlan}
-        planName={selectedPlan?.title || ''}
-        patientName={selectedPlan?.patientName || ''}
-        isProcessing={isProcessing}
-      />
-
-      <ResumePlanDialog
-        showDialog={showResumeDialog}
-        setShowDialog={setShowResumeDialog}
-        onConfirm={(resumeDate) => handleResumePlan(resumeDate)}
-        planName={selectedPlan?.title || ''}
-        patientName={selectedPlan?.patientName || ''}
-        isProcessing={isProcessing}
-      />
-
-      <ReschedulePlanDialog
-        showDialog={showRescheduleDialog}
-        setShowDialog={setShowRescheduleDialog}
-        onConfirm={handleReschedulePlan}
-        planName={selectedPlan?.title || ''}
-        patientName={selectedPlan?.patientName || ''}
+      {/* Use the shared action dialogs component */}
+      <PlanActionDialogs
+        showCancelDialog={showCancelDialog}
+        setShowCancelDialog={setShowCancelDialog}
+        showPauseDialog={showPauseDialog}
+        setShowPauseDialog={setShowPauseDialog}
+        showResumeDialog={showResumeDialog}
+        setShowResumeDialog={setShowResumeDialog}
+        showRescheduleDialog={showRescheduleDialog}
+        setShowRescheduleDialog={setShowRescheduleDialog}
+        selectedPlan={selectedPlan}
+        handleCancelPlan={handleCancelPlan}
+        handlePausePlan={handlePausePlan}
+        handleResumePlan={handleResumePlan}
+        handleReschedulePlan={handleReschedulePlan}
         isProcessing={isProcessing}
       />
     </>

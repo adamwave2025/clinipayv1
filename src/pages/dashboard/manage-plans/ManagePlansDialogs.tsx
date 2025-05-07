@@ -2,11 +2,8 @@
 import React from 'react';
 import PlanDetailsDialog from '@/components/dashboard/payment-plans/PlanDetailsDialog';
 import InstallmentPaymentDialog from '@/components/dashboard/payment-plans/InstallmentPaymentDialog';
-import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
-import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
-import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDialog';
-import ReschedulePlanDialog from '@/components/dashboard/payment-plans/ReschedulePlanDialog';
 import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
+import PlanActionDialogs from '@/components/dashboard/payment-plans/PlanActionDialogs';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 
 const ManagePlansDialogs: React.FC = () => {
@@ -38,24 +35,20 @@ const ManagePlansDialogs: React.FC = () => {
     setRefundDialogOpen,
     processRefund,
     
-    // Cancel plan dialog
+    // Cancel, pause, resume, reschedule plan dialog states
     showCancelDialog,
     setShowCancelDialog,
-    handleCancelPlan,
-    
-    // Pause plan dialog
     showPauseDialog,
     setShowPauseDialog,
-    handlePausePlan,
-    
-    // Resume plan dialog
     showResumeDialog,
     setShowResumeDialog,
-    handleResumePlan,
-    
-    // Reschedule plan dialog
     showRescheduleDialog,
     setShowRescheduleDialog,
+    
+    // Plan operation handlers
+    handleCancelPlan,
+    handlePausePlan,
+    handleResumePlan,
     handleReschedulePlan,
     
     isProcessing
@@ -98,43 +91,21 @@ const ManagePlansDialogs: React.FC = () => {
         patientName={paymentData?.patientName || ''}
       />
 
-      {/* Cancel Plan Dialog */}
-      <CancelPlanDialog
-        showDialog={showCancelDialog}
-        setShowDialog={setShowCancelDialog}
-        onConfirm={handleCancelPlan}
-        planName={selectedPlan?.title || ''}
-        patientName={selectedPlan?.patientName || ''}
-        isProcessing={isProcessing}
-      />
-
-      {/* Pause Plan Dialog */}
-      <PausePlanDialog
-        showDialog={showPauseDialog}
-        setShowDialog={setShowPauseDialog}
-        onConfirm={handlePausePlan}
-        planName={selectedPlan?.title || ''}
-        patientName={selectedPlan?.patientName || ''}
-        isProcessing={isProcessing}
-      />
-
-      {/* Resume Plan Dialog */}
-      <ResumePlanDialog
-        showDialog={showResumeDialog}
-        setShowDialog={setShowResumeDialog}
-        onConfirm={handleResumePlan}
-        planName={selectedPlan?.title || ''}
-        patientName={selectedPlan?.patientName || ''}
-        isProcessing={isProcessing}
-      />
-
-      {/* Reschedule Plan Dialog */}
-      <ReschedulePlanDialog
-        showDialog={showRescheduleDialog}
-        setShowDialog={setShowRescheduleDialog}
-        onConfirm={handleReschedulePlan}
-        planName={selectedPlan?.title || ''}
-        patientName={selectedPlan?.patientName || ''}
+      {/* Use the shared PlanActionDialogs component */}
+      <PlanActionDialogs
+        showCancelDialog={showCancelDialog}
+        setShowCancelDialog={setShowCancelDialog}
+        showPauseDialog={showPauseDialog}
+        setShowPauseDialog={setShowPauseDialog}
+        showResumeDialog={showResumeDialog}
+        setShowResumeDialog={setShowResumeDialog}
+        showRescheduleDialog={showRescheduleDialog}
+        setShowRescheduleDialog={setShowRescheduleDialog}
+        selectedPlan={selectedPlan}
+        handleCancelPlan={handleCancelPlan}
+        handlePausePlan={handlePausePlan}
+        handleResumePlan={handleResumePlan}
+        handleReschedulePlan={handleReschedulePlan}
         isProcessing={isProcessing}
       />
     </>
