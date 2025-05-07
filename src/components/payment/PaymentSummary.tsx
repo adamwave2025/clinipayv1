@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { formatCurrency } from '@/utils/formatters';
 
 interface PaymentSummaryProps {
   clinic: {
@@ -32,7 +33,7 @@ const PaymentSummary = ({ clinic, paymentType, amount }: PaymentSummaryProps) =>
           {paymentType}
         </p>
         <p className="text-2xl font-bold">
-          £{amount.toFixed(2)}
+          {formatCurrency(amount)}
         </p>
       </div>
     </div>
