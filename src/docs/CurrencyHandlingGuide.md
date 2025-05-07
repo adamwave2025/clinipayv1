@@ -12,6 +12,7 @@
 1. **Double conversion**: Converting an already converted value (e.g., multiplying by 100 when the value is already in pence)
 2. **Using the wrong formatter**: Using formatCurrency for user input or formatUserInputCurrency for database values
 3. **Not validating amounts**: Always validate monetary amounts before processing payments
+4. **Converting values twice**: NEVER convert pence to pounds in data formatting AND AGAIN in UI formatting
 
 ## How to Handle Currency in This Application
 
@@ -26,14 +27,19 @@ import { formatCurrency, formatUserInputCurrency } from '@/utils/formatters';
 
 // For currency validation
 import { validatePenceAmount, validatePoundsAmount } from '@/services/CurrencyService';
+
+// For debugging currency issues
+import { debugCurrencyInfo } from '@/services/CurrencyService';
 ```
 
 ### 2. Use the Right Function for the Right Context
 
 #### Database/API Values (in pence/cents)
 
-- When **displaying** database values: `formatCurrency(amount)`
+- When **displaying** database values: `formatCurrency(amount)` - which internally divides by 100
 - When **validating** database values: `validatePenceAmount(amount, 'context')`
+- NEVER convert database values to pounds in a data formatting function AND THEN use `formatCurrency` 
+  which would result in double conversion
 
 #### User Input/UI Values (in pounds/dollars)
 
@@ -60,6 +66,23 @@ debugCurrencyInfo(amount, 'Payment amount from database', true);
 // For user input values (in pounds)
 debugCurrencyInfo(amount, 'User input amount', false);
 ```
+
+### 5. Data Flow for Currency Values
+
+**CRITICAL**: Follow this flow to avoid double conversion errors
+
+1. **Database → UI Display**:
+   - Retrieve value from DB (in pence)
+   - Pass directly to UI components
+   - Use `formatCurrency(amount)` in the UI component for display
+
+2. **User Input → Database**:
+   - Capture user input (in pounds)
+   - Use `poundsToPence(amount)` before storing in DB
+
+3. **Database → API Call**:
+   - Retrieve value from DB (in pence)
+   - Pass directly to API without any conversion (most APIs like Stripe expect pence/cents)
 
 ## Example Flow: Processing a Payment
 
@@ -97,4 +120,21 @@ const amountInPence = poundsToPence(userInputAmount); // 1050
 
 // 5. Save to database
 await db.savePayment({ amount: amountInPence }); // Stores 1050 (not 105000!)
+```
+
+## NEVER DO THIS - Common Mistakes to Avoid
+
+```typescript
+// MISTAKE 1: Double conversion
+// First converting in a formatter function
+const plan = {
+  ...dbPlan,
+  amount: dbPlan.amount / 100, // WRONG! Don't convert here if using formatCurrency later
+};
+// Then formatting again in UI
+<span>{formatCurrency(plan.amount)}</span> // This divides by 100 AGAIN!
+
+// MISTAKE 2: Converting directly in JSX
+// The database value is in pence (e.g., 1000)
+<span>£{(payment.amount / 100).toFixed(2)}</span> // WRONG! Use formatCurrency instead
 ```

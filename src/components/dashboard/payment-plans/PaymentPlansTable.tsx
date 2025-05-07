@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   Table, 
@@ -13,6 +14,7 @@ import { PaymentLink } from '@/types/payment';
 import { formatCurrency } from '@/utils/formatters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { debugCurrencyInfo } from '@/services/CurrencyService';
 
 interface PaymentPlansTableProps {
   filteredPlans: PaymentLink[];
@@ -128,40 +130,46 @@ const PaymentPlansTable = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPlans.map((plan) => (
-                <TableRow key={plan.id}>
-                  <TableCell className="font-medium">{plan.title}</TableCell>
-                  <TableCell>{plan.description || '-'}</TableCell>
-                  <TableCell>{formatCurrency(plan.amount)}</TableCell>
-                  <TableCell className="capitalize">{plan.paymentCycle || '-'}</TableCell>
-                  <TableCell>{plan.paymentCount || '-'}</TableCell>
-                  <TableCell>{formatCurrency(plan.planTotalAmount || 0)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end">
-                      {isArchiveView ? (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => onUnarchivePlan(plan)}
-                          className="text-green-500"
-                        >
-                          <ArrowUpRight className="h-4 w-4 mr-1" />
-                          Restore
-                        </Button>
-                      ) : (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => onArchivePlan(plan)}
-                        >
-                          <Archive className="h-4 w-4 mr-1" />
-                          Archive
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filteredPlans.map((plan) => {
+                // Debug currency values
+                debugCurrencyInfo(plan.amount, `Template ${plan.id} amount`, true);
+                debugCurrencyInfo(plan.planTotalAmount || 0, `Template ${plan.id} total amount`, true);
+                
+                return (
+                  <TableRow key={plan.id}>
+                    <TableCell className="font-medium">{plan.title}</TableCell>
+                    <TableCell>{plan.description || '-'}</TableCell>
+                    <TableCell>{formatCurrency(plan.amount)}</TableCell>
+                    <TableCell className="capitalize">{plan.paymentCycle || '-'}</TableCell>
+                    <TableCell>{plan.paymentCount || '-'}</TableCell>
+                    <TableCell>{formatCurrency(plan.planTotalAmount || 0)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end">
+                        {isArchiveView ? (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => onUnarchivePlan(plan)}
+                            className="text-green-500"
+                          >
+                            <ArrowUpRight className="h-4 w-4 mr-1" />
+                            Restore
+                          </Button>
+                        ) : (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => onArchivePlan(plan)}
+                          >
+                            <Archive className="h-4 w-4 mr-1" />
+                            Archive
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}

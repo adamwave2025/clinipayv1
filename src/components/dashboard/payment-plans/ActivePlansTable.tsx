@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import StatusBadge from '@/components/common/StatusBadge';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/utils/formatters';
+import { debugCurrencyInfo } from '@/services/CurrencyService';
 
 interface ActivePlansTableProps {
   isLoading: boolean;
@@ -93,36 +94,41 @@ const ActivePlansTable = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {plans.map((plan) => (
-                <TableRow 
-                  key={plan.id} 
-                  className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => onViewPlanDetails(plan)}
-                >
-                  <TableCell className="font-medium">{plan.patientName}</TableCell>
-                  <TableCell>{plan.planName}</TableCell>
-                  <TableCell>{formatCurrency(plan.amount)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="w-28 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-primary rounded-full" 
-                          style={{ width: `${plan.progress}%` }}
-                        />
+              {plans.map((plan) => {
+                // Debug currency info to help trace monetary values
+                debugCurrencyInfo(plan.amount, `Plan ${plan.id} amount`, true);
+                
+                return (
+                  <TableRow 
+                    key={plan.id} 
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => onViewPlanDetails(plan)}
+                  >
+                    <TableCell className="font-medium">{plan.patientName}</TableCell>
+                    <TableCell>{plan.planName}</TableCell>
+                    <TableCell>{formatCurrency(plan.amount)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="w-28 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-primary rounded-full" 
+                            style={{ width: `${plan.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {plan.paidInstallments}/{plan.totalInstallments}
+                        </span>
                       </div>
-                      <span className="text-xs text-gray-500">
-                        {plan.paidInstallments}/{plan.totalInstallments}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={plan.status} />
-                  </TableCell>
-                  <TableCell>
-                    {formatDate(plan.nextDueDate)}
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={plan.status} />
+                    </TableCell>
+                    <TableCell>
+                      {formatDate(plan.nextDueDate)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}

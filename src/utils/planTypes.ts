@@ -42,10 +42,10 @@ export interface PlanInstallment {
  * Helper function to format a plan from the database into our frontend format
  * 
  * IMPORTANT: The database stores monetary values in cents (1/100 of currency unit)
- * So we ALWAYS divide by 100 when formatting amounts for display
+ * We keep amounts in pence/cents here because formatCurrency() will handle the conversion
  * 
  * @param dbPlan - Raw plan data from database
- * @returns Formatted Plan object with amounts in standard currency units
+ * @returns Formatted Plan object with amounts still in pence/cents
  */
 export const formatPlanFromDb = (dbPlan: any): Plan => {
   // If the plan comes directly from the plans table
@@ -59,8 +59,8 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
       title: dbPlan.title || 'Payment Plan',
       description: dbPlan.description || '',
       status: dbPlan.status,
-      totalAmount: (dbPlan.total_amount || 0) / 100, // Convert cents to standard currency units
-      installmentAmount: (dbPlan.installment_amount || 0) / 100, // Convert cents to standard currency units
+      totalAmount: dbPlan.total_amount || 0, // Keep in pence, do not divide by 100
+      installmentAmount: dbPlan.installment_amount || 0, // Keep in pence, do not divide by 100
       totalInstallments: dbPlan.total_installments,
       paidInstallments: dbPlan.paid_installments || 0,
       progress: dbPlan.progress || 0,
@@ -72,7 +72,7 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
       updatedAt: dbPlan.updated_at,
       // Set backward compatibility fields
       planName: dbPlan.title || 'Payment Plan',
-      amount: (dbPlan.total_amount || 0) / 100 // Convert cents to standard currency units
+      amount: dbPlan.total_amount || 0 // Keep in pence, do not divide by 100
     };
   }
   
@@ -86,8 +86,8 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
     title: dbPlan.title || 'Payment Plan',
     description: dbPlan.description || '',
     status: dbPlan.status,
-    totalAmount: (dbPlan.total_amount || 0) / 100, // Convert cents to standard currency units
-    installmentAmount: (dbPlan.installment_amount || 0) / 100, // Convert cents to standard currency units
+    totalAmount: dbPlan.total_amount || 0, // Keep in pence, do not divide by 100
+    installmentAmount: dbPlan.installment_amount || 0, // Keep in pence, do not divide by 100
     totalInstallments: dbPlan.total_installments,
     paidInstallments: dbPlan.paid_installments || 0,
     progress: dbPlan.progress || 0,
@@ -99,6 +99,6 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
     updatedAt: dbPlan.updated_at,
     // Set backward compatibility fields
     planName: dbPlan.title || 'Payment Plan',
-    amount: (dbPlan.total_amount || 0) / 100 // Convert cents to standard currency units
+    amount: dbPlan.total_amount || 0 // Keep in pence, do not divide by 100
   };
 };
