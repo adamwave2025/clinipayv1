@@ -8,10 +8,10 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { LinkFormData } from '@/hooks/useCreateLinkForm';
 import { Check } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { formatCurrency } from '@/utils/formatters';
+import { formatUserInputCurrency } from '@/utils/formatters';
+import { LinkFormData } from '@/hooks/useCreateLinkForm';
 
 interface CreatePlanConfirmDialogProps {
   open: boolean;
@@ -59,10 +59,10 @@ const CreatePlanConfirmDialog = ({
           <div className="space-y-2">
             <h3 className="font-medium text-lg">{formData.paymentTitle}</h3>
             <div className="text-sm space-y-1">
-              <p><span className="font-medium">Amount per payment:</span> {formatCurrency(parseFloat(formData.amount))}</p>
+              <p><span className="font-medium">Amount per payment:</span> {formatUserInputCurrency(parseFloat(formData.amount))}</p>
               <p><span className="font-medium">Number of payments:</span> {formData.paymentCount}</p>
               <p><span className="font-medium">Frequency:</span> {getFrequencyText(formData.paymentCycle)}</p>
-              <p><span className="font-medium">Total value:</span> {formatCurrency(totalAmount)}</p>
+              <p><span className="font-medium">Total value:</span> {formatUserInputCurrency(totalAmount)}</p>
               {formData.description && (
                 <p className="mt-2 text-gray-600">{formData.description}</p>
               )}

@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatCurrency } from '@/utils/formatters';
+import { formatUserInputCurrency } from '@/utils/formatters';
 
 interface PaymentPlanFieldsProps {
   paymentCount: string;
@@ -71,7 +71,7 @@ const PaymentPlanFields: React.FC<PaymentPlanFieldsProps> = ({
       
       <div className="col-span-1 md:col-span-2">
         <p className="text-xs text-gray-500">
-          Total plan value: {formatCurrency(totalAmount)}
+          Total plan value: {formatUserInputCurrency(totalAmount)}
         </p>
       </div>
     </div>

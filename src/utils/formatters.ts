@@ -75,6 +75,32 @@ export const formatCurrency = (amount: number | null | undefined, currency: stri
 };
 
 /**
+ * Format a number as currency (£) WITHOUT dividing by 100
+ * 
+ * IMPORTANT: This formatter is specifically for values that are ALREADY in standard currency units (pounds/dollars/etc.)
+ * such as user input values. It does NOT divide by 100 like the regular formatCurrency function.
+ * 
+ * Use this function ONLY for displaying user input amounts or calculated values that are already in pounds/dollars,
+ * NOT for values from the database (which are stored in pence/cents).
+ *
+ * @param amount - The amount in standard currency units (pounds/dollars/etc.)
+ * @param currency - The currency symbol
+ * @returns Formatted currency string
+ */
+export const formatUserInputCurrency = (amount: number | string | null | undefined, currency: string = '£'): string => {
+  if (amount === null || amount === undefined) return `${currency}0.00`;
+  
+  // Convert to number if it's a string
+  const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  
+  // Check if it's a valid number
+  if (isNaN(numericAmount)) return `${currency}0.00`;
+  
+  // Format with 2 decimal places and the currency symbol - without dividing by 100
+  return `${currency}${numericAmount.toFixed(2)}`;
+};
+
+/**
  * Format a number as a percentage
  * @param value - The percentage value
  * @returns Formatted percentage string
