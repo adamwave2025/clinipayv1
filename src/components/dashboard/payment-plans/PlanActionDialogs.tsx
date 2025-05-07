@@ -25,6 +25,8 @@ interface PlanActionDialogsProps {
   handleReschedulePlan: (newStartDate: Date) => Promise<void>;
   
   isProcessing: boolean;
+  hasSentPayments?: boolean;
+  hasOverduePayments?: boolean;
 }
 
 /**
@@ -45,7 +47,9 @@ const PlanActionDialogs: React.FC<PlanActionDialogsProps> = ({
   handlePausePlan,
   handleResumePlan,
   handleReschedulePlan,
-  isProcessing
+  isProcessing,
+  hasSentPayments = false,
+  hasOverduePayments = false
 }) => {
   return (
     <>
@@ -74,6 +78,8 @@ const PlanActionDialogs: React.FC<PlanActionDialogsProps> = ({
         planName={selectedPlan?.title || ''}
         patientName={selectedPlan?.patientName || ''}
         isProcessing={isProcessing}
+        hasSentPayments={hasSentPayments}
+        hasOverduePayments={hasOverduePayments}
       />
 
       <RescheduleDialog />
@@ -88,7 +94,8 @@ const RescheduleDialog = () => {
     setShowRescheduleDialog, 
     handleReschedulePlan, 
     isProcessing,
-    hasSentPayments
+    hasSentPayments,
+    hasOverduePayments
   } = useManagePlansContext();
   
   return (
@@ -100,9 +107,9 @@ const RescheduleDialog = () => {
       patientName={selectedPlan?.patientName || 'Patient'}
       isProcessing={isProcessing}
       hasSentPayments={hasSentPayments}
+      hasOverduePayments={hasOverduePayments || (selectedPlan?.status === 'overdue')}
     />
   );
 };
 
 export default PlanActionDialogs;
-

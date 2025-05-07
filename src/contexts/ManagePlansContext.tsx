@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { Payment } from '@/types/payment';
@@ -65,13 +66,14 @@ export interface ManagePlansContextType {
   setShowResumeDialog: (show: boolean) => void;
   handleResumePlan: (resumeDate: Date) => Promise<void>;
   handleOpenResumeDialog: () => void;
+  hasSentPayments: boolean;
   
   // Reschedule plan properties
   showRescheduleDialog: boolean;
   setShowRescheduleDialog: (show: boolean) => void;
   handleReschedulePlan: (newStartDate: Date) => Promise<void>;
   handleOpenRescheduleDialog: () => void;
-  hasSentPayments: boolean;
+  hasOverduePayments: boolean;
   
   // Plan state helpers
   isPlanPaused: (plan: Plan | null) => boolean;

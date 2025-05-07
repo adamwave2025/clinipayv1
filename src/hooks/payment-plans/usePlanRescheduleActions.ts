@@ -10,19 +10,27 @@ export const usePlanRescheduleActions = (
 ) => {
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [hasSentPayments, setHasSentPayments] = useState(false);
+  const [hasOverduePayments, setHasOverduePayments] = useState(false);
 
   const handleOpenRescheduleDialog = async () => {
     if (selectedPlan) {
       // Check if the plan has any payments in 'sent' status
-      const { data: sentPayments, error } = await supabase
+      const { data: sentPayments, error: sentError } = await supabase
         .from('payment_schedule')
         .select('id')
         .eq('plan_id', selectedPlan.id)
         .eq('status', 'sent');
       
-      // Set state based on whether there are sent payments
-      const hasSent = sentPayments && sentPayments.length > 0;
-      setHasSentPayments(hasSent);
+      // Check if the plan has any payments in 'overdue' status
+      const { data: overduePayments, error: overdueError } = await supabase
+        .from('payment_schedule')
+        .select('id')
+        .eq('plan_id', selectedPlan.id)
+        .eq('status', 'overdue');
+      
+      // Set state based on whether there are sent or overdue payments
+      setHasSentPayments(sentPayments && sentPayments.length > 0);
+      setHasOverduePayments(overduePayments && overduePayments.length > 0 || selectedPlan.status === 'overdue');
     }
     
     setShowRescheduleDialog(true);
@@ -44,6 +52,7 @@ export const usePlanRescheduleActions = (
     setShowRescheduleDialog,
     handleReschedulePlan: handleConfirmReschedulePlan,
     handleOpenRescheduleDialog,
-    hasSentPayments
+    hasSentPayments,
+    hasOverduePayments
   };
 };

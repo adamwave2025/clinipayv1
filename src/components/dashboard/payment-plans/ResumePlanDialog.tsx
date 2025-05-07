@@ -30,8 +30,8 @@ interface ResumePlanDialogProps {
   planName: string;
   patientName: string;
   isProcessing?: boolean;
-  // Add this prop to indicate if there are sent payments
   hasSentPayments?: boolean;
+  hasOverduePayments?: boolean; // New prop to indicate if plan had overdue payments when paused
 }
 
 const ResumePlanDialog = ({
@@ -41,7 +41,8 @@ const ResumePlanDialog = ({
   planName,
   patientName,
   isProcessing = false,
-  hasSentPayments = false, // Default to false if not provided
+  hasSentPayments = false,
+  hasOverduePayments = false, // Default to false if not provided
 }: ResumePlanDialogProps) => {
   // Initialize with current date but set hours to midnight
   const today = new Date();
@@ -80,6 +81,16 @@ const ResumePlanDialog = ({
             <AlertDescription>
               This plan contains payments that were already sent to the patient but not yet paid.
               These will be reset when you resume the plan and will need to be sent again.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {hasOverduePayments && (
+          <Alert variant="default" className="bg-red-50 border-red-300 text-red-800">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              This plan had overdue payments before it was paused. Upon resuming, 
+              payments that are still overdue will be marked as such.
             </AlertDescription>
           </Alert>
         )}

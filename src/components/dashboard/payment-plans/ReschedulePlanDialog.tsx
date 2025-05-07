@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, AlertCircle } from "lucide-react";
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
@@ -18,6 +18,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Alert,
+  AlertDescription,
+} from '@/components/ui/alert';
 
 interface ReschedulePlanDialogProps {
   showDialog: boolean;
@@ -27,6 +31,7 @@ interface ReschedulePlanDialogProps {
   patientName: string;
   isProcessing?: boolean;
   hasSentPayments?: boolean;
+  hasOverduePayments?: boolean; // New prop to check for overdue payments
 }
 
 const ReschedulePlanDialog = ({
@@ -37,6 +42,7 @@ const ReschedulePlanDialog = ({
   patientName,
   isProcessing = false,
   hasSentPayments = false,
+  hasOverduePayments = false, // Default to false if not provided
 }: ReschedulePlanDialogProps) => {
   // Initialize with current date but set hours to midnight
   const today = new Date();
@@ -119,6 +125,16 @@ const ReschedulePlanDialog = ({
                   You'll need to send them again after rescheduling.
                 </p>
               </div>
+            )}
+
+            {hasOverduePayments && (
+              <Alert className="mt-4 bg-red-50 border-red-200">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-xs text-red-700">
+                  <strong>Warning:</strong> This plan has overdue payments. 
+                  Rescheduling will reset the overdue status and give the patient more time to pay.
+                </AlertDescription>
+              </Alert>
             )}
           </div>
         </div>

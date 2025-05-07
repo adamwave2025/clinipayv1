@@ -10,6 +10,7 @@ export const usePlanResumeActions = (
 ) => {
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [hasSentPayments, setHasSentPayments] = useState(false);
+  const [hasOverduePayments, setHasOverduePayments] = useState(false);
 
   const handleOpenResumeDialog = async () => {
     if (selectedPlan) {
@@ -21,7 +22,30 @@ export const usePlanResumeActions = (
         .eq('status', 'paused')
         .not('payment_request_id', 'is', null);
       
+      // Check if the plan had any overdue payments before being paused
+      // This captures plans that were paused while having overdue status
+      const wasOverdue = selectedPlan.hasOverduePayments;
+      
+      // Also check for payments that were explicitly marked as overdue before pausing
+      const { data: overduePayments } = await supabase
+        .from('payment_activity')
+        .select('details')
+        .eq('payment_link_id', selectedPlan.paymentLinkId)
+        .eq('action_type', 'pause_plan')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      // Check if the pause activity log indicates overdue payments were paused
+      let hadOverduePaymentsWhenPaused = false;
+      if (overduePayments && overduePayments.length > 0) {
+        const details = overduePayments[0].details;
+        hadOverduePaymentsWhenPaused = details && 
+                                       details.overdue_count && 
+                                       details.overdue_count > 0;
+      }
+      
       setHasSentPayments(sentPayments && sentPayments.length > 0);
+      setHasOverduePayments(wasOverdue || hadOverduePaymentsWhenPaused);
     }
     
     setShowResumeDialog(true);
@@ -43,6 +67,7 @@ export const usePlanResumeActions = (
     setShowResumeDialog,
     handleResumePlan: handleConfirmResumePlan,
     handleOpenResumeDialog,
-    hasSentPayments
+    hasSentPayments,
+    hasOverduePayments
   };
 };

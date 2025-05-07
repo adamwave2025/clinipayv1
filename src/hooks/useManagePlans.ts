@@ -161,11 +161,14 @@ export const useManagePlans = (): ManagePlansContextType => {
     openRefundDialog: enhancedOpenRefundDialog,
     processRefund,
     
-    // Include all plan action properties
+    // Include all plan action properties with hasOverduePayments added
     ...cancelActions,
     ...pauseActions,
     ...resumeActions,
     ...rescheduleActions,
+    
+    // Explicitly add hasOverduePayments from rescheduleActions
+    hasOverduePayments: rescheduleActions.hasOverduePayments,
     
     // Plan state helpers
     isPlanPaused,

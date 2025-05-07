@@ -155,7 +155,7 @@ export class PlanOperationsService {
       // Get the current paused payments to track what's being resumed
       const { data: pausedSchedules, error: fetchError } = await supabase
         .from('payment_schedule')
-        .select('id, status, payment_request_id')
+        .select('id, status, payment_request_id, due_date')
         .eq('plan_id', plan.id)
         .eq('status', 'paused');
         
@@ -172,8 +172,9 @@ export class PlanOperationsService {
         }
       }
       
-      // Determine what the plan status should be updated to
-      const newStatus = plan.hasOverduePayments ? 'overdue' : 'active';
+      // Determine what the plan status should be updated to initially
+      const wasOverdue = plan.hasOverduePayments;
+      let newStatus = wasOverdue ? 'overdue' : 'active';
       
       // 1. Update the plan status in the plans table
       const { error: planUpdateError } = await supabase
@@ -228,8 +229,53 @@ export class PlanOperationsService {
       } else {
         console.log('Rescheduling result:', schedulingResult);
       }
+
+      // 5. Check if any payments should be marked as overdue now
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
       
-      // 5. Add an activity log entry with detailed information
+      const { data: potentialOverduePayments, error: overdueCheckError } = await supabase
+        .from('payment_schedule')
+        .select('id')
+        .eq('plan_id', plan.id)
+        .eq('status', 'pending')
+        .lt('due_date', todayStr);
+      
+      if (!overdueCheckError && potentialOverduePayments && potentialOverduePayments.length > 0) {
+        // There are payments that should be marked as overdue
+        console.log(`Found ${potentialOverduePayments.length} payments that are now overdue`);
+        
+        // Update these payments to overdue status
+        const { error: markOverdueError } = await supabase
+          .from('payment_schedule')
+          .update({ 
+            status: 'overdue',
+            updated_at: new Date().toISOString()
+          })
+          .in('id', potentialOverduePayments.map(p => p.id));
+          
+        if (markOverdueError) {
+          console.error('Error marking payments as overdue:', markOverdueError);
+        } else {
+          // Also make sure the plan's status is set to overdue
+          if (potentialOverduePayments.length > 0 && newStatus !== 'overdue') {
+            const { error: updatePlanStatusError } = await supabase
+              .from('plans')
+              .update({ 
+                status: 'overdue',
+                has_overdue_payments: true
+              })
+              .eq('id', plan.id);
+            
+            if (updatePlanStatusError) {
+              console.error('Error updating plan to overdue status:', updatePlanStatusError);
+            }
+          }
+        }
+      }
+      
+      // 6. Add an activity log entry with detailed information
       const { error: activityError } = await supabase
         .from('payment_activity')
         .insert({
@@ -244,6 +290,7 @@ export class PlanOperationsService {
             resume_date: effectiveResumeDate.toISOString(),
             installments_affected: (pausedSchedules?.length || 0),
             sent_payments_reset: sentPaymentsCount,
+            overdue_payments_found: potentialOverduePayments?.length || 0,
             days_shifted: schedulingResult ? 
               (typeof schedulingResult === 'object' && 'days_shifted' in schedulingResult ? 
                 schedulingResult.days_shifted : 0) : 0
@@ -273,23 +320,6 @@ export class PlanOperationsService {
       const formattedDate = newStartDate.toISOString().split('T')[0];
       console.log('Rescheduling plan with formatted date:', formattedDate);
       
-      // 1. Update the plan start date in the plans table
-      const { error: planUpdateError } = await supabase
-        .from('plans')
-        .update({ start_date: formattedDate })
-        .eq('id', plan.id);
-      
-      if (planUpdateError) throw planUpdateError;
-      
-      // 2. Get the current payment schedules - only get schedules that can be modified (not paid)
-      const { data: schedules, error: schedulesError } = await supabase
-        .from('payment_schedule')
-        .select('*')
-        .eq('plan_id', plan.id)
-        .in('status', getModifiableStatuses());
-        
-      if (schedulesError) throw schedulesError;
-      
       // Get the current plan to calculate days difference
       const { data: currentPlan, error: planError } = await supabase
         .from('plans')
@@ -309,6 +339,29 @@ export class PlanOperationsService {
       // Track how many payment requests we need to cancel
       let sentPaymentsCount = 0;
       const paymentRequestIds = [];
+      
+      // 1. Update the plan status to 'active' and reset overdue flags if previously overdue
+      const wasOverdue = plan.status === 'overdue' || plan.hasOverduePayments;
+      
+      const { error: planUpdateError } = await supabase
+        .from('plans')
+        .update({ 
+          start_date: formattedDate,
+          status: 'active', // Reset to active since we're rescheduling
+          has_overdue_payments: false // Reset the overdue flag
+        })
+        .eq('id', plan.id);
+      
+      if (planUpdateError) throw planUpdateError;
+      
+      // 2. Get the current payment schedules - only get schedules that can be modified
+      const { data: schedules, error: schedulesError } = await supabase
+        .from('payment_schedule')
+        .select('*')
+        .eq('plan_id', plan.id)
+        .in('status', getModifiableStatuses());
+        
+      if (schedulesError) throw schedulesError;
       
       // Process sent payments first - we need to cancel payment requests and reset status
       for (const schedule of schedules || []) {
@@ -335,6 +388,9 @@ export class PlanOperationsService {
         }
       }
       
+      // Count how many overdue payments we reset
+      let overduePaymentsCount = 0;
+      
       // Update each payment schedule
       for (const schedule of schedules || []) {
         const currentDueDate = new Date(schedule.due_date);
@@ -344,13 +400,20 @@ export class PlanOperationsService {
         const formattedDueDate = newDueDate.toISOString().split('T')[0];
         
         const updateData: any = { 
-          due_date: formattedDueDate 
+          due_date: formattedDueDate
         };
         
-        // Reset payment_request_id and change status to pending for sent payments
-        if (schedule.status === 'sent') {
+        // Reset status to pending for sent or overdue payments
+        if (schedule.status === 'sent' || schedule.status === 'overdue') {
           updateData.status = 'pending';
-          updateData.payment_request_id = null;
+          
+          if (schedule.status === 'overdue') {
+            overduePaymentsCount++;
+          }
+          
+          if (schedule.status === 'sent') {
+            updateData.payment_request_id = null;
+          }
         }
         
         const { error: updateError } = await supabase
@@ -375,10 +438,13 @@ export class PlanOperationsService {
           details: {
             plan_name: plan.title || plan.planName,
             previous_status: plan.status,
+            was_overdue: wasOverdue,
+            new_status: 'active',
             new_start_date: formattedDate,
             days_shifted: diffDays,
             affected_payments: schedules?.length || 0,
-            sent_payments_reset: sentPaymentsCount
+            sent_payments_reset: sentPaymentsCount,
+            overdue_payments_reset: overduePaymentsCount
           }
         });
       
