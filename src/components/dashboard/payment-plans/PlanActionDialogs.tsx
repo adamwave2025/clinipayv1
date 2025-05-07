@@ -20,8 +20,8 @@ interface PlanActionDialogsProps {
   
   handleCancelPlan: () => Promise<void>;
   handlePausePlan: () => Promise<void>;
-  handleResumePlan: (resumeDate: Date) => Promise<void>;
-  handleReschedulePlan: () => Promise<void>;
+  handleResumePlan: (resumeDate?: Date) => Promise<void>;
+  handleReschedulePlan: (newStartDate: Date) => Promise<void>;
   
   isProcessing: boolean;
 }
@@ -78,7 +78,7 @@ const PlanActionDialogs: React.FC<PlanActionDialogsProps> = ({
       <ReschedulePlanDialog
         showDialog={showRescheduleDialog}
         setShowDialog={setShowRescheduleDialog}
-        onConfirm={handleReschedulePlan}
+        onConfirm={(newStartDate) => handleReschedulePlan(newStartDate)}
         planName={selectedPlan?.title || ''}
         patientName={selectedPlan?.patientName || ''}
         isProcessing={isProcessing}

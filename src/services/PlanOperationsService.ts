@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -199,16 +200,52 @@ export class PlanOperationsService {
       
       if (planUpdateError) throw planUpdateError;
       
-      // 2. Call the reschedule_payment_plan RPC function
-      const { data: schedulingResult, error: schedulingError } = await supabase
-        .rpc('reschedule_payment_plan', { 
-          plan_id: plan.id,
-          new_start_date: formattedDate
-        });
+      // 2. Since we don't have the reschedule_payment_plan RPC function yet,
+      // We'll manually update the payment schedule by shifting all pending payments
+      // based on the difference between the current start date and new start date
       
-      if (schedulingError) {
-        console.error('Error rescheduling payments:', schedulingError);
-        throw schedulingError;
+      // First, get the current payment schedules
+      const { data: schedules, error: schedulesError } = await supabase
+        .from('payment_schedule')
+        .select('*')
+        .eq('plan_id', plan.id)
+        .eq('status', 'pending');
+        
+      if (schedulesError) throw schedulesError;
+      
+      // Get the current plan to calculate days difference
+      const { data: currentPlan, error: planError } = await supabase
+        .from('plans')
+        .select('start_date')
+        .eq('id', plan.id)
+        .single();
+      
+      if (planError) throw planError;
+      
+      // Calculate the difference in days between the old and new start dates
+      const oldStartDate = new Date(currentPlan.start_date);
+      const diffTime = newStartDate.getTime() - oldStartDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      console.log('Shifting all pending payments by', diffDays, 'days');
+      
+      // Update each pending payment schedule
+      for (const schedule of schedules || []) {
+        const currentDueDate = new Date(schedule.due_date);
+        const newDueDate = new Date(currentDueDate);
+        newDueDate.setDate(currentDueDate.getDate() + diffDays);
+        
+        const formattedDueDate = newDueDate.toISOString().split('T')[0];
+        
+        const { error: updateError } = await supabase
+          .from('payment_schedule')
+          .update({ due_date: formattedDueDate })
+          .eq('id', schedule.id);
+          
+        if (updateError) {
+          console.error('Error updating schedule:', updateError);
+          throw updateError;
+        }
       }
       
       // 3. Add an activity log entry
