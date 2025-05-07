@@ -71,13 +71,11 @@ export interface ManagePlansContextType {
   setShowRescheduleDialog: (show: boolean) => void;
   handleReschedulePlan: (newStartDate: Date) => Promise<void>;
   handleOpenRescheduleDialog: () => void;
+  hasSentPayments: boolean;
   
   // Plan state helpers
   isPlanPaused: (plan: Plan | null) => boolean;
   isProcessing: boolean;
-  
-  // Add this property for handling sent payments
-  hasSentPayments: boolean;
 }
 
 const ManagePlansContext = createContext<ManagePlansContextType | undefined>(undefined);

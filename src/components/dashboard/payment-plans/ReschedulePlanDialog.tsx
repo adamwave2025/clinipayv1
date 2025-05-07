@@ -26,6 +26,7 @@ interface ReschedulePlanDialogProps {
   planName: string;
   patientName: string;
   isProcessing?: boolean;
+  hasSentPayments?: boolean;
 }
 
 const ReschedulePlanDialog = ({
@@ -35,6 +36,7 @@ const ReschedulePlanDialog = ({
   planName,
   patientName,
   isProcessing = false,
+  hasSentPayments = false,
 }: ReschedulePlanDialogProps) => {
   // Initialize with current date but set hours to midnight
   const today = new Date();
@@ -108,6 +110,16 @@ const ReschedulePlanDialog = ({
             <p className="text-xs text-muted-foreground mt-1">
               All future payments will be rescheduled based on this date.
             </p>
+            
+            {hasSentPayments && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-xs text-amber-700">
+                  <strong>Note:</strong> This plan has payment requests that have been sent to the patient. 
+                  Rescheduling will cancel those requests and reset them to pending status. 
+                  You'll need to send them again after rescheduling.
+                </p>
+              </div>
+            )}
           </div>
         </div>
         

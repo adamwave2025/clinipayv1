@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { Plan } from '@/utils/planTypes';
 import CancelPlanDialog from './CancelPlanDialog';
 import PausePlanDialog from './PausePlanDialog';
 import ResumePlanDialog from './ResumePlanDialog';
 import ReschedulePlanDialog from './ReschedulePlanDialog';
+import { useManagePlansContext } from '@/utils/planContext';
 
 interface PlanActionDialogsProps {
   showCancelDialog: boolean;
@@ -75,15 +75,31 @@ const PlanActionDialogs: React.FC<PlanActionDialogsProps> = ({
         isProcessing={isProcessing}
       />
 
-      <ReschedulePlanDialog
-        showDialog={showRescheduleDialog}
-        setShowDialog={setShowRescheduleDialog}
-        onConfirm={(newStartDate) => handleReschedulePlan(newStartDate)}
-        planName={selectedPlan?.title || ''}
-        patientName={selectedPlan?.patientName || ''}
-        isProcessing={isProcessing}
-      />
+      <RescheduleDialog />
     </>
+  );
+};
+
+const RescheduleDialog = () => {
+  const { 
+    selectedPlan, 
+    showRescheduleDialog, 
+    setShowRescheduleDialog, 
+    handleReschedulePlan, 
+    isProcessing,
+    hasSentPayments
+  } = useManagePlansContext();
+  
+  return (
+    <ReschedulePlanDialog
+      showDialog={showRescheduleDialog}
+      setShowDialog={setShowRescheduleDialog}
+      onConfirm={handleReschedulePlan}
+      planName={selectedPlan?.title || selectedPlan?.planName || 'Payment Plan'}
+      patientName={selectedPlan?.patientName || 'Patient'}
+      isProcessing={isProcessing}
+      hasSentPayments={hasSentPayments}
+    />
   );
 };
 

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -280,11 +281,7 @@ export class PlanOperationsService {
       
       if (planUpdateError) throw planUpdateError;
       
-      // 2. Since we don't have the reschedule_payment_plan RPC function yet,
-      // We'll manually update the payment schedule by shifting all pending payments
-      // based on the difference between the current start date and new start date
-      
-      // First, get the current payment schedules - only get schedules that can be modified (not paid)
+      // 2. Get the current payment schedules - only get schedules that can be modified (not paid)
       const { data: schedules, error: schedulesError } = await supabase
         .from('payment_schedule')
         .select('*')
@@ -309,7 +306,36 @@ export class PlanOperationsService {
       
       console.log('Shifting all pending payments by', diffDays, 'days');
       
-      // Update each pending payment schedule
+      // Track how many payment requests we need to cancel
+      let sentPaymentsCount = 0;
+      const paymentRequestIds = [];
+      
+      // Process sent payments first - we need to cancel payment requests and reset status
+      for (const schedule of schedules || []) {
+        if (schedule.status === 'sent' && schedule.payment_request_id) {
+          sentPaymentsCount++;
+          paymentRequestIds.push(schedule.payment_request_id);
+        }
+      }
+      
+      // Cancel any payment requests for sent payments
+      if (paymentRequestIds.length > 0) {
+        const { error: requestUpdateError } = await supabase
+          .from('payment_requests')
+          .update({ 
+            status: 'cancelled',
+            updated_at: new Date().toISOString()
+          })
+          .in('id', paymentRequestIds)
+          .is('payment_id', null); // Only update requests that don't have a payment (not paid)
+          
+        if (requestUpdateError) {
+          console.error('Error canceling payment requests:', requestUpdateError);
+          // Continue execution even if this fails
+        }
+      }
+      
+      // Update each payment schedule
       for (const schedule of schedules || []) {
         const currentDueDate = new Date(schedule.due_date);
         const newDueDate = new Date(currentDueDate);
@@ -317,9 +343,19 @@ export class PlanOperationsService {
         
         const formattedDueDate = newDueDate.toISOString().split('T')[0];
         
+        const updateData: any = { 
+          due_date: formattedDueDate 
+        };
+        
+        // Reset payment_request_id and change status to pending for sent payments
+        if (schedule.status === 'sent') {
+          updateData.status = 'pending';
+          updateData.payment_request_id = null;
+        }
+        
         const { error: updateError } = await supabase
           .from('payment_schedule')
-          .update({ due_date: formattedDueDate })
+          .update(updateData)
           .eq('id', schedule.id);
           
         if (updateError) {
@@ -328,9 +364,9 @@ export class PlanOperationsService {
         }
       }
       
-      // 3. Add an activity log entry
+      // 3. Add an activity log entry with enhanced details
       const { error: activityError } = await supabase
-        .from('payment_activity') // Fixed: Changed from payment_plan_activities to payment_activity
+        .from('payment_activity')
         .insert({
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,
@@ -339,7 +375,10 @@ export class PlanOperationsService {
           details: {
             plan_name: plan.title || plan.planName,
             previous_status: plan.status,
-            new_start_date: formattedDate
+            new_start_date: formattedDate,
+            days_shifted: diffDays,
+            affected_payments: schedules?.length || 0,
+            sent_payments_reset: sentPaymentsCount
           }
         });
       
