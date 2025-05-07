@@ -105,7 +105,7 @@ const ManagePlansDialogs: React.FC = () => {
         handleCancelPlan={handleCancelPlan}
         handlePausePlan={handlePausePlan}
         handleResumePlan={handleResumePlan}
-        handleReschedulePlan={handleReschedulePlan}
+        handleReschedulePlan={(newStartDate) => handleReschedulePlan(newStartDate)} // Fix the function signature mismatch
         isProcessing={isProcessing}
       />
     </>

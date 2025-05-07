@@ -165,10 +165,28 @@ export const useSharedPlanManagement = () => {
   /**
    * Reschedule the current plan
    */
-  const handleReschedulePlan = async () => {
-    // This would implement the rescheduling logic
-    // For now, we'll just close the dialog
-    setShowRescheduleDialog(false);
+  const handleReschedulePlan = async (newStartDate: Date) => {
+    // Update implementation to accept the newStartDate parameter
+    if (!selectedPlan) return;
+    
+    setIsProcessing(true);
+    
+    try {
+      // We'll implement proper rescheduling logic with the new date
+      console.log('Rescheduling plan with new start date:', newStartDate);
+      
+      const success = await PlanOperationsService.reschedulePlan(selectedPlan, newStartDate);
+      
+      if (success) {
+        // Update local state as needed
+        console.log('Plan rescheduled successfully');
+      }
+    } catch (error) {
+      console.error('Error rescheduling plan:', error);
+    } finally {
+      setIsProcessing(false);
+      setShowRescheduleDialog(false);
+    }
   };
 
   return {

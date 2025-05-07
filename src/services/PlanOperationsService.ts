@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -179,6 +178,64 @@ export class PlanOperationsService {
     } catch (error: any) {
       console.error('Error resuming plan:', error);
       toast.error('Failed to resume plan: ' + error.message);
+      return false;
+    }
+  }
+  
+  /**
+   * Reschedule a payment plan with a new start date
+   */
+  static async reschedulePlan(plan: Plan, newStartDate: Date): Promise<boolean> {
+    try {
+      // Format date as YYYY-MM-DD for the database
+      const formattedDate = newStartDate.toISOString().split('T')[0];
+      console.log('Rescheduling plan with formatted date:', formattedDate);
+      
+      // 1. Update the plan start date in the plans table
+      const { error: planUpdateError } = await supabase
+        .from('plans')
+        .update({ start_date: formattedDate })
+        .eq('id', plan.id);
+      
+      if (planUpdateError) throw planUpdateError;
+      
+      // 2. Call the reschedule_payment_plan RPC function
+      const { data: schedulingResult, error: schedulingError } = await supabase
+        .rpc('reschedule_payment_plan', { 
+          plan_id: plan.id,
+          new_start_date: formattedDate
+        });
+      
+      if (schedulingError) {
+        console.error('Error rescheduling payments:', schedulingError);
+        throw schedulingError;
+      }
+      
+      // 3. Add an activity log entry
+      const { error: activityError } = await supabase
+        .from('payment_plan_activities')
+        .insert({
+          payment_link_id: plan.paymentLinkId,
+          patient_id: plan.patientId,
+          clinic_id: plan.clinicId,
+          action_type: 'reschedule_plan',
+          details: {
+            plan_name: plan.title || plan.planName,
+            previous_status: plan.status,
+            new_start_date: formattedDate
+          }
+        });
+      
+      if (activityError) {
+        console.error('Error logging reschedule activity:', activityError);
+      }
+      
+      toast.success('Payment plan rescheduled successfully');
+      return true;
+      
+    } catch (error: any) {
+      console.error('Error rescheduling plan:', error);
+      toast.error('Failed to reschedule plan: ' + error.message);
       return false;
     }
   }
