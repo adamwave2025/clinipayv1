@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -244,7 +243,9 @@ export class PlanOperationsService {
             resume_date: effectiveResumeDate.toISOString(),
             installments_affected: (pausedSchedules?.length || 0),
             sent_payments_reset: sentPaymentsCount,
-            days_shifted: schedulingResult?.days_shifted || 0
+            days_shifted: schedulingResult ? 
+              (typeof schedulingResult === 'object' && 'days_shifted' in schedulingResult ? 
+                schedulingResult.days_shifted : 0) : 0
           }
         });
       

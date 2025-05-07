@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
@@ -71,7 +70,7 @@ export const usePlanDataFetcher = () => {
       
       // Group schedules by patient_id and payment_link_id to create Plan objects
       const planMap = groupPaymentSchedulesByPlan(scheduleData as PaymentScheduleItem[]);
-      const planList = Array.from(planMap.values());
+      const planList = Array.from(planMap.values()) as Plan[];
       
       setPlans(planList);
       return planList;
