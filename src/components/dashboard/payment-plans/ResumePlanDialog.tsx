@@ -75,7 +75,7 @@ const ResumePlanDialog = ({
         </DialogHeader>
         
         {hasSentPayments && (
-          <Alert variant="warning" className="bg-amber-50 border-amber-200 text-amber-800">
+          <Alert variant="default" className="bg-amber-50 border-amber-300 text-amber-800">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               This plan contains payments that were already sent to the patient but not yet paid.

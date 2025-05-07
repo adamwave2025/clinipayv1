@@ -3,6 +3,7 @@ import PlanDetailsDialog from '@/components/dashboard/payment-plans/PlanDetailsD
 import InstallmentPaymentDialog from '@/components/dashboard/payment-plans/InstallmentPaymentDialog';
 import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 import PlanActionDialogs from '@/components/dashboard/payment-plans/PlanActionDialogs';
+import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDialog';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 
 const ManagePlansDialogs: React.FC = () => {
@@ -51,7 +52,7 @@ const ManagePlansDialogs: React.FC = () => {
     handleReschedulePlan,
     
     isProcessing,
-    hasSentPayments // Add this property
+    hasSentPayments
   } = useManagePlansContext();
 
   return (
@@ -117,7 +118,7 @@ const ManagePlansDialogs: React.FC = () => {
         planName={selectedPlan?.title || ''}
         patientName={selectedPlan?.patientName || ''}
         isProcessing={isProcessing}
-        hasSentPayments={hasSentPayments} // Add this prop
+        hasSentPayments={hasSentPayments}
       />
     </>
   );

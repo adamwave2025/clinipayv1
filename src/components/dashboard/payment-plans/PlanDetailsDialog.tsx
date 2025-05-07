@@ -18,7 +18,7 @@ import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { PlanActivity } from '@/utils/planActivityUtils';
 import PlanActionsDropdown from './PlanActionsDropdown';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import StatusBadge from '@/components/common/StatusBadge';
+import StatusBadge, { StatusType } from '@/components/common/StatusBadge';
 import ActivityLog from './ActivityLog';
 import { formatCurrency } from '@/utils/formatters';
 
@@ -147,8 +147,8 @@ const PlanDetailsDialog = ({
                         <TableCell>{formatCurrency(installment.amount)}</TableCell>
                         <TableCell>
                           <StatusBadge 
-                            status={installment.status} 
-                            originalStatus={installment.originalStatus} 
+                            status={installment.status as StatusType} 
+                            originalStatus={installment.originalStatus as string | undefined} 
                           />
                         </TableCell>
                         <TableCell>{installment.paidDate || '-'}</TableCell>

@@ -1,7 +1,7 @@
 
 import React from 'react';
 
-type StatusType = 'paid' | 'refunded' | 'partially_refunded' | 'sent' | 'connected' | 'pending' | 'not_connected' | 'upcoming' | 'overdue' | 'paused' | 'cancelled' | 'active' | 'completed';
+export type StatusType = 'paid' | 'refunded' | 'partially_refunded' | 'sent' | 'connected' | 'pending' | 'not_connected' | 'upcoming' | 'overdue' | 'paused' | 'cancelled' | 'active' | 'completed';
 
 interface StatusBadgeProps {
   status: StatusType;

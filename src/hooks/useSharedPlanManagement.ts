@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
@@ -5,7 +6,7 @@ import { PlanActivity } from '@/utils/planActivityUtils';
 import { PlanDataService } from '@/services/PlanDataService';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { isPlanPaused } from '@/utils/planStatusUtils';
-import { supabase } from '@/utils/supabase';
+import { supabase } from '@/integrations/supabase/client'; // Fixed import path
 
 /**
  * Shared hook to manage payment plan operations across different parts of the application.
