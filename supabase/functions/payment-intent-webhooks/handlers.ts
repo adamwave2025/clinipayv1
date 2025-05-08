@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { generatePaymentReference } from "./utils.ts";
@@ -117,10 +116,26 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       }
     }
     
+    // Check if a payment record already exists to avoid duplicates
+    const { data: existingPayment, error: checkError } = await supabaseClient
+      .from("payments")
+      .select("id")
+      .eq("stripe_payment_id", paymentIntent.id)
+      .maybeSingle();
+      
+    if (checkError) {
+      console.error("Error checking for existing payment:", checkError);
+    }
+    
+    if (existingPayment) {
+      console.log(`Payment record already exists for payment ID ${paymentIntent.id}`, existingPayment);
+      return;
+    }
+    
     // Prepare payment record data - IMPORTANT: Store all monetary values as cents/pence
     const paymentData = {
       clinic_id: clinicId,
-      amount_paid: amountInCents, // FIXED: Store as integer cents, not converted to pounds
+      amount_paid: amountInCents, // Store as integer cents
       paid_at: new Date().toISOString(),
       patient_name: patientName || "Unknown",
       patient_email: patientEmail || null,
@@ -134,7 +149,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       platform_fee: platformFeeInCents, // Store platform fee as integer (cents)
     };
 
-    console.log("Attempting to insert payment record:", JSON.stringify(paymentData));
+    console.log("Inserting payment record:", JSON.stringify(paymentData));
     
     // Record the payment in the payments table
     const { data, error } = await supabaseClient
