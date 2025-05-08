@@ -5,7 +5,7 @@ import { PlanActivity, getActionTypeLabel } from '@/utils/planActivityUtils';
 import { formatDateTime } from '@/utils/formatters';
 import { 
   Clock, MessageCircle, AlertCircle, CheckCircle, 
-  BanCircle, PauseCircle, PlayCircle, CalendarClock, FileText 
+  Ban, PauseCircle, PlayCircle, CalendarClock, FileText 
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
@@ -24,7 +24,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       case 'resume':
         return <PlayCircle className="h-4 w-4 text-green-500" />;
       case 'cancel':
-        return <BanCircle className="h-4 w-4 text-red-500" />;
+        return <Ban className="h-4 w-4 text-red-500" />;
       case 'payment_made':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'payment_refund':
