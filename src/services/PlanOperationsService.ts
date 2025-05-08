@@ -172,9 +172,30 @@ export class PlanOperationsService {
         }
       }
       
+      // Check if there are any paid payments for this plan
+      const { count: paidCount, error: paidCountError } = await supabase
+        .from('payment_schedule')
+        .select('id', { count: 'exact', head: false })
+        .eq('plan_id', plan.id)
+        .eq('status', 'paid');
+        
+      if (paidCountError) throw paidCountError;
+      
       // Determine what the plan status should be based on payment history
-      const newStatus = await determinePlanStatus(plan.id);
-      console.log('Determined plan status after resume:', newStatus);
+      // If there are no paid payments, keep it as "pending" instead of using determinePlanStatus
+      let newStatus;
+      
+      if (paidCount === 0) {
+        // No payments made yet, set to pending
+        console.log('No paid payments found, setting plan status to pending');
+        newStatus = 'pending';
+      } else {
+        // Payments were made, determine the appropriate status
+        newStatus = await determinePlanStatus(plan.id);
+        console.log(`Found ${paidCount} paid payments, determined plan status: ${newStatus}`);
+      }
+      
+      console.log('Plan will resume with status:', newStatus);
       
       // 1. Update the plan status in the plans table
       const { error: planUpdateError } = await supabase
@@ -260,8 +281,9 @@ export class PlanOperationsService {
           
         if (markOverdueError) {
           console.error('Error marking payments as overdue:', markOverdueError);
-        } else if (potentialOverduePayments.length > 0) {
-          // Also update plan status if there are overdue payments
+        } else if (potentialOverduePayments.length > 0 && paidCount > 0) {
+          // Only update plan status if there are paid payments AND overdue payments
+          // This ensures plans with no paid payments stay as "pending"
           const updatedStatus = await determinePlanStatus(plan.id);
           
           const { error: updatePlanStatusError } = await supabase
@@ -297,7 +319,8 @@ export class PlanOperationsService {
             overdue_payments_found: potentialOverduePayments?.length || 0,
             days_shifted: schedulingResult ? 
               (typeof schedulingResult === 'object' && 'days_shifted' in schedulingResult ? 
-                schedulingResult.days_shifted : 0) : 0
+                schedulingResult.days_shifted : 0) : 0,
+            paid_payments_count: paidCount
           }
         });
       
@@ -340,13 +363,39 @@ export class PlanOperationsService {
       
       console.log('Shifting all pending payments by', diffDays, 'days');
       
+      // Check if there are any paid payments for this plan
+      const { count: paidCount, error: paidCountError } = await supabase
+        .from('payment_schedule')
+        .select('id', { count: 'exact', head: false })
+        .eq('plan_id', plan.id)
+        .eq('status', 'paid');
+        
+      if (paidCountError) throw paidCountError;
+      
+      console.log(`Found ${paidCount} paid payments for this plan`);
+      
       // Track how many payment requests we need to cancel
       let sentPaymentsCount = 0;
       const paymentRequestIds = [];
       
       // IMPORTANT: Check if the plan is currently paused, and preserve that status if it is
       const isPlanPaused = currentPlan.status === 'paused';
-      const newStatus = isPlanPaused ? 'paused' : await determinePlanStatus(plan.id);
+      
+      // Determine new status based on paid payments
+      let newStatus;
+      if (isPlanPaused) {
+        // If plan was paused, keep it paused
+        newStatus = 'paused';
+        console.log('Plan was paused, keeping status as paused');
+      } else if (paidCount === 0) {
+        // No payments made yet, set to pending
+        newStatus = 'pending';
+        console.log('No paid payments found, setting plan status to pending');
+      } else {
+        // Payments were made, determine the appropriate status
+        newStatus = await determinePlanStatus(plan.id);
+        console.log(`Found ${paidCount} paid payments, determined plan status: ${newStatus}`);
+      }
       
       console.log(`Plan was ${isPlanPaused ? 'paused' : 'not paused'}, using status: ${newStatus}`);
       
@@ -412,7 +461,10 @@ export class PlanOperationsService {
         };
         
         // If the plan is paused, keep the payment schedule status as paused
-        if (!isPlanPaused && (schedule.status === 'sent' || schedule.status === 'overdue')) {
+        if (isPlanPaused) {
+          // Do not change status if the plan is paused
+          console.log(`Keeping payment ${schedule.id} as status: ${schedule.status} because plan is paused`);
+        } else if (schedule.status === 'sent' || schedule.status === 'overdue') {
           updateData.status = 'pending';
           
           if (schedule.status === 'overdue') {
@@ -461,9 +513,8 @@ export class PlanOperationsService {
             
           if (markOverdueError) {
             console.error('Error marking payments as overdue:', markOverdueError);
-          } else {
-            // Get the appropriate status again - we may have just created overdue payments
-            // But only if the plan is not paused
+          } else if (potentialOverduePayments.length > 0 && paidCount > 0) {
+            // Only update plan status to overdue if there are paid payments
             const finalStatus = await determinePlanStatus(plan.id);
             
             // Update plan status if needed
@@ -501,7 +552,8 @@ export class PlanOperationsService {
             days_shifted: diffDays,
             affected_payments: schedules?.length || 0,
             sent_payments_reset: sentPaymentsCount,
-            overdue_payments_reset: overduePaymentsCount
+            overdue_payments_reset: overduePaymentsCount,
+            paid_payments_count: paidCount
           }
         });
       
