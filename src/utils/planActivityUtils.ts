@@ -33,6 +33,12 @@ export const formatPlanActivities = (activities: any[]): PlanActivity[] => {
   }));
 };
 
+// Capitalize the first letter of a string
+export const capitalize = (str: string): string => {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 export const getActionTypeLabel = (type: PlanActivityType): string => {
   switch (type) {
     case 'reschedule': return 'Plan Rescheduled';

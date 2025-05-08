@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { isPaymentStatusTransitionValid } from './paymentStatusUtils';
 
@@ -34,4 +35,69 @@ export const recordPaymentOverdue = async (planId: string, details: any) => {
   }
 };
 
-// Keep the rest of the file unchanged
+/**
+ * Check if a plan is currently paused
+ */
+export const isPlanPaused = (plan: Plan | null): boolean => {
+  if (!plan) return false;
+  return plan.status === 'paused';
+};
+
+/**
+ * Check if a plan is currently active
+ */
+export const isPlanActive = (plan: Plan | null): boolean => {
+  if (!plan) return false;
+  return plan.status === 'active' || plan.status === 'overdue';
+};
+
+/**
+ * Check if a plan is cancelled or completed
+ */
+export const isPlanFinished = (plan: Plan | null): boolean => {
+  if (!plan) return false;
+  return plan.status === 'cancelled' || plan.status === 'completed';
+};
+
+/**
+ * Determine the appropriate plan status based on the payment status
+ * When resuming a plan, this ensures we set the correct status
+ */
+export const determinePlanStatus = async (planId: string): Promise<string> => {
+  try {
+    // First check if there are any paid payments
+    const { data: paidPayments, error: paidError } = await supabase
+      .from('payment_schedule')
+      .select('id')
+      .eq('plan_id', planId)
+      .eq('status', 'paid')
+      .limit(1);
+      
+    if (paidError) throw paidError;
+    
+    // If there are paid payments, plan should be active (unless it has overdue payments)
+    if (paidPayments && paidPayments.length > 0) {
+      // Check for overdue payments
+      const { data: overduePayments, error: overdueError } = await supabase
+        .from('payment_schedule')
+        .select('id')
+        .eq('plan_id', planId)
+        .eq('status', 'overdue')
+        .limit(1);
+        
+      if (overdueError) throw overdueError;
+      
+      if (overduePayments && overduePayments.length > 0) {
+        return 'overdue';
+      }
+      
+      return 'active';
+    }
+    
+    // If no paid payments, plan should be pending
+    return 'pending';
+  } catch (error) {
+    console.error('Error determining plan status:', error);
+    return 'pending'; // Default to pending if we can't determine status
+  }
+};

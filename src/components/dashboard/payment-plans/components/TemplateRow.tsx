@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { PaymentLink } from '@/types/payment';
 import { formatCurrency } from '@/utils/formatters';
+import { capitalize } from '@/utils/planActivityUtils';
 
 interface TemplateRowProps {
   template: PaymentLink;
@@ -22,7 +23,7 @@ const TemplateRow: React.FC<TemplateRowProps> = ({
       <TableCell>{template.description || '-'}</TableCell>
       <TableCell>{formatCurrency(template.planTotalAmount || 0)}</TableCell>
       <TableCell>{template.paymentCount || '-'}</TableCell>
-      <TableCell>{template.paymentCycle || '-'}</TableCell>
+      <TableCell>{template.paymentCycle ? capitalize(template.paymentCycle) : '-'}</TableCell>
       <TableCell>
         <Button 
           variant="outline" 

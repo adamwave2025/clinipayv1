@@ -2,7 +2,7 @@
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDateTime, formatCurrency, formatDate } from '@/utils/formatters';
-import { getActionTypeLabel } from '@/utils/planActivityUtils';
+import { getActionTypeLabel, capitalize } from '@/utils/planActivityUtils';
 import {
   Clock,
   MessageCircle,
@@ -80,7 +80,9 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
       case 'cancel_plan':
         return 'Plan cancelled';
       case 'create':
-        return `Plan created with ${activity.details?.totalInstallments || activity.details?.total_payments || activity.details?.total_installments || 0} installments`;
+        const count = activity.details?.totalInstallments || activity.details?.total_payments || activity.details?.total_installments || 0;
+        const frequency = activity.details?.frequency || activity.details?.payment_frequency || 'monthly';
+        return `Plan created with ${count} ${capitalize(frequency)} installments`;
       case 'complete':
       case 'completed':
         return `Plan completed - ${formatCurrency(activity.details?.totalPaid || activity.details?.total_paid || 0)} paid`;

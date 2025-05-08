@@ -51,7 +51,7 @@ export class PlanDataService {
    */
   static async fetchPlanActivities(plan: Plan): Promise<PlanActivity[]> {
     try {
-      // Get all activities for this plan directly using plan_id
+      // Always try to get activities by plan_id first - this is the most reliable approach
       const { data, error } = await supabase
         .from('payment_activity')
         .select('*')
@@ -60,23 +60,7 @@ export class PlanDataService {
       
       if (error) throw error;
       
-      // If no activities are found for the specific plan_id, fall back to the original query
-      // This is a temporary solution for backward compatibility with existing data
-      if (!data || data.length === 0) {
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('payment_activity')
-          .select('*')
-          .eq('patient_id', plan.patientId)
-          .eq('payment_link_id', plan.paymentLinkId)
-          .order('performed_at', { ascending: false });
-          
-        if (fallbackError) throw fallbackError;
-        
-        return formatPlanActivities(fallbackData || []);
-      }
-      
       return formatPlanActivities(data || []);
-      
     } catch (err) {
       console.error('Error fetching plan activities:', err);
       toast.error('Failed to load plan activities');

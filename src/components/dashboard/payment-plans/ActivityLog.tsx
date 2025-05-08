@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { PlanActivity, getActionTypeLabel } from '@/utils/planActivityUtils';
+import { PlanActivity, getActionTypeLabel, capitalize } from '@/utils/planActivityUtils';
 import { formatDateTime, formatCurrency, formatDate } from '@/utils/formatters';
 import { 
   Clock, MessageCircle, AlertCircle, CheckCircle, 
@@ -58,6 +58,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
         return `Payment of ${formatCurrency(details.amount || 0)} ${details.refundFee ? 'partially refunded' : 'refunded'}`;
       case 'reschedule':
       case 'reschedule_plan':
+        // Simplified rescheduled message with just the new date
         return `Plan rescheduled to ${formatDate(details.newDate || details.new_start_date)}`;
       case 'pause':
       case 'pause_plan':
@@ -69,14 +70,18 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       case 'cancel_plan':
         return 'Plan cancelled';
       case 'create':
-        return `Plan created with ${details.totalInstallments || details.total_payments || details.total_installments || 0} installments`;
+        // Use consistent property names, with fallbacks
+        const count = details.totalInstallments || details.total_payments || details.total_installments || 0;
+        const frequency = details.frequency || details.payment_frequency || 'monthly';
+        return `Plan created with ${count} ${capitalize(frequency)} installments`;
       case 'complete':
       case 'completed':
         return `Plan completed - ${formatCurrency(details.totalPaid || details.total_paid || 0)} paid`;
       case 'reminder_sent':
         return `Payment reminder sent for installment ${details.installmentNumber || 0}`;
       case 'overdue':
-        return `${details.overdue_count || details.overdue_items?.length || 0} payment${details.overdue_count !== 1 || details.overdue_items?.length !== 1 ? 's are' : ' is'} overdue`;
+        const overdueCount = details.overdue_count || (details.overdue_items?.length || 0);
+        return `${overdueCount} payment${overdueCount !== 1 ? 's are' : ' is'} overdue`;
       default:
         return getActionTypeLabel(actionType);
     }
@@ -161,11 +166,15 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
         );
       
       case 'create':
+        const count = details.totalInstallments || details.total_payments || details.total_installments || 0;
+        const amount = details.totalAmount || details.total_amount || 0;
+        const frequency = details.frequency || details.payment_frequency || 'monthly';
+        
         return (
           <>
-            {details.title || details.plan_name && <p>{details.title || details.plan_name}</p>}
-            <p>Total amount: {formatCurrency(details.totalAmount || details.total_amount || 0)}</p>
-            <p>Frequency: {details.frequency || details.payment_frequency || 'Monthly'}</p>
+            {(details.title || details.plan_name) && <p>{details.title || details.plan_name}</p>}
+            <p>Total amount: {formatCurrency(amount)}</p>
+            <p>Frequency: {capitalize(frequency)}</p>
           </>
         );
       
@@ -173,7 +182,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       case 'completed':
         return (
           <>
-            {details.title || details.plan_name && <p>{details.title || details.plan_name}</p>}
+            {(details.title || details.plan_name) && <p>{details.title || details.plan_name}</p>}
             <p>Total paid: {formatCurrency(details.totalPaid || details.total_paid || 0)}</p>
             {details.completedAt || details.completed_at ? (
               <p>Completed on: {formatDate(details.completedAt || details.completed_at)}</p>

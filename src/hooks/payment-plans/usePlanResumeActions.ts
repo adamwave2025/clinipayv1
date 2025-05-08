@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
+import { determinePlanStatus } from '@/utils/plan-status-utils';
 
 export const usePlanResumeActions = (
   selectedPlan: Plan | null,
@@ -30,9 +31,9 @@ export const usePlanResumeActions = (
       const { data: overduePayments } = await supabase
         .from('payment_activity')
         .select('details')
-        .eq('payment_link_id', selectedPlan.paymentLinkId)
+        .eq('plan_id', selectedPlan.id)
         .eq('action_type', 'pause_plan')
-        .order('created_at', { ascending: false })
+        .order('performed_at', { ascending: false })
         .limit(1);
       
       // Check if the pause activity log indicates overdue payments were paused
@@ -62,7 +63,12 @@ export const usePlanResumeActions = (
     
     const result = await handleResumePlan(selectedPlan.id, resumeDate);
     
-    if (result.success) {
+    if (result?.success) {
+      // After resuming, determine the correct status based on payment history
+      const correctStatus = await determinePlanStatus(selectedPlan.id);
+      
+      console.log('Plan resumed with status:', correctStatus);
+      
       setShowResumeDialog(false);
       setShowPlanDetails(false); // Close the plan details modal
     }
