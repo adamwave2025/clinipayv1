@@ -9,7 +9,7 @@
  */
 const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
   'pending': ['paid', 'cancelled', 'overdue', 'paused', 'sent'],
-  'sent': ['paid', 'cancelled', 'paused'],  // Added 'paused' as valid transition
+  'sent': ['paid', 'cancelled', 'paused', 'overdue'],  // Added 'overdue' as valid transition
   'paid': ['refunded', 'partially_refunded'],
   'overdue': ['paid', 'cancelled', 'paused'],
   'paused': ['pending', 'cancelled', 'sent'],  // Added 'sent' as valid transition
@@ -56,7 +56,7 @@ export const isPaymentStatusPaid = (status: string | null | undefined): boolean 
  */
 export const isPaymentStatusModifiable = (status: string | null | undefined): boolean => {
   if (!status) return true;
-  return ['pending', 'overdue', 'paused', 'sent'].includes(status);  // Added 'sent' as modifiable status
+  return ['pending', 'overdue', 'paused', 'sent'].includes(status);  // Added 'overdue' as modifiable status
 };
 
 /**
@@ -64,6 +64,5 @@ export const isPaymentStatusModifiable = (status: string | null | undefined): bo
  * @returns string[] array of modifiable statuses
  */
 export const getModifiableStatuses = (): string[] => {
-  return ['pending', 'overdue', 'paused', 'sent'];  // Added 'sent' as modifiable status
+  return ['pending', 'overdue', 'paused', 'sent'];  // Added 'overdue' as modifiable status
 };
-

@@ -28,6 +28,7 @@ function isSchedulePaid(schedule: any): boolean {
 function getAllowedStatusTransitions(currentStatus: string): string[] {
   const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
     'pending': ['overdue', 'paused', 'cancelled'],
+    'sent': ['overdue', 'paid', 'paused', 'cancelled'],  // Added 'overdue' as valid transition from 'sent'
     'paid': ['refunded', 'partially_refunded'],
     'overdue': ['paid', 'paused', 'cancelled'],
     'paused': ['pending', 'cancelled'],
@@ -80,6 +81,7 @@ serve(async (req) => {
     
     // Track results for reporting
     const updatedPlans = [];
+    const updatedSchedules = [];
     const errors = [];
     
     // 2. For each plan, check if any payments are overdue
@@ -126,13 +128,14 @@ serve(async (req) => {
           // 3. It's not paused
           const isOverdue = !isPaid && 
                            dueDateStr < todayStr && 
-                           schedule.status !== 'paused';
+                           schedule.status !== 'paused' &&
+                           schedule.status !== 'overdue'; // Don't count already overdue items
           
           return isOverdue;
         });
         
         // If there are overdue payments and the plan doesn't already have has_overdue_payments=true
-        if (overduePayments.length > 0 && (!plan.has_overdue_payments || plan.status !== 'overdue')) {
+        if (overduePayments.length > 0) {
           console.log(`⚠️ Found ${overduePayments.length} overdue payments for plan ${plan.id}`);
           
           // Update the plan status to overdue
@@ -146,6 +149,28 @@ serve(async (req) => {
           
           if (updateError) {
             throw new Error(`Error updating plan ${plan.id}: ${updateError.message}`);
+          }
+          
+          // NEW: Update each overdue payment schedule item to 'overdue' status
+          const overdueIds = overduePayments.map(payment => payment.id);
+          
+          if (overdueIds.length > 0) {
+            console.log(`Updating ${overdueIds.length} payment schedules to overdue status`);
+            
+            // Batch update all overdue payment schedules
+            const { error: scheduleUpdateError } = await supabase
+              .from('payment_schedule')
+              .update({ 
+                status: 'overdue'
+              })
+              .in('id', overdueIds);
+            
+            if (scheduleUpdateError) {
+              console.error(`Warning: Failed to update schedule statuses: ${scheduleUpdateError.message}`);
+            } else {
+              updatedSchedules.push(...overdueIds);
+              console.log(`Successfully updated ${overdueIds.length} payment schedules to overdue status`);
+            }
           }
           
           // Record this update in the activity log using the new 'overdue' action type
@@ -191,6 +216,7 @@ serve(async (req) => {
         timestamp: new Date().toISOString(),
         plans_checked: activePlans.length,
         plans_updated: updatedPlans.length,
+        schedules_updated: updatedSchedules.length,
         updated_plans: updatedPlans,
         errors: errors
       }),
