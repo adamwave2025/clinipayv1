@@ -187,10 +187,13 @@ export const useSharedPlanManagement = () => {
         if (error) {
           console.error('Error fetching updated plan:', error);
         } else if (updatedPlan) {
+          // Validate the status is one of the allowed values in our union type
+          const validStatus = validatePlanStatus(updatedPlan.status);
+          
           // Update local state with the latest plan data from the server
           setSelectedPlan({
             ...selectedPlan,
-            status: updatedPlan.status, // Use the actual status from the database
+            status: validStatus,
             hasOverduePayments: updatedPlan.has_overdue_payments
           });
         }
@@ -230,10 +233,13 @@ export const useSharedPlanManagement = () => {
         if (error) {
           console.error('Error fetching updated plan:', error);
         } else if (updatedPlan) {
+          // Validate the status is one of the allowed values in our union type
+          const validStatus = validatePlanStatus(updatedPlan.status);
+          
           // Update local state with the latest plan data from the server
           setSelectedPlan({
             ...selectedPlan,
-            status: updatedPlan.status, // Use the actual status from the database
+            status: validStatus,
             hasOverduePayments: updatedPlan.has_overdue_payments,
             startDate: updatedPlan.start_date,
             nextDueDate: updatedPlan.next_due_date
@@ -249,6 +255,23 @@ export const useSharedPlanManagement = () => {
       setIsProcessing(false);
       setShowRescheduleDialog(false);
     }
+  };
+
+  /**
+   * Helper function to validate that a status from the database is one of our valid plan statuses
+   */
+  const validatePlanStatus = (status: string): Plan['status'] => {
+    // Create array of valid statuses matching our Plan type
+    const validStatuses: Plan['status'][] = ['active', 'pending', 'completed', 'overdue', 'cancelled', 'paused'];
+    
+    // Check if the provided status is valid
+    if (validStatuses.includes(status as Plan['status'])) {
+      return status as Plan['status'];
+    }
+    
+    // Return a default value if invalid
+    console.warn(`Invalid plan status received from database: ${status}. Defaulting to 'pending'.`);
+    return 'pending';
   };
 
   return {
@@ -297,3 +320,4 @@ export const useSharedPlanManagement = () => {
     hasSentPayments
   };
 };
+
