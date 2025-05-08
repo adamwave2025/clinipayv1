@@ -428,7 +428,7 @@ export const pausePaymentPlan = async (planId: string, userId?: string) => {
 export const resumePaymentPlan = async (planId: string, resumeDate: Date) => {
   try {
     // Get the plan details
-    const { data: plan, error: planError } = await supabase
+    const { data: planData, error: planError } = await supabase
       .from('plans')
       .select('*')
       .eq('id', planId)
@@ -439,8 +439,11 @@ export const resumePaymentPlan = async (planId: string, resumeDate: Date) => {
       throw planError;
     }
     
+    // Format the plan data to match the Plan type before passing it to PlanOperationsService
+    const formattedPlan = formatPlanFromDb(planData);
+    
     // Use the PlanOperationsService to handle the resume
-    const success = await PlanOperationsService.resumePlan(plan, resumeDate);
+    const success = await PlanOperationsService.resumePlan(formattedPlan, resumeDate);
     
     // Return the result
     return { success };
