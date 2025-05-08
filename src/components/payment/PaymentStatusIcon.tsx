@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { CheckCircle2, X, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, X, AlertTriangle, BanIcon, PauseCircle, Clock } from 'lucide-react';
 
 interface PaymentStatusIconProps {
-  status: 'success' | 'failed' | 'pending';
+  status: 'success' | 'failed' | 'pending' | 'cancelled' | 'paused' | 'overdue';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
@@ -31,6 +31,18 @@ const PaymentStatusIcon = ({
       bgColor: 'bg-red-100'
     },
     pending: {
+      icon: <Clock className={`${iconSize} text-amber-600 ${className}`} />,
+      bgColor: 'bg-amber-100'
+    },
+    cancelled: {
+      icon: <BanIcon className={`${iconSize} text-amber-600 ${className}`} />,
+      bgColor: 'bg-amber-100'
+    },
+    paused: {
+      icon: <PauseCircle className={`${iconSize} text-blue-600 ${className}`} />,
+      bgColor: 'bg-blue-100'
+    },
+    overdue: {
       icon: <AlertTriangle className={`${iconSize} text-amber-600 ${className}`} />,
       bgColor: 'bg-amber-100'
     }
