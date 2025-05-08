@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
-import { formatPlanFromDb } from '@/utils/planTypes';
 import { toast } from 'sonner';
-import { PlanActivityType } from '@/utils/planActivityUtils';
+import { Plan } from '@/utils/planTypes';
+import { PlanStatusService } from '@/services/PlanStatusService';
 
 export const fetchUserClinicId = async (userId: string) => {
   try {
@@ -423,133 +423,27 @@ export const pausePaymentPlan = async (planId: string, userId?: string) => {
   }
 };
 
-export const resumePaymentPlan = async (planId: string, resumeDate: Date, userId?: string) => {
+export const resumePaymentPlan = async (planId: string, resumeDate: Date) => {
   try {
-    console.log('Original resumeDate received:', resumeDate);
-    
-    // Get plan details first
+    // Get the plan details
     const { data: plan, error: planError } = await supabase
       .from('plans')
-      .select('patient_id, payment_link_id, clinic_id, payment_frequency')
+      .select('*')
       .eq('id', planId)
       .single();
-      
+    
     if (planError) {
-      console.error('Error fetching plan for resuming:', planError);
-      return { success: false, error: planError };
+      console.error('Error fetching plan details:', planError);
+      throw planError;
     }
     
-    // Get all installments for this plan to properly handle the sequence
-    const { data: allInstallments, error: fetchAllError } = await supabase
-      .from('payment_schedule')
-      .select(`
-        id, 
-        payment_number, 
-        payment_frequency, 
-        due_date,
-        status,
-        payment_request_id,
-        payment_requests (
-          payment_id,
-          status,
-          paid_at
-        )
-      `)
-      .eq('plan_id', planId)
-      .order('payment_number', { ascending: true });
+    // Use the PlanOperationsService to handle the resume
+    const success = await PlanOperationsService.resumePlan(plan, resumeDate);
     
-    if (fetchAllError) throw fetchAllError;
-    
-    // 1. Find all paid installments
-    const paidInstallments = allInstallments.filter(installment => isPlanInstallmentPaid(installment));
-    
-    // 2. Find all paused installments that need to be resumed
-    const pausedInstallments = allInstallments.filter(installment => 
-      installment.status === 'paused' && !isPlanInstallmentPaid(installment)
-    );
-    
-    if (pausedInstallments.length === 0) {
-      return { success: true, message: 'No paused installments found' };
-    }
-    
-    // Keep track of original and new due dates for audit
-    const dueChanges = [];
-    
-    // Calculate new due dates for each paused installment
-    const frequency = plan.payment_frequency || 'monthly';
-    
-    // Find the last paid installment to start scheduling from
-    let startDate = new Date(resumeDate);
-    if (paidInstallments.length > 0) {
-      // Sort paid installments by payment number to find the latest one
-      const sortedPaidInstallments = [...paidInstallments].sort((a, b) => 
-        b.payment_number - a.payment_number
-      );
-      
-      console.log('Last paid installment:', sortedPaidInstallments[0]);
-    }
-    
-    // Reset startDate time to beginning of day to avoid timezone issues
-    startDate.setHours(0, 0, 0, 0);
-    
-    const updatePromises = pausedInstallments.map((installment, index) => {
-      // Calculate new due date based on the resume date and installment index
-      const newDueDate = calculateNewDueDate(startDate, index, frequency);
-      
-      // Format date using YYYY-MM-DD format to avoid timezone issues
-      const formattedDate = formatDateToYYYYMMDD(newDueDate);
-      
-      // Track changes for audit
-      dueChanges.push({
-        installment_id: installment.id,
-        payment_number: installment.payment_number,
-        old_due_date: installment.due_date,
-        new_due_date: formattedDate
-      });
-      
-      console.log(`Resuming installment ${installment.payment_number}, new due date: ${formattedDate}`);
-      
-      return supabase
-        .from('payment_schedule')
-        .update({ 
-          status: 'pending',
-          due_date: formattedDate
-        })
-        .eq('id', installment.id);
-    });
-    
-    // Wait for all updates to complete
-    await Promise.all(updatePromises);
-    
-    // Also update the plan status to active
-    const { error: planUpdateError } = await supabase
-      .from('plans')
-      .update({ 
-        status: 'active',
-        next_due_date: formatDateToYYYYMMDD(startDate)
-      })
-      .eq('id', planId);
-      
-    if (planUpdateError) {
-      console.error('Error updating plan status:', planUpdateError);
-    }
-    
-    // Record the activity
-    await recordPaymentPlanActivity(
-      planId,
-      'resume',
-      { 
-        installments_affected: pausedInstallments.length,
-        resume_date: formatDateToYYYYMMDD(resumeDate),
-        schedule_changes: dueChanges
-      },
-      userId
-    );
-    
-    return { success: true };
+    // Return the result
+    return { success };
   } catch (error) {
-    console.error('Error resuming payment plan:', error);
-    toast.error('Failed to resume payment plan');
+    console.error('Error in resumePaymentPlan:', error);
     return { success: false, error };
   }
 };
@@ -1148,6 +1042,45 @@ export const recalculateAllPlanDueDates = async () => {
     return { success: true, count: plans.length };
   } catch (error) {
     console.error('Error recalculating plan due dates:', error);
+    return { success: false, error };
+  }
+};
+
+export const updatePaymentStatus = async (paymentId: string, newStatus: string) => {
+  try {
+    // Get the payment to ensure we have the plan_id
+    const { data: payment, error: paymentError } = await supabase
+      .from('payment_schedule')
+      .select('plan_id, status')
+      .eq('id', paymentId)
+      .single();
+    
+    if (paymentError) throw paymentError;
+    
+    if (payment.status === newStatus) {
+      // No change needed
+      return { success: true };
+    }
+    
+    // Update the payment status
+    const { error: updateError } = await supabase
+      .from('payment_schedule')
+      .update({ 
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', paymentId);
+    
+    if (updateError) throw updateError;
+    
+    // Use the PlanStatusService to update the plan status
+    if (payment.plan_id) {
+      await PlanStatusService.handlePaymentStatusChange(paymentId, payment.plan_id, newStatus);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating payment status:', error);
     return { success: false, error };
   }
 };

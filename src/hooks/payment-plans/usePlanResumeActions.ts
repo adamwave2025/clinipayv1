@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
+import { PlanStatusService } from '@/services/PlanStatusService';
 
 export const usePlanResumeActions = (
   selectedPlan: Plan | null,
@@ -30,41 +31,29 @@ export const usePlanResumeActions = (
         .eq('plan_id', selectedPlan.id)
         .eq('status', 'paid');
       
-      // Check if the plan had any overdue payments before being paused
-      // This captures plans that were paused while having overdue status
-      const wasOverdue = selectedPlan.hasOverduePayments;
+      // Check if there would be overdue payments when resumed
+      // Get today's date for comparison
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
       
-      // Also check for payments that were explicitly marked as overdue before pausing
-      const { data: overduePayments } = await supabase
-        .from('payment_activity')
-        .select('details')
+      // Check for any paused payments that have due dates before today
+      const { data: potentialOverduePayments } = await supabase
+        .from('payment_schedule')
+        .select('id')
         .eq('plan_id', selectedPlan.id)
-        .eq('action_type', 'pause_plan')
-        .order('performed_at', { ascending: false })
-        .limit(1);
+        .eq('status', 'paused')
+        .lt('due_date', todayStr);
       
-      // Check if the pause activity log indicates overdue payments were paused
-      let hadOverduePaymentsWhenPaused = false;
-      if (overduePayments && overduePayments.length > 0) {
-        const details = overduePayments[0].details;
-        
-        // Type check the details object to ensure it's a record with overdue_count
-        if (details && 
-            typeof details === 'object' && 
-            details !== null && 
-            'overdue_count' in details &&
-            typeof details.overdue_count === 'number') {
-          hadOverduePaymentsWhenPaused = details.overdue_count > 0;
-        }
-      }
+      const wouldHaveOverduePayments = potentialOverduePayments && potentialOverduePayments.length > 0;
       
       setHasSentPayments(sentPayments && sentPayments.length > 0);
-      setHasOverduePayments(wasOverdue || hadOverduePaymentsWhenPaused);
+      setHasOverduePayments(wouldHaveOverduePayments);
       setHasPaidPayments(!paidCountError && paidCount > 0);
       
       console.log({
         hasSentPayments: sentPayments && sentPayments.length > 0,
-        hasOverduePayments: wasOverdue || hadOverduePaymentsWhenPaused,
+        hasOverduePayments: wouldHaveOverduePayments,
         hasPaidPayments: !paidCountError && paidCount > 0,
         paidCount: paidCount
       });

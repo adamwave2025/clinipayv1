@@ -31,7 +31,8 @@ interface ResumePlanDialogProps {
   patientName: string;
   isProcessing?: boolean;
   hasSentPayments?: boolean;
-  hasOverduePayments?: boolean; // New prop to indicate if plan had overdue payments when paused
+  hasOverduePayments?: boolean;
+  hasPaidPayments?: boolean;
 }
 
 const ResumePlanDialog = ({
@@ -42,7 +43,8 @@ const ResumePlanDialog = ({
   patientName,
   isProcessing = false,
   hasSentPayments = false,
-  hasOverduePayments = false, // Default to false if not provided
+  hasOverduePayments = false,
+  hasPaidPayments = false,
 }: ResumePlanDialogProps) => {
   // Initialize with current date but set hours to midnight
   const today = new Date();
@@ -89,8 +91,8 @@ const ResumePlanDialog = ({
           <Alert variant="default" className="bg-red-50 border-red-300 text-red-800">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              This plan had overdue payments before it was paused. Upon resuming, 
-              payments that are still overdue will be marked as such.
+              This plan has payments with due dates in the past. Upon resuming, 
+              these payments will be marked as overdue if any payments have been made.
             </AlertDescription>
           </Alert>
         )}
@@ -98,8 +100,11 @@ const ResumePlanDialog = ({
         <Alert variant="default" className="bg-blue-50 border-blue-300 text-blue-800">
           <Info className="h-4 w-4" />
           <AlertDescription>
-            If no payments have been made on this plan, it will resume with "pending" status.
-            Once the first payment is received, it will change to "active".
+            {hasPaidPayments ? (
+              "Since payments have been made on this plan, it will resume with either 'active' or 'overdue' status depending on payment due dates."
+            ) : (
+              "No payments have been made on this plan yet. It will resume with 'pending' status until the first payment is received."
+            )}
           </AlertDescription>
         </Alert>
         

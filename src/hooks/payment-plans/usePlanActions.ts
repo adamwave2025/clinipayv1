@@ -9,6 +9,7 @@ import {
 import { sendPaymentReminder } from '@/services/PaymentReminderService';
 import { toast } from 'sonner';
 import { Plan } from '@/utils/planTypes';
+import { PlanStatusService } from '@/services/PlanStatusService';
 
 export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
   const [isProcessing, setIsProcessing] = useState(false);
