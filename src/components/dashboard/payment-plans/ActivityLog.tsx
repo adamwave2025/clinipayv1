@@ -9,7 +9,6 @@ import {
   CreditCard, RefreshCw
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { Card, CardContent } from '@/components/ui/card';
 
 interface ActivityLogProps {
   activities: PlanActivity[];
@@ -42,6 +41,33 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
     }
   };
 
+  const getActivityDescription = (activity: PlanActivity) => {
+    const { actionType, details } = activity;
+
+    switch (actionType) {
+      case 'payment_made':
+        return `Payment of ${formatCurrency(details.amount || 0)} received`;
+      case 'payment_refund':
+        return `Payment of ${formatCurrency(details.amount || 0)} ${details.refundFee ? 'partially refunded' : 'refunded'}`;
+      case 'reschedule':
+        return `Plan rescheduled from ${formatDate(details.previousDate)} to ${formatDate(details.newDate)}`;
+      case 'pause':
+        return `Plan paused${details.pausedInstallments ? ` for ${details.pausedInstallments} installments` : ''}`;
+      case 'resume':
+        return 'Plan resumed';
+      case 'cancel':
+        return 'Plan cancelled';
+      case 'create':
+        return `Plan created with ${details.totalInstallments || 0} installments`;
+      case 'reminder_sent':
+        return `Payment reminder sent for installment ${details.installmentNumber || 0}`;
+      case 'overdue':
+        return `${details.overdue_count || 0} payment${details.overdue_count !== 1 ? 's are' : ' is'} overdue`;
+      default:
+        return getActionTypeLabel(actionType);
+    }
+  };
+
   // Render detailed content based on activity type
   const renderActivityDetails = (activity: PlanActivity) => {
     const { actionType, details } = activity;
@@ -52,23 +78,9 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       case 'payment_made':
         return (
           <div className="mt-2 space-y-1 text-sm">
-            {details.amount && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Amount:</span>
-                <span className="font-medium">{formatCurrency(details.amount)}</span>
-              </div>
-            )}
-            {details.paymentRef && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Reference:</span>
-                <span className="font-medium">{details.paymentRef}</span>
-              </div>
-            )}
+            {details.paymentRef && <p>Ref: {details.paymentRef}</p>}
             {details.installmentNumber && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Installment:</span>
-                <span className="font-medium">{details.installmentNumber} of {details.totalInstallments || '?'}</span>
-              </div>
+              <p>Payment {details.installmentNumber} of {details.totalInstallments || '?'}</p>
             )}
           </div>
         );
@@ -76,190 +88,60 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       case 'payment_refund':
         return (
           <div className="mt-2 space-y-1 text-sm">
-            {details.amount && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Refund amount:</span>
-                <span className="font-medium">{formatCurrency(details.amount)}</span>
-              </div>
-            )}
-            {details.refundFee !== undefined && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Refund fee:</span>
-                <span className="font-medium">{formatCurrency(details.refundFee)}</span>
-              </div>
-            )}
-            {details.paymentRef && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Original payment:</span>
-                <span className="font-medium">{details.paymentRef}</span>
-              </div>
-            )}
-            {details.reason && (
-              <div className="mt-1">
-                <span className="text-gray-600">Reason: </span>
-                <span>{details.reason}</span>
-              </div>
-            )}
+            {details.paymentRef && <p>Original payment: {details.paymentRef}</p>}
+            {details.reason && <p>Reason: {details.reason}</p>}
           </div>
         );
       
       case 'reschedule':
-        return (
-          <div className="mt-2 space-y-1 text-sm">
-            {details.previousDate && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Previous date:</span>
-                <span className="font-medium">{formatDate(details.previousDate)}</span>
-              </div>
-            )}
-            {details.newDate && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">New date:</span>
-                <span className="font-medium">{formatDate(details.newDate)}</span>
-              </div>
-            )}
-          </div>
-        );
+        return null; // Main description contains the date info
       
       case 'pause':
         return (
           <div className="mt-2 space-y-1 text-sm">
-            {details.pausedInstallments && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Paused installments:</span>
-                <span className="font-medium">{details.pausedInstallments}</span>
-              </div>
-            )}
-            {details.reason && (
-              <div className="mt-1">
-                <span className="text-gray-600">Reason: </span>
-                <span>{details.reason}</span>
-              </div>
-            )}
+            {details.reason && <p>Reason: {details.reason}</p>}
           </div>
         );
       
       case 'resume':
         return (
           <div className="mt-2 space-y-1 text-sm">
-            {details.resumeDate && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Resume date:</span>
-                <span className="font-medium">{formatDate(details.resumeDate)}</span>
-              </div>
-            )}
-            {details.hasSentPayments && (
-              <div className="mt-1 text-amber-600">
-                Plan had previously sent payment links that were paused.
-              </div>
-            )}
+            {details.resumeDate && <p>Resume date: {formatDate(details.resumeDate)}</p>}
+            {details.hasSentPayments && <p>Plan had previously sent payment links that were paused</p>}
           </div>
         );
       
       case 'cancel':
         return (
           <div className="mt-2 space-y-1 text-sm">
-            {details.cancelledInstallments && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Cancelled installments:</span>
-                <span className="font-medium">{details.cancelledInstallments}</span>
-              </div>
-            )}
-            {details.reason && (
-              <div className="mt-1">
-                <span className="text-gray-600">Reason: </span>
-                <span>{details.reason}</span>
-              </div>
-            )}
+            {details.reason && <p>Reason: {details.reason}</p>}
           </div>
         );
       
       case 'create':
         return (
           <div className="mt-2 space-y-1 text-sm">
-            {details.totalAmount && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total amount:</span>
-                <span className="font-medium">{formatCurrency(details.totalAmount)}</span>
-              </div>
-            )}
-            {details.installmentAmount && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Installment amount:</span>
-                <span className="font-medium">{formatCurrency(details.installmentAmount)}</span>
-              </div>
-            )}
-            {details.totalInstallments && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Number of installments:</span>
-                <span className="font-medium">{details.totalInstallments}</span>
-              </div>
-            )}
-            {details.frequency && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Frequency:</span>
-                <span className="font-medium">{details.frequency}</span>
-              </div>
-            )}
+            <p>Total amount: {formatCurrency(details.totalAmount || 0)}</p>
+            <p>Frequency: {details.frequency || 'Monthly'}</p>
           </div>
         );
       
       case 'reminder_sent':
         return (
           <div className="mt-2 space-y-1 text-sm">
-            {details.installmentNumber && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Installment:</span>
-                <span className="font-medium">{details.installmentNumber} of {details.totalInstallments || '?'}</span>
-              </div>
-            )}
-            {details.dueDate && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Due date:</span>
-                <span className="font-medium">{formatDate(details.dueDate)}</span>
-              </div>
-            )}
-            {details.amount && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Amount:</span>
-                <span className="font-medium">{formatCurrency(details.amount)}</span>
-              </div>
-            )}
-            {details.sentTo && (
-              <div className="mt-1">
-                <span className="text-gray-600">Sent to: </span>
-                <span>{details.sentTo}</span>
-              </div>
-            )}
+            {details.dueDate && <p>Due date: {formatDate(details.dueDate)}</p>}
+            {details.sentTo && <p>Sent to: {details.sentTo}</p>}
           </div>
         );
       
       case 'overdue':
         return (
           <div className="mt-2 space-y-1 text-sm">
-            {details.overdue_count && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Overdue payments:</span>
-                <span className="font-medium">{details.overdue_count}</span>
-              </div>
-            )}
             {details.overdue_items && details.overdue_items.length > 0 && (
-              <div className="mt-1">
-                <span className="text-gray-600 block mb-1">Overdue installments:</span>
-                <div className="ml-2 space-y-1">
-                  {details.overdue_items.map((item: any, i: number) => (
-                    <div key={i} className="text-xs flex justify-between">
-                      <span>Payment #{item.payment_number}</span>
-                      <span>{formatDate(item.due_date)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {details.previous_status && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Previous plan status:</span>
-                <span className="font-medium capitalize">{details.previous_status}</span>
+              <div className="space-y-1">
+                {details.overdue_items.map((item: any, i: number) => (
+                  <p key={i}>Payment #{item.payment_number} due {formatDate(item.due_date)}</p>
+                ))}
               </div>
             )}
           </div>
@@ -267,11 +149,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       
       default:
         // Show generic message info if available
-        return details.message ? (
-          <div className="mt-2 text-sm">
-            <span>{details.message}</span>
-          </div>
-        ) : null;
+        return details.message ? <p className="mt-2 text-sm">{details.message}</p> : null;
     }
   };
 
@@ -288,41 +166,32 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
 
   return (
     <div className="pt-2">
-      <h3 className="text-md font-semibold mb-2">Activity Log</h3>
+      <h3 className="text-md font-semibold mb-4">Activity Log</h3>
       {activities.length === 0 ? (
-        <div className="text-center py-4 text-gray-500 border rounded-md">
+        <div className="text-center py-6 text-gray-500 border rounded-md">
           No activity recorded yet
         </div>
       ) : (
         <div className="border rounded-md">
           <ScrollArea className="h-[300px]">
-            <div className="p-3 space-y-3">
-              {activities.map(activity => (
-                <Card key={activity.id} className="overflow-hidden shadow-sm border-l-4 border-l-gray-300">
-                  <CardContent className="p-3">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5">
-                        {getActivityIcon(activity.actionType)}
-                      </div>
-                      <div className="space-y-1 flex-1">
-                        <div className="flex justify-between">
-                          <p className="text-sm font-medium">{getActionTypeLabel(activity.actionType)}</p>
-                          <span className="text-xs text-gray-500">
-                            {formatDateTime(activity.performedAt, 'en-GB', 'Europe/London')}
-                          </span>
-                        </div>
-                        
-                        {/* Display message if available */}
-                        {activity.details && activity.details.message && (
-                          <p className="text-sm text-gray-600">{activity.details.message}</p>
-                        )}
-                        
-                        {/* Always display details without requiring expansion */}
-                        {renderActivityDetails(activity)}
-                      </div>
+            <div className="space-y-3 p-3">
+              {activities.map((activity) => (
+                <div key={activity.id} className="flex items-start gap-3 p-3 border rounded-md">
+                  <div className="mt-1">
+                    {getActivityIcon(activity.actionType)}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between">
+                      <span className="font-medium">{getActivityDescription(activity)}</span>
                     </div>
-                  </CardContent>
-                </Card>
+                    
+                    {renderActivityDetails(activity)}
+                    
+                    <p className="text-sm text-gray-500 mt-1">
+                      {formatDateTime(activity.performedAt, 'en-GB', 'Europe/London')}
+                    </p>
+                  </div>
+                </div>
               ))}
             </div>
           </ScrollArea>
