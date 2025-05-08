@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PlanActivity, getActionTypeLabel, capitalize } from '@/utils/planActivityUtils';
@@ -58,7 +57,6 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
         return `Payment of ${formatCurrency(details.amount || 0)} ${details.refundFee ? 'partially refunded' : 'refunded'}`;
       case 'reschedule':
       case 'reschedule_plan':
-        // Simplified rescheduled message with just the new date
         return `Plan rescheduled to ${formatDate(details.newDate || details.new_start_date)}`;
       case 'pause':
       case 'pause_plan':
@@ -70,10 +68,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       case 'cancel_plan':
         return 'Plan cancelled';
       case 'create':
-        // Use consistent property names, with fallbacks
-        const count = details.totalInstallments || details.total_payments || details.total_installments || 0;
-        const frequency = details.frequency || details.payment_frequency || 'monthly';
-        return `Plan created with ${count} ${capitalize(frequency)} installments`;
+        return 'Plan created';
       case 'complete':
       case 'completed':
         return `Plan completed - ${formatCurrency(details.totalPaid || details.total_paid || 0)} paid`;
@@ -94,6 +89,18 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
     if (!details) return null;
 
     switch (actionType) {
+      case 'create':
+        const frequency = details.frequency || details.payment_frequency || 'monthly';
+        const amount = details.installmentAmount || details.installment_amount || 0;
+        const totalAmount = details.totalAmount || details.total_amount || 0;
+        
+        return (
+          <>
+            <p>{capitalize(frequency)} amount: {formatCurrency(amount)}</p>
+            <p>Total amount: {formatCurrency(totalAmount)}</p>
+          </>
+        );
+      
       case 'payment_made':
         return (
           <>
@@ -162,19 +169,6 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
             {details.plan_name && <p>{details.plan_name}</p>}
             {details.reason && <p>Reason: {details.reason}</p>}
             {details.previous_status && <p>Previous status: {details.previous_status}</p>}
-          </>
-        );
-      
-      case 'create':
-        const count = details.totalInstallments || details.total_payments || details.total_installments || 0;
-        const amount = details.totalAmount || details.total_amount || 0;
-        const frequency = details.frequency || details.payment_frequency || 'monthly';
-        
-        return (
-          <>
-            {(details.title || details.plan_name) && <p>{details.title || details.plan_name}</p>}
-            <p>Total amount: {formatCurrency(amount)}</p>
-            <p>Frequency: {capitalize(frequency)}</p>
           </>
         );
       

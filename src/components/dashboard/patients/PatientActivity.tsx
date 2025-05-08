@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDateTime, formatCurrency, formatDate } from '@/utils/formatters';
@@ -82,9 +81,7 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
       case 'cancel_plan':
         return 'Plan cancelled';
       case 'create':
-        countValue = activity.details?.totalInstallments || activity.details?.total_payments || activity.details?.total_installments || 0;
-        const frequency = activity.details?.frequency || activity.details?.payment_frequency || 'monthly';
-        return `Plan created with ${countValue} ${capitalize(frequency)} installments`;
+        return 'Plan created';
       case 'complete':
       case 'completed':
         return `Plan completed - ${formatCurrency(activity.details?.totalPaid || activity.details?.total_paid || 0)} paid`;
@@ -106,6 +103,42 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
         {payment.reference && <p>Reference: {payment.reference}</p>}
       </>
     );
+  };
+
+  // Function to get activity details for the "create" action type
+  const getPlanCreatedDetails = (activity: any) => {
+    if (!activity || !activity.details) return null;
+    
+    const frequency = activity.details.frequency || activity.details.payment_frequency || 'monthly';
+    const amount = activity.details.installmentAmount || activity.details.installment_amount || 0;
+    const totalAmount = activity.details.totalAmount || activity.details.total_amount || 0;
+    
+    return (
+      <>
+        <p>{capitalize(frequency)} amount: {formatCurrency(amount)}</p>
+        <p>Total amount: {formatCurrency(totalAmount)}</p>
+      </>
+    );
+  };
+
+  // Function to get detailed info for specific activity types
+  const getActivityDetails = (activity: any) => {
+    if (!activity || !activity.details) return null;
+    
+    switch (activity.actionType) {
+      case 'create':
+        return getPlanCreatedDetails(activity);
+      case 'complete':
+      case 'completed':
+        return (
+          <>
+            {activity.details.completedAt && <p>Completed on: {formatDate(activity.details.completedAt)}</p>}
+            {activity.details.completed_at && <p>Completed on: {formatDate(activity.details.completed_at)}</p>}
+          </>
+        );
+      default:
+        return null;
+    }
   };
 
   if (isLoading) {
@@ -159,6 +192,9 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
                 <div className="flex-1">
                   <div className="flex justify-between">
                     <span className="font-medium">{getActivityDescription(activity)}</span>
+                  </div>
+                  <div className="mt-2 space-y-1 text-sm">
+                    {getActivityDetails(activity)}
                   </div>
                   <p className="text-sm text-gray-500 mt-1">
                     {formatDateTime(activity.performedAt, 'en-GB', 'Europe/London')}
