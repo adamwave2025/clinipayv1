@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
 import { isPaymentStatusModifiable, getModifiableStatuses } from '@/utils/paymentStatusUtils';
+import { determinePlanStatus } from '@/utils/plan-status-utils';
 
 /**
  * Service for performing operations on payment plans
@@ -172,9 +173,9 @@ export class PlanOperationsService {
         }
       }
       
-      // Determine what the plan status should be updated to initially
-      const wasOverdue = plan.hasOverduePayments;
-      let newStatus = wasOverdue ? 'overdue' : 'active';
+      // Determine what the plan status should be based on payment history
+      const newStatus = await determinePlanStatus(plan.id);
+      console.log('Determined plan status after resume:', newStatus);
       
       // 1. Update the plan status in the plans table
       const { error: planUpdateError } = await supabase
@@ -257,20 +258,18 @@ export class PlanOperationsService {
           
         if (markOverdueError) {
           console.error('Error marking payments as overdue:', markOverdueError);
-        } else {
-          // Also make sure the plan's status is set to overdue
-          if (potentialOverduePayments.length > 0 && newStatus !== 'overdue') {
-            const { error: updatePlanStatusError } = await supabase
-              .from('plans')
-              .update({ 
-                status: 'overdue',
-                has_overdue_payments: true
-              })
-              .eq('id', plan.id);
-            
-            if (updatePlanStatusError) {
-              console.error('Error updating plan to overdue status:', updatePlanStatusError);
-            }
+        } else if (potentialOverduePayments.length > 0) {
+          // Also update plan status if there are overdue payments
+          const { error: updatePlanStatusError } = await supabase
+            .from('plans')
+            .update({ 
+              status: 'overdue',
+              has_overdue_payments: true
+            })
+            .eq('id', plan.id);
+          
+          if (updatePlanStatusError) {
+            console.error('Error updating plan to overdue status:', updatePlanStatusError);
           }
         }
       }
@@ -282,6 +281,7 @@ export class PlanOperationsService {
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,
           clinic_id: plan.clinicId,
+          plan_id: plan.id,
           action_type: 'resume_plan',
           details: {
             plan_name: plan.title || plan.planName,
@@ -340,15 +340,16 @@ export class PlanOperationsService {
       let sentPaymentsCount = 0;
       const paymentRequestIds = [];
       
-      // 1. Update the plan status to 'active' and reset overdue flags if previously overdue
-      const wasOverdue = plan.status === 'overdue' || plan.hasOverduePayments;
+      // 1. Check for the appropriate status based on payment history
+      const newStatus = await determinePlanStatus(plan.id);
+      console.log('Determined plan status after rescheduling:', newStatus);
       
       const { error: planUpdateError } = await supabase
         .from('plans')
         .update({ 
           start_date: formattedDate,
-          status: 'active', // Reset to active since we're rescheduling
-          has_overdue_payments: false // Reset the overdue flag
+          status: newStatus,  // Use the determined status instead of hardcoding to 'active'
+          has_overdue_payments: newStatus === 'overdue' // Set overdue flag based on status
         })
         .eq('id', plan.id);
       
@@ -434,12 +435,13 @@ export class PlanOperationsService {
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,
           clinic_id: plan.clinicId,
+          plan_id: plan.id,
           action_type: 'reschedule_plan',
           details: {
             plan_name: plan.title || plan.planName,
             previous_status: plan.status,
-            was_overdue: wasOverdue,
-            new_status: 'active',
+            was_overdue: plan.status === 'overdue',
+            new_status: newStatus,
             new_start_date: formattedDate,
             days_shifted: diffDays,
             affected_payments: schedules?.length || 0,
