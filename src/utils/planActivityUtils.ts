@@ -11,6 +11,7 @@ export type PlanActivityType =
   | 'overdue'
   | 'complete'
   | 'completed'
+  | 'update_status'
   | string; // Allow for other string values as well
 
 export interface PlanActivity {
@@ -50,6 +51,7 @@ export const getActionTypeLabel = (type: PlanActivityType): string => {
     case 'reminder_sent': return 'Reminder Sent';
     case 'payment_refund': return 'Payment Refunded';
     case 'overdue': return 'Payment Overdue';
+    case 'update_status': return 'Status Updated';
     case 'complete':
     case 'completed': return 'Plan Completed';
     default: {

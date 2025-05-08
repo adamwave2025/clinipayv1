@@ -1,7 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plan } from '@/utils/planTypes';
+import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { PlanStatusService } from '@/services/PlanStatusService';
+import { PlanActivityType } from '@/utils/planActivityUtils';
+import { PlanOperationsService } from '@/services/PlanOperationsService';
 
 export const fetchUserClinicId = async (userId: string) => {
   try {
