@@ -192,6 +192,7 @@ export type Database = {
           payment_link_id: string
           performed_at: string
           performed_by_user_id: string | null
+          plan_id: string | null
         }
         Insert: {
           action_type: string
@@ -203,6 +204,7 @@ export type Database = {
           payment_link_id: string
           performed_at?: string
           performed_by_user_id?: string | null
+          plan_id?: string | null
         }
         Update: {
           action_type?: string
@@ -214,8 +216,17 @@ export type Database = {
           payment_link_id?: string
           performed_at?: string
           performed_by_user_id?: string | null
+          plan_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "payment_activity_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_links: {
         Row: {

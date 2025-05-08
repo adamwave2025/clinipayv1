@@ -121,20 +121,11 @@ export const fetchPlanInstallments = async (planId: string) => {
 
 export const fetchPlanActivities = async (planId: string) => {
   try {
-    // First get the plan details to retrieve patient_id and payment_link_id
-    const { data: plan, error: planError } = await supabase
-      .from('plans')
-      .select('patient_id, payment_link_id')
-      .eq('id', planId)
-      .single();
-      
-    if (planError) throw planError;
-    
+    // Use the new plan_id column to directly fetch activities for this plan
     const { data, error } = await supabase
-      .from('payment_activity')  // Updated table name here
+      .from('payment_activity')
       .select('*')
-      .eq('patient_id', plan.patient_id)
-      .eq('payment_link_id', plan.payment_link_id)
+      .eq('plan_id', planId)
       .order('performed_at', { ascending: false });
       
     if (error) throw error;
@@ -203,11 +194,12 @@ async function recordPlanActivity(
     }
     
     const { data, error } = await supabase
-      .from('payment_activity')  // Updated table name here
+      .from('payment_activity')
       .insert({
         patient_id: plan.patient_id,
         payment_link_id: plan.payment_link_id,
         clinic_id: plan.clinic_id,
+        plan_id: planId, // Now storing the plan_id directly
         action_type: actionType,
         details: details,
         performed_by_user_id: userId || (await supabase.auth.getUser()).data.user?.id
@@ -233,12 +225,22 @@ async function recordPlanActivityLegacy(
   details: any = {}
 ) {
   try {
+    // Try to find the associated plan for this patient and payment link
+    const { data: planData, error: planError } = await supabase
+      .from('plans')
+      .select('id')
+      .eq('patient_id', patientId || '00000000-0000-0000-0000-000000000000')
+      .eq('payment_link_id', paymentLinkId)
+      .maybeSingle();
+    
+    // Record the activity with plan_id if found
     const { data, error } = await supabase
-      .from('payment_activity')  // Updated table name here
+      .from('payment_activity')
       .insert({
         patient_id: patientId || '00000000-0000-0000-0000-000000000000',
         payment_link_id: paymentLinkId,
         clinic_id: clinicId,
+        plan_id: planData?.id || null, // Add plan_id if found
         action_type: actionType,
         details: details,
         performed_by_user_id: (await supabase.auth.getUser()).data.user?.id
@@ -949,6 +951,7 @@ export const recordPaymentRefund = async (
         patient_id: paymentRequest.patient_id,
         payment_link_id: paymentRequest.payment_link_id,
         clinic_id: paymentRequest.clinic_id,
+        plan_id: scheduleEntry?.plan_id || null, // Add plan_id from schedule entry
         action_type: 'payment_refund',
         details: {
           refund_date: new Date().toISOString(),

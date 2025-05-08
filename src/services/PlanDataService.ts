@@ -51,11 +51,11 @@ export class PlanDataService {
    */
   static async fetchPlanActivities(plan: Plan): Promise<PlanActivity[]> {
     try {
-      // Get all activities for this plan
+      // Get all activities for this plan directly using plan_id
       const { data, error } = await supabase
-        .from('payment_activity') // Using the new table name
+        .from('payment_activity')
         .select('*')
-        .eq('payment_link_id', plan.paymentLinkId)
+        .eq('plan_id', plan.id)
         .order('performed_at', { ascending: false });
         
       if (error) throw error;

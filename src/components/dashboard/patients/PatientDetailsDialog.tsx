@@ -172,10 +172,13 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
       setLoadingActivities(true);
       
       try {
+        // Modified to not fetch by patient_id directly, since plans will fetch their own activities
+        // This will only fetch activities not associated with any plan
         const { data, error } = await supabase
-          .from('payment_activity') // Fixed from payment_plan_activities to payment_activity
+          .from('payment_activity')
           .select('*')
           .eq('patient_id', patient.id)
+          .is('plan_id', null) // Only get activities not associated with any plan
           .order('performed_at', { ascending: false });
           
         if (error) throw error;
