@@ -64,6 +64,10 @@ export async function handleRequest(req: Request) {
       throw new Error("This payment link has been cancelled. Please contact the clinic for more information.");
     }
     
+    if (requestStatus === 'rescheduled') {
+      throw new Error("This payment has been rescheduled. Please check your email for a new payment link or contact the clinic.");
+    }
+    
     // Only proceed if the payment status is pending, sent, or overdue
     if (!['pending', 'sent', 'overdue'].includes(requestStatus)) {
       throw new Error(`This payment cannot be processed due to its status: ${requestStatus}. Please contact the clinic.`);
@@ -78,6 +82,10 @@ export async function handleRequest(req: Request) {
     
     if (planStatus === 'paused') {
       throw new Error("This payment plan is currently paused. Please contact the clinic for more information.");
+    }
+    
+    if (planStatus === 'rescheduled') {
+      throw new Error("This payment plan has been rescheduled. Please check your email for updated payment information.");
     }
     
     // Only allow payments for active, pending, or overdue plans

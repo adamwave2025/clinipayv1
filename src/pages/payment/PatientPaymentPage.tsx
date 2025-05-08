@@ -66,6 +66,9 @@ const PatientPaymentPage = () => {
   // Check if the payment plan is paused
   const isPaused = linkData.status === 'paused';
   
+  // Check if the payment has been rescheduled
+  const isRescheduled = linkData.status === 'rescheduled';
+
   // Render the cancelled state UI
   if (isCancelled) {
     console.log("Payment request is cancelled, showing cancelled message");
@@ -110,6 +113,57 @@ const PatientPaymentPage = () => {
             
             <p className="text-sm text-gray-500 mt-4">
               If you believe this is an error, please contact the clinic using the information provided.
+            </p>
+          </div>
+        </div>
+      </PaymentLayout>
+    );
+  }
+
+  // Render the rescheduled state UI
+  if (isRescheduled) {
+    console.log("Payment has been rescheduled, showing rescheduled message");
+    return (
+      <PaymentLayout isSplitView={true} hideHeaderFooter={true}>
+        {/* Left Column - Clinic Info & Security */}
+        <div className="space-y-4">
+          {linkData.clinic && (
+            <PaymentPageClinicCard 
+              clinic={{
+                name: linkData.clinic.name,
+                logo: linkData.clinic.logo || '',
+                email: linkData.clinic.email,
+                phone: linkData.clinic.phone,
+                address: linkData.clinic.address,
+                paymentType: linkData.title || 'Payment',
+                amount: linkData.amount
+              }}
+              paymentPlan={!!linkData.paymentPlan}
+              planTotalAmount={linkData.planTotalAmount}
+              totalPaid={linkData.totalPaid}
+              totalOutstanding={linkData.totalOutstanding}
+            />
+          )}
+          <CliniPaySecuritySection />
+        </div>
+        
+        {/* Right Column - Rescheduled Message */}
+        <div className="bg-white p-6 rounded-lg border border-amber-100">
+          <div className="flex justify-center mb-4">
+            <Logo className="h-10" />
+          </div>
+          
+          <div className="text-center">
+            <div className="bg-amber-50 p-6 rounded-lg mb-6">
+              <PaymentStatusSummaryContent
+                status="rescheduled"
+                title="Payment Has Been Rescheduled"
+                description="This payment link has been rescheduled by the clinic. Please contact them for the updated payment schedule or check your email for a new payment link."
+              />
+            </div>
+            
+            <p className="text-sm text-gray-500 mt-4">
+              If you have any questions, please contact the clinic using the information provided.
             </p>
           </div>
         </div>

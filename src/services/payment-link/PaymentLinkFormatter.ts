@@ -1,139 +1,188 @@
-import { PaymentLinkData, RawClinicData } from '@/types/paymentLink';
-import { ClinicFormatter } from './ClinicFormatter';
+import { PaymentLinkData } from '@/types/paymentLink';
+import { formatCurrency } from '@/utils/formatters';
 
-/**
- * PaymentLinkFormatter
- * 
- * NOTE: The database stores monetary values in cents (1/100 of currency unit)
- * Do NOT divide by 100 here - let the formatCurrency utility handle the conversion
- */
-export const PaymentLinkFormatter = {
-  formatPaymentRequest(requestData: any): PaymentLinkData | null {
-    if (!requestData) return null;
-
-    // Format clinic data from the request
-    const clinicData = requestData.clinics as RawClinicData;
-
-    // Handle cancelled status specifically
-    const status = requestData.status === 'cancelled' ? 'cancelled' : requestData.status;
-
-    // Check if this payment has been paid
-    const paymentId = requestData.payment_id;
-    const isPaid = status === 'paid' || !!paymentId;
-    
-    // If it's a custom amount request
-    if (requestData.custom_amount && !requestData.payment_link_id) {
-      return {
-        id: requestData.id,
-        title: `Payment for ${requestData.patient_name}`,
-        // Pass the raw amount from database (in pence/cents)
-        amount: requestData.custom_amount || 0,
-        type: 'custom',
-        description: requestData.message || undefined,
-        isRequest: true,
-        // Pass the raw custom amount (in pence/cents)
-        customAmount: requestData.custom_amount || 0,
-        patientName: requestData.patient_name,
-        patientEmail: requestData.patient_email,
-        patientPhone: requestData.patient_phone,
-        status: status,
-        paymentId: paymentId,
-        clinic: ClinicFormatter.formatClinicData(clinicData)
-      };
-    }
-
-    // If it's a payment link-based request
-    if (requestData.payment_links) {
-      const linkData = requestData.payment_links;
-      
-      // Extract payment plan data if available
-      const paymentPlan = linkData.payment_plan || false;
-      let planData = {};
-      
-      if (paymentPlan) {
-        // Keep raw amounts in pence/cents - do not divide by 100 here
-        const totalPaid = requestData.total_paid_amount || 0;
-        const planTotalAmount = linkData.plan_total_amount || 0;
-        const totalOutstanding = Math.max(0, planTotalAmount - totalPaid); // Ensure we don't have negative outstanding
-        
-        console.log(`PaymentLinkFormatter: Plan data - Total: ${planTotalAmount}, Paid: ${totalPaid}, Outstanding: ${totalOutstanding}`);
-        
-        planData = {
-          paymentPlan: true,
-          planTotalAmount: planTotalAmount,
-          totalPaid: totalPaid,
-          totalOutstanding: totalOutstanding,
-          payment_link_id: requestData.payment_link_id // Include the payment_link_id for payment plans
-        };
-      }
-      
-      return {
-        id: requestData.id,
-        title: linkData.title || `Payment for ${requestData.patient_name}`,
-        // Keep raw amount in pence/cents
-        amount: linkData.amount || 0,
-        type: linkData.type || 'other',
-        description: linkData.description || requestData.message,
-        isRequest: true,
-        patientName: requestData.patient_name,
-        patientEmail: requestData.patient_email,
-        patientPhone: requestData.patient_phone,
-        status: status,
-        paymentId: paymentId,
-        clinic: ClinicFormatter.formatClinicData(clinicData),
-        ...planData
-      };
-    }
-
-    return null;
-  },
-
-  formatPaymentLink(linkData: any): PaymentLinkData | null {
+export class PaymentLinkFormatter {
+  /**
+   * Format a payment link from the database into a standardized format
+   * @param linkData Raw payment link data from the database
+   * @returns Formatted payment link data
+   */
+  static formatPaymentLink(linkData: any): PaymentLinkData | null {
     if (!linkData) return null;
 
-    // Format clinic data from the link
-    const clinicData = linkData.clinics as RawClinicData;
-    
-    // Extract payment plan data if available
-    const paymentPlan = linkData.payment_plan || false;
-    let planData = {};
-    
-    if (paymentPlan) {
-      // Keep raw amounts in pence/cents - do not divide by 100 here
-      const totalPaid = linkData.total_paid_amount || 0;
-      const planTotalAmount = linkData.plan_total_amount || 0;
-      const totalOutstanding = Math.max(0, planTotalAmount - totalPaid); // Ensure we don't have negative outstanding
-      
-      console.log(`PaymentLinkFormatter: Plan data - Total: ${planTotalAmount}, Paid: ${totalPaid}, Outstanding: ${totalOutstanding}`);
-      
-      planData = {
-        paymentPlan: true,
-        planTotalAmount: planTotalAmount,
-        totalPaid: totalPaid,
-        totalOutstanding: totalOutstanding,
-        payment_link_id: linkData.id // Use the link's own ID as the payment_link_id
-      };
-    }
+    // Extract clinic data
+    const clinic = {
+      id: linkData.clinic_id || linkData.clinics?.id || '',
+      name: linkData.clinics?.clinic_name || 'Unknown Clinic',
+      logo: linkData.clinics?.logo_url || '',
+      email: linkData.clinics?.email || '',
+      phone: linkData.clinics?.phone || '',
+      address: this.formatAddress(linkData.clinics),
+      stripeStatus: linkData.clinics?.stripe_status || 'not_connected'
+    };
 
-    // Handle link status specifically
-    let status = linkData.status;
-    
-    // If status isn't explicitly set, derive from is_active
-    if (!status) {
-      status = linkData.is_active === false ? 'inactive' : 'active';
-    }
-
+    // Format the payment link data
     return {
       id: linkData.id,
       title: linkData.title || 'Payment',
-      // Keep raw amount in pence/cents
+      type: linkData.type || 'one_time',
       amount: linkData.amount || 0,
-      type: linkData.type || 'other',
-      description: linkData.description,
-      status: status,
-      isRequest: false, // Add the missing isRequest property
-      clinic: ClinicFormatter.formatClinicData(clinicData),
-      ...planData
+      description: linkData.description || '',
+      clinic: clinic,
+      status: this.formatPaymentStatus(linkData.status),
+      isRequest: false,
+      paymentPlan: linkData.payment_plan || false,
+      planTotalAmount: linkData.plan_total_amount || linkData.amount,
+      customAmount: linkData.custom_amount || null,
+      isRescheduled: linkData.status === 'rescheduled'
     };
   }
-};
+
+  /**
+   * Format a payment request from the database into a standardized format
+   * @param requestData Raw payment request data from the database
+   * @returns Formatted payment request data
+   */
+  static formatPaymentRequest(requestData: any): PaymentLinkData | null {
+    if (!requestData) return null;
+
+    // Extract clinic data
+    const clinic = {
+      id: requestData.clinic_id || requestData.clinics?.id || '',
+      name: requestData.clinics?.clinic_name || 'Unknown Clinic',
+      logo: requestData.clinics?.logo_url || '',
+      email: requestData.clinics?.email || '',
+      phone: requestData.clinics?.phone || '',
+      address: this.formatAddress(requestData.clinics),
+      stripeStatus: requestData.clinics?.stripe_status || 'not_connected'
+    };
+
+    // Get the amount - use custom_amount if available, otherwise use the payment link amount
+    const amount = requestData.custom_amount || 
+                  (requestData.payment_links?.amount) || 
+                  0;
+
+    // Format the payment request data
+    return {
+      id: requestData.id,
+      title: requestData.payment_links?.title || 'Payment Request',
+      type: requestData.payment_links?.type || 'one_time',
+      amount: amount,
+      description: requestData.payment_links?.description || '',
+      clinic: clinic,
+      status: this.formatPaymentStatus(requestData.status),
+      isRequest: true,
+      patientName: requestData.patient_name || '',
+      patientEmail: requestData.patient_email || '',
+      patientPhone: requestData.patient_phone || '',
+      paymentId: requestData.payment_id || null,
+      customAmount: requestData.custom_amount || null,
+      payment_link_id: requestData.payment_link_id || null,
+      isRescheduled: requestData.status === 'rescheduled'
+    };
+  }
+
+  /**
+   * Format a payment plan from the database into a standardized format
+   * @param planData Raw payment plan data from the database
+   * @returns Formatted payment plan data
+   */
+  static formatPaymentPlan(planData: any): PaymentLinkData | null {
+    if (!planData) return null;
+
+    // Extract clinic data
+    const clinic = {
+      id: planData.clinic_id || planData.clinics?.id || '',
+      name: planData.clinics?.clinic_name || 'Unknown Clinic',
+      logo: planData.clinics?.logo_url || '',
+      email: planData.clinics?.email || '',
+      phone: planData.clinics?.phone || '',
+      address: this.formatAddress(planData.clinics),
+      stripeStatus: planData.clinics?.stripe_status || 'not_connected'
+    };
+
+    // Calculate total paid and outstanding amounts
+    const totalAmount = planData.total_amount || 0;
+    const totalPaid = planData.total_paid || 0;
+    const totalOutstanding = totalAmount - totalPaid;
+
+    // Format the payment plan data
+    return {
+      id: planData.id,
+      title: planData.title || planData.payment_links?.title || 'Payment Plan',
+      type: 'payment_plan',
+      amount: planData.next_payment_amount || 0,
+      description: planData.description || planData.payment_links?.description || '',
+      clinic: clinic,
+      status: this.formatPaymentStatus(planData.status),
+      isRequest: false,
+      paymentPlan: true,
+      planTotalAmount: totalAmount,
+      totalPaid: totalPaid,
+      totalOutstanding: totalOutstanding,
+      hasOverduePayments: planData.has_overdue_payments || false,
+      payment_link_id: planData.payment_link_id || null,
+      isRescheduled: planData.status === 'rescheduled'
+    };
+  }
+
+  /**
+   * Format an address from clinic data
+   * @param clinicData Raw clinic data
+   * @returns Formatted address string
+   */
+  private static formatAddress(clinicData: any): string {
+    if (!clinicData) return '';
+
+    const addressParts = [];
+    
+    if (clinicData.address_line_1) addressParts.push(clinicData.address_line_1);
+    if (clinicData.address_line_2) addressParts.push(clinicData.address_line_2);
+    if (clinicData.city) addressParts.push(clinicData.city);
+    if (clinicData.postcode) addressParts.push(clinicData.postcode);
+    
+    return addressParts.join(', ');
+  }
+
+  /**
+   * Format a payment status to ensure it's valid
+   * @param status Raw status string
+   * @returns Normalized status string
+   */
+  static formatPaymentStatus(status: string | null): string {
+    if (!status) return 'pending';
+    
+    // Normalize the status to lowercase for consistent comparison
+    const normalizedStatus = status.toLowerCase();
+    
+    // List of valid statuses
+    const validStatuses = [
+      'pending',
+      'sent',
+      'paid',
+      'cancelled',
+      'overdue',
+      'paused',
+      'rescheduled',
+      'completed'
+    ];
+    
+    // Check if the status is valid
+    if (validStatuses.includes(normalizedStatus)) {
+      return normalizedStatus;
+    }
+    
+    // Default status if not recognized
+    console.warn(`Unknown payment status: ${status}, defaulting to 'pending'`);
+    return 'pending';
+  }
+
+  /**
+   * Format a payment amount for display
+   * @param amount Amount in pence/cents
+   * @returns Formatted currency string
+   */
+  static formatAmount(amount: number): string {
+    return formatCurrency(amount);
+  }
+}

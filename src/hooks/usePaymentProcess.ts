@@ -6,6 +6,7 @@ import { PaymentLinkData } from './usePaymentLinkData';
 import { useStripePayment } from './useStripePayment';
 import { usePaymentIntent } from './usePaymentIntent';
 import { usePaymentRecord } from './usePaymentRecord';
+import { isPaymentLinkActive } from '@/utils/planActivityUtils';
 
 interface ApplePayFormData {
   name: string;
@@ -25,6 +26,14 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
   const handlePaymentSubmit = async (formData: PaymentFormValues) => {
     if (!linkData) {
       toast.error('Payment details are missing');
+      return;
+    }
+    
+    // Check if the payment link is still active before proceeding
+    if (!isPaymentLinkActive(linkData)) {
+      console.log('Payment link is no longer active, status:', linkData.status);
+      // Reload the page to show the updated status UI
+      window.location.reload();
       return;
     }
     
@@ -50,7 +59,8 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         if (errorMessage.includes('already been processed') || 
             errorMessage.includes('has been cancelled') ||
             errorMessage.includes('plan is currently paused') ||
-            errorMessage.includes('plan has been cancelled')) {
+            errorMessage.includes('plan has been cancelled') ||
+            errorMessage.includes('has been rescheduled')) {
           console.log('Payment status issue detected, reloading page to show updated status');
           window.location.reload();
           return;
@@ -125,6 +135,14 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       return;
     }
     
+    // Check if the payment link is still active before proceeding
+    if (!isPaymentLinkActive(linkData)) {
+      console.log('Payment link is no longer active, status:', linkData.status);
+      // Reload the page to show the updated status UI
+      window.location.reload();
+      return;
+    }
+    
     setIsSubmitting(true);
     setProcessingPayment(true);
     
@@ -144,7 +162,8 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         const errorMessage = intentResult.error || 'Failed to create payment intent';
         
         if (errorMessage.includes('plan is currently paused') || 
-            errorMessage.includes('plan has been cancelled')) {
+            errorMessage.includes('plan has been cancelled') ||
+            errorMessage.includes('has been rescheduled')) {
           console.log('Plan status issue detected, reloading page to show updated status');
           window.location.reload();
           return;
