@@ -223,6 +223,8 @@ const PatientPaymentPage = () => {
     );
   }
 
+  // Render the overdue state UI with payment form still visible
+  // Note: For overdue, we still show the payment form but with a warning message
   const clinicData = linkData.clinic;
   const paymentType = linkData.title || 'Payment';
   const isStripeConnected = clinicData.stripeStatus === 'connected';
@@ -270,16 +272,27 @@ const PatientPaymentPage = () => {
       </div>
       
       {/* Right Column - Payment Form */}
-      <PaymentErrorBoundary linkId={linkId}>
-        <StripeProvider>
-          <PaymentFormContainer 
-            linkId={linkId}
-            linkData={linkData}
-            isStripeConnected={isStripeConnected}
-            defaultValues={defaultValues}
-          />
-        </StripeProvider>
-      </PaymentErrorBoundary>
+      <div className="relative">
+        {isOverdue && (
+          <div className="bg-amber-50 p-4 rounded-lg mb-4 border border-amber-200">
+            <h3 className="font-semibold text-amber-700">Payment Overdue</h3>
+            <p className="text-sm text-amber-700">
+              This payment is past its due date. Please make your payment as soon as possible to avoid any further delays.
+            </p>
+          </div>
+        )}
+        
+        <PaymentErrorBoundary linkId={linkId}>
+          <StripeProvider>
+            <PaymentFormContainer 
+              linkId={linkId}
+              linkData={linkData}
+              isStripeConnected={isStripeConnected}
+              defaultValues={defaultValues}
+            />
+          </StripeProvider>
+        </PaymentErrorBoundary>
+      </div>
     </PaymentLayout>
   );
 };

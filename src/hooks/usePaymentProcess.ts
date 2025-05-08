@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { toast } from 'sonner';
@@ -43,7 +42,19 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       });
       
       if (!intentResult.success) {
-        throw new Error(intentResult.error || 'Failed to create payment intent');
+        // Check if the error is due to payment status issues
+        const errorMessage = intentResult.error || 'Failed to create payment intent';
+        
+        // If the error indicates the payment is already paid or cancelled,
+        // we should reload the page to show the appropriate status message
+        if (errorMessage.includes('already been processed') || 
+            errorMessage.includes('has been cancelled')) {
+          console.log('Payment status issue detected, reloading page to show updated status');
+          window.location.reload();
+          return;
+        }
+        
+        throw new Error(errorMessage);
       }
       
       // Step 2: Now set processingPayment to true to show the overlay, but keep the form mounted

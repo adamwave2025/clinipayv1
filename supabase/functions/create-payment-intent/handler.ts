@@ -1,4 +1,3 @@
-
 import { initStripe, initSupabase, generatePaymentReference } from "./utils.ts";
 import { corsHeaders } from "./utils.ts";
 
@@ -48,8 +47,27 @@ export async function handleRequest(req: Request) {
   }
 
   // Check if this is a payment request and fetch associated data
-  const { associatedPaymentLinkId, patientInfo, customAmount } = 
+  // Include status in the data we fetch to validate if payment should be allowed
+  const { associatedPaymentLinkId, patientInfo, customAmount, requestStatus } = 
     await getPaymentRequestData(supabase, requestId, paymentLinkId);
+  
+  // Validate payment status - prevent processing for already paid or cancelled payments
+  if (requestStatus) {
+    console.log(`Payment request status: ${requestStatus}`);
+    
+    if (requestStatus === 'paid') {
+      throw new Error("This payment has already been processed. Please contact the clinic if you believe this is an error.");
+    }
+    
+    if (requestStatus === 'cancelled') {
+      throw new Error("This payment link has been cancelled. Please contact the clinic for more information.");
+    }
+    
+    // Only proceed if the payment status is pending, sent, or overdue
+    if (!['pending', 'sent', 'overdue'].includes(requestStatus)) {
+      throw new Error(`This payment cannot be processed due to its status: ${requestStatus}. Please contact the clinic.`);
+    }
+  }
 
   // Get the platform fee percentage
   const platformFeePercent = await getPlatformFeePercentage(supabase);
@@ -115,14 +133,23 @@ async function getPaymentRequestData(supabase, requestId, paymentLinkId) {
   let associatedPaymentLinkId = paymentLinkId; // Default to directly provided paymentLinkId
   let patientInfo = { name: "", email: "", phone: "" };
   let customAmount = null;
+  let requestStatus = null;
   
   if (requestId) {
     console.log(`Processing payment for request ID: ${requestId}`);
     
-    // Fetch the payment request to get its payment_link_id (if any) and patient info
+    // Fetch the payment request to get its payment_link_id (if any), patient info, and status
     const { data: requestData, error: requestError } = await supabase
       .from("payment_requests")
-      .select("payment_link_id, patient_name, patient_email, patient_phone, custom_amount")
+      .select(`
+        payment_link_id, 
+        patient_name, 
+        patient_email, 
+        patient_phone, 
+        custom_amount,
+        status,
+        payment_id
+      `)
       .eq("id", requestId)
       .single();
       
@@ -130,6 +157,14 @@ async function getPaymentRequestData(supabase, requestId, paymentLinkId) {
       console.error("Error fetching payment request data:", requestError);
     } else if (requestData) {
       console.log(`Found payment request data:`, requestData);
+      
+      // Store the request status for validation
+      requestStatus = requestData.status;
+      
+      // If the request already has a payment ID, it's already paid
+      if (requestData.payment_id) {
+        requestStatus = 'paid';
+      }
       
       if (requestData.payment_link_id) {
         console.log(`Found associated payment link ID: ${requestData.payment_link_id} for request ID: ${requestId}`);
@@ -147,9 +182,20 @@ async function getPaymentRequestData(supabase, requestId, paymentLinkId) {
       // Store custom amount if available
       customAmount = requestData.custom_amount;
     }
+  } else if (paymentLinkId) {
+    // If it's a direct payment link (not a request), check the payment link status
+    const { data: linkData, error: linkError } = await supabase
+      .from("payment_links")
+      .select("status")
+      .eq("id", paymentLinkId)
+      .single();
+      
+    if (!linkError && linkData) {
+      requestStatus = linkData.status;
+    }
   }
 
-  return { associatedPaymentLinkId, patientInfo, customAmount };
+  return { associatedPaymentLinkId, patientInfo, customAmount, requestStatus };
 }
 
 async function getPlatformFeePercentage(supabase) {

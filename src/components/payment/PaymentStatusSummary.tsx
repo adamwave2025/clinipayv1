@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import PaymentStatusIcon from './PaymentStatusIcon';
 
 interface PaymentStatusSummaryProps {
-  status: 'success' | 'failed' | 'pending';
+  status: 'success' | 'failed' | 'pending' | 'cancelled' | 'paused' | 'overdue';
   title: string;
   description: string;
-  primaryActionLabel?: React.ReactNode; // Change from string to ReactNode
+  primaryActionLabel?: React.ReactNode;
   secondaryActionLabel?: string;
   onPrimaryAction?: () => void;
   onSecondaryAction?: () => void;
