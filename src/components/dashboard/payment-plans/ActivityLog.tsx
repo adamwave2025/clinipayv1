@@ -1,206 +1,90 @@
+
 import React from 'react';
-import { PlanActivity, getActionTypeLabel } from '@/utils/planActivityUtils';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Clock, RotateCw, PauseCircle, PlayCircle, XCircle, CalendarIcon, CheckCircle2, CreditCard, RefreshCcw, AlertTriangle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { formatDateTime, formatCurrency } from '@/utils/formatters';
+import { PlanActivity, getActionTypeLabel } from '@/utils/planActivityUtils';
+import { formatDateTime } from '@/utils/formatters';
+import { 
+  Clock, MessageCircle, AlertCircle, CheckCircle, 
+  BanCircle, PauseCircle, PlayCircle, CalendarClock, FileText 
+} from 'lucide-react';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 interface ActivityLogProps {
   activities: PlanActivity[];
-  isLoading: boolean;
+  isLoading?: boolean;
 }
 
-const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading }) => {
+const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false }) => {
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'reschedule':
-        return <CalendarIcon className="h-4 w-4 text-blue-500" />;
+        return <CalendarClock className="h-4 w-4 text-blue-500" />;
       case 'pause':
         return <PauseCircle className="h-4 w-4 text-amber-500" />;
       case 'resume':
         return <PlayCircle className="h-4 w-4 text-green-500" />;
       case 'cancel':
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <BanCircle className="h-4 w-4 text-red-500" />;
       case 'payment_made':
-        return <CreditCard className="h-4 w-4 text-emerald-500" />;
-      case 'create':
-        return <CheckCircle2 className="h-4 w-4 text-indigo-500" />;
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'payment_refund':
-        return <RefreshCcw className="h-4 w-4 text-orange-500" />;
+        return <AlertCircle className="h-4 w-4 text-orange-500" />;
+      case 'reminder_sent':
+        return <MessageCircle className="h-4 w-4 text-blue-400" />;
+      case 'create':
+        return <FileText className="h-4 w-4 text-purple-500" />;
       case 'overdue':
-        return <AlertTriangle className="h-4 w-4 text-red-500" />;
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
       default:
         return <Clock className="h-4 w-4 text-gray-500" />;
     }
   };
 
-  // Keep this function as we might still use it for styling the activity item
-  const getActivityBadgeClass = (type: string) => {
-    switch (type) {
-      case 'reschedule':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'pause':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'resume':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'cancel':
-        return 'bg-red-50 text-red-700 border-red-200';
-      case 'payment_made':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'create':
-        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-      case 'payment_refund':
-        return 'bg-orange-50 text-orange-700 border-orange-200';
-      case 'overdue':
-        return 'bg-red-50 text-red-700 border-red-200';
-      default:
-        return 'bg-gray-50 text-gray-700 border-gray-200';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-GB', {
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric'
-      });
-    } catch (e) {
-      return dateString;
-    }
-  };
-
-  const renderActivityDetails = (activity: PlanActivity) => {
-    const details = activity.details;
-
-    switch (activity.actionType) {
-      case 'reschedule':
-        return (
-          <div className="text-sm">
-            <p>New start date: {details.new_start_date || 'N/A'}</p>
-            <p>{details.installments_affected || 0} installments affected</p>
-            {details.changes?.sent_payment_requests_cancelled?.length > 0 && (
-              <p>{details.changes.sent_payment_requests_cancelled.length} payment requests cancelled</p>
-            )}
-          </div>
-        );
-      case 'pause':
-        return (
-          <div className="text-sm">
-            <p>{details.installments_affected || 0} installments paused</p>
-          </div>
-        );
-      case 'resume':
-        return (
-          <div className="text-sm">
-            <p>Resume date: {details.resume_date || 'N/A'}</p>
-            <p>{details.installments_affected || 0} installments resumed</p>
-          </div>
-        );
-      case 'cancel':
-        return (
-          <div className="text-sm">
-            <p>{details.installments_affected || 0} installments cancelled</p>
-            {details.reason && <p>Reason: {details.reason}</p>}
-          </div>
-        );
-      case 'payment_made':
-        return (
-          <div className="text-sm">
-            <p>Payment {details.payment_number} of {details.total_payments}</p>
-            <p>Amount: {formatCurrency(details.amount)}</p>
-            <p>Reference: {details.payment_reference || 'N/A'}</p>
-            <p>Date: {formatDate(details.payment_date)}</p>
-          </div>
-        );
-      case 'payment_refund':
-        return (
-          <div className="text-sm">
-            <p>Payment {details.payment_number} of {details.total_payments}</p>
-            <p>Refund amount: {formatCurrency(details.refund_amount)}</p>
-            {details.is_full_refund 
-              ? <p>Full refund processed</p> 
-              : <p>Partial refund processed</p>}
-            <p>Reference: {details.payment_reference || 'N/A'}</p>
-            <p>Date: {formatDate(details.refund_date)}</p>
-          </div>
-        );
-      case 'create':
-        return (
-          <div className="text-sm">
-            <p>Start date: {details.start_date || 'N/A'}</p>
-            <p>{details.installments} payments of {formatCurrency(details.installment_amount)}</p>
-            <p>Frequency: {details.frequency || 'monthly'}</p>
-            <p>Total: {formatCurrency(details.total_amount)}</p>
-          </div>
-        );
-      case 'overdue':
-        return (
-          <div className="text-sm">
-            <p>{details.overdue_count || 0} overdue payment(s) detected</p>
-            {details.overdue_items && details.overdue_items.length > 0 && (
-              <p>Payments {details.overdue_items.map((item: any) => item.payment_number).join(', ')} are overdue</p>
-            )}
-            {details.previous_status && <p>Plan status changed from {details.previous_status}</p>}
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
   if (isLoading) {
     return (
-      <div className="py-4 text-center text-sm text-gray-500">
-        Loading activity history...
-      </div>
-    );
-  }
-
-  if (!activities || activities.length === 0) {
-    return (
-      <div className="py-4 text-center text-sm text-gray-500">
-        No activity records found for this payment plan.
+      <div className="pt-2">
+        <h3 className="text-md font-semibold mb-2">Activity Log</h3>
+        <div className="flex justify-center py-4 border rounded-md">
+          <LoadingSpinner />
+        </div>
       </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-md">Activity History</CardTitle>
-        <CardDescription>Recent actions performed on this payment plan</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[180px] pr-4">
-          <div className="space-y-3">
-            {activities.map((activity) => (
-              <div key={activity.id} className="flex items-start gap-2 border-b border-gray-100 pb-2 last:border-0">
-                <div className="mt-1">
-                  {getActivityIcon(activity.actionType)}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">
-                        {getActionTypeLabel(activity.actionType)}
-                      </span>
-                      {/* Badge removed from here */}
-                    </div>
-                    <span className="text-xs text-gray-500">
-                      {formatDateTime(activity.performedAt, 'en-GB')}
-                    </span>
+    <div className="pt-2">
+      <h3 className="text-md font-semibold mb-2">Activity Log</h3>
+      {activities.length === 0 ? (
+        <div className="text-center py-4 text-gray-500 border rounded-md">
+          No activity recorded yet
+        </div>
+      ) : (
+        <div className="border rounded-md">
+          <ScrollArea className="h-[200px] p-2">
+            <div className="space-y-3 p-2">
+              {activities.map(activity => (
+                <div key={activity.id} className="flex items-start gap-3">
+                  <div className="mt-0.5">
+                    {getActivityIcon(activity.actionType)}
                   </div>
-                  {renderActivityDetails(activity)}
+                  <div className="space-y-1 flex-1">
+                    <div className="flex justify-between">
+                      <p className="text-sm font-medium">{getActionTypeLabel(activity.actionType)}</p>
+                      <span className="text-xs text-gray-500">
+                        {formatDateTime(activity.performedAt, 'en-GB', 'Europe/London')}
+                      </span>
+                    </div>
+                    {activity.details && activity.details.message && (
+                      <p className="text-sm text-gray-600">{activity.details.message}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -27,14 +27,14 @@ export const formatDate = (date: string | Date | null, formatString: string = 'd
 /**
  * Format a date with time
  * @param date - The date to format
- * @param locale - Optional locale
- * @param timeZone - Optional timezone
+ * @param locale - Optional locale (default: 'en-GB' for UK format)
+ * @param timeZone - Optional timezone (default: 'Europe/London' for UK time)
  * @returns Formatted date and time string
  */
 export const formatDateTime = (
   date: string | Date | null, 
-  locale: string = 'en-US',
-  timeZone?: string
+  locale: string = 'en-GB',
+  timeZone: string = 'Europe/London'
 ): string => {
   if (!date) return '-';
   try {
@@ -45,16 +45,13 @@ export const formatDateTime = (
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
+      timeZone: timeZone
     };
-    
-    if (timeZone) {
-      options.timeZone = timeZone;
-    }
     
     return new Intl.DateTimeFormat(locale, options).format(dateObj);
   } catch (error) {
-    console.error('Error formatting date time:', error);
+    console.error('Error formatting date time:', error, date);
     return String(date);
   }
 };

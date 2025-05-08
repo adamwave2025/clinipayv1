@@ -48,11 +48,11 @@ export const usePaymentDetailsFetcher = () => {
         id: requestData.payments.id,
         status: requestData.payments.status,
         amount: requestData.payments.amount_paid, // Map amount_paid to amount
-        date: formatDateTime(requestData.payments.paid_at), // Format the date properly
+        date: formatDateTime(requestData.payments.paid_at, 'en-GB', 'Europe/London'), // Format with UK locale and timezone
         reference: requestData.payments.payment_ref,
         stripePaymentId: requestData.payments.stripe_payment_id,
         refundedAmount: requestData.payments.refund_amount,
-        refundedAt: requestData.payments.refunded_at ? formatDateTime(requestData.payments.refunded_at) : null,
+        refundedAt: requestData.payments.refunded_at ? formatDateTime(requestData.payments.refunded_at, 'en-GB', 'Europe/London') : null, // Format with UK locale and timezone
         patientName: requestData.patient_name,
         patientEmail: requestData.patient_email,
         patientPhone: requestData.patient_phone,
