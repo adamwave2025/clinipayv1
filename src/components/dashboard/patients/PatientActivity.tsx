@@ -62,6 +62,8 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
   };
 
   const getActivityDescription = (activity: any) => {
+    let countValue = 0;
+    
     switch (activity.actionType) {
       case 'payment_made':
         return `Payment of ${formatCurrency(activity.details?.amount || 0)} received`;
@@ -80,17 +82,17 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
       case 'cancel_plan':
         return 'Plan cancelled';
       case 'create':
-        const count = activity.details?.totalInstallments || activity.details?.total_payments || activity.details?.total_installments || 0;
+        countValue = activity.details?.totalInstallments || activity.details?.total_payments || activity.details?.total_installments || 0;
         const frequency = activity.details?.frequency || activity.details?.payment_frequency || 'monthly';
-        return `Plan created with ${count} ${capitalize(frequency)} installments`;
+        return `Plan created with ${countValue} ${capitalize(frequency)} installments`;
       case 'complete':
       case 'completed':
         return `Plan completed - ${formatCurrency(activity.details?.totalPaid || activity.details?.total_paid || 0)} paid`;
       case 'reminder_sent':
         return `Payment reminder sent for installment ${activity.details?.installmentNumber || 0}`;
       case 'overdue':
-        const count = activity.details?.overdue_count || (activity.details?.overdue_items?.length || 0);
-        return `${count} payment${count !== 1 ? 's are' : ' is'} overdue`;
+        countValue = activity.details?.overdue_count || (activity.details?.overdue_items?.length || 0);
+        return `${countValue} payment${countValue !== 1 ? 's are' : ' is'} overdue`;
       default:
         return getActionTypeLabel(activity.actionType);
     }

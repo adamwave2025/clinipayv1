@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { isPaymentStatusTransitionValid } from './paymentStatusUtils';
+import { Plan } from '@/utils/planTypes';
 
 // We're assuming this is the function with the error on line 136
 export const recordPaymentOverdue = async (planId: string, details: any) => {
