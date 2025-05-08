@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PlanActivity, getActionTypeLabel } from '@/utils/planActivityUtils';
-import { formatDateTime, formatCurrency } from '@/utils/formatters';
+import { formatDateTime, formatCurrency, formatDate } from '@/utils/formatters';
 import { 
   Clock, MessageCircle, AlertCircle, CheckCircle, 
   Ban, PauseCircle, PlayCircle, CalendarClock, FileText,
@@ -119,13 +119,13 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
             {details.previousDate && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Previous date:</span>
-                <span className="font-medium">{formatDateTime(details.previousDate)}</span>
+                <span className="font-medium">{formatDate(details.previousDate)}</span>
               </div>
             )}
             {details.newDate && (
               <div className="flex justify-between">
                 <span className="text-gray-600">New date:</span>
-                <span className="font-medium">{formatDateTime(details.newDate)}</span>
+                <span className="font-medium">{formatDate(details.newDate)}</span>
               </div>
             )}
           </div>
@@ -155,7 +155,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
             {details.resumeDate && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Resume date:</span>
-                <span className="font-medium">{formatDateTime(details.resumeDate)}</span>
+                <span className="font-medium">{formatDate(details.resumeDate)}</span>
               </div>
             )}
             {details.hasSentPayments && (
@@ -226,7 +226,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
             {details.dueDate && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Due date:</span>
-                <span className="font-medium">{formatDateTime(details.dueDate)}</span>
+                <span className="font-medium">{formatDate(details.dueDate)}</span>
               </div>
             )}
             {details.amount && (
@@ -260,7 +260,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
                   {details.overdue_items.map((item: any, i: number) => (
                     <div key={i} className="text-xs flex justify-between">
                       <span>Payment #{item.payment_number}</span>
-                      <span>{formatDateTime(item.due_date)}</span>
+                      <span>{formatDate(item.due_date)}</span>
                     </div>
                   ))}
                 </div>

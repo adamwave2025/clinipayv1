@@ -21,7 +21,7 @@ import PlanActionsDropdown from './PlanActionsDropdown';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import StatusBadge, { StatusType } from '@/components/common/StatusBadge';
 import ActivityLog from './ActivityLog';
-import { formatCurrency, formatDateTime } from '@/utils/formatters';
+import { formatCurrency, formatDateTime, formatDate } from '@/utils/formatters';
 
 interface PlanDetailsDialogProps {
   showPlanDetails: boolean;
@@ -58,12 +58,6 @@ const PlanDetailsDialog = ({
   
   const isDisabled = selectedPlan.status === 'completed' || selectedPlan.status === 'cancelled';
   const isPaused = isPlanPaused(selectedPlan);
-
-  // Format date with UK timezone
-  const formatDateWithUK = (dateString: string | null | undefined) => {
-    if (!dateString) return 'No upcoming payments';
-    return formatDateTime(dateString, 'en-GB', 'Europe/London');
-  };
 
   return (
     <Sheet open={showPlanDetails} onOpenChange={setShowPlanDetails}>
@@ -119,7 +113,7 @@ const PlanDetailsDialog = ({
               <p className="text-sm text-muted-foreground">Next Due Date</p>
               <p className="font-medium">
                 {selectedPlan.nextDueDate 
-                  ? formatDateTime(selectedPlan.nextDueDate, 'en-GB', 'Europe/London')
+                  ? formatDate(selectedPlan.nextDueDate)
                   : isPlanPaused(selectedPlan) ? 'Plan paused' : 'No upcoming payments'}
               </p>
             </div>
@@ -150,7 +144,7 @@ const PlanDetailsDialog = ({
                         className={installment.status === 'paid' ? 
                           "cursor-pointer hover:bg-muted transition-colors" : ""}
                       >
-                        <TableCell>{formatDateTime(installment.dueDate, 'en-GB', 'Europe/London')}</TableCell>
+                        <TableCell>{formatDate(installment.dueDate)}</TableCell>
                         <TableCell>{formatCurrency(installment.amount)}</TableCell>
                         <TableCell>
                           <StatusBadge 
