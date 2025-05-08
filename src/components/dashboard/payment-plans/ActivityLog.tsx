@@ -19,12 +19,16 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'reschedule':
+      case 'reschedule_plan':
         return <CalendarClock className="h-4 w-4 text-blue-500" />;
       case 'pause':
+      case 'pause_plan':
         return <PauseCircle className="h-4 w-4 text-amber-500" />;
       case 'resume':
+      case 'resume_plan':
         return <PlayCircle className="h-4 w-4 text-green-500" />;
       case 'cancel':
+      case 'cancel_plan':
         return <Ban className="h-4 w-4 text-red-500" />;
       case 'payment_made':
         return <CreditCard className="h-4 w-4 text-green-500" />;
@@ -50,26 +54,30 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       case 'payment_refund':
         return `Payment of ${formatCurrency(details.amount || 0)} ${details.refundFee ? 'partially refunded' : 'refunded'}`;
       case 'reschedule':
-        return `Plan rescheduled from ${formatDate(details.previousDate)} to ${formatDate(details.newDate)}`;
+      case 'reschedule_plan':
+        return `Plan rescheduled from ${formatDate(details.previousDate || details.old_start_date)} to ${formatDate(details.newDate || details.new_start_date)}`;
       case 'pause':
-        return `Plan paused${details.pausedInstallments ? ` for ${details.pausedInstallments} installments` : ''}`;
+      case 'pause_plan':
+        return `Plan paused${details.pausedInstallments || details.installments_affected ? ` affecting ${details.pausedInstallments || details.installments_affected} installments` : ''}`;
       case 'resume':
-        return 'Plan resumed';
+      case 'resume_plan':
+        return `Plan resumed${details.days_shifted ? ` (shifted by ${details.days_shifted} days)` : ''}`;
       case 'cancel':
+      case 'cancel_plan':
         return 'Plan cancelled';
       case 'create':
-        return `Plan created with ${details.totalInstallments || 0} installments`;
+        return `Plan created with ${details.totalInstallments || details.total_payments || 0} installments`;
       case 'reminder_sent':
         return `Payment reminder sent for installment ${details.installmentNumber || 0}`;
       case 'overdue':
-        return `${details.overdue_count || 0} payment${details.overdue_count !== 1 ? 's are' : ' is'} overdue`;
+        return `${details.overdue_count || details.overdue_items?.length || 0} payment${details.overdue_count !== 1 || details.overdue_items?.length !== 1 ? 's are' : ' is'} overdue`;
       default:
         return getActionTypeLabel(actionType);
     }
   };
 
-  // Render detailed content based on activity type
-  const renderActivityDetails = (activity: PlanActivity) => {
+  // Function to get detailed activity information
+  const getActivityDetails = (activity: PlanActivity) => {
     const { actionType, details } = activity;
 
     if (!details) return null;
@@ -77,86 +85,132 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
     switch (actionType) {
       case 'payment_made':
         return (
-          <div className="mt-2 space-y-1 text-sm">
+          <>
+            {details.title && <p>{details.title}</p>}
             {details.paymentRef && <p>Ref: {details.paymentRef}</p>}
+            {details.reference && <p>Ref: {details.reference}</p>}
             {details.installmentNumber && (
               <p>Payment {details.installmentNumber} of {details.totalInstallments || '?'}</p>
             )}
-          </div>
+            {details.payment_number && (
+              <p>Payment {details.payment_number} of {details.total_payments || '?'}</p>
+            )}
+            <p>Payment type: Payment Plan</p>
+          </>
         );
       
       case 'payment_refund':
         return (
-          <div className="mt-2 space-y-1 text-sm">
+          <>
+            {details.title && <p>{details.title}</p>}
             {details.paymentRef && <p>Original payment: {details.paymentRef}</p>}
+            {details.reference && <p>Original payment: {details.reference}</p>}
             {details.reason && <p>Reason: {details.reason}</p>}
-          </div>
+            <p>Payment type: Payment Plan</p>
+          </>
         );
       
       case 'reschedule':
-        return null; // Main description contains the date info
+      case 'reschedule_plan':
+        return (
+          <>
+            {details.plan_name && <p>{details.plan_name}</p>}
+            {details.affected_payments && <p>Affected payments: {details.affected_payments}</p>}
+            {details.days_shifted && <p>Days shifted: {details.days_shifted}</p>}
+            {details.was_overdue && <p>Plan was previously overdue</p>}
+            <p>Payment type: Payment Plan</p>
+          </>
+        );
       
       case 'pause':
+      case 'pause_plan':
         return (
-          <div className="mt-2 space-y-1 text-sm">
+          <>
+            {details.plan_name && <p>{details.plan_name}</p>}
             {details.reason && <p>Reason: {details.reason}</p>}
-          </div>
+            {details.pending_count > 0 && <p>Pending payments paused: {details.pending_count}</p>}
+            {details.sent_count > 0 && <p>Sent payment links paused: {details.sent_count}</p>}
+            {details.overdue_count > 0 && <p>Overdue payments paused: {details.overdue_count}</p>}
+            <p>Payment type: Payment Plan</p>
+          </>
         );
       
       case 'resume':
+      case 'resume_plan':
         return (
-          <div className="mt-2 space-y-1 text-sm">
+          <>
+            {details.plan_name && <p>{details.plan_name}</p>}
             {details.resumeDate && <p>Resume date: {formatDate(details.resumeDate)}</p>}
+            {details.resume_date && <p>Resume date: {formatDate(details.resume_date)}</p>}
+            {details.sent_payments_reset > 0 && <p>Payment links reset: {details.sent_payments_reset}</p>}
             {details.hasSentPayments && <p>Plan had previously sent payment links that were paused</p>}
-          </div>
+            {details.overdue_payments_found > 0 && <p>Overdue payments detected: {details.overdue_payments_found}</p>}
+            <p>Payment type: Payment Plan</p>
+          </>
         );
       
       case 'cancel':
+      case 'cancel_plan':
         return (
-          <div className="mt-2 space-y-1 text-sm">
+          <>
+            {details.plan_name && <p>{details.plan_name}</p>}
             {details.reason && <p>Reason: {details.reason}</p>}
-          </div>
+            {details.previous_status && <p>Previous status: {details.previous_status}</p>}
+            <p>Payment type: Payment Plan</p>
+          </>
         );
       
       case 'create':
         return (
-          <div className="mt-2 space-y-1 text-sm">
-            <p>Total amount: {formatCurrency(details.totalAmount || 0)}</p>
-            <p>Frequency: {details.frequency || 'Monthly'}</p>
-          </div>
+          <>
+            {details.title || details.plan_name && <p>{details.title || details.plan_name}</p>}
+            <p>Total amount: {formatCurrency(details.totalAmount || details.total_amount || 0)}</p>
+            <p>Frequency: {details.frequency || details.payment_frequency || 'Monthly'}</p>
+            <p>Payment type: Payment Plan</p>
+          </>
         );
       
       case 'reminder_sent':
         return (
-          <div className="mt-2 space-y-1 text-sm">
+          <>
+            {details.title && <p>{details.title}</p>}
             {details.dueDate && <p>Due date: {formatDate(details.dueDate)}</p>}
             {details.sentTo && <p>Sent to: {details.sentTo}</p>}
-          </div>
+            <p>Payment type: Payment Plan</p>
+          </>
         );
       
       case 'overdue':
         return (
-          <div className="mt-2 space-y-1 text-sm">
+          <>
+            {details.plan_name && <p>{details.plan_name}</p>}
             {details.overdue_items && details.overdue_items.length > 0 && (
-              <div className="space-y-1">
+              <>
                 {details.overdue_items.map((item: any, i: number) => (
                   <p key={i}>Payment #{item.payment_number} due {formatDate(item.due_date)}</p>
                 ))}
-              </div>
+              </>
             )}
-          </div>
+            <p>Payment type: Payment Plan</p>
+          </>
         );
       
       default:
-        // Show generic message info if available
-        return details.message ? <p className="mt-2 text-sm">{details.message}</p> : null;
+        return details.message ? (
+          <>
+            <p>{details.message}</p>
+            <p>Payment type: Payment Plan</p>
+          </>
+        ) : (
+          <p>Payment type: Payment Plan</p>
+        );
     }
   };
 
   if (isLoading) {
     return (
       <div className="pt-2">
-        <h3 className="text-md font-semibold mb-2">Activity Log</h3>
+        <h3 className="text-lg font-medium mb-4">Activity Log</h3>
         <div className="flex justify-center py-4 border rounded-md">
           <LoadingSpinner />
         </div>
@@ -166,15 +220,15 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
 
   return (
     <div className="pt-2">
-      <h3 className="text-md font-semibold mb-4">Activity Log</h3>
+      <h3 className="text-lg font-medium mb-4">Activity Log</h3>
       {activities.length === 0 ? (
         <div className="text-center py-6 text-gray-500 border rounded-md">
           No activity recorded yet
         </div>
       ) : (
-        <div className="border rounded-md">
+        <div>
           <ScrollArea className="h-[300px]">
-            <div className="space-y-3 p-3">
+            <div className="space-y-3">
               {activities.map((activity) => (
                 <div key={activity.id} className="flex items-start gap-3 p-3 border rounded-md">
                   <div className="mt-1">
@@ -185,7 +239,9 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
                       <span className="font-medium">{getActivityDescription(activity)}</span>
                     </div>
                     
-                    {renderActivityDetails(activity)}
+                    <div className="mt-2 space-y-1 text-sm">
+                      {getActivityDetails(activity)}
+                    </div>
                     
                     <p className="text-sm text-gray-500 mt-1">
                       {formatDateTime(activity.performedAt, 'en-GB', 'Europe/London')}
