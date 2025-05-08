@@ -6,7 +6,7 @@ import { PlanActivity } from '@/utils/planActivityUtils';
 import { PlanDataService } from '@/services/PlanDataService';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { isPlanPaused } from '@/utils/planStatusUtils';
-import { supabase } from '@/integrations/supabase/client'; // Fixed import path
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Shared hook to manage payment plan operations across different parts of the application.
@@ -177,12 +177,23 @@ export const useSharedPlanManagement = () => {
       const success = await PlanOperationsService.resumePlan(selectedPlan, resumeDate);
       
       if (success && selectedPlan) {
-        // Update local state to reflect the change
-        const newStatus = selectedPlan.hasOverduePayments ? 'overdue' : 'active';
-        setSelectedPlan({
-          ...selectedPlan,
-          status: newStatus
-        });
+        // After successful resume, fetch the updated plan data to get correct status
+        const { data: updatedPlan, error } = await supabase
+          .from('plans')
+          .select('*')
+          .eq('id', selectedPlan.id)
+          .single();
+        
+        if (error) {
+          console.error('Error fetching updated plan:', error);
+        } else if (updatedPlan) {
+          // Update local state with the latest plan data from the server
+          setSelectedPlan({
+            ...selectedPlan,
+            status: updatedPlan.status, // Use the actual status from the database
+            hasOverduePayments: updatedPlan.has_overdue_payments
+          });
+        }
         
         // Refresh the installments to show updated statuses
         await refreshPlanDetails();
@@ -199,20 +210,38 @@ export const useSharedPlanManagement = () => {
    * Reschedule the current plan
    */
   const handleReschedulePlan = async (newStartDate: Date) => {
-    // Update implementation to accept the newStartDate parameter
     if (!selectedPlan) return;
     
     setIsProcessing(true);
     
     try {
-      // We'll implement proper rescheduling logic with the new date
       console.log('Rescheduling plan with new start date:', newStartDate);
       
       const success = await PlanOperationsService.reschedulePlan(selectedPlan, newStartDate);
       
       if (success) {
-        // Update local state as needed
-        console.log('Plan rescheduled successfully');
+        // After successful reschedule, fetch the updated plan data to get correct status
+        const { data: updatedPlan, error } = await supabase
+          .from('plans')
+          .select('*')
+          .eq('id', selectedPlan.id)
+          .single();
+        
+        if (error) {
+          console.error('Error fetching updated plan:', error);
+        } else if (updatedPlan) {
+          // Update local state with the latest plan data from the server
+          setSelectedPlan({
+            ...selectedPlan,
+            status: updatedPlan.status, // Use the actual status from the database
+            hasOverduePayments: updatedPlan.has_overdue_payments,
+            startDate: updatedPlan.start_date,
+            nextDueDate: updatedPlan.next_due_date
+          });
+        }
+        
+        // Refresh the installments to show updated statuses
+        await refreshPlanDetails();
       }
     } catch (error) {
       console.error('Error rescheduling plan:', error);

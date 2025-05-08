@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
-import { determinePlanStatus } from '@/utils/plan-status-utils';
 
 export const usePlanResumeActions = (
   selectedPlan: Plan | null,
@@ -64,11 +63,6 @@ export const usePlanResumeActions = (
     const result = await handleResumePlan(selectedPlan.id, resumeDate);
     
     if (result?.success) {
-      // After resuming, determine the correct status based on payment history
-      const correctStatus = await determinePlanStatus(selectedPlan.id);
-      
-      console.log('Plan resumed with status:', correctStatus);
-      
       setShowResumeDialog(false);
       setShowPlanDetails(false); // Close the plan details modal
     }
