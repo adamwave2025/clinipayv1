@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { toast } from 'sonner';
@@ -45,10 +46,11 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         // Check if the error is due to payment status issues
         const errorMessage = intentResult.error || 'Failed to create payment intent';
         
-        // If the error indicates the payment is already paid or cancelled,
-        // we should reload the page to show the appropriate status message
+        // If the error indicates the payment is already paid, cancelled, or plan is paused
         if (errorMessage.includes('already been processed') || 
-            errorMessage.includes('has been cancelled')) {
+            errorMessage.includes('has been cancelled') ||
+            errorMessage.includes('plan is currently paused') ||
+            errorMessage.includes('plan has been cancelled')) {
           console.log('Payment status issue detected, reloading page to show updated status');
           window.location.reload();
           return;
@@ -138,6 +140,16 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       });
       
       if (!intentResult.success) {
+        // Check for specific error messages about plan status
+        const errorMessage = intentResult.error || 'Failed to create payment intent';
+        
+        if (errorMessage.includes('plan is currently paused') || 
+            errorMessage.includes('plan has been cancelled')) {
+          console.log('Plan status issue detected, reloading page to show updated status');
+          window.location.reload();
+          return;
+        }
+        
         throw new Error(intentResult.error || 'Failed to create payment intent');
       }
       

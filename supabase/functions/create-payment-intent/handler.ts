@@ -1,3 +1,4 @@
+
 import { initStripe, initSupabase, generatePaymentReference } from "./utils.ts";
 import { corsHeaders } from "./utils.ts";
 
@@ -48,13 +49,13 @@ export async function handleRequest(req: Request) {
 
   // Check if this is a payment request and fetch associated data
   // Include status in the data we fetch to validate if payment should be allowed
-  const { associatedPaymentLinkId, patientInfo, customAmount, requestStatus } = 
+  const { associatedPaymentLinkId, patientInfo, customAmount, requestStatus, planId, planStatus } = 
     await getPaymentRequestData(supabase, requestId, paymentLinkId);
+  
+  console.log(`Payment request status: ${requestStatus}, Plan ID: ${planId}, Plan status: ${planStatus}`);
   
   // Validate payment status - prevent processing for already paid or cancelled payments
   if (requestStatus) {
-    console.log(`Payment request status: ${requestStatus}`);
-    
     if (requestStatus === 'paid') {
       throw new Error("This payment has already been processed. Please contact the clinic if you believe this is an error.");
     }
@@ -66,6 +67,22 @@ export async function handleRequest(req: Request) {
     // Only proceed if the payment status is pending, sent, or overdue
     if (!['pending', 'sent', 'overdue'].includes(requestStatus)) {
       throw new Error(`This payment cannot be processed due to its status: ${requestStatus}. Please contact the clinic.`);
+    }
+  }
+  
+  // Also validate the plan status if this payment is part of a plan
+  if (planId && planStatus) {
+    if (planStatus === 'cancelled') {
+      throw new Error("This payment plan has been cancelled. Please contact the clinic for more information.");
+    }
+    
+    if (planStatus === 'paused') {
+      throw new Error("This payment plan is currently paused. Please contact the clinic for more information.");
+    }
+    
+    // Only allow payments for active, pending, or overdue plans
+    if (!['active', 'pending', 'overdue'].includes(planStatus)) {
+      throw new Error(`This payment cannot be processed due to the plan status: ${planStatus}. Please contact the clinic.`);
     }
   }
 
@@ -89,7 +106,9 @@ export async function handleRequest(req: Request) {
     patientName: patientInfo.name || paymentMethod.billing_details?.name || '',
     patientEmail: patientInfo.email || paymentMethod.billing_details?.email || '',
     patientPhone: patientInfo.phone || paymentMethod.billing_details?.phone || '',
-    customAmount: customAmount ? customAmount.toString() : ''
+    customAmount: customAmount ? customAmount.toString() : '',
+    planId: planId || '',
+    planStatus: planStatus || '',
   };
 
   console.log("Payment intent metadata:", metadata);
@@ -134,6 +153,8 @@ async function getPaymentRequestData(supabase, requestId, paymentLinkId) {
   let patientInfo = { name: "", email: "", phone: "" };
   let customAmount = null;
   let requestStatus = null;
+  let planId = null;
+  let planStatus = null;
   
   if (requestId) {
     console.log(`Processing payment for request ID: ${requestId}`);
@@ -170,6 +191,29 @@ async function getPaymentRequestData(supabase, requestId, paymentLinkId) {
         console.log(`Found associated payment link ID: ${requestData.payment_link_id} for request ID: ${requestId}`);
         // If the request is associated with a payment link, use that ID
         associatedPaymentLinkId = requestData.payment_link_id;
+        
+        // Check if this payment is part of a payment plan
+        const { data: scheduleData, error: scheduleError } = await supabase
+          .from("payment_schedule")
+          .select("plan_id")
+          .eq("payment_request_id", requestId)
+          .maybeSingle();
+          
+        if (!scheduleError && scheduleData && scheduleData.plan_id) {
+          planId = scheduleData.plan_id;
+          
+          // If this is part of a plan, check the plan status
+          const { data: planData, error: planError } = await supabase
+            .from("plans")
+            .select("status")
+            .eq("id", planId)
+            .single();
+            
+          if (!planError && planData) {
+            planStatus = planData.status;
+            console.log(`This payment is part of plan ${planId} with status: ${planStatus}`);
+          }
+        }
       }
       
       // Store patient info from the request
@@ -195,7 +239,7 @@ async function getPaymentRequestData(supabase, requestId, paymentLinkId) {
     }
   }
 
-  return { associatedPaymentLinkId, patientInfo, customAmount, requestStatus };
+  return { associatedPaymentLinkId, patientInfo, customAmount, requestStatus, planId, planStatus };
 }
 
 async function getPlatformFeePercentage(supabase) {
