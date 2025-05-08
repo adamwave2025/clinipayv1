@@ -1,15 +1,15 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PlanActivity, getActionTypeLabel } from '@/utils/planActivityUtils';
 import { formatDateTime, formatCurrency, formatDate } from '@/utils/formatters';
 import { 
   Clock, MessageCircle, AlertCircle, CheckCircle, 
   Ban, PauseCircle, PlayCircle, CalendarClock, FileText,
-  ChevronDown, ChevronUp, CreditCard, RefreshCw
+  CreditCard, RefreshCw
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface ActivityLogProps {
   activities: PlanActivity[];
@@ -17,16 +17,6 @@ interface ActivityLogProps {
 }
 
 const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false }) => {
-  // State to track which activities are expanded to show more details
-  const [expandedActivities, setExpandedActivities] = useState<Record<string, boolean>>({});
-
-  const toggleActivityExpansion = (id: string) => {
-    setExpandedActivities(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
-
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'reschedule':
@@ -38,9 +28,9 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       case 'cancel':
         return <Ban className="h-4 w-4 text-red-500" />;
       case 'payment_made':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CreditCard className="h-4 w-4 text-green-500" />;
       case 'payment_refund':
-        return <AlertCircle className="h-4 w-4 text-orange-500" />;
+        return <RefreshCw className="h-4 w-4 text-orange-500" />;
       case 'reminder_sent':
         return <MessageCircle className="h-4 w-4 text-blue-400" />;
       case 'create':
@@ -61,7 +51,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
     switch (actionType) {
       case 'payment_made':
         return (
-          <div className="space-y-1 text-sm">
+          <div className="mt-2 space-y-1 text-sm">
             {details.amount && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Amount:</span>
@@ -85,7 +75,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       
       case 'payment_refund':
         return (
-          <div className="space-y-1 text-sm">
+          <div className="mt-2 space-y-1 text-sm">
             {details.amount && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Refund amount:</span>
@@ -115,7 +105,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       
       case 'reschedule':
         return (
-          <div className="space-y-1 text-sm">
+          <div className="mt-2 space-y-1 text-sm">
             {details.previousDate && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Previous date:</span>
@@ -133,7 +123,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       
       case 'pause':
         return (
-          <div className="space-y-1 text-sm">
+          <div className="mt-2 space-y-1 text-sm">
             {details.pausedInstallments && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Paused installments:</span>
@@ -151,7 +141,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       
       case 'resume':
         return (
-          <div className="space-y-1 text-sm">
+          <div className="mt-2 space-y-1 text-sm">
             {details.resumeDate && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Resume date:</span>
@@ -168,7 +158,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       
       case 'cancel':
         return (
-          <div className="space-y-1 text-sm">
+          <div className="mt-2 space-y-1 text-sm">
             {details.cancelledInstallments && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Cancelled installments:</span>
@@ -186,7 +176,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       
       case 'create':
         return (
-          <div className="space-y-1 text-sm">
+          <div className="mt-2 space-y-1 text-sm">
             {details.totalAmount && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Total amount:</span>
@@ -216,7 +206,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       
       case 'reminder_sent':
         return (
-          <div className="space-y-1 text-sm">
+          <div className="mt-2 space-y-1 text-sm">
             {details.installmentNumber && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Installment:</span>
@@ -246,7 +236,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       
       case 'overdue':
         return (
-          <div className="space-y-1 text-sm">
+          <div className="mt-2 space-y-1 text-sm">
             {details.overdue_count && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Overdue payments:</span>
@@ -278,7 +268,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       default:
         // Show generic message info if available
         return details.message ? (
-          <div className="mt-1 text-sm">
+          <div className="mt-2 text-sm">
             <span>{details.message}</span>
           </div>
         ) : null;
@@ -305,16 +295,11 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
         </div>
       ) : (
         <div className="border rounded-md">
-          <ScrollArea className="h-[300px] p-2">
-            <div className="space-y-3 p-2">
-              {activities.map(activity => {
-                const isExpanded = expandedActivities[activity.id] || false;
-                const hasDetails = activity.details && 
-                  (activity.details.message || 
-                   Object.keys(activity.details).some(key => key !== 'message'));
-                
-                return (
-                  <div key={activity.id} className="border-b pb-3 last:border-0 last:pb-0">
+          <ScrollArea className="h-[300px]">
+            <div className="p-3 space-y-3">
+              {activities.map(activity => (
+                <Card key={activity.id} className="overflow-hidden shadow-sm border-l-4 border-l-gray-300">
+                  <CardContent className="p-3">
                     <div className="flex items-start gap-3">
                       <div className="mt-0.5">
                         {getActivityIcon(activity.actionType)}
@@ -327,44 +312,18 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
                           </span>
                         </div>
                         
-                        {/* Simple message display if available and not expanded */}
-                        {!isExpanded && activity.details && activity.details.message && (
+                        {/* Display message if available */}
+                        {activity.details && activity.details.message && (
                           <p className="text-sm text-gray-600">{activity.details.message}</p>
                         )}
                         
-                        {/* Show expand button if the activity has details */}
-                        {hasDetails && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-6 px-2 text-xs flex items-center gap-1 hover:bg-gray-100"
-                            onClick={() => toggleActivityExpansion(activity.id)}
-                          >
-                            {isExpanded ? (
-                              <>
-                                <ChevronUp className="h-3 w-3" />
-                                <span>Less details</span>
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown className="h-3 w-3" />
-                                <span>More details</span>
-                              </>
-                            )}
-                          </Button>
-                        )}
-                        
-                        {/* Expanded details */}
-                        {isExpanded && (
-                          <div className="bg-gray-50 p-2 rounded-md mt-1">
-                            {renderActivityDetails(activity)}
-                          </div>
-                        )}
+                        {/* Always display details without requiring expansion */}
+                        {renderActivityDetails(activity)}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </ScrollArea>
         </div>
