@@ -57,8 +57,11 @@ serve(async (req) => {
       });
       
     if (error) {
+      console.error('Error calling resume_payment_plan:', error);
       throw new Error(`Error calling resume_payment_plan: ${error.message}`);
     }
+    
+    console.log('Resume function result:', JSON.stringify(result, null, 2));
     
     // Get updated payment schedule after the function call
     const { data: afterSchedule, error: afterError } = await supabase
