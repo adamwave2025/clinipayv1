@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Loader2, AlertCircle } from "lucide-react";
+import { CalendarIcon, Loader2, AlertCircle, Info } from "lucide-react";
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
@@ -94,6 +94,14 @@ const ResumePlanDialog = ({
             </AlertDescription>
           </Alert>
         )}
+        
+        <Alert variant="default" className="bg-blue-50 border-blue-300 text-blue-800">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            If no payments have been made on this plan, it will resume with "pending" status.
+            Once the first payment is received, it will change to "active".
+          </AlertDescription>
+        </Alert>
         
         <div className="py-4">
           <div className="space-y-2">

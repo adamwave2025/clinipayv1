@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -229,11 +230,12 @@ export class PlanOperationsService {
       }
       
       // 3. Update previously paused payment schedules to pending status
+      // CRITICAL FIX: Always clear payment_request_id to ensure clean slate
       const { error: scheduleStatusUpdateError } = await supabase
         .from('payment_schedule')
         .update({ 
           status: 'pending',
-          payment_request_id: null, // Clear payment_request_id for those that were sent
+          payment_request_id: null, // ALWAYS clear payment_request_id when resuming
           updated_at: new Date().toISOString()
         })
         .eq('plan_id', plan.id)
@@ -349,6 +351,25 @@ export class PlanOperationsService {
           console.error('Error fixing plan status to pending:', fixStatusError);
         } else {
           console.log('Forced plan status to pending as there are no paid payments');
+        }
+      }
+      
+      // 8. ADDITIONAL FIX: Clear any lingering payment_request_id references
+      // This ensures that payment schedules don't have stale references
+      if (paidCount === 0) {
+        const { error: clearRequestsError } = await supabase
+          .from('payment_schedule')
+          .update({
+            payment_request_id: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('plan_id', plan.id)
+          .not('status', 'eq', 'paid');
+          
+        if (clearRequestsError) {
+          console.error('Error clearing payment request references:', clearRequestsError);
+        } else {
+          console.log('Cleared all payment request references for non-paid schedules');
         }
       }
       

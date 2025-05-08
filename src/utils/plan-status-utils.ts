@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { isPaymentStatusTransitionValid } from './paymentStatusUtils';
 import { Plan } from '@/utils/planTypes';
@@ -128,18 +129,10 @@ export const determinePlanStatus = async (planId: string): Promise<Plan['status'
     }
     
     // Step 4: Check for any paid payments to determine active vs pending
-    const { data: paidPayments, error: paidQueryError } = await supabase
-      .from('payment_schedule')
-      .select('id')
-      .eq('plan_id', planId)
-      .eq('status', 'paid')
-      .limit(1);
-      
-    if (paidQueryError) throw paidQueryError;
-    
-    if (paidPayments && paidPayments.length > 0) {
-      console.log(`Plan ${planId} status determined as: active (has at least one paid payment)`);
-      return 'active'; // Plan becomes active after first payment
+    // CRITICAL FIX: Only mark as active if at least one payment is made
+    if (paidCount > 0) {
+      console.log(`Plan ${planId} status determined as: active (has ${paidCount} paid payments)`);
+      return 'active'; // Plan becomes active ONLY after first payment
     }
     
     // Step 5: Default to pending if none of the above conditions are met
