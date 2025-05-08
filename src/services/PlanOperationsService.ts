@@ -172,17 +172,6 @@ export class PlanOperationsService {
         }
       }
       
-      // First, update the plan status to indicate we're resuming
-      // We don't set a specific status here, as we'll calculate it after adjusting payments
-      const { error: planUpdateError } = await supabase
-        .from('plans')
-        .update({ 
-          status: 'pending' // Temporary status, will be recalculated based on payments
-        })
-        .eq('id', plan.id);
-      
-      if (planUpdateError) throw planUpdateError;
-      
       // Reset any payment requests that were sent but not paid
       if (paymentRequestIds.length > 0) {
         const { error: requestUpdateError } = await supabase
@@ -199,8 +188,8 @@ export class PlanOperationsService {
         }
       }
       
-      // Update previously paused payment schedules to pending status
-      // CRITICAL: Always clear payment_request_id to ensure clean slate
+      // IMPORTANT CHANGE: First update previously paused payment schedules to pending status
+      // This ensures they are ready to be rescheduled by the database function
       const { error: scheduleStatusUpdateError } = await supabase
         .from('payment_schedule')
         .update({ 
@@ -212,12 +201,23 @@ export class PlanOperationsService {
         .eq('status', 'paused');
         
       if (scheduleStatusUpdateError) throw scheduleStatusUpdateError;
-
-      // Call the database function to reschedule payments
-      // Format date as YYYY-MM-DD
-      const formattedDate = effectiveResumeDate.toISOString().split('T')[0]; 
       
-      // Call the resume_payment_plan RPC function
+      // Format date as YYYY-MM-DD for the database function call
+      const formattedDate = effectiveResumeDate.toISOString().split('T')[0]; 
+      console.log('Calling resume_payment_plan with formatted date:', formattedDate);
+      
+      // Set a temporary status on plan to indicate we're processing
+      const { error: planUpdateError } = await supabase
+        .from('plans')
+        .update({ 
+          status: 'pending', // Temporary status, will be recalculated
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', plan.id);
+      
+      if (planUpdateError) throw planUpdateError;
+      
+      // AFTER updating schedules to pending, call the resume_payment_plan RPC function
       const { data: schedulingResult, error: schedulingError } = await supabase
         .rpc('resume_payment_plan', { 
           plan_id: plan.id,
@@ -226,6 +226,7 @@ export class PlanOperationsService {
       
       if (schedulingError) {
         console.error('Error rescheduling payments:', schedulingError);
+        throw schedulingError; // Escalate error to ensure we don't proceed with bad data
       } else {
         console.log('Rescheduling result:', schedulingResult);
       }

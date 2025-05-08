@@ -13,63 +13,89 @@ export const usePlanResumeActions = (
   const [hasSentPayments, setHasSentPayments] = useState(false);
   const [hasOverduePayments, setHasOverduePayments] = useState(false);
   const [hasPaidPayments, setHasPaidPayments] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleOpenResumeDialog = async () => {
     if (selectedPlan) {
-      // Check if there are any paused payments that were previously sent
-      const { data: sentPayments } = await supabase
-        .from('payment_schedule')
-        .select('id')
-        .eq('plan_id', selectedPlan.id)
-        .eq('status', 'paused')
-        .not('payment_request_id', 'is', null);
+      setIsProcessing(true);
       
-      // Check if any payments have been made for this plan
-      const { count: paidCount, error: paidCountError } = await supabase
-        .from('payment_schedule')
-        .select('id', { count: 'exact', head: false })
-        .eq('plan_id', selectedPlan.id)
-        .eq('status', 'paid');
-      
-      // Check if there would be overdue payments when resumed
-      // Get today's date for comparison
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().split('T')[0];
-      
-      // Check for any paused payments that have due dates before today
-      const { data: potentialOverduePayments } = await supabase
-        .from('payment_schedule')
-        .select('id')
-        .eq('plan_id', selectedPlan.id)
-        .eq('status', 'paused')
-        .lt('due_date', todayStr);
-      
-      const wouldHaveOverduePayments = potentialOverduePayments && potentialOverduePayments.length > 0;
-      
-      setHasSentPayments(sentPayments && sentPayments.length > 0);
-      setHasOverduePayments(wouldHaveOverduePayments);
-      setHasPaidPayments(!paidCountError && paidCount > 0);
-      
-      console.log({
-        hasSentPayments: sentPayments && sentPayments.length > 0,
-        hasOverduePayments: wouldHaveOverduePayments,
-        hasPaidPayments: !paidCountError && paidCount > 0,
-        paidCount: paidCount
-      });
+      try {
+        // Check if there are any paused payments that were previously sent
+        const { data: sentPayments } = await supabase
+          .from('payment_schedule')
+          .select('id')
+          .eq('plan_id', selectedPlan.id)
+          .eq('status', 'paused')
+          .not('payment_request_id', 'is', null);
+        
+        // Check if any payments have been made for this plan
+        const { count: paidCount, error: paidCountError } = await supabase
+          .from('payment_schedule')
+          .select('id', { count: 'exact', head: false })
+          .eq('plan_id', selectedPlan.id)
+          .eq('status', 'paid');
+        
+        // Check if there would be overdue payments when resumed
+        // Get today's date for comparison
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString().split('T')[0];
+        
+        // Check for any paused payments that have due dates before today
+        const { data: potentialOverduePayments } = await supabase
+          .from('payment_schedule')
+          .select('id')
+          .eq('plan_id', selectedPlan.id)
+          .eq('status', 'paused')
+          .lt('due_date', todayStr);
+        
+        const wouldHaveOverduePayments = potentialOverduePayments && potentialOverduePayments.length > 0;
+        
+        setHasSentPayments(sentPayments && sentPayments.length > 0);
+        setHasOverduePayments(wouldHaveOverduePayments);
+        setHasPaidPayments(!paidCountError && paidCount > 0);
+        
+        console.log({
+          hasSentPayments: sentPayments && sentPayments.length > 0,
+          hasOverduePayments: wouldHaveOverduePayments,
+          hasPaidPayments: !paidCountError && paidCount > 0,
+          paidCount: paidCount
+        });
+      } catch (error) {
+        console.error('Error preparing resume dialog:', error);
+      } finally {
+        setIsProcessing(false);
+        setShowResumeDialog(true);
+      }
+    } else {
+      setShowResumeDialog(true);
     }
-    
-    setShowResumeDialog(true);
   };
 
   const handleConfirmResumePlan = async (resumeDate: Date) => {
     if (!selectedPlan) return;
     
-    const result = await handleResumePlan(selectedPlan.id, resumeDate);
+    setIsProcessing(true);
     
-    if (result?.success) {
-      setShowResumeDialog(false);
-      setShowPlanDetails(false); // Close the plan details modal
+    try {
+      // Ensure the date is normalized to midnight to avoid timezone issues
+      const normalizedDate = new Date(resumeDate);
+      normalizedDate.setHours(0, 0, 0, 0);
+      
+      console.log('Confirming resume with date:', normalizedDate.toISOString());
+      
+      const result = await handleResumePlan(selectedPlan.id, normalizedDate);
+      
+      if (result?.success) {
+        setShowResumeDialog(false);
+        setShowPlanDetails(false); // Close the plan details modal
+      } else {
+        console.error('Resume plan returned error:', result);
+      }
+    } catch (error) {
+      console.error('Error resuming plan:', error);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -80,6 +106,7 @@ export const usePlanResumeActions = (
     handleOpenResumeDialog,
     hasSentPayments,
     hasOverduePayments,
-    hasPaidPayments
+    hasPaidPayments,
+    isProcessing
   };
 };

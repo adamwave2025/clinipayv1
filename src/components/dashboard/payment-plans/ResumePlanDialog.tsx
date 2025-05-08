@@ -50,12 +50,14 @@ const ResumePlanDialog = ({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const [date, setDate] = useState<Date>(today);
+  const [dateSelectionConfirmed, setDateSelectionConfirmed] = useState(false);
 
   const handleConfirm = () => {
     // Ensure the date is normalized to midnight to avoid timezone issues
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
     console.log('Confirming with date:', normalizedDate.toISOString());
+    setDateSelectionConfirmed(true);
     onConfirm(normalizedDate);
   };
 
@@ -65,6 +67,13 @@ const ResumePlanDialog = ({
     today.setHours(0, 0, 0, 0);
     return date < today;
   };
+  
+  // If the dialog is closed, reset the date confirmation state
+  React.useEffect(() => {
+    if (!showDialog) {
+      setDateSelectionConfirmed(false);
+    }
+  }, [showDialog]);
 
   return (
     <Dialog open={showDialog} onOpenChange={setShowDialog}>
@@ -105,6 +114,14 @@ const ResumePlanDialog = ({
             ) : (
               "No payments have been made on this plan yet. It will resume with 'pending' status until the first payment is received."
             )}
+          </AlertDescription>
+        </Alert>
+        
+        <Alert variant="default" className="bg-green-50 border-green-300 text-green-800">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            The date you select will be used to reschedule the next pending payment.
+            All future payments will be adjusted accordingly.
           </AlertDescription>
         </Alert>
         
@@ -153,18 +170,18 @@ const ResumePlanDialog = ({
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowDialog(false)} disabled={isProcessing}>
+          <Button variant="outline" onClick={() => setShowDialog(false)} disabled={isProcessing || dateSelectionConfirmed}>
             Cancel
           </Button>
           <Button 
             onClick={handleConfirm}
             className="bg-green-600 hover:bg-green-700"
-            disabled={isProcessing}
+            disabled={isProcessing || dateSelectionConfirmed}
           >
-            {isProcessing ? (
+            {isProcessing || dateSelectionConfirmed ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
+                {dateSelectionConfirmed ? 'Resuming Plan...' : 'Processing...'}
               </>
             ) : (
               'Resume Plan'
