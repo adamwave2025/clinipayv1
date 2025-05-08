@@ -5,7 +5,7 @@ import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { PlanActivity } from '@/utils/planActivityUtils';
 import { PlanDataService } from '@/services/PlanDataService';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
-import { isPlanPaused } from '@/utils/planStatusUtils';
+import { isPlanPaused, validatePlanStatus } from '@/utils/plan-status-utils';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -163,17 +163,6 @@ export const useSharedPlanManagement = () => {
     setIsProcessing(true);
     
     try {
-      // Check if there are any paused payments that were previously in 'sent' status
-      const { data: sentPayments } = await supabase
-        .from('payment_schedule')
-        .select('id')
-        .eq('plan_id', selectedPlan.id)
-        .eq('status', 'paused')
-        .not('payment_request_id', 'is', null);
-      
-      const hasSentPayments = sentPayments && sentPayments.length > 0;
-      
-      // Pass the resumeDate parameter to the PlanOperationsService
       const success = await PlanOperationsService.resumePlan(selectedPlan, resumeDate);
       
       if (success && selectedPlan) {
@@ -257,23 +246,6 @@ export const useSharedPlanManagement = () => {
     }
   };
 
-  /**
-   * Helper function to validate that a status from the database is one of our valid plan statuses
-   */
-  const validatePlanStatus = (status: string): Plan['status'] => {
-    // Create array of valid statuses matching our Plan type
-    const validStatuses: Plan['status'][] = ['active', 'pending', 'completed', 'overdue', 'cancelled', 'paused'];
-    
-    // Check if the provided status is valid
-    if (validStatuses.includes(status as Plan['status'])) {
-      return status as Plan['status'];
-    }
-    
-    // Return a default value if invalid
-    console.warn(`Invalid plan status received from database: ${status}. Defaulting to 'pending'.`);
-    return 'pending';
-  };
-
   return {
     // Plan and related data
     selectedPlan,
@@ -320,4 +292,3 @@ export const useSharedPlanManagement = () => {
     hasSentPayments
   };
 };
-
