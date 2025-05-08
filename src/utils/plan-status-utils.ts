@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { isPaymentStatusTransitionValid } from './paymentStatusUtils';
 import { Plan } from '@/utils/planTypes';

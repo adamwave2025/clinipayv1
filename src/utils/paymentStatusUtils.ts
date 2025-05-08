@@ -66,3 +66,4 @@ export const isPaymentStatusModifiable = (status: string | null | undefined): bo
 export const getModifiableStatuses = (): string[] => {
   return ['pending', 'overdue', 'paused', 'sent'];  // Added 'overdue' as modifiable status
 };
+
