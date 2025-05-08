@@ -15,11 +15,12 @@ export const recordPaymentOverdue = async (planId: string, details: any) => {
     
     // Record activity
     const { error: activityError } = await supabase
-      .from('payment_activity') // Fixed: Changed from payment_plan_activities to payment_activity
+      .from('payment_activity')
       .insert({
         patient_id: planData.patient_id,
         clinic_id: planData.clinic_id,
         payment_link_id: planData.payment_link_id,
+        plan_id: planId,  // Add plan_id to the insert
         action_type: 'overdue',
         details: details
       });

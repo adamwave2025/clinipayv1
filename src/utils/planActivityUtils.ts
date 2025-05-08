@@ -9,6 +9,8 @@ export type PlanActivityType =
   | 'reminder_sent'
   | 'payment_refund'
   | 'overdue'
+  | 'complete'
+  | 'completed'
   | string; // Allow for other string values as well
 
 export interface PlanActivity {
@@ -42,6 +44,8 @@ export const getActionTypeLabel = (type: PlanActivityType): string => {
     case 'reminder_sent': return 'Reminder Sent';
     case 'payment_refund': return 'Payment Refunded';
     case 'overdue': return 'Payment Overdue';
+    case 'complete':
+    case 'completed': return 'Plan Completed';
     default: {
       // Ensure TypeScript knows this is a string by using type assertion
       const typeAsString = type as string;

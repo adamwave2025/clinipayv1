@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { formatDateTime, formatCurrency } from '@/utils/formatters';
+import { formatDateTime, formatCurrency, formatDate } from '@/utils/formatters';
 import { getActionTypeLabel } from '@/utils/planActivityUtils';
 import {
   Clock,
@@ -50,11 +51,57 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
         return <MessageCircle className="h-4 w-4 text-blue-400" />;
       case 'create':
         return <FileText className="h-4 w-4 text-purple-500" />;
+      case 'complete':
+      case 'completed':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
       case 'overdue':
         return <AlertCircle className="h-4 w-4 text-red-500" />;
       default:
         return <Clock className="h-4 w-4 text-gray-500" />;
     }
+  };
+
+  const getActivityDescription = (activity: any) => {
+    switch (activity.actionType) {
+      case 'payment_made':
+        return `Payment of ${formatCurrency(activity.details?.amount || 0)} received`;
+      case 'payment_refund':
+        return `Payment of ${formatCurrency(activity.details?.amount || 0)} ${activity.details?.refundFee ? 'partially refunded' : 'refunded'}`;
+      case 'reschedule':
+      case 'reschedule_plan':
+        return `Plan rescheduled to ${formatDate(activity.details?.newDate || activity.details?.new_start_date)}`;
+      case 'pause':
+      case 'pause_plan':
+        return 'Plan paused';
+      case 'resume':
+      case 'resume_plan':
+        return 'Plan resumed';
+      case 'cancel':
+      case 'cancel_plan':
+        return 'Plan cancelled';
+      case 'create':
+        return `Plan created with ${activity.details?.totalInstallments || activity.details?.total_payments || activity.details?.total_installments || 0} installments`;
+      case 'complete':
+      case 'completed':
+        return `Plan completed - ${formatCurrency(activity.details?.totalPaid || activity.details?.total_paid || 0)} paid`;
+      case 'reminder_sent':
+        return `Payment reminder sent for installment ${activity.details?.installmentNumber || 0}`;
+      case 'overdue':
+        const count = activity.details?.overdue_count || (activity.details?.overdue_items?.length || 0);
+        return `${count} payment${count !== 1 ? 's are' : ' is'} overdue`;
+      default:
+        return getActionTypeLabel(activity.actionType);
+    }
+  };
+
+  // Function to get payment details
+  const getPaymentDetails = (payment: any) => {
+    return (
+      <>
+        {payment.title && <p>{payment.title}</p>}
+        {payment.reference && <p>Reference: {payment.reference}</p>}
+      </>
+    );
   };
 
   if (isLoading) {
@@ -84,14 +131,15 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
                 <div className="flex-1">
                   <div className="flex justify-between">
                     <span className="font-medium">
-                      {payment.title ? `${payment.title} - ` : ''}
-                      Payment {payment.status === 'refunded' ? 'Refunded' : 'Received'}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      {formatCurrency(payment.amount || 0)}
+                      {payment.status === 'refunded' ? 'Payment Refunded' : 'Payment Received'}
+                      {' '}{formatCurrency(payment.amount || 0)}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500">
+                  <div className="mt-2 space-y-1 text-sm">
+                    {payment.title && <p>{payment.title}</p>}
+                    {payment.reference && <p>Reference: {payment.reference}</p>}
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">
                     {formatDateTime(payment.date, 'en-GB', 'Europe/London')}
                   </p>
                 </div>
@@ -106,9 +154,9 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
                 </div>
                 <div className="flex-1">
                   <div className="flex justify-between">
-                    <span className="font-medium">{getActionTypeLabel(activity.actionType)}</span>
+                    <span className="font-medium">{getActivityDescription(activity)}</span>
                   </div>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 mt-1">
                     {formatDateTime(activity.performedAt, 'en-GB', 'Europe/London')}
                   </p>
                 </div>

@@ -57,8 +57,23 @@ export class PlanDataService {
         .select('*')
         .eq('plan_id', plan.id)
         .order('performed_at', { ascending: false });
-        
+      
       if (error) throw error;
+      
+      // If no activities are found for the specific plan_id, fall back to the original query
+      // This is a temporary solution for backward compatibility with existing data
+      if (!data || data.length === 0) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('payment_activity')
+          .select('*')
+          .eq('patient_id', plan.patientId)
+          .eq('payment_link_id', plan.paymentLinkId)
+          .order('performed_at', { ascending: false });
+          
+        if (fallbackError) throw fallbackError;
+        
+        return formatPlanActivities(fallbackData || []);
+      }
       
       return formatPlanActivities(data || []);
       

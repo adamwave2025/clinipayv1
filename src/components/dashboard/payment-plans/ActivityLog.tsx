@@ -38,6 +38,9 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
         return <MessageCircle className="h-4 w-4 text-blue-400" />;
       case 'create':
         return <FileText className="h-4 w-4 text-purple-500" />;
+      case 'complete':
+      case 'completed':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
       case 'overdue':
         return <AlertCircle className="h-4 w-4 text-red-500" />;
       default:
@@ -55,18 +58,21 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
         return `Payment of ${formatCurrency(details.amount || 0)} ${details.refundFee ? 'partially refunded' : 'refunded'}`;
       case 'reschedule':
       case 'reschedule_plan':
-        return `Plan rescheduled from ${formatDate(details.previousDate || details.old_start_date)} to ${formatDate(details.newDate || details.new_start_date)}`;
+        return `Plan rescheduled to ${formatDate(details.newDate || details.new_start_date)}`;
       case 'pause':
       case 'pause_plan':
-        return `Plan paused${details.pausedInstallments || details.installments_affected ? ` affecting ${details.pausedInstallments || details.installments_affected} installments` : ''}`;
+        return `Plan paused`;
       case 'resume':
       case 'resume_plan':
-        return `Plan resumed${details.days_shifted ? ` (shifted by ${details.days_shifted} days)` : ''}`;
+        return `Plan resumed`;
       case 'cancel':
       case 'cancel_plan':
         return 'Plan cancelled';
       case 'create':
-        return `Plan created with ${details.totalInstallments || details.total_payments || 0} installments`;
+        return `Plan created with ${details.totalInstallments || details.total_payments || details.total_installments || 0} installments`;
+      case 'complete':
+      case 'completed':
+        return `Plan completed - ${formatCurrency(details.totalPaid || details.total_paid || 0)} paid`;
       case 'reminder_sent':
         return `Payment reminder sent for installment ${details.installmentNumber || 0}`;
       case 'overdue':
@@ -87,15 +93,14 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
         return (
           <>
             {details.title && <p>{details.title}</p>}
-            {details.paymentRef && <p>Ref: {details.paymentRef}</p>}
-            {details.reference && <p>Ref: {details.reference}</p>}
+            {details.paymentRef && <p>Reference: {details.paymentRef}</p>}
+            {details.reference && <p>Reference: {details.reference}</p>}
             {details.installmentNumber && (
               <p>Payment {details.installmentNumber} of {details.totalInstallments || '?'}</p>
             )}
             {details.payment_number && (
               <p>Payment {details.payment_number} of {details.total_payments || '?'}</p>
             )}
-            <p>Payment type: Payment Plan</p>
           </>
         );
       
@@ -106,7 +111,6 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
             {details.paymentRef && <p>Original payment: {details.paymentRef}</p>}
             {details.reference && <p>Original payment: {details.reference}</p>}
             {details.reason && <p>Reason: {details.reason}</p>}
-            <p>Payment type: Payment Plan</p>
           </>
         );
       
@@ -118,7 +122,6 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
             {details.affected_payments && <p>Affected payments: {details.affected_payments}</p>}
             {details.days_shifted && <p>Days shifted: {details.days_shifted}</p>}
             {details.was_overdue && <p>Plan was previously overdue</p>}
-            <p>Payment type: Payment Plan</p>
           </>
         );
       
@@ -131,7 +134,6 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
             {details.pending_count > 0 && <p>Pending payments paused: {details.pending_count}</p>}
             {details.sent_count > 0 && <p>Sent payment links paused: {details.sent_count}</p>}
             {details.overdue_count > 0 && <p>Overdue payments paused: {details.overdue_count}</p>}
-            <p>Payment type: Payment Plan</p>
           </>
         );
       
@@ -143,9 +145,8 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
             {details.resumeDate && <p>Resume date: {formatDate(details.resumeDate)}</p>}
             {details.resume_date && <p>Resume date: {formatDate(details.resume_date)}</p>}
             {details.sent_payments_reset > 0 && <p>Payment links reset: {details.sent_payments_reset}</p>}
-            {details.hasSentPayments && <p>Plan had previously sent payment links that were paused</p>}
+            {details.hasSentPayments && <p>Previously paused payment links restored</p>}
             {details.overdue_payments_found > 0 && <p>Overdue payments detected: {details.overdue_payments_found}</p>}
-            <p>Payment type: Payment Plan</p>
           </>
         );
       
@@ -156,7 +157,6 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
             {details.plan_name && <p>{details.plan_name}</p>}
             {details.reason && <p>Reason: {details.reason}</p>}
             {details.previous_status && <p>Previous status: {details.previous_status}</p>}
-            <p>Payment type: Payment Plan</p>
           </>
         );
       
@@ -166,7 +166,18 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
             {details.title || details.plan_name && <p>{details.title || details.plan_name}</p>}
             <p>Total amount: {formatCurrency(details.totalAmount || details.total_amount || 0)}</p>
             <p>Frequency: {details.frequency || details.payment_frequency || 'Monthly'}</p>
-            <p>Payment type: Payment Plan</p>
+          </>
+        );
+      
+      case 'complete':
+      case 'completed':
+        return (
+          <>
+            {details.title || details.plan_name && <p>{details.title || details.plan_name}</p>}
+            <p>Total paid: {formatCurrency(details.totalPaid || details.total_paid || 0)}</p>
+            {details.completedAt || details.completed_at ? (
+              <p>Completed on: {formatDate(details.completedAt || details.completed_at)}</p>
+            ) : null}
           </>
         );
       
@@ -176,7 +187,6 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
             {details.title && <p>{details.title}</p>}
             {details.dueDate && <p>Due date: {formatDate(details.dueDate)}</p>}
             {details.sentTo && <p>Sent to: {details.sentTo}</p>}
-            <p>Payment type: Payment Plan</p>
           </>
         );
       
@@ -191,19 +201,13 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
                 ))}
               </>
             )}
-            <p>Payment type: Payment Plan</p>
           </>
         );
       
       default:
         return details.message ? (
-          <>
-            <p>{details.message}</p>
-            <p>Payment type: Payment Plan</p>
-          </>
-        ) : (
-          <p>Payment type: Payment Plan</p>
-        );
+          <p>{details.message}</p>
+        ) : null;
     }
   };
 
