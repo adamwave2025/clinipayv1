@@ -181,16 +181,20 @@ export class PlanOperationsService {
         
       if (paidCountError) throw paidCountError;
       
+      console.log(`Found ${paidCount} paid payments for this plan`);
+      
+      // Was the plan paused before?
+      const isPlanCurrentlyPaused = plan.status === 'paused';
+      
       // Determine what the plan status should be based on payment history
-      // If there are no paid payments, keep it as "pending" instead of using determinePlanStatus
       let newStatus;
       
+      // IMPORTANT FIX: If no payments have been made, always set to pending
       if (paidCount === 0) {
-        // No payments made yet, set to pending
-        console.log('No paid payments found, setting plan status to pending');
         newStatus = 'pending';
+        console.log('No paid payments found, setting plan status to pending');
       } else {
-        // Payments were made, determine the appropriate status
+        // Some payments were made, determine the appropriate status
         newStatus = await determinePlanStatus(plan.id);
         console.log(`Found ${paidCount} paid payments, determined plan status: ${newStatus}`);
       }
@@ -326,6 +330,26 @@ export class PlanOperationsService {
       
       if (activityError) {
         console.error('Error logging resume activity:', activityError);
+      }
+      
+      // 7. CRITICAL FIX: Double-check the plan status after all operations
+      // This ensures that any unexpected side effects from the database functions
+      // don't override our intended status
+      if (paidCount === 0) {
+        // Force the plan status to be 'pending' if no payments were made
+        const { error: fixStatusError } = await supabase
+          .from('plans')
+          .update({ 
+            status: 'pending',
+            has_overdue_payments: false
+          })
+          .eq('id', plan.id);
+          
+        if (fixStatusError) {
+          console.error('Error fixing plan status to pending:', fixStatusError);
+        } else {
+          console.log('Forced plan status to pending as there are no paid payments');
+        }
       }
       
       toast.success('Payment plan resumed successfully');
