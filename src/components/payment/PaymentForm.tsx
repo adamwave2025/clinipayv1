@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form } from '@/components/ui/form';
@@ -12,22 +12,16 @@ import { Lock } from 'lucide-react';
 interface PaymentFormProps {
   onSubmit: (data: PaymentFormValues) => void;
   isLoading: boolean;
-  amount: number; // Amount in pence
   defaultValues?: Partial<PaymentFormValues>;
   onApplePaySuccess?: (paymentMethod: any) => void;
 }
 
 const PaymentForm = ({ 
   onSubmit, 
-  isLoading,
-  amount = 100, // Default to £1 (100p) to prevent zero-amount payments
+  isLoading, 
   defaultValues,
   onApplePaySuccess
 }: PaymentFormProps) => {
-  const [isCardComplete, setIsCardComplete] = useState(false);
-  
-  console.log('PaymentForm: Rendering with amount:', amount);
-  
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
@@ -39,61 +33,12 @@ const PaymentForm = ({
   });
 
   const handleSubmitForm = async (data: PaymentFormValues) => {
-    console.log('Form submission triggered', { 
-      formData: data,
-      isCardComplete,
-      formState: form.formState,
-      paymentAmount: amount
-    });
-    
-    if (!isCardComplete) {
-      console.error('Card details are incomplete');
-      form.setError('stripeCard', { 
-        type: 'manual', 
-        message: 'Please complete your card details' 
-      });
-      return;
-    }
-    
-    if (amount <= 0) {
-      console.error('Invalid payment amount:', amount);
-      form.setError('stripeCard', {
-        type: 'manual',
-        message: 'Invalid payment amount. Please contact support.'
-      });
-      return;
-    }
-    
-    try {
-      console.log('Calling onSubmit handler with form data and amount:', amount);
-      onSubmit(data);
-    } catch (error) {
-      console.error('Error in form submission:', error);
-    }
-  };
-  
-  const handleCardElementChange = (event: any) => {
-    setIsCardComplete(event.complete);
-    
-    if (event.error) {
-      form.setError('stripeCard', { 
-        type: 'manual', 
-        message: event.error.message || 'Invalid card details' 
-      });
-    } else {
-      form.clearErrors('stripeCard');
-    }
+    onSubmit(data);
   };
 
   return (
     <Form {...form}>
-      <form 
-        onSubmit={(e) => {
-          console.log('Form onSubmit event triggered');
-          form.handleSubmit(handleSubmitForm)(e);
-        }} 
-        className="space-y-6"
-      >
+      <form onSubmit={form.handleSubmit(handleSubmitForm)} className="space-y-6">
         <PersonalInfoSection 
           control={form.control} 
           isLoading={isLoading} 
@@ -102,9 +47,7 @@ const PaymentForm = ({
         <PaymentDetailsSection
           control={form.control}
           isLoading={isLoading}
-          amount={amount}
           onApplePaySuccess={onApplePaySuccess}
-          onCardElementChange={handleCardElementChange}
         />
         
         <SubmitButton isLoading={isLoading} />

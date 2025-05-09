@@ -34,8 +34,8 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
     );
   };
 
-  // Extract patient name directly from patientName property
-  const patientName = plan.patientName || 'Unknown Patient';
+  // Extract patient name - handle both data formats
+  const patientName = plan.patientName || (plan.patients ? plan.patients.name : 'Unknown Patient');
     
   // Extract plan name/title - handle both data formats
   const planTitle = plan.title || plan.planName || 'Payment Plan';

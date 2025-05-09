@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Plan, formatPlanFromDb } from '@/utils/planTypes';
+import { Plan } from '@/utils/planTypes';
 import { PlanInstallment, formatPlanInstallments, groupPaymentSchedulesByPlan } from '@/utils/paymentPlanUtils';
 import { fetchPlans, fetchPlanInstallments, fetchPlanActivities } from '@/services/PaymentScheduleService';
 import { formatPlanActivities } from '@/utils/planActivityUtils';
@@ -21,23 +21,11 @@ export const usePlanDataFetcher = () => {
       // First, try to fetch plans from the plans table
       const plansFromTable = await fetchPlans(userId);
       
-      console.log('Plans fetched directly from plans table:', plansFromTable);
-      
       if (plansFromTable.length > 0) {
         // Use plans from the plans table if available
-        const formattedPlans = plansFromTable.map(plan => {
-          // Make sure patientName is available in the plan object
-          if (!plan.patientName && plan.patients?.name) {
-            plan.patientName = plan.patients.name;
-          }
-          return plan;
-        });
-        
-        setPlans(formattedPlans);
-        return formattedPlans;
+        setPlans(plansFromTable);
+        return plansFromTable;
       }
-      
-      console.log('No plans found in plans table, falling back to legacy method');
       
       // Fall back to legacy method if no plans in plans table
       const { data: userData, error: userError } = await supabase
@@ -85,18 +73,8 @@ export const usePlanDataFetcher = () => {
       const planMap = groupPaymentSchedulesByPlan(scheduleData as any);
       const planList = Array.from(planMap.values()) as Plan[];
       
-      // Make sure each plan has patientName set correctly
-      const formattedPlans = planList.map(plan => {
-        if (plan.patients && plan.patients.name) {
-          plan.patientName = plan.patients.name;
-        }
-        return plan;
-      });
-      
-      console.log('Plans from legacy method:', formattedPlans);
-      
-      setPlans(formattedPlans);
-      return formattedPlans;
+      setPlans(planList);
+      return planList;
     } catch (error) {
       console.error('Error in fetchPaymentPlans:', error);
       return [];

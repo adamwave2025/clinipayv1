@@ -6,39 +6,43 @@ import StripeCardElement from './StripeCardElement';
 import { PaymentFormValues } from './FormSchema';
 import PaymentSectionContainer from '../PaymentSectionContainer';
 import ApplePayButton from './ApplePayButton';
-import { penceToPounds, debugCurrencyInfo } from '../../services/CurrencyService';
+import { usePaymentLinkData } from '../../hooks/usePaymentLinkData';
+import { useParams } from 'react-router-dom';
+import { penceToPounds } from '../../services/CurrencyService';
 
 interface PaymentDetailsSectionProps {
   control: Control<PaymentFormValues>;
   isLoading: boolean;
-  amount: number; // Amount in pence
   onApplePaySuccess?: (paymentMethod: any) => void;
-  onCardElementChange?: (event: any) => void;
 }
 
 const PaymentDetailsSection = ({ 
   control, 
   isLoading, 
-  amount,
-  onApplePaySuccess,
-  onCardElementChange
+  onApplePaySuccess 
 }: PaymentDetailsSectionProps) => {
+  const { linkId } = useParams<{ linkId: string }>();
+  const { linkData } = usePaymentLinkData(linkId);
+  const amount = linkData?.amount || 0;
+  
   // Detailed logging for debugging
   console.log('--- Payment Details Section Debug ---');
-  console.log('Raw amount from props (pence):', amount);
-  debugCurrencyInfo(amount, 'PaymentDetailsSection', true);
-  
-  // Use a safe amount to prevent issues - minimum £1 (100p)
-  const safeAmount = amount > 0 ? amount : 100;
+  console.log('Raw amount from linkData (pence):', amount);
   
   // Convert amount from pence to pounds for Apple Pay
-  const amountInPounds = penceToPounds(safeAmount);
+  const amountInPounds = penceToPounds(amount);
   console.log('Converted amount for Apple Pay (pounds):', amountInPounds);
   
   // Additional validation
   if (amount <= 0) {
     console.warn('Warning: Payment amount is zero or negative:', amount);
   }
+
+  const handleApplePaySuccess = (paymentMethod: any) => {
+    if (onApplePaySuccess) {
+      onApplePaySuccess(paymentMethod);
+    }
+  };
 
   return (
     <PaymentSectionContainer title="Payment Details">
@@ -47,7 +51,7 @@ const PaymentDetailsSection = ({
         <ApplePayButton 
           amount={amountInPounds}
           isLoading={isLoading}
-          onApplePaySuccess={onApplePaySuccess}
+          onApplePaySuccess={handleApplePaySuccess}
         />
       )}
       
@@ -59,9 +63,6 @@ const PaymentDetailsSection = ({
           <StripeCardElement 
             isLoading={isLoading}
             onChange={(e) => {
-              if (onCardElementChange) {
-                onCardElementChange(e);
-              }
               field.onChange(e.complete ? e : { empty: true });
             }}
           />

@@ -6,7 +6,7 @@ import { usePaymentProcess } from '@/hooks/usePaymentProcess';
 import PaymentFormSection from '@/components/payment/PaymentFormSection';
 import { PaymentLinkData } from '@/types/paymentLink';
 import { toast } from 'sonner';
-import { validatePenceAmount } from '@/services/CurrencyService';
+import { validatePoundsAmount } from '@/services/CurrencyService';
 
 interface PaymentFormContainerProps {
   linkId?: string;
@@ -24,7 +24,6 @@ const PaymentFormContainer = ({
   const navigate = useNavigate();
   const [hasError, setHasError] = useState(false);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
-  const [safeAmount, setSafeAmount] = useState<number>(100); // Default to £1 (100p)
 
   const {
     isSubmitting,
@@ -39,26 +38,13 @@ const PaymentFormContainer = ({
       console.error("Payment form container: Invalid payment link data:", linkData);
       setErrorDetails("Invalid payment link data");
       setHasError(true);
-      return;
-    }
-    
-    if (!isStripeConnected) {
+    } else if (!isStripeConnected) {
       console.warn("Payment form container: Stripe not connected for clinic");
+    } else if (!linkData.amount || linkData.amount <= 0) {
+      console.error("Payment form container: Invalid payment amount:", linkData.amount);
+      setErrorDetails("Invalid payment amount");
+      setHasError(true);
     }
-    
-    // Validate and ensure we have a valid amount
-    let amount = linkData.amount || 0;
-    
-    console.log("Payment form container: Raw amount from linkData:", amount);
-    
-    if (!validatePenceAmount(amount, 'PaymentFormContainer')) {
-      console.warn("Payment form container: Invalid amount detected, using minimum safe amount");
-      amount = 100; // Default to £1 (100p)
-    }
-    
-    setSafeAmount(amount);
-    console.log("Payment form container: Using amount:", amount);
-    
   }, [linkData, isStripeConnected]);
 
   useEffect(() => {
@@ -66,13 +52,12 @@ const PaymentFormContainer = ({
       // Only navigate if we have a serious error
       if (errorDetails) {
         console.error(`Payment form error: ${errorDetails}`);
-        toast.error(`Payment error: ${errorDetails}`);
       }
       
-      // Add a small delay before navigation to allow error logging and toast to show
+      // Add a small delay before navigation to allow error logging
       const timer = setTimeout(() => {
         navigate(`/payment/failed${linkId ? `?link_id=${linkId}` : ''}`);
-      }, 2000);
+      }, 1000);
       
       return () => clearTimeout(timer);
     }
@@ -83,18 +68,12 @@ const PaymentFormContainer = ({
       console.log("Starting payment submission with form data:", { 
         name: formData.name, 
         email: formData.email,
-        hasPhone: !!formData.phone,
-        amount: safeAmount
+        hasPhone: !!formData.phone
       });
-      
-      if (safeAmount <= 0) {
-        throw new Error("Invalid payment amount: " + safeAmount);
-      }
       
       await handlePaymentSubmit(formData);
     } catch (error) {
       console.error("Payment form error:", error);
-      toast.error("Payment processing failed. Please try again later.");
       setErrorDetails(error instanceof Error ? error.message : String(error));
       setHasError(true);
     }
@@ -103,11 +82,6 @@ const PaymentFormContainer = ({
   const handleApplePaySuccess = async (paymentMethod: any) => {
     try {
       console.log("Apple Pay payment method received:", paymentMethod);
-      
-      if (safeAmount <= 0) {
-        throw new Error("Invalid payment amount for Apple Pay: " + safeAmount);
-      }
-      
       toast.info("Processing Apple Pay payment...");
       
       // Use the payment method to complete the payment
@@ -149,7 +123,6 @@ const PaymentFormContainer = ({
       isStripeConnected={isStripeConnected}
       processingPayment={processingPayment}
       isSubmitting={isSubmitting}
-      amount={safeAmount}
       defaultValues={defaultValues}
       onSubmit={handlePaymentWithErrorCatch}
       onApplePaySuccess={handleApplePaySuccess}

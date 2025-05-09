@@ -1,3 +1,4 @@
+
 // Define a proper Plan type mapped to our database schema
 export interface Plan {
   id: string;
@@ -23,8 +24,6 @@ export interface Plan {
   // Backward compatibility properties
   planName?: string;
   amount?: number;
-  // Temporary properties during transition - will be removed once migration is complete
-  patients?: { name: string; id: string; email?: string };
 }
 
 // Keep the existing PlanInstallment type for consistency
@@ -49,15 +48,12 @@ export interface PlanInstallment {
  * @returns Formatted Plan object with amounts still in pence/cents
  */
 export const formatPlanFromDb = (dbPlan: any): Plan => {
-  // Extract the patient name directly or from the patients relation
-  const patientName = dbPlan.patients?.name || 'Unknown Patient';
-  
   // If the plan comes directly from the plans table
   if ('patient_id' in dbPlan) {
     return {
       id: dbPlan.id,
       patientId: dbPlan.patient_id,
-      patientName: patientName,
+      patientName: dbPlan.patients?.name || 'Unknown Patient',
       clinicId: dbPlan.clinic_id,
       paymentLinkId: dbPlan.payment_link_id,
       title: dbPlan.title || 'Payment Plan',
@@ -76,9 +72,7 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
       updatedAt: dbPlan.updated_at,
       // Set backward compatibility fields
       planName: dbPlan.title || 'Payment Plan',
-      amount: dbPlan.total_amount || 0, // Keep in pence, do not divide by 100
-      // Store the original patients relation temporarily during transition
-      patients: dbPlan.patients
+      amount: dbPlan.total_amount || 0 // Keep in pence, do not divide by 100
     };
   }
   
@@ -86,7 +80,7 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
   return {
     id: dbPlan.id,
     patientId: dbPlan.patient_id,
-    patientName: patientName,
+    patientName: dbPlan.patient_name || 'Unknown Patient',
     clinicId: dbPlan.clinic_id,
     paymentLinkId: dbPlan.payment_link_id,
     title: dbPlan.title || 'Payment Plan',
@@ -105,8 +99,6 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
     updatedAt: dbPlan.updated_at,
     // Set backward compatibility fields
     planName: dbPlan.title || 'Payment Plan',
-    amount: dbPlan.total_amount || 0, // Keep in pence, do not divide by 100
-    // Store the original patients relation temporarily during transition
-    patients: dbPlan.patients
+    amount: dbPlan.total_amount || 0 // Keep in pence, do not divide by 100
   };
 };

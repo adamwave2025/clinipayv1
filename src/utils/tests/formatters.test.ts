@@ -88,7 +88,6 @@ describe('CurrencyService - poundsToPence', () => {
   });
 
   test('handles string inputs correctly', () => {
-    // These now work since we updated poundsToPence to handle strings
     expect(poundsToPence('10')).toBe(1000);
     expect(poundsToPence('10.5')).toBe(1050);
     expect(poundsToPence('1000')).toBe(100000);

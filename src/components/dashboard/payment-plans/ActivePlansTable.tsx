@@ -16,15 +16,14 @@ import StatusBadge from '@/components/common/StatusBadge';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/utils/formatters';
 import { debugCurrencyInfo } from '@/services/CurrencyService';
-import { Plan } from '@/utils/planTypes';
 
 interface ActivePlansTableProps {
   isLoading: boolean;
-  plans: Plan[];
-  totalPlanCount: number;
+  plans: any[];
+  totalPlanCount: number; // Add total plan count to determine empty state
   onCreatePlanClick: () => void;
-  onViewPlanDetails: (plan: Plan) => void;
-  statusFilter: string;
+  onViewPlanDetails: (plan: any) => void;
+  statusFilter: string; // Add current status filter
 }
 
 const ActivePlansTable = ({ 
@@ -62,7 +61,7 @@ const ActivePlansTable = ({
   // Debug log to inspect the plan data
   console.log('Plans being rendered:', plans.map(p => ({
     id: p.id,
-    patientName: p.patientName, // Use the correct property
+    patientName: p.patientName || p.patients?.name,
     planName: p.title || p.planName,
     progress: p.progress,
     paidInstallments: p.paidInstallments,
@@ -109,8 +108,8 @@ const ActivePlansTable = ({
                 // Debug currency info to help trace monetary values
                 debugCurrencyInfo(plan.amount || plan.totalAmount, `Plan ${plan.id} amount`, true);
                 
-                // Use patientName directly from the plan
-                const patientName = plan.patientName || 'Unknown Patient';
+                // Extract patient name - handle both data formats
+                const patientName = plan.patientName || (plan.patients ? plan.patients.name : 'Unknown Patient');
                 
                 // Extract plan name/title - handle both data formats
                 const planTitle = plan.title || plan.planName || 'Payment Plan';
