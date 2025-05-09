@@ -136,6 +136,28 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       return;
     }
     
+    // If this payment is for a payment request, get the associated payment_link_id
+    let associatedPaymentLinkId = paymentLinkId;
+    
+    if (requestId) {
+      console.log(`Payment is for request ID: ${requestId}, checking for associated payment link...`);
+      
+      const { data: requestData, error: requestError } = await supabaseClient
+        .from("payment_requests")
+        .select("payment_link_id")
+        .eq("id", requestId)
+        .maybeSingle();
+        
+      if (requestError) {
+        console.error("Error fetching payment request data:", requestError);
+      } else if (requestData && requestData.payment_link_id) {
+        associatedPaymentLinkId = requestData.payment_link_id;
+        console.log(`Found associated payment link ID: ${associatedPaymentLinkId} from payment request`);
+      } else {
+        console.log("No payment link ID found in payment request");
+      }
+    }
+    
     // Prepare payment record data - IMPORTANT: Store all monetary values as cents/pence
     const paymentData = {
       clinic_id: clinicId,
@@ -144,7 +166,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       patient_name: patientName || "Unknown",
       patient_email: patientEmail || null,
       patient_phone: patientPhone || null,
-      payment_link_id: paymentLinkId || null,
+      payment_link_id: associatedPaymentLinkId || null,
       payment_ref: paymentReference,
       status: "paid",
       stripe_payment_id: paymentIntent.id,
@@ -607,3 +629,4 @@ export async function handlePaymentIntentFailed(paymentIntent: any, supabaseClie
     console.error("Stack trace:", error.stack);
   }
 }
+
