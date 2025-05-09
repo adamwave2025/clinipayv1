@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
 import { usePaymentLinkData } from '@/modules/payment/hooks';
@@ -9,6 +9,7 @@ import {
   PaymentPageLoading 
 } from '@/modules/payment/components';
 import { RefreshCcw } from 'lucide-react';
+import type { ClinicDetails } from '@/modules/payment/components/ClinicInformationCard';
 
 const PaymentFailedReasons = () => (
   <div className="bg-red-50 rounded-lg p-4 mb-6 text-left">
@@ -56,7 +57,15 @@ const PaymentFailedPage = () => {
         <PaymentFailedReasons />
         
         {linkData && linkData.clinic && (
-          <ClinicInformationCard clinicDetails={linkData.clinic} />
+          <ClinicInformationCard 
+            clinicDetails={{
+              name: linkData.clinic.name,
+              logo: linkData.clinic.logo,
+              email: linkData.clinic.email || '',
+              phone: linkData.clinic.phone || '',
+              address: linkData.clinic.address || ''
+            } as ClinicDetails} 
+          />
         )}
       </div>
     </PaymentLayout>

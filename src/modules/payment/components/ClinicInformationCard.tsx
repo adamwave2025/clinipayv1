@@ -2,12 +2,13 @@
 import React from 'react';
 import { Building, Mail, Phone, MapPin } from 'lucide-react';
 
-interface ClinicDetails {
+// Updated interface to make email, phone, and address optional
+export interface ClinicDetails {
   name: string;
   logo?: string;
-  email: string;
-  phone: string;
-  address: string;
+  email?: string;
+  phone?: string;
+  address?: string;
 }
 
 interface ClinicInformationCardProps {
@@ -28,29 +29,35 @@ const ClinicInformationCard = ({ clinicDetails, className = '' }: ClinicInformat
           </div>
         </div>
         
-        <div className="flex items-start gap-3">
-          <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
-          <div>
-            <p className="text-sm text-gray-500">Address</p>
-            <p className="text-gray-700">{clinicDetails.address}</p>
+        {clinicDetails.address && (
+          <div className="flex items-start gap-3">
+            <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Address</p>
+              <p className="text-gray-700">{clinicDetails.address}</p>
+            </div>
           </div>
-        </div>
+        )}
         
-        <div className="flex items-start gap-3">
-          <Mail className="h-5 w-5 text-gray-400 mt-0.5" />
-          <div>
-            <p className="text-sm text-gray-500">Email</p>
-            <p className="text-gray-700">{clinicDetails.email}</p>
+        {clinicDetails.email && (
+          <div className="flex items-start gap-3">
+            <Mail className="h-5 w-5 text-gray-400 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Email</p>
+              <p className="text-gray-700">{clinicDetails.email}</p>
+            </div>
           </div>
-        </div>
+        )}
         
-        <div className="flex items-start gap-3">
-          <Phone className="h-5 w-5 text-gray-400 mt-0.5" />
-          <div>
-            <p className="text-sm text-gray-500">Phone</p>
-            <p className="text-gray-700">{clinicDetails.phone}</p>
+        {clinicDetails.phone && (
+          <div className="flex items-start gap-3">
+            <Phone className="h-5 w-5 text-gray-400 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Phone</p>
+              <p className="text-gray-700">{clinicDetails.phone}</p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
