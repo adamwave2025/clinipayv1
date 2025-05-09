@@ -1,79 +1,12 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { toast } from 'sonner';
 
-interface PaymentPlanActivityParams {
-  planId: string;
-  actionType: string;
-  details?: Record<string, any>;
-}
-
 /**
- * Records an activity in the payment_activity table
+ * Fetch plans directly from the plans table
  */
-export const recordPaymentPlanActivity = async ({
-  planId,
-  actionType,
-  details = {}
-}: PaymentPlanActivityParams): Promise<void> => {
-  try {
-    // Get plan info to get related data
-    const { data: plan, error: planError } = await supabase
-      .from('plans')
-      .select('clinic_id, patient_id, payment_link_id')
-      .eq('id', planId)
-      .single();
-    
-    if (planError) throw planError;
-    
-    // Record the activity
-    const { error } = await supabase.from('payment_activity').insert({
-      plan_id: planId,
-      clinic_id: plan.clinic_id,
-      patient_id: plan.patient_id,
-      payment_link_id: plan.payment_link_id,
-      action_type: actionType,
-      details,
-      performed_at: new Date().toISOString()
-    });
-    
-    if (error) throw error;
-  } catch (error) {
-    console.error('Error recording payment plan activity:', error);
-    // Don't show toast for activity recording errors - they're not critical to user
-  }
-};
-
-/**
- * Update the payment schedule item status
- */
-export const updatePaymentScheduleStatus = async (
-  scheduleId: string, 
-  status: string
-): Promise<boolean> => {
-  try {
-    const { error } = await supabase
-      .from('payment_schedule')
-      .update({
-        status,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', scheduleId);
-    
-    if (error) throw error;
-    
-    return true;
-  } catch (error) {
-    console.error('Error updating payment schedule status:', error);
-    toast.error('Failed to update payment status');
-    return false;
-  }
-};
-
-/**
- * Fetch all plans for a user
- */
-export const fetchPlans = async (userId: string): Promise<any[]> => {
+export const fetchPlans = async (userId: string): Promise<Plan[]> => {
   try {
     const { data: userData, error: userError } = await supabase
       .from('users')
@@ -82,8 +15,7 @@ export const fetchPlans = async (userId: string): Promise<any[]> => {
       .single();
       
     if (userError) {
-      console.error('Error fetching user data:', userError);
-      return [];
+      throw userError;
     }
 
     const clinicId = userData.clinic_id;
@@ -92,54 +24,72 @@ export const fetchPlans = async (userId: string): Promise<any[]> => {
       .from('plans')
       .select(`
         *,
-        patients (name)
+        patients (
+          id, name, email
+        )
       `)
-      .eq('clinic_id', clinicId);
+      .eq('clinic_id', clinicId)
+      .order('created_at', { ascending: false });
     
     if (error) {
-      console.error('Error fetching plans:', error);
-      return [];
+      throw error;
     }
     
-    return data || [];
+    console.log('Raw plans data from DB:', data);
+    
+    // Format the plans using the helper function
+    const formattedPlans = data.map(plan => {
+      const formatted = formatPlanFromDb(plan);
+      // Ensure patientName is set correctly
+      if (!formatted.patientName && formatted.patients?.name) {
+        formatted.patientName = formatted.patients.name;
+      }
+      return formatted;
+    });
+    
+    console.log('Formatted plans:', formattedPlans);
+    
+    return formattedPlans;
   } catch (error) {
-    console.error('Error in fetchPlans:', error);
+    console.error('Error fetching plans:', error);
+    toast.error('Failed to load payment plans');
     return [];
   }
 };
 
-/**
- * Fetch installments for a specific plan
- */
-export const fetchPlanInstallments = async (planId: string): Promise<any[]> => {
+export const fetchPlanInstallments = async (planId: string) => {
   try {
     const { data, error } = await supabase
       .from('payment_schedule')
       .select(`
-        *,
+        id, 
+        payment_number,
+        total_payments,
+        due_date,
+        amount,
+        status,
+        payment_request_id,
+        plan_id,
         payment_requests (
-          id, status, paid_at
+          id, status, payment_id, paid_at
         )
       `)
       .eq('plan_id', planId)
       .order('payment_number', { ascending: true });
     
     if (error) {
-      console.error('Error fetching plan installments:', error);
-      return [];
+      throw error;
     }
     
     return data || [];
   } catch (error) {
-    console.error('Error in fetchPlanInstallments:', error);
+    console.error('Error fetching plan installments:', error);
+    toast.error('Failed to load payment installments');
     return [];
   }
 };
 
-/**
- * Fetch activities for a specific plan
- */
-export const fetchPlanActivities = async (planId: string): Promise<any[]> => {
+export const fetchPlanActivities = async (planId: string) => {
   try {
     const { data, error } = await supabase
       .from('payment_activity')
@@ -148,175 +98,13 @@ export const fetchPlanActivities = async (planId: string): Promise<any[]> => {
       .order('performed_at', { ascending: false });
     
     if (error) {
-      console.error('Error fetching plan activities:', error);
-      return [];
+      throw error;
     }
     
     return data || [];
   } catch (error) {
-    console.error('Error in fetchPlanActivities:', error);
+    console.error('Error fetching plan activities:', error);
+    toast.error('Failed to load plan activities');
     return [];
-  }
-};
-
-/**
- * Cancel a payment plan
- */
-export const cancelPaymentPlan = async (planId: string): Promise<{success: boolean, error?: any}> => {
-  try {
-    // Update plan status
-    const { error: planError } = await supabase
-      .from('plans')
-      .update({
-        status: 'cancelled',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', planId);
-    
-    if (planError) throw planError;
-    
-    // Update all pending installments to cancelled
-    const { error: scheduleError } = await supabase
-      .from('payment_schedule')
-      .update({
-        status: 'cancelled',
-        updated_at: new Date().toISOString()
-      })
-      .eq('plan_id', planId)
-      .eq('status', 'pending');
-    
-    if (scheduleError) throw scheduleError;
-    
-    // Record the activity
-    await recordPaymentPlanActivity({
-      planId,
-      actionType: 'plan_cancelled'
-    });
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error cancelling payment plan:', error);
-    return { success: false, error };
-  }
-};
-
-/**
- * Pause a payment plan
- */
-export const pausePaymentPlan = async (planId: string): Promise<{success: boolean, error?: any}> => {
-  try {
-    // Update plan status
-    const { error: planError } = await supabase
-      .from('plans')
-      .update({
-        status: 'paused',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', planId);
-    
-    if (planError) throw planError;
-    
-    // Record the activity
-    await recordPaymentPlanActivity({
-      planId,
-      actionType: 'plan_paused'
-    });
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error pausing payment plan:', error);
-    return { success: false, error };
-  }
-};
-
-/**
- * Resume a payment plan
- */
-export const resumePaymentPlan = async (planId: string, resumeDate: Date): Promise<{success: boolean, error?: any}> => {
-  try {
-    // Update plan status
-    const { error: planError } = await supabase
-      .from('plans')
-      .update({
-        status: 'active',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', planId);
-    
-    if (planError) throw planError;
-    
-    // Record the activity
-    await recordPaymentPlanActivity({
-      planId,
-      actionType: 'plan_resumed',
-      details: {
-        resumeDate: resumeDate.toISOString()
-      }
-    });
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error resuming payment plan:', error);
-    return { success: false, error };
-  }
-};
-
-/**
- * Reschedule a payment plan
- */
-export const reschedulePaymentPlan = async (planId: string, newStartDate: Date): Promise<{success: boolean, error?: any}> => {
-  try {
-    // Update plan start date
-    const { error: planError } = await supabase
-      .from('plans')
-      .update({
-        start_date: newStartDate.toISOString().split('T')[0],
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', planId);
-    
-    if (planError) throw planError;
-    
-    // Record the activity
-    await recordPaymentPlanActivity({
-      planId,
-      actionType: 'plan_rescheduled',
-      details: {
-        new_start_date: newStartDate.toISOString().split('T')[0]
-      }
-    });
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error rescheduling payment plan:', error);
-    return { success: false, error };
-  }
-};
-
-/**
- * Record a payment refund
- */
-export const recordPaymentRefund = async (
-  paymentId: string, 
-  amount: number, 
-  isFullRefund: boolean
-): Promise<{success: boolean, error?: any}> => {
-  try {
-    // Update payment status
-    const { error: paymentError } = await supabase
-      .from('payments')
-      .update({
-        status: isFullRefund ? 'refunded' : 'partially_refunded',
-        refund_amount: amount,
-        refunded_at: new Date().toISOString()
-      })
-      .eq('id', paymentId);
-    
-    if (paymentError) throw paymentError;
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error recording payment refund:', error);
-    return { success: false, error };
   }
 };
