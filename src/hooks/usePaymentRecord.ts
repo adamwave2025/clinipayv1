@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { PaymentLinkData } from './usePaymentLinkData';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -31,7 +32,8 @@ export function usePaymentRecord() {
     try {
       console.log('Payment was successful:', paymentIntent.id);
       
-      // Removed success toast notification
+      // Display success message in the UI
+      toast.success(`Payment successful! The payment reference will be shown on the next page.`);
       
       // Get the payment reference from metadata (should be consistent with webhook)
       const paymentReference = paymentIntent.metadata?.paymentReference;
@@ -122,7 +124,7 @@ export function usePaymentRecord() {
           // The webhook may still create the record later
         } else {
           console.log('Successfully created fallback payment record');
-          // Removed toast notification
+          toast.info('Payment record created using fallback method. Full payment details may take a moment to appear.');
         }
       } else {
         console.log(`Webhook successfully created payment record with reference: ${existingPayment.payment_ref}`);

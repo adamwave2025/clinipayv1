@@ -105,7 +105,7 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         associatedPaymentLinkId: intentResult.associatedPaymentLinkId
       });
       
-      // Removed success toast notification
+      toast.success('Payment successful!');
       
       // Navigate to success page with the link_id parameter
       window.location.href = `/payment/success?link_id=${linkId}&payment_id=${paymentResult.paymentIntent.id || 'unknown'}`;
@@ -195,7 +195,7 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         associatedPaymentLinkId: intentResult.associatedPaymentLinkId
       });
       
-      // Removed success toast notification
+      toast.success('Apple Pay payment successful!');
       
       // Navigate to success page
       window.location.href = `/payment/success?link_id=${linkId}&payment_id=${paymentResult.paymentIntent.id || 'unknown'}`;
