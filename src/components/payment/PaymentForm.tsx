@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form } from '@/components/ui/form';
@@ -25,6 +25,7 @@ const PaymentForm = ({
   onApplePaySuccess
 }: PaymentFormProps) => {
   const [isCardComplete, setIsCardComplete] = useState(false);
+  const [formSubmitted, setFormSubmitted] = useState(false);
   
   console.log('PaymentForm: Rendering with amount:', amount);
   
@@ -38,7 +39,20 @@ const PaymentForm = ({
     }
   });
 
+  // Reset submission flag when loading state changes
+  useEffect(() => {
+    if (!isLoading && formSubmitted) {
+      setFormSubmitted(false);
+    }
+  }, [isLoading, formSubmitted]);
+
   const handleSubmitForm = async (data: PaymentFormValues) => {
+    // Prevent multiple submissions
+    if (formSubmitted || isLoading) {
+      console.log('Preventing duplicate submission', { formSubmitted, isLoading });
+      return;
+    }
+    
     console.log('Form submission triggered', { 
       formData: data,
       isCardComplete,
@@ -65,10 +79,12 @@ const PaymentForm = ({
     }
     
     try {
+      setFormSubmitted(true);
       console.log('Calling onSubmit handler with form data and amount:', amount);
       onSubmit(data);
     } catch (error) {
       console.error('Error in form submission:', error);
+      setFormSubmitted(false);
     }
   };
   
@@ -89,8 +105,13 @@ const PaymentForm = ({
     <Form {...form}>
       <form 
         onSubmit={(e) => {
+          e.preventDefault(); // Prevent default form submission
           console.log('Form onSubmit event triggered');
-          form.handleSubmit(handleSubmitForm)(e);
+          if (!formSubmitted && !isLoading) {
+            form.handleSubmit(handleSubmitForm)(e);
+          } else {
+            console.log('Form submission prevented - already submitted or loading');
+          }
         }} 
         className="space-y-6"
       >

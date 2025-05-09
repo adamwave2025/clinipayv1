@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { CardElement } from '@stripe/react-stripe-js';
 import { FormControl, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
@@ -28,7 +28,7 @@ const StripeCardElement = ({ onChange, isLoading = false, label = "Card Details"
   };
 
   const handleCardChange = (event: any) => {
-    // Log card validation status to help with debugging
+    // Enhanced logging for card validation status
     console.log('Card element change:', { 
       isEmpty: event.empty, 
       isComplete: event.complete, 
@@ -51,6 +51,7 @@ const StripeCardElement = ({ onChange, isLoading = false, label = "Card Details"
             options={cardElementOptions} 
             onChange={handleCardChange} 
             id="card-element"
+            disabled={isLoading}
           />
         </FormControl>
       </div>

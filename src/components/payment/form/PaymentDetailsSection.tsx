@@ -43,10 +43,12 @@ const PaymentDetailsSection = ({
           <StripeCardElement 
             isLoading={isLoading} 
             onChange={(e) => {
+              // Pass the event to the parent component
               if (onCardElementChange) {
                 onCardElementChange(e);
               }
-              field.onChange(e.complete ? e : { empty: true });
+              // Update form field value only if the card is complete
+              field.onChange(e.complete ? { complete: true } : { empty: true });
             }}
           />
         )}
