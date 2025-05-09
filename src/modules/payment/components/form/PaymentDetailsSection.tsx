@@ -6,30 +6,26 @@ import StripeCardElement from './StripeCardElement';
 import { PaymentFormValues } from './FormSchema';
 import PaymentSectionContainer from '../PaymentSectionContainer';
 import ApplePayButton from './ApplePayButton';
-import { usePaymentLinkData } from '../../hooks/usePaymentLinkData';
-import { useParams } from 'react-router-dom';
 import { penceToPounds, debugCurrencyInfo } from '../../services/CurrencyService';
 
 interface PaymentDetailsSectionProps {
   control: Control<PaymentFormValues>;
   isLoading: boolean;
+  amount: number; // Amount in pence
   onApplePaySuccess?: (paymentMethod: any) => void;
+  onCardElementChange?: (event: any) => void;
 }
 
 const PaymentDetailsSection = ({ 
   control, 
   isLoading, 
-  onApplePaySuccess 
+  amount,
+  onApplePaySuccess,
+  onCardElementChange
 }: PaymentDetailsSectionProps) => {
-  const { linkId } = useParams<{ linkId: string }>();
-  const { linkData } = usePaymentLinkData(linkId);
-  
-  // Default to 100p (£1) if no amount is available to prevent zero-amount payments
-  const amount = linkData?.amount || 0;
-  
   // Detailed logging for debugging
   console.log('--- Payment Details Section Debug ---');
-  console.log('Raw amount from linkData (pence):', amount);
+  console.log('Raw amount from props (pence):', amount);
   debugCurrencyInfo(amount, 'PaymentDetailsSection', true);
   
   // Use a safe amount to prevent issues - minimum £1 (100p)
@@ -44,12 +40,6 @@ const PaymentDetailsSection = ({
     console.warn('Warning: Payment amount is zero or negative:', amount);
   }
 
-  const handleApplePaySuccess = (paymentMethod: any) => {
-    if (onApplePaySuccess) {
-      onApplePaySuccess(paymentMethod);
-    }
-  };
-
   return (
     <PaymentSectionContainer title="Payment Details">
       {/* Apple Pay Button - only shows on iOS devices with Apple Pay capability */}
@@ -57,7 +47,7 @@ const PaymentDetailsSection = ({
         <ApplePayButton 
           amount={amountInPounds}
           isLoading={isLoading}
-          onApplePaySuccess={handleApplePaySuccess}
+          onApplePaySuccess={onApplePaySuccess}
         />
       )}
       
@@ -69,6 +59,9 @@ const PaymentDetailsSection = ({
           <StripeCardElement 
             isLoading={isLoading}
             onChange={(e) => {
+              if (onCardElementChange) {
+                onCardElementChange(e);
+              }
               field.onChange(e.complete ? e : { empty: true });
             }}
           />
