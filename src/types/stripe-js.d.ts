@@ -53,4 +53,25 @@ declare module '@stripe/react-stripe-js' {
   }
   
   export function CardElement(props: CardElementProps): JSX.Element;
+  
+  // Add the missing PaymentRequestButtonElement export
+  export interface PaymentRequestButtonElementProps {
+    className?: string;
+    options?: {
+      paymentRequest: any;
+      style?: {
+        paymentRequestButton?: {
+          type?: 'default' | 'donate' | 'buy';
+          theme?: 'dark' | 'light' | 'light-outline';
+          height?: string;
+        };
+      };
+    };
+    onChange?: (event: any) => void;
+    onBlur?: () => void;
+    onFocus?: () => void;
+    onReady?: () => void;
+  }
+  
+  export function PaymentRequestButtonElement(props: PaymentRequestButtonElementProps): JSX.Element;
 }
