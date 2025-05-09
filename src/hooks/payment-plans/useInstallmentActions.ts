@@ -37,7 +37,7 @@ export function useInstallmentActions(
       
       // 3. Record the activity
       await recordPaymentPlanActivity({
-        planId,
+        planId: planId,
         actionType: 'payment_marked_paid',
         details: {
           installmentId,
@@ -90,7 +90,7 @@ export function useInstallmentActions(
       
       // 3. Record the activity
       await recordPaymentPlanActivity({
-        planId,
+        planId: planId,
         actionType: 'payment_rescheduled',
         details: {
           installmentId: selectedInstallmentId,

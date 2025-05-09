@@ -25,7 +25,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
   onReschedule
 }) => {
   const determineStatus = (installment: PlanInstallment): 'paid' | 'upcoming' | 'overdue' => {
-    if (installment.isPaid) {
+    if (installment.status === 'paid') {
       return 'paid';
     }
     

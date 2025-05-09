@@ -169,7 +169,8 @@ export const ManagePlansProvider: React.FC<{
         
         // Individual payment actions
         handleMarkAsPaid,
-        handleOpenReschedule: handleOpenReschedule,
+        handleOpenReschedule,
+        handleReschedulePayment,
         
         // Refund properties
         refundDialogOpen,

@@ -42,6 +42,11 @@ export interface ManagePlansContextType {
   handleViewPaymentDetails: (installment: any) => Promise<void>;
   handleBackToPlans: () => void;
   
+  // Add the missing handler methods
+  handleMarkAsPaid: (paymentId: string) => void;
+  handleOpenReschedule: (paymentId: string) => void;
+  handleReschedulePayment: (date: Date) => void;
+  
   // Refund properties
   refundDialogOpen: boolean;
   setRefundDialogOpen: (open: boolean) => void;
