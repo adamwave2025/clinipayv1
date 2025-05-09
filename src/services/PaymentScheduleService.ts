@@ -406,10 +406,10 @@ export const reschedulePaymentPlan = async (planId: string, newStartDate: Date) 
  */
 export const recordPaymentRefund = async (paymentId: string, amount: number, isFullRefund: boolean) => {
   try {
-    // Get the payment details to find its plan
+    // Get the payment details
     const { data: paymentData, error: paymentError } = await supabase
       .from('payments')
-      .select('payment_request_id')
+      .select('payment_link_id')
       .eq('id', paymentId)
       .single();
       
@@ -417,42 +417,45 @@ export const recordPaymentRefund = async (paymentId: string, amount: number, isF
       throw paymentError;
     }
     
-    // Get the payment request to find the plan
-    const { data: requestData, error: requestError } = await supabase
+    // Find the payment schedule entry through payment requests if it exists
+    const { data: requestsData, error: requestsError } = await supabase
       .from('payment_requests')
-      .select('payment_link_id')
-      .eq('id', paymentData.payment_request_id)
-      .single();
+      .select('id')
+      .eq('payment_id', paymentId)
+      .maybeSingle();
       
-    if (requestError) {
-      throw requestError;
+    if (requestsError) {
+      console.warn('Could not fetch payment request:', requestsError);
     }
     
-    // Get the payment schedule entry to find its plan
-    const { data: scheduleData, error: scheduleError } = await supabase
-      .from('payment_schedule')
-      .select('plan_id')
-      .eq('payment_request_id', paymentData.payment_request_id)
-      .single();
-      
-    if (scheduleError) {
-      // This might be a regular payment, not a payment plan installment
-      console.warn('Could not find payment_schedule entry for this payment');
+    let scheduleData = null;
+    if (requestsData?.id) {
+      // Look for associated payment schedule
+      const { data: scheduleResult, error: scheduleError } = await supabase
+        .from('payment_schedule')
+        .select('plan_id')
+        .eq('payment_request_id', requestsData.id)
+        .maybeSingle();
+        
+      if (scheduleError) {
+        console.warn('Could not find payment_schedule entry:', scheduleError);
+      } else {
+        scheduleData = scheduleResult;
+      }
     }
     
-    // Record the refund
-    const { error: refundError } = await supabase
-      .from('payment_refunds')
-      .insert({
-        payment_id: paymentId,
-        amount: amount,
-        is_full_refund: isFullRefund,
-        refunded_at: new Date().toISOString(),
-        payment_link_id: requestData.payment_link_id
-      });
+    // Record the refund in payments table
+    const { error: updatePaymentError } = await supabase
+      .from('payments')
+      .update({
+        status: isFullRefund ? 'refunded' : 'partially_refunded',
+        refund_amount: amount,
+        refunded_at: new Date().toISOString()
+      })
+      .eq('id', paymentId);
       
-    if (refundError) {
-      throw refundError;
+    if (updatePaymentError) {
+      throw updatePaymentError;
     }
     
     // If this is part of a payment plan, record the activity
