@@ -25,8 +25,18 @@ const PaymentDetailsSection = ({
   const { linkData } = usePaymentLinkData(linkId);
   const amount = linkData?.amount || 0;
   
+  // Detailed logging for debugging
+  console.log('--- Payment Details Section Debug ---');
+  console.log('Raw amount from linkData (pence):', amount);
+  
   // Convert amount from pence to pounds for Apple Pay
   const amountInPounds = penceToPounds(amount);
+  console.log('Converted amount for Apple Pay (pounds):', amountInPounds);
+  
+  // Additional validation
+  if (amount <= 0) {
+    console.warn('Warning: Payment amount is zero or negative:', amount);
+  }
 
   const handleApplePaySuccess = (paymentMethod: any) => {
     if (onApplePaySuccess) {
@@ -37,7 +47,7 @@ const PaymentDetailsSection = ({
   return (
     <PaymentSectionContainer title="Payment Details">
       {/* Apple Pay Button - only shows on iOS devices with Apple Pay capability */}
-      {onApplePaySuccess && (
+      {onApplePaySuccess && amountInPounds > 0 && (
         <ApplePayButton 
           amount={amountInPounds}
           isLoading={isLoading}

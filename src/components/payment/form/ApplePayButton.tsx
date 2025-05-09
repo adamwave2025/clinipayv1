@@ -25,18 +25,52 @@ const ApplePayButton = ({ amount, isLoading, onApplePaySuccess }: ApplePayButton
     if (!stripe || !elements || isLoading) return;
 
     try {
-      console.log('Setting up Apple Pay with amount (pounds):', amount);
+      // Add very detailed debugging to catch the issue
+      console.log('--- Apple Pay Debug Info ---');
+      console.log('Raw amount provided to ApplePayButton:', amount);
+      console.log('Amount type:', typeof amount);
       
-      // Validate amount to prevent errors - amount should be in pounds here
-      if (!amount || amount <= 0 || !validatePoundsAmount(amount, 'ApplePayButton')) {
-        console.error('Invalid amount for Apple Pay:', amount);
+      // Enhanced validation - be extremely strict about what's accepted
+      if (amount === undefined || amount === null) {
+        console.error('Apple Pay amount is null or undefined');
+        setError('Payment amount is missing. Please try again or use a different payment method.');
+        return;
+      }
+      
+      if (isNaN(Number(amount))) {
+        console.error('Apple Pay amount is not a number:', amount);
+        setError('Invalid payment format. Please try again or use a different payment method.');
+        return;
+      }
+      
+      // Parse as number to ensure we're working with a number
+      const numericAmount = Number(amount);
+      
+      if (numericAmount <= 0) {
+        console.error('Apple Pay amount is zero or negative:', numericAmount);
+        setError('Payment amount must be greater than zero. Please try again or use a different payment method.');
+        return;
+      }
+      
+      // Validate the amount is in the expected format (should be pounds)
+      if (!validatePoundsAmount(numericAmount, 'ApplePayButton')) {
+        console.error('Apple Pay amount validation failed:', numericAmount);
         setError('Invalid payment amount. Please try again or use a different payment method.');
         return;
       }
       
+      console.log('Amount validation passed. Using amount (pounds):', numericAmount);
+      
       // Convert the amount from pounds to pence for Stripe's API
-      const amountInPence = Math.round(amount * 100); 
-      console.log('Amount in pence for Stripe:', amountInPence);
+      const amountInPence = poundsToPence(numericAmount);
+      console.log('Amount converted to pence for Stripe:', amountInPence);
+      
+      // Validate again after conversion
+      if (amountInPence <= 0) {
+        console.error('Converted pence amount is invalid:', amountInPence);
+        setError('Payment processing error. Please try again or use a different payment method.');
+        return;
+      }
       
       // Create the payment request object
       const pr = stripe.paymentRequest({

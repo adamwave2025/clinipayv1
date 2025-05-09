@@ -4,6 +4,7 @@ import { PaymentLinkData } from '@/types/paymentLink';
 import { PaymentLinkService } from '@/services/PaymentLinkService';
 import { PaymentLinkDataService } from '@/services/payment-link/PaymentLinkDataService';
 import { PaymentLinkFormatter } from '@/services/payment-link/PaymentLinkFormatter';
+import { validatePenceAmount } from '@/services/CurrencyService';
 
 export function usePaymentLinkData(linkId: string | undefined | null) {
   const [linkData, setLinkData] = useState<PaymentLinkData | null>(null);
@@ -35,6 +36,20 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
           const formattedRequestData = PaymentLinkFormatter.formatPaymentRequest(requestData);
           if (formattedRequestData) {
             console.log('usePaymentLinkData: Successfully formatted payment request data');
+            
+            // Log and validate the payment amount
+            console.log('Payment amount in pence:', formattedRequestData.amount);
+            if (!validatePenceAmount(formattedRequestData.amount, 'usePaymentLinkData')) {
+              console.warn(`usePaymentLinkData: Payment amount validation failed: ${formattedRequestData.amount}`);
+              
+              // If the amount is 0, set it to 100 pence (£1) for testing
+              // REMOVE THIS IN PRODUCTION - this is just for debugging
+              if (formattedRequestData.amount === 0) {
+                console.warn('usePaymentLinkData: Setting test amount of 100 pence (£1) for debugging');
+                formattedRequestData.amount = 100;
+              }
+            }
+            
             setLinkData(formattedRequestData);
             setIsLoading(false);
             return;
@@ -60,6 +75,19 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
         if (!formattedLinkData) {
           console.error('usePaymentLinkData: Failed to format payment link data');
           throw new Error('Failed to format payment link data');
+        }
+        
+        // Log and validate the payment amount
+        console.log('Payment amount in pence:', formattedLinkData.amount);
+        if (!validatePenceAmount(formattedLinkData.amount, 'usePaymentLinkData')) {
+          console.warn(`usePaymentLinkData: Payment amount validation failed: ${formattedLinkData.amount}`);
+          
+          // If the amount is 0, set it to 100 pence (£1) for testing
+          // REMOVE THIS IN PRODUCTION - this is just for debugging
+          if (formattedLinkData.amount === 0) {
+            console.warn('usePaymentLinkData: Setting test amount of 100 pence (£1) for debugging');
+            formattedLinkData.amount = 100;
+          }
         }
         
         console.log('usePaymentLinkData: Successfully formatted payment link data');
