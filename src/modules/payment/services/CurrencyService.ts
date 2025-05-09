@@ -1,47 +1,97 @@
 
 /**
- * Currency utility service for handling pence/pounds conversions and validation
+ * Formats a pence value to a pounds string with £ symbol
+ * @param penceAmount - Amount in pence
+ * @returns Formatted currency string
  */
-
-/**
- * Convert amount from pounds to pence (multiply by 100)
- * @param pounds Amount in pounds (decimal)
- * @returns Amount in pence (integer)
- */
-export const poundsToPence = (pounds: number): number => {
-  return Math.round(pounds * 100);
-};
-
-/**
- * Convert amount from pence to pounds (divide by 100)
- * @param pence Amount in pence (integer)
- * @returns Amount in pounds (decimal)
- */
-export const penceToPounds = (pence: number): number => {
-  return pence / 100;
-};
-
-/**
- * Validate that an amount is a valid pence value
- * @param penceAmount Amount in pence to validate
- * @param source Optional source identifier for logging
- * @returns Boolean indicating if amount is valid
- */
-export const validatePenceAmount = (penceAmount: number, source?: string): boolean => {
-  if (penceAmount === undefined || penceAmount === null) {
-    console.error(`${source || 'CurrencyService'}: Invalid pence amount - undefined or null`);
-    return false;
+export const formatCurrency = (penceAmount: number): string => {
+  // Validate the amount first
+  if (penceAmount < 1) {
+    console.warn('[formatCurrency] Amount in pence (' + penceAmount + ') is below minimum value (1)');
+    penceAmount = Math.max(penceAmount, 0);
   }
 
+  const pounds = penceAmount / 100;
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: 2
+  }).format(pounds);
+};
+
+/**
+ * Converts pence to pounds
+ * @param penceAmount - Amount in pence
+ * @returns Amount in pounds
+ */
+export const penceToPounds = (penceAmount: number): number => {
+  console.info('[CurrencyService] Converting ' + penceAmount + 'p to £' + (penceAmount / 100));
+  return penceAmount / 100;
+};
+
+/**
+ * Converts pounds to pence
+ * @param poundsAmount - Amount in pounds
+ * @returns Amount in pence
+ */
+export const poundsToPence = (poundsAmount: number): number => {
+  const pence = Math.round(poundsAmount * 100);
+  console.info('[CurrencyService] Converting £' + poundsAmount + ' to ' + pence + 'p');
+  return pence;
+};
+
+/**
+ * Validates if a pence amount is reasonable
+ * @param penceAmount - Amount in pence
+ * @param source - Source of the validation (for debugging)
+ * @returns true if valid, false if suspicious
+ */
+export const validatePenceAmount = (penceAmount: number, source: string = 'unknown'): boolean => {
+  // Ensure it's a number
   if (isNaN(penceAmount)) {
-    console.error(`${source || 'CurrencyService'}: Invalid pence amount - not a number: ${penceAmount}`);
+    console.error(`[CurrencyService] Invalid pence amount (NaN) from ${source}`);
     return false;
   }
-
-  if (penceAmount < 0) {
-    console.error(`${source || 'CurrencyService'}: Invalid pence amount - negative: ${penceAmount}`);
+  
+  // Check if it's zero or negative
+  if (penceAmount <= 0) {
+    console.warn(`[CurrencyService] Suspicious pence amount: ${penceAmount}`, new Error().stack);
     return false;
   }
+  
+  // Check if it's unreasonably large
+  if (penceAmount > 100000000) { // £1,000,000
+    console.warn(`[CurrencyService] Suspiciously large pence amount: ${penceAmount} from ${source}`);
+    return false;
+  }
+  
+  return true;
+};
 
+/**
+ * Validates if a pounds amount is reasonable
+ * @param poundsAmount - Amount in pounds
+ * @param source - Source of the validation (for debugging)
+ * @returns true if valid, false if suspicious
+ */
+export const validatePoundsAmount = (poundsAmount: number, source: string = 'unknown'): boolean => {
+  // Ensure it's a number
+  if (isNaN(poundsAmount)) {
+    console.error(`[CurrencyService] Invalid pounds amount (NaN) from ${source}`);
+    return false;
+  }
+  
+  // Check if it's zero or negative
+  if (poundsAmount <= 0) {
+    console.warn(`[CurrencyService] Suspicious pounds amount: ${poundsAmount} from ${source}`);
+    return false;
+  }
+  
+  // Check if it's unreasonably large
+  if (poundsAmount > 1000000) { // £1,000,000
+    console.warn(`[CurrencyService] Suspiciously large pounds amount: ${poundsAmount} from ${source}`);
+    return false;
+  }
+  
   return true;
 };

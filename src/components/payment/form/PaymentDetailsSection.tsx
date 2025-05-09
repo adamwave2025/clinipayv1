@@ -25,8 +25,13 @@ const PaymentDetailsSection = ({
   // where we expect the link data to be already available in context/state
   const { linkData } = usePaymentLinkData(null);
   
+  // Enhanced logging to debug amount issues
+  console.log('PaymentDetailsSection: Raw link data amount:', linkData?.amount);
+  
   // Default to 0 if no amount is available
-  const amount = linkData?.amount ? linkData.amount / 100 : 0; // Convert from pence to pounds
+  // IMPORTANT: linkData.amount is already in pence, we convert to pounds for display
+  const amountInPounds = linkData?.amount ? linkData.amount / 100 : 0; // Convert from pence to pounds
+  console.log('PaymentDetailsSection: Converted amount in pounds:', amountInPounds);
   
   return (
     <div className="space-y-4">
@@ -43,12 +48,12 @@ const PaymentDetailsSection = ({
         )}
       />
       
-      {onApplePaySuccess && (
+      {onApplePaySuccess && amountInPounds > 0 && (
         <div className="mt-4">
           <ApplePayButton 
             onApplePaySuccess={onApplePaySuccess}
             isLoading={isLoading}
-            amount={amount}
+            amount={amountInPounds}
           />
         </div>
       )}

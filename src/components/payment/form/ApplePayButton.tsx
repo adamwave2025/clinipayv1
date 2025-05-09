@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import { PaymentRequestButtonElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { poundsToPence, validatePoundsAmount } from '@/services/CurrencyService';
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -52,17 +51,10 @@ const ApplePayButton = ({ amount, isLoading, onApplePaySuccess }: ApplePayButton
         return;
       }
       
-      // Validate the amount is in the expected format (should be pounds)
-      if (!validatePoundsAmount(numericAmount, 'ApplePayButton')) {
-        console.error('Apple Pay amount validation failed:', numericAmount);
-        setError('Invalid payment amount. Please try again or use a different payment method.');
-        return;
-      }
-      
       console.log('Amount validation passed. Using amount (pounds):', numericAmount);
       
       // Convert the amount from pounds to pence for Stripe's API
-      const amountInPence = poundsToPence(numericAmount);
+      const amountInPence = Math.round(numericAmount * 100);
       console.log('Amount converted to pence for Stripe:', amountInPence);
       
       // Validate again after conversion

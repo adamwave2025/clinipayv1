@@ -1,197 +1,100 @@
 
 /**
- * CurrencyService
- * 
- * A central service for handling all currency conversions and validations.
- * This ensures consistent handling of monetary amounts throughout the application.
- * 
- * IMPORTANT GUIDELINES:
- * 
- * 1. Database/API values are always stored in pence/cents (integer values)
- * 2. UI/display values are always in pounds/dollars (decimal values)
- * 3. Stripe expects values in pence/cents (integer values)
- * 
- * Use the appropriate conversion functions based on the context:
- * - penceToPounds: When converting DB/API values to display in UI
- * - poundsToPence: When converting user input to store in DB/API
+ * Formats a pence value to a pounds string with £ symbol
+ * @param penceAmount - Amount in pence
+ * @returns Formatted currency string
  */
+export const formatCurrency = (penceAmount: number): string => {
+  // Validate the amount first
+  if (penceAmount < 1) {
+    console.warn('[formatCurrency] Amount in pence (' + penceAmount + ') is below minimum value (1)');
+    penceAmount = Math.max(penceAmount, 0);
+  }
 
-// Validation thresholds
-const MIN_AMOUNT_PENCE = 1; // 1p minimum
-const MAX_AMOUNT_PENCE = 10000000000; // £100,000,000 maximum
-const MAX_AMOUNT_POUNDS = 10000000; // £10,000,000 maximum
+  const pounds = penceAmount / 100;
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: 2
+  }).format(pounds);
+};
 
 /**
- * Convert pence/cents to pounds/dollars
- * For values coming FROM the database/API TO display in UI
- * 
- * @param pence Amount in pence/cents (integer)
- * @returns Amount in pounds/dollars (decimal)
+ * Converts pence to pounds
+ * @param penceAmount - Amount in pence
+ * @returns Amount in pounds
  */
-export function penceToPounds(pence: number | null | undefined): number {
-  if (pence === null || pence === undefined) {
-    console.warn('[CurrencyService] penceToPounds received null/undefined value');
-    return 0;
-  }
-  
-  // Ensure we're working with a number
-  const numericAmount = Number(pence);
-  if (isNaN(numericAmount)) {
-    console.error('[CurrencyService] penceToPounds received NaN:', pence);
-    return 0;
-  }
-  
-  // Validate the amount is within reasonable range
-  if (!validatePenceAmount(numericAmount)) {
-    console.warn(`[CurrencyService] Suspicious pence amount: ${numericAmount}`);
-  }
-  
-  // Convert to pounds by dividing by 100
-  const result = numericAmount / 100;
-  
-  // Log for debugging
-  console.log(`[CurrencyService] Converting ${numericAmount}p to £${result}`);
-  
-  return result;
-}
+export const penceToPounds = (penceAmount: number): number => {
+  console.info('[CurrencyService] Converting ' + penceAmount + 'p to £' + (penceAmount / 100));
+  return penceAmount / 100;
+};
 
 /**
- * Convert pounds/dollars to pence/cents
- * For values going FROM user input/UI TO the database/API/Stripe
- * 
- * @param pounds Amount in pounds/dollars (decimal)
- * @returns Amount in pence/cents (integer)
+ * Converts pounds to pence
+ * @param poundsAmount - Amount in pounds
+ * @returns Amount in pence
  */
-export function poundsToPence(pounds: number | string | null | undefined): number {
-  if (pounds === null || pounds === undefined) {
-    console.warn('[CurrencyService] poundsToPence received null/undefined value');
-    return 0;
-  }
-  
-  // Convert string to number if needed
-  const numericAmount = typeof pounds === 'string' ? parseFloat(pounds) : pounds;
-  
-  // Handle NaN
-  if (isNaN(numericAmount)) {
-    console.error('[CurrencyService] poundsToPence received NaN:', pounds);
-    return 0;
-  }
-  
-  // Validate the amount is within reasonable range
-  if (!validatePoundsAmount(numericAmount)) {
-    console.warn(`[CurrencyService] Suspicious pounds amount: ${numericAmount}`);
-  }
-  
-  // Convert to pence by multiplying by 100 and rounding to avoid floating point issues
-  const result = Math.round(numericAmount * 100);
-  
-  // Log for debugging
-  console.log(`[CurrencyService] Converting £${numericAmount} to ${result}p`);
-  
-  return result;
-}
+export const poundsToPence = (poundsAmount: number): number => {
+  const pence = Math.round(poundsAmount * 100);
+  console.info('[CurrencyService] Converting £' + poundsAmount + ' to ' + pence + 'p');
+  return pence;
+};
 
 /**
- * Validate an amount in pence/cents
- * 
- * @param pence Amount in pence/cents (integer)
- * @param context Optional context for logging
- * @returns Boolean indicating if the amount is valid
+ * Validates if a pence amount is reasonable
+ * @param penceAmount - Amount in pence
+ * @param source - Source of the validation (for debugging)
+ * @returns true if valid, false if suspicious
  */
-export function validatePenceAmount(
-  pence: number | null | undefined,
-  context?: string
-): boolean {
-  if (pence === null || pence === undefined) {
-    console.error(`${context ? `[${context}] ` : ''}Amount is null or undefined`);
+export const validatePenceAmount = (penceAmount: number, source: string = 'unknown'): boolean => {
+  // Ensure it's a number
+  if (isNaN(penceAmount)) {
+    console.error(`[CurrencyService] Invalid pence amount (NaN) from ${source}`);
     return false;
   }
   
-  const numericAmount = Number(pence);
-  if (isNaN(numericAmount)) {
-    console.error(`${context ? `[${context}] ` : ''}Amount is not a number: ${pence}`);
+  // Check if it's zero or negative
+  if (penceAmount <= 0) {
+    console.warn(`[CurrencyService] Suspicious pence amount: ${penceAmount}`, new Error().stack);
     return false;
   }
   
-  const contextText = context ? `[${context}] ` : '';
-  
-  // Check if amount is suspiciously large
-  if (numericAmount > MAX_AMOUNT_PENCE) {
-    console.error(`${contextText}Amount in pence (${numericAmount}) exceeds maximum allowed value (${MAX_AMOUNT_PENCE})`);
+  // Check if it's unreasonably large
+  if (penceAmount > 100000000) { // £1,000,000
+    console.warn(`[CurrencyService] Suspiciously large pence amount: ${penceAmount} from ${source}`);
     return false;
-  }
-  
-  // Check if amount is below minimum
-  if (numericAmount < MIN_AMOUNT_PENCE) {
-    console.warn(`${contextText}Amount in pence (${numericAmount}) is below minimum value (${MIN_AMOUNT_PENCE})`);
-    return false;
-  }
-  
-  // Check if amount might be mistakenly in pounds
-  if (numericAmount < 100 && numericAmount > 0) {
-    console.warn(`${contextText}Amount (${numericAmount}) seems low for a pence value. Did you mean £${numericAmount}?`);
-    // Don't return false here, just warn
   }
   
   return true;
-}
+};
 
 /**
- * Validate an amount in pounds/dollars
- * 
- * @param pounds Amount in pounds/dollars (decimal)
- * @param context Optional context for logging
- * @returns Boolean indicating if the amount is valid
+ * Validates if a pounds amount is reasonable
+ * @param poundsAmount - Amount in pounds
+ * @param source - Source of the validation (for debugging)
+ * @returns true if valid, false if suspicious
  */
-export function validatePoundsAmount(
-  pounds: number | null | undefined,
-  context?: string
-): boolean {
-  if (pounds === null || pounds === undefined) {
-    console.error(`${context ? `[${context}] ` : ''}Amount is null or undefined`);
+export const validatePoundsAmount = (poundsAmount: number, source: string = 'unknown'): boolean => {
+  // Ensure it's a number
+  if (isNaN(poundsAmount)) {
+    console.error(`[CurrencyService] Invalid pounds amount (NaN) from ${source}`);
     return false;
   }
   
-  const numericAmount = Number(pounds);
-  if (isNaN(numericAmount)) {
-    console.error(`${context ? `[${context}] ` : ''}Amount is not a number: ${pounds}`);
+  // Check if it's zero or negative
+  if (poundsAmount <= 0) {
+    console.warn(`[CurrencyService] Suspicious pounds amount: ${poundsAmount} from ${source}`);
     return false;
   }
   
-  const contextText = context ? `[${context}] ` : '';
-  
-  // Check if amount is suspiciously large
-  if (numericAmount > MAX_AMOUNT_POUNDS) {
-    console.error(`${contextText}Amount in pounds (£${numericAmount}) exceeds maximum allowed value (£${MAX_AMOUNT_POUNDS})`);
+  // Check if it's unreasonably large
+  if (poundsAmount > 1000000) { // £1,000,000
+    console.warn(`[CurrencyService] Suspiciously large pounds amount: ${poundsAmount} from ${source}`);
     return false;
-  }
-  
-  // Check if amount is below minimum
-  if (numericAmount <= 0) {
-    console.warn(`${contextText}Amount in pounds (£${numericAmount}) is below minimum value (£0.01)`);
-    return false;
-  }
-  
-  // Check if amount might be mistakenly in pence
-  if (numericAmount > 10000) {
-    console.warn(`${contextText}Amount (£${numericAmount}) seems high. Is this actually a value in pence?`);
-    // Don't return false here, just warn
   }
   
   return true;
-}
+};
 
-/**
- * Debug method to log currency information for debugging
- */
-export function debugCurrencyInfo(
-  amount: number,
-  description: string,
-  isInPence: boolean = true
-): void {
-  console.debug(
-    `[CURRENCY-DEBUG] ${description}: ` +
-    `${isInPence ? amount + 'p' : '£' + amount} ` +
-    `(${isInPence ? '£' + penceToPounds(amount) : amount * 100 + 'p'})`
-  );
-}
+// Export all services to /modules/payment/services/index.ts
+export * as CurrencyService from './CurrencyService';
