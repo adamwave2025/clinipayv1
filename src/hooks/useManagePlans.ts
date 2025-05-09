@@ -15,6 +15,7 @@ import { useRefundState } from './payment-plans/useRefundState';
 import { useViewModeState } from './payment-plans/useViewModeState';
 import { useEnhancedNavigation } from './payment-plans/useEnhancedNavigation';
 import { useInstallmentHandler } from './payment-plans/useInstallmentHandler';
+import { useInstallmentActions } from './payment-plans/useInstallmentActions';
 
 export const useManagePlans = (): ManagePlansContextType => {
   const { user } = useAuth();
@@ -56,6 +57,23 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleViewPlanDetails: viewPlanDetails,
     handleBackToPlans
   } = usePlanDetailsView();
+  
+  // Use installment actions hook
+  const {
+    isProcessing: isProcessingInstallment,
+    showRescheduleDialog,
+    setShowRescheduleDialog,
+    handleMarkAsPaid,
+    handleOpenReschedule,
+    handleReschedulePayment
+  } = useInstallmentActions(
+    selectedPlan?.id || '',
+    async () => {
+      if (selectedPlan) {
+        await fetchPlanInstallmentsData(selectedPlan.id);
+      }
+    }
+  );
   
   // Pass fetchPaymentPlans directly as it returns Promise<Plan[]>
   const { 
@@ -125,7 +143,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     
     // Plan data
     plans,
-    allPlans, // Now we expose allPlans in the return object
+    allPlans,
     isLoading,
     installments,
     activities,
@@ -154,6 +172,11 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleViewPaymentDetails,
     handleBackToPlans,
     
+    // Add installment action handlers
+    handleMarkAsPaid,
+    handleOpenReschedule,
+    handleReschedulePayment,
+    
     // Refund properties
     refundDialogOpen,
     setRefundDialogOpen,
@@ -161,7 +184,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     openRefundDialog: enhancedOpenRefundDialog,
     processRefund,
     
-    // Include all plan action properties with hasOverduePayments added
+    // Include all plan action properties
     ...cancelActions,
     ...pauseActions,
     ...resumeActions,
@@ -172,6 +195,6 @@ export const useManagePlans = (): ManagePlansContextType => {
     
     // Plan state helpers
     isPlanPaused,
-    isProcessing
+    isProcessing: isProcessing || isProcessingInstallment
   };
 };

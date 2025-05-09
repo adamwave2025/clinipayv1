@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, isSameDay } from 'date-fns';
@@ -417,10 +416,10 @@ export function usePaymentPlanScheduler() {
 
       // Record the "Plan Created" activity
       try {
-        await recordPaymentPlanActivity(
-          planData.id,
-          'create',
-          {
+        await recordPaymentPlanActivity({
+          planId: planData.id, 
+          actionType: 'plan_created',
+          details: {
             start_date: format(formData.startDate, 'yyyy-MM-dd'),
             installments: selectedLink.paymentCount,
             frequency: selectedLink.paymentCycle || 'monthly',
@@ -429,7 +428,7 @@ export function usePaymentPlanScheduler() {
             patient_name: formData.patientName,
             patient_email: formData.patientEmail
           }
-        );
+        });
       } catch (activityError: any) {
         console.error('Error recording plan activity:', activityError);
       }
