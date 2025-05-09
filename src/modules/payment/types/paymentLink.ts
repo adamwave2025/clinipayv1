@@ -1,44 +1,29 @@
 
-export interface RawClinicData {
-  id: string;
-  clinic_name?: string;
-  logo_url?: string;
-  email?: string;
-  phone?: string;
-  address_line_1?: string;
-  address_line_2?: string;
-  city?: string;
-  postcode?: string;
-  stripe_status?: string;
-}
-
 export interface PaymentLinkData {
   id: string;
   title?: string;
-  type?: string;
   amount: number;
-  description?: string;
-  clinic: {
-    id: string;
-    name: string;
-    logo?: string;
-    email?: string;
-    phone?: string;
-    address?: string;
-    stripeStatus: string;
-  };
-  status: string; // Now consistently using the status from the plans table when applicable
-  isRequest: boolean;
+  status: string; // 'active', 'paid', 'cancelled', 'paused', 'overdue', 'rescheduled'
+  clinic: ClinicDetails;
   patientName?: string;
   patientEmail?: string;
   patientPhone?: string;
+  message?: string;
+  isRequest: boolean;
   paymentId?: string;
   paymentPlan?: boolean;
   planTotalAmount?: number;
   totalPaid?: number;
   totalOutstanding?: number;
-  customAmount?: number; // Added to match the usage in PaymentLinkFormatter
-  hasOverduePayments?: boolean; // From plans table has_overdue_payments flag
-  payment_link_id?: string; // Added this property to fix the TypeScript error
-  isRescheduled?: boolean; // Flag to indicate if a payment has been rescheduled
+  payment_link_id?: string;
+}
+
+export interface ClinicDetails {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  logo?: string;
+  stripeStatus: string;
 }

@@ -2,8 +2,6 @@
 import { useState, useEffect } from 'react';
 import { PaymentLinkData } from '../types/paymentLink';
 import { PaymentLinkService } from '../services/PaymentLinkService';
-import { PaymentLinkDataService } from '@/services/payment-link/PaymentLinkDataService';
-import { PaymentLinkFormatter } from '@/services/payment-link/PaymentLinkFormatter';
 import { validatePenceAmount } from '../services/CurrencyService';
 
 export function usePaymentLinkData(linkId: string | undefined | null) {
@@ -27,41 +25,59 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
         console.log(`usePaymentLinkData: Fetching data for link ID: ${linkId}`);
         
         // First, try to see if this is a payment request
-        const requestData = await PaymentLinkDataService.fetchPaymentRequestWithClinic(linkId);
+        const requestData = await PaymentLinkService.fetchPaymentRequest(linkId);
         
-        // If we found a payment request
+        // If we found a payment request, format it
         if (requestData) {
           console.log('usePaymentLinkData: Found payment request:', requestData);
-          // Format the request data before setting state
-          const formattedRequestData = PaymentLinkFormatter.formatPaymentRequest(requestData);
-          if (formattedRequestData) {
-            console.log('usePaymentLinkData: Successfully formatted payment request data');
+          
+          // Format the payment request data
+          const formattedRequestData: PaymentLinkData = {
+            id: requestData.id,
+            title: requestData.title,
+            amount: requestData.amount,
+            status: requestData.status,
+            clinic: {
+              id: requestData.clinic.id,
+              name: requestData.clinic.name,
+              email: requestData.clinic.email,
+              phone: requestData.clinic.phone,
+              address: requestData.clinic.address,
+              logo: requestData.clinic.logo,
+              stripeStatus: requestData.clinic.stripe_status
+            },
+            patientName: requestData.patient_name,
+            patientEmail: requestData.patient_email,
+            patientPhone: requestData.patient_phone,
+            message: requestData.message,
+            isRequest: true,
+            paymentId: requestData.payment_id,
+            paymentPlan: requestData.payment_plan
+          };
+
+          // Log and validate the payment amount
+          console.log('Payment amount in pence:', formattedRequestData.amount);
+          if (!validatePenceAmount(formattedRequestData.amount, 'usePaymentLinkData')) {
+            console.warn(`usePaymentLinkData: Payment amount validation failed: ${formattedRequestData.amount}`);
             
-            // Log and validate the payment amount
-            console.log('Payment amount in pence:', formattedRequestData.amount);
-            if (!validatePenceAmount(formattedRequestData.amount, 'usePaymentLinkData')) {
-              console.warn(`usePaymentLinkData: Payment amount validation failed: ${formattedRequestData.amount}`);
-              
-              // If the amount is 0, set it to 100 pence (£1) for testing
-              // REMOVE THIS IN PRODUCTION - this is just for debugging
-              if (formattedRequestData.amount === 0) {
-                console.warn('usePaymentLinkData: Setting test amount of 100 pence (£1) for debugging');
-                formattedRequestData.amount = 100;
-              }
+            // If the amount is 0, set it to 100 pence (£1) for testing
+            // REMOVE THIS IN PRODUCTION - this is just for debugging
+            if (formattedRequestData.amount === 0) {
+              console.warn('usePaymentLinkData: Setting test amount of 100 pence (£1) for debugging');
+              formattedRequestData.amount = 100;
             }
-            
-            setLinkData(formattedRequestData);
-            setIsLoading(false);
-            return;
-          } else {
-            console.error('usePaymentLinkData: Failed to format payment request data');
           }
-        } else {
-          console.log(`usePaymentLinkData: No payment request found for ID ${linkId}, trying payment link`);
+          
+          console.log('usePaymentLinkData: Successfully formatted payment request data');
+          setLinkData(formattedRequestData);
+          setIsLoading(false);
+          return;
         }
         
+        console.log(`usePaymentLinkData: No payment request found for ID ${linkId}, trying payment link`);
+        
         // If not a payment request, try to find as a regular payment link
-        const linkData = await PaymentLinkDataService.fetchPaymentLinkWithClinic(linkId);
+        const linkData = await PaymentLinkService.fetchPaymentLink(linkId);
 
         if (!linkData) {
           console.error(`usePaymentLinkData: Payment link not found for ID ${linkId}`);
@@ -70,12 +86,24 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
 
         console.log('usePaymentLinkData: Found payment link:', linkData);
         
-        // Format the link data before setting state
-        const formattedLinkData = PaymentLinkFormatter.formatPaymentLink(linkData);
-        if (!formattedLinkData) {
-          console.error('usePaymentLinkData: Failed to format payment link data');
-          throw new Error('Failed to format payment link data');
-        }
+        // Format the payment link data
+        const formattedLinkData: PaymentLinkData = {
+          id: linkData.id,
+          title: linkData.title,
+          amount: linkData.amount,
+          status: linkData.status,
+          clinic: {
+            id: linkData.clinic.id,
+            name: linkData.clinic.name,
+            email: linkData.clinic.email,
+            phone: linkData.clinic.phone,
+            address: linkData.clinic.address,
+            logo: linkData.clinic.logo,
+            stripeStatus: linkData.clinic.stripe_status
+          },
+          isRequest: false,
+          paymentPlan: linkData.payment_plan
+        };
         
         // Log and validate the payment amount
         console.log('Payment amount in pence:', formattedLinkData.amount);
@@ -109,6 +137,3 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
     error
   };
 }
-
-// Re-export the type for backwards compatibility
-export type { PaymentLinkData } from '../types/paymentLink';

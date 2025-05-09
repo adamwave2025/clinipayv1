@@ -1,82 +1,81 @@
 
-// If we need to add or modify types, let's create a file for this
-import { PaymentLinkData } from './paymentLink';
-
 export interface Payment {
   id: string;
   patientName: string;
   patientEmail?: string;
   patientPhone?: string;
   amount: number;
-  platformFee?: number; // Added platform fee property
-  netAmount?: number; // Added net amount property
+  status: 'success' | 'pending' | 'failed' | 'refunded' | 'partially_refunded';
   date: string;
-  status: 'paid' | 'refunded' | 'sent' | 'partially_refunded';
-  type: 'deposit' | 'treatment' | 'consultation' | 'payment_plan' | 'other';
-  paymentUrl?: string; // URL for testing payment links
-  refundedAmount?: number; // Amount that was refunded (for partial refunds)
-  reference?: string; // Payment reference (PAY-XXXX-YYYY)
-  linkTitle?: string; // Title of the payment link
-  message?: string; // Custom message sent with the payment request
-  description?: string; // Description from the payment link
-  isCustomAmount?: boolean; // Flag to indicate if it was a custom amount request
-  paymentLinkId?: string; // ID of the payment link used (if any)
+  paymentMethod?: string;
+  paymentLinkId?: string;
+  clinicId: string;
+  refundAmount?: number;
+  refundDate?: string;
+  refundReason?: string;
 }
 
 export interface PaymentLink {
   id: string;
   title: string;
+  description: string;
   amount: number;
-  type: string;
-  description?: string;
-  url?: string; 
-  createdAt?: string;
-  isActive?: boolean;
-  paymentPlan?: boolean;
-  paymentCount?: number;
-  paymentCycle?: string;
-  planTotalAmount?: number;
+  status: string;
+  createdAt: Date;
+  clinicId: string;
+  paymentPlan: boolean;
+  planDetails: PlanDetails | null;
+}
+
+export interface PlanDetails {
+  totalAmount: number;
+  initialPayment: number;
+  numberOfPayments: number;
+  frequency: 'weekly' | 'monthly' | 'custom';
 }
 
 export interface PaymentStats {
-  totalReceivedToday: number;
-  totalPendingToday: number;
-  totalReceivedMonth: number;
-  totalRefundedMonth: number;
+  totalAmount: number;
+  count: number;
+  avgAmount: number;
+  changePercent: number;
 }
 
 export interface PaymentRecord {
-  id: string;
+  id?: string;
   patientName: string;
-  patientEmail?: string;
+  patientEmail: string;
+  patientPhone?: string;
   amount: number;
-  status: 'paid' | 'refunded' | 'failed';
-  date: string;
-  paymentMethod: string;
-  reference?: string;
+  clinicId: string;
+  paymentLinkId?: string;
+  status: string;
+  stripePaymentId?: string;
+  createdAt?: string;
 }
 
 export interface PaymentRequest {
   id: string;
-  patientName?: string;
+  clinicId: string;
+  patientName: string;
   patientEmail?: string;
   patientPhone?: string;
-  customAmount?: number;
+  amount: number;
+  status: string;
+  message?: string;
+  createdAt: string;
   paymentLinkId?: string;
-  status: 'sent' | 'paid';
-  date: string;
-  paymentUrl: string;
+  paymentId?: string;
 }
 
 export interface PaymentRefundParams {
   paymentId: string;
-  amount?: number;
-  reason?: string;
+  amount: number;
+  reason: string;
 }
 
 export interface RefundResult {
   success: boolean;
-  message: string;
-  data?: any;
   error?: string;
+  refundId?: string;
 }

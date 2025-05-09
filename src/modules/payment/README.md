@@ -1,54 +1,66 @@
 
 # Payment Module
 
-This module is responsible for all payment-related functionality in the application.
+This module handles all payment-related functionality in the CliniPay application.
 
 ## Structure
 
-- `/components` - UI components for payment forms, summaries, and displays
-- `/hooks` - Custom hooks for payment logic
-- `/services` - Services for currency conversion, payment links, etc.
-- `/types` - TypeScript types for payment-related data
-- `/utils` - Utility functions for formatting, validation, etc.
+- `/components`: UI components for payment processing and display
+- `/hooks`: Custom hooks for payment logic
+- `/services`: Services for payment processing, currency handling, etc.
+- `/types`: TypeScript types/interfaces for payment-related data
+- `/utils`: Utility functions for the payment module
 
-## Main Features
+## Key Components
 
-1. **Payment Processing**
-   - Stripe integration for card payments
-   - Apple Pay support
-   - Payment form validation
+### Payment Flow Components
+- `PaymentForm`: The main payment form component
+- `PaymentDetailsSection`: Section for entering payment details
+- `PersonalInfoSection`: Section for entering personal information
+- `StripeCardElement`: UI for card input with Stripe
+- `ApplePayButton`: Component for Apple Pay integration
 
-2. **Currency Handling**
-   - Conversion between pence and pounds
-   - Amount validation
+### UI Components 
+- `PaymentStatusSummary`: Displays payment status information
+- `PaymentErrorBoundary`: Handles and displays payment errors
+- `CliniPaySecuritySection`: Displays security information
+- `ClinicInformationCard`: Displays clinic information
 
-3. **Payment Links**
-   - Generation of payment links
-   - Payment link data retrieval
+## Key Hooks
 
-4. **Payment Plans**
-   - Support for installment payments
-   - Plan status tracking
+- `usePaymentProcess`: Main hook for processing payments
+- `useStripePayment`: Hook for Stripe payment integration
+- `usePaymentIntent`: Hook for creating payment intents
+- `usePaymentLinkData`: Hook for fetching payment link data
+- `usePaymentRecord`: Hook for recording payments
+
+## Services
+
+- `CurrencyService`: Handles currency formatting and validation
+- `PaymentLinkService`: Manages payment links
+- `PaymentPlanService`: Manages payment plans
+- `PlanDataService`: Handles payment plan data
 
 ## Integration Points
 
-- The module exposes its API through barrel exports in the root `index.ts`
-- Components can be imported from `@/modules/payment/components`
-- Hooks can be imported from `@/modules/payment/hooks`
-- Types can be imported from `@/modules/payment/types`
+This module integrates with:
+- Stripe for payment processing
+- Supabase for data storage
+- Email/SMS notifications for payment confirmations
 
-## Usage Examples
+## Usage Example
 
 ```tsx
-// Import components
-import { PaymentForm, PaymentSummary } from '@/modules/payment/components';
+import { usePaymentProcess, PaymentForm } from '@/modules/payment';
 
-// Import hooks
-import { usePaymentProcess, usePaymentLinkData } from '@/modules/payment/hooks';
-
-// Import services
-import { penceToPounds, poundsToPence } from '@/modules/payment/services';
-
-// Import types
-import { PaymentLinkData } from '@/modules/payment/types';
+const PaymentPage = () => {
+  const { handlePaymentSubmit, isSubmitting } = usePaymentProcess(linkId, linkData);
+  
+  return (
+    <PaymentForm 
+      onSubmit={handlePaymentSubmit} 
+      isLoading={isSubmitting}
+    />
+  );
+};
 ```
