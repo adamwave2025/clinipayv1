@@ -12,17 +12,21 @@ import { Lock } from 'lucide-react';
 interface PaymentFormProps {
   onSubmit: (data: PaymentFormValues) => void;
   isLoading: boolean;
+  amount: number; // Amount in pence
   defaultValues?: Partial<PaymentFormValues>;
   onApplePaySuccess?: (paymentMethod: any) => void;
 }
 
 const PaymentForm = ({ 
   onSubmit, 
-  isLoading, 
+  isLoading,
+  amount = 100, // Default to £1 (100p) to prevent zero-amount payments
   defaultValues,
   onApplePaySuccess
 }: PaymentFormProps) => {
   const [isCardComplete, setIsCardComplete] = useState(false);
+  
+  console.log('PaymentForm: Rendering with amount:', amount);
   
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
@@ -38,7 +42,8 @@ const PaymentForm = ({
     console.log('Form submission triggered', { 
       formData: data,
       isCardComplete,
-      formState: form.formState
+      formState: form.formState,
+      paymentAmount: amount
     });
     
     if (!isCardComplete) {
@@ -50,8 +55,17 @@ const PaymentForm = ({
       return;
     }
     
+    if (amount <= 0) {
+      console.error('Invalid payment amount:', amount);
+      form.setError('stripeCard', {
+        type: 'manual',
+        message: 'Invalid payment amount. Please contact support.'
+      });
+      return;
+    }
+    
     try {
-      console.log('Calling onSubmit handler with form data');
+      console.log('Calling onSubmit handler with form data and amount:', amount);
       onSubmit(data);
     } catch (error) {
       console.error('Error in form submission:', error);
@@ -88,6 +102,7 @@ const PaymentForm = ({
         <PaymentDetailsSection
           control={form.control}
           isLoading={isLoading}
+          amount={amount}
           onApplePaySuccess={onApplePaySuccess}
           onCardElementChange={handleCardElementChange}
         />

@@ -25,6 +25,12 @@ export const formatCurrency = (penceAmount: number): string => {
  * @returns Amount in pounds
  */
 export const penceToPounds = (penceAmount: number): number => {
+  // Handle non-numeric inputs
+  if (typeof penceAmount !== 'number' || isNaN(penceAmount)) {
+    console.warn('[CurrencyService] Invalid pence amount:', penceAmount);
+    return 0;
+  }
+  
   console.info('[CurrencyService] Converting ' + penceAmount + 'p to £' + (penceAmount / 100));
   return penceAmount / 100;
 };
@@ -34,9 +40,18 @@ export const penceToPounds = (penceAmount: number): number => {
  * @param poundsAmount - Amount in pounds
  * @returns Amount in pence
  */
-export const poundsToPence = (poundsAmount: number): number => {
-  const pence = Math.round(poundsAmount * 100);
-  console.info('[CurrencyService] Converting £' + poundsAmount + ' to ' + pence + 'p');
+export const poundsToPence = (poundsAmount: number | string): number => {
+  // Convert string input to number if needed
+  const numericAmount = typeof poundsAmount === 'string' ? parseFloat(poundsAmount) : poundsAmount;
+  
+  // Handle NaN case
+  if (isNaN(numericAmount)) {
+    console.warn('[CurrencyService] Invalid pounds amount:', poundsAmount);
+    return 0;
+  }
+  
+  const pence = Math.round(numericAmount * 100);
+  console.info('[CurrencyService] Converting £' + numericAmount + ' to ' + pence + 'p');
   return pence;
 };
 
@@ -48,7 +63,7 @@ export const poundsToPence = (poundsAmount: number): number => {
  */
 export const validatePenceAmount = (penceAmount: number, source: string = 'unknown'): boolean => {
   // Ensure it's a number
-  if (isNaN(penceAmount)) {
+  if (typeof penceAmount !== 'number' || isNaN(penceAmount)) {
     console.error(`[CurrencyService] Invalid pence amount (NaN) from ${source}`);
     return false;
   }
@@ -76,7 +91,7 @@ export const validatePenceAmount = (penceAmount: number, source: string = 'unkno
  */
 export const validatePoundsAmount = (poundsAmount: number, source: string = 'unknown'): boolean => {
   // Ensure it's a number
-  if (isNaN(poundsAmount)) {
+  if (typeof poundsAmount !== 'number' || isNaN(poundsAmount)) {
     console.error(`[CurrencyService] Invalid pounds amount (NaN) from ${source}`);
     return false;
   }

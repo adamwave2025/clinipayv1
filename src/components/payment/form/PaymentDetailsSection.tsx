@@ -5,11 +5,12 @@ import { PaymentFormValues } from './FormSchema';
 import { FormField } from '@/components/ui/form';
 import StripeCardElement from './StripeCardElement';
 import ApplePayButton from './ApplePayButton';
-import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
+import { debugCurrencyInfo } from '@/services/CurrencyService';
 
 interface PaymentDetailsSectionProps {
   control: Control<PaymentFormValues>;
   isLoading: boolean;
+  amount: number; // Amount in pence
   onApplePaySuccess?: (paymentMethod: any) => void;
   onCardElementChange?: (event: any) => void;
 }
@@ -17,21 +18,19 @@ interface PaymentDetailsSectionProps {
 const PaymentDetailsSection = ({ 
   control, 
   isLoading,
+  amount,
   onApplePaySuccess,
   onCardElementChange
 }: PaymentDetailsSectionProps) => {
-  // Get the payment amount from the link data
-  // Note: We're passing null as linkId since we're using the hook in a different context
-  // where we expect the link data to be already available in context/state
-  const { linkData } = usePaymentLinkData(null);
-  
   // Enhanced logging to debug amount issues
-  console.log('PaymentDetailsSection: Raw link data amount:', linkData?.amount);
+  debugCurrencyInfo(amount, 'PaymentDetailsSection input amount', true);
   
-  // Default to 0 if no amount is available
-  // IMPORTANT: linkData.amount is already in pence, we convert to pounds for display
-  const amountInPounds = linkData?.amount ? linkData.amount / 100 : 0; // Convert from pence to pounds
-  console.log('PaymentDetailsSection: Converted amount in pounds:', amountInPounds);
+  // Default to 100p (£1) if no amount is available to prevent zero-amount payments
+  const safeAmount = amount > 0 ? amount : 100;
+  
+  // Convert from pence to pounds for Apple Pay
+  const amountInPounds = safeAmount / 100;
+  console.log('PaymentDetailsSection: Amount in pounds for display:', amountInPounds);
   
   return (
     <div className="space-y-4">
@@ -40,10 +39,15 @@ const PaymentDetailsSection = ({
       <FormField
         control={control}
         name="stripeCard"
-        render={() => (
+        render={({ field }) => (
           <StripeCardElement 
             isLoading={isLoading} 
-            onChange={onCardElementChange}
+            onChange={(e) => {
+              if (onCardElementChange) {
+                onCardElementChange(e);
+              }
+              field.onChange(e.complete ? e : { empty: true });
+            }}
           />
         )}
       />
@@ -57,6 +61,10 @@ const PaymentDetailsSection = ({
           />
         </div>
       )}
+      
+      <div className="text-xs text-gray-500 mt-2">
+        Your payment is secure and encrypted. We never store your full card details.
+      </div>
     </div>
   );
 };

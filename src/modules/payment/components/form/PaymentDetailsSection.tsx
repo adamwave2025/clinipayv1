@@ -8,7 +8,7 @@ import PaymentSectionContainer from '../PaymentSectionContainer';
 import ApplePayButton from './ApplePayButton';
 import { usePaymentLinkData } from '../../hooks/usePaymentLinkData';
 import { useParams } from 'react-router-dom';
-import { penceToPounds } from '../../services/CurrencyService';
+import { penceToPounds, debugCurrencyInfo } from '../../services/CurrencyService';
 
 interface PaymentDetailsSectionProps {
   control: Control<PaymentFormValues>;
@@ -23,14 +23,20 @@ const PaymentDetailsSection = ({
 }: PaymentDetailsSectionProps) => {
   const { linkId } = useParams<{ linkId: string }>();
   const { linkData } = usePaymentLinkData(linkId);
+  
+  // Default to 100p (£1) if no amount is available to prevent zero-amount payments
   const amount = linkData?.amount || 0;
   
   // Detailed logging for debugging
   console.log('--- Payment Details Section Debug ---');
   console.log('Raw amount from linkData (pence):', amount);
+  debugCurrencyInfo(amount, 'PaymentDetailsSection', true);
+  
+  // Use a safe amount to prevent issues - minimum £1 (100p)
+  const safeAmount = amount > 0 ? amount : 100;
   
   // Convert amount from pence to pounds for Apple Pay
-  const amountInPounds = penceToPounds(amount);
+  const amountInPounds = penceToPounds(safeAmount);
   console.log('Converted amount for Apple Pay (pounds):', amountInPounds);
   
   // Additional validation
