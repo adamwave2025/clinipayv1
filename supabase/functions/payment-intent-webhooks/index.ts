@@ -91,6 +91,9 @@ serve(async (req) => {
     } else if (event.type === "payment_intent.payment_failed") {
       console.log(`Processing payment_intent.payment_failed event: ${event.id}`);
       await handlePaymentIntentFailed(event.data.object, supabaseClient);
+    } else if (event.type === "refund.updated") {
+      console.log(`Processing refund.updated event: ${event.id}`);
+      await handleRefundUpdated(event.data.object, stripe, supabaseClient);
     } else {
       console.log(`Unhandled event type: ${event.type}`);
     }
@@ -110,3 +113,68 @@ serve(async (req) => {
     );
   }
 });
+
+/**
+ * Handle refund.updated events to update the refund fee in the payments table
+ * This handler runs after the refund has been fully processed by Stripe
+ * and the balance transaction details are available
+ */
+async function handleRefundUpdated(refund: Stripe.Refund, stripe: Stripe, supabase: any) {
+  try {
+    console.log(`Processing refund update with ID: ${refund.id}`);
+    
+    // Skip if the balance_transaction is not set
+    if (!refund.balance_transaction) {
+      console.log("No balance_transaction found in refund, skipping fee update");
+      return;
+    }
+    
+    // Extract the balance transaction ID
+    const balanceTransactionId = refund.balance_transaction;
+    console.log(`Balance transaction ID: ${balanceTransactionId}`);
+    
+    // Fetch the balance transaction to get the fee details
+    const balanceTransaction = await stripe.balanceTransactions.retrieve(balanceTransactionId);
+    console.log("Retrieved balance transaction:", JSON.stringify(balanceTransaction, null, 2));
+    
+    // Extract the fee amount (in cents/pence)
+    // The fee is negative in refunds, so we take the absolute value
+    const refundFee = Math.abs(balanceTransaction.fee);
+    console.log(`Extracted refund fee: ${refundFee} (cents/pence)`);
+    
+    // Find the payment record using the refund ID
+    console.log(`Looking for payment with stripe_refund_id: ${refund.id}`);
+    const { data: paymentData, error: paymentError } = await supabase
+      .from("payments")
+      .select("id, stripe_refund_fee")
+      .eq("stripe_refund_id", refund.id)
+      .single();
+    
+    if (paymentError) {
+      console.error("Error finding payment record:", paymentError);
+      throw new Error(`Payment record with refund ID ${refund.id} not found`);
+    }
+    
+    console.log(`Found payment record with ID: ${paymentData.id}`);
+    console.log(`Current refund fee: ${paymentData.stripe_refund_fee}, New refund fee: ${refundFee}`);
+    
+    // Update the payment record with the refund fee
+    const { error: updateError } = await supabase
+      .from("payments")
+      .update({ stripe_refund_fee: refundFee })
+      .eq("id", paymentData.id);
+    
+    if (updateError) {
+      console.error("Error updating payment with refund fee:", updateError);
+      throw new Error(`Failed to update payment ${paymentData.id} with refund fee`);
+    }
+    
+    console.log(`Successfully updated payment ${paymentData.id} with refund fee: ${refundFee}`);
+    
+    return { success: true };
+  } catch (error) {
+    console.error(`Error processing refund update: ${error.message}`);
+    console.error(error.stack);
+    return { success: false, error: error.message };
+  }
+}
