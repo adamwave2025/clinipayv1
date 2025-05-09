@@ -6,8 +6,8 @@ export type StatusType = 'paid' | 'refunded' | 'partially_refunded' | 'sent' | '
 interface StatusBadgeProps {
   status: StatusType;
   className?: string;
-  isReadOnly?: boolean; // Add this prop to indicate if the status cannot be changed
-  originalStatus?: string; // Add originalStatus for displaying paused-sent differently
+  isReadOnly?: boolean;
+  originalStatus?: string;
 }
 
 const StatusBadge = ({ 
@@ -35,7 +35,6 @@ const StatusBadge = ({
       case 'pending':
         return 'bg-yellow-50 text-yellow-700 border-yellow-200';
       case 'upcoming':
-      case 'completed':
         return 'bg-gradient-primary text-white border-transparent';
       case 'overdue':
         return 'bg-red-50 text-red-700 border-red-200';
