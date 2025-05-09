@@ -4,6 +4,7 @@ import { Payment } from '@/types/payment';
 import { formatCurrency } from '@/utils/formatters';
 import { processNotificationsNow } from '@/utils/notification-cron-setup';
 import { Json } from '@/integrations/supabase/types';
+import { poundsToPence } from '@/services/CurrencyService';
 
 export const PaymentRefundService = {
   async processRefund(paymentId: string, amount?: number): Promise<{ success: boolean; status?: string; error?: string; refundFee?: number }> {
@@ -12,6 +13,8 @@ export const PaymentRefundService = {
     }
     
     try {
+      console.log('Processing refund with amount in pounds:', amount);
+      
       // Call the refund-payment edge function
       const { data, error } = await supabase.functions.invoke('refund-payment', {
         body: JSON.stringify({
@@ -55,15 +58,19 @@ export const PaymentRefundService = {
     }
     
     // Log values for debugging
-    console.log('Refund amount:', refundAmount);
-    console.log('Payment amount:', payment.amount);
+    console.log('Refund amount in pounds:', refundAmount);
+    console.log('Payment amount in pence:', payment.amount);
+    
+    // Convert refund amount to pence for comparison with payment.amount (which is in pence)
+    const refundAmountInPence = poundsToPence(refundAmount);
+    console.log('Refund amount converted to pence:', refundAmountInPence);
     
     // Determine if this is a full refund by checking if the amounts are equal
     // Use a small epsilon to account for floating point precision issues
-    const epsilon = 0.001; // Allow for tiny differences due to floating point
-    const isFullRefund = Math.abs(payment.amount - refundAmount) < epsilon;
+    const epsilon = 1; // Allow for tiny differences due to rounding
+    const isFullRefund = Math.abs(payment.amount - refundAmountInPence) < epsilon;
     
-    console.log('Is full refund?', isFullRefund, 'Difference:', Math.abs(payment.amount - refundAmount));
+    console.log('Is full refund?', isFullRefund, 'Difference:', Math.abs(payment.amount - refundAmountInPence));
     
     // Determine status based on full or partial refund
     const status = isFullRefund ? 'refunded' : 'partially_refunded';
@@ -73,7 +80,7 @@ export const PaymentRefundService = {
         ? { 
             ...p, 
             status: status as any,
-            refundedAmount: refundAmount
+            refundedAmount: refundAmountInPence // Store refund amount in pence to be consistent with amount field
           }
         : p
     );

@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider';
 import { Payment } from '@/types/payment';
-import { penceToPounds } from '@/services/CurrencyService';
 
 export const useRefundState = () => {
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
@@ -22,7 +21,7 @@ export const useRefundState = () => {
 
   const processRefund = (amountInPounds?: number) => {
     if (paymentToRefund) {
-      // Amount is already in pounds, pass it directly
+      // Amount is already in pounds from the dialog, pass it directly
       handleRefund(amountInPounds, paymentToRefund);
       setRefundDialogOpen(false);
     } else {

@@ -53,7 +53,7 @@ const PaymentRefundDialog = ({
     if (isNaN(value) || value <= 0) {
       setError('Please enter a valid amount greater than 0');
     } else if (value > amountInPounds) {
-      setError(`Refund amount cannot exceed the payment amount (${formatCurrency(amountInPounds)})`);
+      setError(`Refund amount cannot exceed the payment amount (${formatCurrency(amountInPounds * 100)})`);
     } else {
       setError('');
     }
@@ -89,14 +89,17 @@ const PaymentRefundDialog = ({
         <div className="py-4">
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="refund-amount">Refund Amount (£)</Label>
+              <Label htmlFor="refund-amount" className="flex items-center">
+                Refund Amount
+                <span className="text-lg ml-1 font-medium">£</span>
+              </Label>
               <Input
                 id="refund-amount"
                 type="number"
                 step="0.01"
                 min="0.01"
                 max={amountInPounds}
-                value={refundAmount}
+                value={refundAmount.toFixed(2)}
                 onChange={handleAmountChange}
                 className={error ? "border-red-300 focus-visible:ring-red-500" : ""}
                 disabled={isProcessingRefund}
@@ -105,10 +108,7 @@ const PaymentRefundDialog = ({
             </div>
             
             <div className="text-sm text-gray-500">
-              <p>Original Payment: {formatCurrency(amountInPounds)}</p>
-              {!isFullRefund && refundAmount > 0 && (
-                <p>Remaining After Refund: {formatCurrency(amountInPounds - refundAmount)}</p>
-              )}
+              <p>Original Payment: {formatCurrency(paymentAmount)}</p>
             </div>
             
             {isProcessingRefund && (
