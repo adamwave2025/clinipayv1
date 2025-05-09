@@ -112,6 +112,7 @@ export async function handleCreatePaymentIntent(req: Request) {
     console.log(`Generated payment reference: ${paymentReference}`);
 
     // Create a PaymentIntent
+    // FIX: Remove the amount from transfer_data since we're using application_fee_amount
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: "gbp",
@@ -133,7 +134,7 @@ export async function handleCreatePaymentIntent(req: Request) {
       },
       transfer_data: {
         destination: clinic.stripe_account_id,
-        amount: amount - platformFeeAmount, // Subtract platform fee
+        // Removed the amount parameter here to avoid the conflict with application_fee_amount
       },
       application_fee_amount: platformFeeAmount,
     });
