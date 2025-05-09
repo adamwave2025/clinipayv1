@@ -40,7 +40,8 @@ serve(async (req) => {
       throw new Error("Payment processing is not configured properly. Please contact support.");
     }
 
-    console.log(`🧾 Processing refund for payment ${paymentId}, amount: ${refundAmount}, fullRefund: ${fullRefund}`);
+    // Log the raw refund amount received (should be in pounds)
+    console.log(`🧾 Processing refund for payment ${paymentId}, raw amount: ${refundAmount}, fullRefund: ${fullRefund}`);
 
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16"
@@ -87,9 +88,13 @@ serve(async (req) => {
     try {
       console.log(`💳 Creating Stripe refund for payment intent: ${stripePaymentId}`);
       
+      // Convert amount from pounds to pence for Stripe (Stripe expects amounts in pennies)
+      const refundAmountInPence = fullRefund ? undefined : Math.round(refundAmount * 100);
+      console.log(`💰 Refund amount in pence for Stripe: ${refundAmountInPence || 'full refund'}`);
+      
       stripeRefund = await stripe.refunds.create({
         payment_intent: stripePaymentId,
-        amount: fullRefund ? undefined : Math.round(refundAmount * 100),
+        amount: refundAmountInPence, // Will be undefined for full refund
         refund_application_fee: true,
         reverse_transfer: true
       });
@@ -175,15 +180,22 @@ serve(async (req) => {
     let isFullRefund = fullRefund;
     
     if (!isFullRefund && refundAmount) {
-      isFullRefund = Math.abs(payment.amount_paid - refundAmount) < epsilon;
-      console.log(`🧮 Full refund calculation: Payment amount=${payment.amount_paid}, Refund amount=${refundAmount}, Difference=${Math.abs(payment.amount_paid - refundAmount)}, isFullRefund=${isFullRefund}`);
+      // Get payment amount in pounds by dividing the stored amount_paid by 100
+      const paymentAmountPounds = payment.amount_paid / 100;
+      
+      // Compare refund amount (in pounds) with payment amount (in pounds)
+      isFullRefund = Math.abs(paymentAmountPounds - refundAmount) < epsilon;
+      
+      console.log(`🧮 Full refund calculation: Payment amount=£${paymentAmountPounds}, Refund amount=£${refundAmount}, Difference=${Math.abs(paymentAmountPounds - refundAmount)}, isFullRefund=${isFullRefund}`);
     }
 
     const newStatus = isFullRefund ? 'refunded' : 'partially_refunded';
-    const refundAmountToStore = isFullRefund ? payment.amount_paid : refundAmount;
+    const refundAmountToStore = isFullRefund ? payment.amount_paid : Math.round(refundAmount * 100);
     const currentTimestamp = new Date().toISOString();
     
     console.log(`💾 Updating payment record to status: ${newStatus} (isFullRefund: ${isFullRefund})`);
+    console.log(`💰 Storing refund amount in pence: ${refundAmountToStore} (${refundAmountToStore/100} GBP)`);
+    
     const updateData = {
       status: newStatus,
       refund_amount: refundAmountToStore,

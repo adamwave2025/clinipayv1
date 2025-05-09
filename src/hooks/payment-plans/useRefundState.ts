@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider';
 import { Payment } from '@/types/payment';
+import { penceToPounds } from '@/services/CurrencyService';
 
 export const useRefundState = () => {
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
@@ -19,10 +20,10 @@ export const useRefundState = () => {
     }
   };
 
-  const processRefund = (amount?: number) => {
+  const processRefund = (amountInPounds?: number) => {
     if (paymentToRefund) {
-      // Explicitly pass the payment ID to handleRefund
-      handleRefund(amount, paymentToRefund);
+      // Amount is already in pounds, pass it directly
+      handleRefund(amountInPounds, paymentToRefund);
       setRefundDialogOpen(false);
     } else {
       console.error('No payment ID available for refund');

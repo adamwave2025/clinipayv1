@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { PaymentRequestButtonElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { poundsToPence } from '@/services/CurrencyService';
 
 interface ApplePayButtonProps {
   amount: number;
@@ -31,13 +32,17 @@ const ApplePayButton = ({ amount, isLoading, onApplePaySuccess }: ApplePayButton
         return;
       }
       
+      // Convert the amount from pounds to pence for Stripe's API
+      const amountInPence = Math.round(amount * 100); 
+      console.log('Amount in pence for Stripe:', amountInPence);
+      
       // Create the payment request object
       const pr = stripe.paymentRequest({
         country: 'GB',
         currency: 'gbp',
         total: {
           label: 'Total',
-          amount: Math.round(amount), // Ensure amount is properly rounded (already in cents)
+          amount: amountInPence, // Amount in pence
         },
         requestPayerName: true,
         requestPayerEmail: true,
