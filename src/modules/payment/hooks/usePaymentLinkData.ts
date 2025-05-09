@@ -23,38 +23,24 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
       try {
         console.log(`usePaymentLinkData: Fetching data for link ID: ${linkId}`);
         
-        // Dummy function to simulate fetching data - in real implementation,
-        // this would fetch from your backend/Supabase
-        const fetchDummyData = async (): Promise<PaymentLinkData> => {
-          // Return dummy data
-          return {
-            id: linkId,
-            amount: 1000, // 10.00 in pence
-            status: 'active',
-            clinic: {
-              id: 'clinic-123',
-              name: 'Demo Clinic',
-              email: 'contact@democlinic.com',
-              phone: '+44123456789',
-              address: '123 Medical St, London',
-              logo: 'https://example.com/logo.png',
-              stripeStatus: 'connected'
-            },
-            isRequest: false,
-          };
-        };
-
-        const linkData = await fetchDummyData();
+        // Fetch actual payment link data from your API
+        // This is a simplified example, replace with your actual API call
+        const response = await fetch(`/api/payment-links/${linkId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch payment link data');
+        }
+        
+        const linkData = await response.json();
         
         // Validate the payment amount
         console.log('Payment amount in pence:', linkData.amount);
         if (!validatePenceAmount(linkData.amount, 'usePaymentLinkData')) {
           console.warn(`usePaymentLinkData: Payment amount validation failed: ${linkData.amount}`);
           
-          // If the amount is 0, set it to 100 pence (£1) for testing
-          if (linkData.amount === 0) {
-            console.warn('usePaymentLinkData: Setting test amount of 100 pence (£1) for debugging');
-            linkData.amount = 100;
+          // If the amount is 0 or invalid, set a minimum amount for safety
+          if (linkData.amount <= 0) {
+            console.warn('usePaymentLinkData: Setting minimum amount of 100 pence (£1)');
+            linkData.amount = 100; // Set minimum to £1 (100p)
           }
         }
         

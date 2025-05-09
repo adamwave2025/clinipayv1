@@ -1,79 +1,13 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { toast } from 'sonner';
-
-interface PaymentPlanActivityParams {
-  planId: string;
-  actionType: string;
-  details?: Record<string, any>;
-}
+import { format } from 'date-fns';
 
 /**
- * Records an activity in the payment_activity table
+ * Fetch plans directly from the plans table
  */
-export const recordPaymentPlanActivity = async ({
-  planId,
-  actionType,
-  details = {}
-}: PaymentPlanActivityParams): Promise<void> => {
-  try {
-    // Get plan info to get related data
-    const { data: plan, error: planError } = await supabase
-      .from('plans')
-      .select('clinic_id, patient_id, payment_link_id')
-      .eq('id', planId)
-      .single();
-    
-    if (planError) throw planError;
-    
-    // Record the activity
-    const { error } = await supabase.from('payment_activity').insert({
-      plan_id: planId,
-      clinic_id: plan.clinic_id,
-      patient_id: plan.patient_id,
-      payment_link_id: plan.payment_link_id,
-      action_type: actionType,
-      details,
-      performed_at: new Date().toISOString()
-    });
-    
-    if (error) throw error;
-  } catch (error) {
-    console.error('Error recording payment plan activity:', error);
-    // Don't show toast for activity recording errors - they're not critical to user
-  }
-};
-
-/**
- * Update the payment schedule item status
- */
-export const updatePaymentScheduleStatus = async (
-  scheduleId: string, 
-  status: string
-): Promise<boolean> => {
-  try {
-    const { error } = await supabase
-      .from('payment_schedule')
-      .update({
-        status,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', scheduleId);
-    
-    if (error) throw error;
-    
-    return true;
-  } catch (error) {
-    console.error('Error updating payment schedule status:', error);
-    toast.error('Failed to update payment status');
-    return false;
-  }
-};
-
-/**
- * Fetch all plans for a user
- */
-export const fetchPlans = async (userId: string): Promise<any[]> => {
+export const fetchPlans = async (userId: string): Promise<Plan[]> => {
   try {
     const { data: userData, error: userError } = await supabase
       .from('users')
@@ -82,8 +16,7 @@ export const fetchPlans = async (userId: string): Promise<any[]> => {
       .single();
       
     if (userError) {
-      console.error('Error fetching user data:', userError);
-      return [];
+      throw userError;
     }
 
     const clinicId = userData.clinic_id;
@@ -92,54 +25,72 @@ export const fetchPlans = async (userId: string): Promise<any[]> => {
       .from('plans')
       .select(`
         *,
-        patients (name)
+        patients (
+          id, name, email
+        )
       `)
-      .eq('clinic_id', clinicId);
+      .eq('clinic_id', clinicId)
+      .order('created_at', { ascending: false });
     
     if (error) {
-      console.error('Error fetching plans:', error);
-      return [];
+      throw error;
     }
     
-    return data || [];
+    console.log('Raw plans data from DB:', data);
+    
+    // Format the plans using the helper function
+    const formattedPlans = data.map(plan => {
+      const formatted = formatPlanFromDb(plan);
+      // Ensure patientName is set correctly
+      if (!formatted.patientName && formatted.patients?.name) {
+        formatted.patientName = formatted.patients.name;
+      }
+      return formatted;
+    });
+    
+    console.log('Formatted plans:', formattedPlans);
+    
+    return formattedPlans;
   } catch (error) {
-    console.error('Error in fetchPlans:', error);
+    console.error('Error fetching plans:', error);
+    toast.error('Failed to load payment plans');
     return [];
   }
 };
 
-/**
- * Fetch installments for a specific plan
- */
-export const fetchPlanInstallments = async (planId: string): Promise<any[]> => {
+export const fetchPlanInstallments = async (planId: string) => {
   try {
     const { data, error } = await supabase
       .from('payment_schedule')
       .select(`
-        *,
+        id, 
+        payment_number,
+        total_payments,
+        due_date,
+        amount,
+        status,
+        payment_request_id,
+        plan_id,
         payment_requests (
-          id, status, paid_at
+          id, status, payment_id, paid_at
         )
       `)
       .eq('plan_id', planId)
       .order('payment_number', { ascending: true });
     
     if (error) {
-      console.error('Error fetching plan installments:', error);
-      return [];
+      throw error;
     }
     
     return data || [];
   } catch (error) {
-    console.error('Error in fetchPlanInstallments:', error);
+    console.error('Error fetching plan installments:', error);
+    toast.error('Failed to load payment installments');
     return [];
   }
 };
 
-/**
- * Fetch activities for a specific plan
- */
-export const fetchPlanActivities = async (planId: string): Promise<any[]> => {
+export const fetchPlanActivities = async (planId: string) => {
   try {
     const { data, error } = await supabase
       .from('payment_activity')
@@ -148,24 +99,74 @@ export const fetchPlanActivities = async (planId: string): Promise<any[]> => {
       .order('performed_at', { ascending: false });
     
     if (error) {
-      console.error('Error fetching plan activities:', error);
-      return [];
+      throw error;
     }
     
     return data || [];
   } catch (error) {
-    console.error('Error in fetchPlanActivities:', error);
+    console.error('Error fetching plan activities:', error);
+    toast.error('Failed to load plan activities');
     return [];
+  }
+};
+
+/**
+ * Record activity for a payment plan
+ */
+export const recordPaymentPlanActivity = async (params: {
+  planId: string;
+  actionType: string;
+  details?: any;
+}) => {
+  try {
+    // Get plan details to populate related fields
+    const { data: planData, error: planError } = await supabase
+      .from('plans')
+      .select('clinic_id, patient_id, payment_link_id')
+      .eq('id', params.planId)
+      .single();
+      
+    if (planError) {
+      console.error('Error fetching plan data for activity record:', planError);
+      throw planError;
+    }
+    
+    const performedByUserId = (await supabase.auth.getUser()).data.user?.id;
+    
+    const activityData = {
+      plan_id: params.planId,
+      clinic_id: planData.clinic_id,
+      patient_id: planData.patient_id,
+      payment_link_id: planData.payment_link_id,
+      action_type: params.actionType,
+      details: params.details || {},
+      performed_at: new Date().toISOString(),
+      performed_by_user_id: performedByUserId
+    };
+    
+    const { error } = await supabase
+      .from('payment_activity')
+      .insert(activityData);
+      
+    if (error) {
+      console.error('Error recording plan activity:', error);
+      throw error;
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to record payment plan activity:', error);
+    return { success: false, error };
   }
 };
 
 /**
  * Cancel a payment plan
  */
-export const cancelPaymentPlan = async (planId: string): Promise<{success: boolean, error?: any}> => {
+export const cancelPaymentPlan = async (planId: string) => {
   try {
-    // Update plan status
-    const { error: planError } = await supabase
+    // Update the plan status
+    const { error: updatePlanError } = await supabase
       .from('plans')
       .update({
         status: 'cancelled',
@@ -173,24 +174,31 @@ export const cancelPaymentPlan = async (planId: string): Promise<{success: boole
       })
       .eq('id', planId);
     
-    if (planError) throw planError;
+    if (updatePlanError) {
+      throw updatePlanError;
+    }
     
-    // Update all pending installments to cancelled
-    const { error: scheduleError } = await supabase
+    // Update all pending/upcoming payments to cancelled
+    const { error: updateScheduleError } = await supabase
       .from('payment_schedule')
       .update({
         status: 'cancelled',
         updated_at: new Date().toISOString()
       })
       .eq('plan_id', planId)
-      .eq('status', 'pending');
-    
-    if (scheduleError) throw scheduleError;
+      .in('status', ['pending', 'scheduled']);
+      
+    if (updateScheduleError) {
+      throw updateScheduleError;
+    }
     
     // Record the activity
     await recordPaymentPlanActivity({
       planId,
-      actionType: 'plan_cancelled'
+      actionType: 'plan_cancelled',
+      details: {
+        cancelled_at: new Date().toISOString()
+      }
     });
     
     return { success: true };
@@ -203,10 +211,10 @@ export const cancelPaymentPlan = async (planId: string): Promise<{success: boole
 /**
  * Pause a payment plan
  */
-export const pausePaymentPlan = async (planId: string): Promise<{success: boolean, error?: any}> => {
+export const pausePaymentPlan = async (planId: string) => {
   try {
-    // Update plan status
-    const { error: planError } = await supabase
+    // Update the plan status
+    const { error: updatePlanError } = await supabase
       .from('plans')
       .update({
         status: 'paused',
@@ -214,12 +222,20 @@ export const pausePaymentPlan = async (planId: string): Promise<{success: boolea
       })
       .eq('id', planId);
     
-    if (planError) throw planError;
+    if (updatePlanError) {
+      throw updatePlanError;
+    }
+    
+    // We don't change the payment_schedule statuses when pausing,
+    // just mark the plan as paused to prevent sending new payments
     
     // Record the activity
     await recordPaymentPlanActivity({
       planId,
-      actionType: 'plan_paused'
+      actionType: 'plan_paused',
+      details: {
+        paused_at: new Date().toISOString()
+      }
     });
     
     return { success: true };
@@ -230,27 +246,64 @@ export const pausePaymentPlan = async (planId: string): Promise<{success: boolea
 };
 
 /**
- * Resume a payment plan
+ * Resume a paused payment plan
  */
-export const resumePaymentPlan = async (planId: string, resumeDate: Date): Promise<{success: boolean, error?: any}> => {
+export const resumePaymentPlan = async (planId: string, resumeDate: Date) => {
   try {
-    // Update plan status
-    const { error: planError } = await supabase
+    // Get all pending payment_schedule entries for this plan
+    const { data: scheduleData, error: scheduleError } = await supabase
+      .from('payment_schedule')
+      .select('*')
+      .eq('plan_id', planId)
+      .in('status', ['pending', 'scheduled'])
+      .order('payment_number', { ascending: true });
+      
+    if (scheduleError) {
+      throw scheduleError;
+    }
+    
+    if (!scheduleData || scheduleData.length === 0) {
+      throw new Error('No pending payments found for this plan');
+    }
+    
+    // Find the next payment due date
+    const firstPendingPayment = scheduleData[0];
+    const formattedResumeDate = format(resumeDate, 'yyyy-MM-dd');
+    
+    // Update the plan status
+    const { error: updatePlanError } = await supabase
       .from('plans')
       .update({
         status: 'active',
+        next_due_date: formattedResumeDate,
         updated_at: new Date().toISOString()
       })
       .eq('id', planId);
     
-    if (planError) throw planError;
+    if (updatePlanError) {
+      throw updatePlanError;
+    }
+    
+    // Update the next payment due date
+    const { error: updateScheduleError } = await supabase
+      .from('payment_schedule')
+      .update({
+        due_date: formattedResumeDate,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', firstPendingPayment.id);
+      
+    if (updateScheduleError) {
+      throw updateScheduleError;
+    }
     
     // Record the activity
     await recordPaymentPlanActivity({
       planId,
       actionType: 'plan_resumed',
       details: {
-        resumeDate: resumeDate.toISOString()
+        resumed_at: new Date().toISOString(),
+        next_payment_date: formattedResumeDate
       }
     });
     
@@ -262,27 +315,82 @@ export const resumePaymentPlan = async (planId: string, resumeDate: Date): Promi
 };
 
 /**
- * Reschedule a payment plan
+ * Reschedule all remaining payments in a plan
  */
-export const reschedulePaymentPlan = async (planId: string, newStartDate: Date): Promise<{success: boolean, error?: any}> => {
+export const reschedulePaymentPlan = async (planId: string, newStartDate: Date) => {
   try {
-    // Update plan start date
-    const { error: planError } = await supabase
+    // Get the plan details
+    const { data: planData, error: planError } = await supabase
+      .from('plans')
+      .select('*')
+      .eq('id', planId)
+      .single();
+      
+    if (planError) {
+      throw planError;
+    }
+    
+    // Get all pending payment_schedule entries for this plan
+    const { data: scheduleData, error: scheduleError } = await supabase
+      .from('payment_schedule')
+      .select('*')
+      .eq('plan_id', planId)
+      .in('status', ['pending', 'scheduled'])
+      .order('payment_number', { ascending: true });
+      
+    if (scheduleError) {
+      throw scheduleError;
+    }
+    
+    if (!scheduleData || scheduleData.length === 0) {
+      throw new Error('No pending payments found to reschedule');
+    }
+    
+    const originalDates = scheduleData.map(s => s.due_date);
+    
+    // Calculate new dates based on payment frequency and new start date
+    const newDates = calculateNewPaymentDates(
+      newStartDate, 
+      planData.payment_frequency, 
+      scheduleData.length
+    );
+    
+    // Update each payment schedule entry with its new date
+    const updates = scheduleData.map((payment, index) => {
+      return supabase
+        .from('payment_schedule')
+        .update({
+          due_date: newDates[index],
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', payment.id);
+    });
+    
+    // Run all updates in parallel
+    await Promise.all(updates.map(query => query));
+    
+    // Update the plan's next due date
+    const { error: updatePlanError } = await supabase
       .from('plans')
       .update({
-        start_date: newStartDate.toISOString().split('T')[0],
+        next_due_date: newDates[0],
         updated_at: new Date().toISOString()
       })
       .eq('id', planId);
     
-    if (planError) throw planError;
+    if (updatePlanError) {
+      throw updatePlanError;
+    }
     
     // Record the activity
     await recordPaymentPlanActivity({
       planId,
       actionType: 'plan_rescheduled',
       details: {
-        new_start_date: newStartDate.toISOString().split('T')[0]
+        rescheduled_at: new Date().toISOString(),
+        original_next_date: originalDates[0],
+        new_next_date: newDates[0],
+        affected_payments: scheduleData.length
       }
     });
     
@@ -294,16 +402,50 @@ export const reschedulePaymentPlan = async (planId: string, newStartDate: Date):
 };
 
 /**
- * Record a payment refund
+ * Record a refund for a payment
  */
-export const recordPaymentRefund = async (
-  paymentId: string, 
-  amount: number, 
-  isFullRefund: boolean
-): Promise<{success: boolean, error?: any}> => {
+export const recordPaymentRefund = async (paymentId: string, amount: number, isFullRefund: boolean) => {
   try {
-    // Update payment status
-    const { error: paymentError } = await supabase
+    // Get the payment details
+    const { data: paymentData, error: paymentError } = await supabase
+      .from('payments')
+      .select('payment_link_id')
+      .eq('id', paymentId)
+      .single();
+      
+    if (paymentError) {
+      throw paymentError;
+    }
+    
+    // Find the payment schedule entry through payment requests if it exists
+    const { data: requestsData, error: requestsError } = await supabase
+      .from('payment_requests')
+      .select('id')
+      .eq('payment_id', paymentId)
+      .maybeSingle();
+      
+    if (requestsError) {
+      console.warn('Could not fetch payment request:', requestsError);
+    }
+    
+    let scheduleData = null;
+    if (requestsData?.id) {
+      // Look for associated payment schedule
+      const { data: scheduleResult, error: scheduleError } = await supabase
+        .from('payment_schedule')
+        .select('plan_id')
+        .eq('payment_request_id', requestsData.id)
+        .maybeSingle();
+        
+      if (scheduleError) {
+        console.warn('Could not find payment_schedule entry:', scheduleError);
+      } else {
+        scheduleData = scheduleResult;
+      }
+    }
+    
+    // Record the refund in payments table
+    const { error: updatePaymentError } = await supabase
       .from('payments')
       .update({
         status: isFullRefund ? 'refunded' : 'partially_refunded',
@@ -311,12 +453,54 @@ export const recordPaymentRefund = async (
         refunded_at: new Date().toISOString()
       })
       .eq('id', paymentId);
+      
+    if (updatePaymentError) {
+      throw updatePaymentError;
+    }
     
-    if (paymentError) throw paymentError;
+    // If this is part of a payment plan, record the activity
+    if (scheduleData?.plan_id) {
+      await recordPaymentPlanActivity({
+        planId: scheduleData.plan_id,
+        actionType: 'payment_refunded',
+        details: {
+          payment_id: paymentId,
+          amount: amount,
+          is_full_refund: isFullRefund,
+          refunded_at: new Date().toISOString()
+        }
+      });
+    }
     
     return { success: true };
   } catch (error) {
     console.error('Error recording payment refund:', error);
     return { success: false, error };
   }
+};
+
+/**
+ * Helper function to calculate new payment dates based on frequency
+ */
+const calculateNewPaymentDates = (startDate: Date, frequency: string, count: number): string[] => {
+  const dates: string[] = [];
+  let currentDate = new Date(startDate);
+  
+  for (let i = 0; i < count; i++) {
+    dates.push(format(currentDate, 'yyyy-MM-dd'));
+    
+    // Calculate next date based on frequency
+    if (frequency === 'weekly') {
+      currentDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
+    } else if (frequency === 'bi-weekly') {
+      currentDate = new Date(currentDate.setDate(currentDate.getDate() + 14));
+    } else if (frequency === 'monthly') {
+      currentDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+    } else {
+      // Default to monthly if frequency is unknown
+      currentDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+    }
+  }
+  
+  return dates;
 };

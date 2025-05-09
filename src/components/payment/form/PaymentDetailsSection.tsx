@@ -1,78 +1,71 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Control } from 'react-hook-form';
+import { PaymentFormValues } from './FormSchema';
 import { FormField } from '@/components/ui/form';
 import StripeCardElement from './StripeCardElement';
-import { PaymentFormValues } from './FormSchema';
-import PaymentSectionContainer from '../PaymentSectionContainer';
 import ApplePayButton from './ApplePayButton';
-import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
-import { useParams } from 'react-router-dom';
-import { penceToPounds } from '@/services/CurrencyService';
+import { debugCurrencyInfo } from '@/services/CurrencyService';
 
 interface PaymentDetailsSectionProps {
   control: Control<PaymentFormValues>;
   isLoading: boolean;
+  amount: number; // Amount in pence
   onApplePaySuccess?: (paymentMethod: any) => void;
+  onCardElementChange?: (event: any) => void;
 }
 
 const PaymentDetailsSection = ({ 
   control, 
-  isLoading, 
-  onApplePaySuccess 
+  isLoading,
+  amount,
+  onApplePaySuccess,
+  onCardElementChange
 }: PaymentDetailsSectionProps) => {
-  const { linkId } = useParams<{ linkId: string }>();
-  const { linkData } = usePaymentLinkData(linkId);
-  const amount = linkData?.amount || 0;
+  // Enhanced logging to debug amount issues
+  debugCurrencyInfo(amount, 'PaymentDetailsSection input amount', true);
   
-  // Detailed logging for debugging
-  console.log('--- Payment Details Section Debug ---');
-  console.log('Raw amount from linkData (pence):', amount);
+  // Default to 100p (£1) if no amount is available to prevent zero-amount payments
+  const safeAmount = amount > 0 ? amount : 100;
   
-  // Convert amount from pence to pounds for Apple Pay
-  const amountInPounds = penceToPounds(amount);
-  console.log('Converted amount for Apple Pay (pounds):', amountInPounds);
+  // Convert from pence to pounds for Apple Pay
+  const amountInPounds = safeAmount / 100;
+  console.log('PaymentDetailsSection: Amount in pounds for display:', amountInPounds);
   
-  // Additional validation
-  if (amount <= 0) {
-    console.warn('Warning: Payment amount is zero or negative:', amount);
-  }
-
-  const handleApplePaySuccess = (paymentMethod: any) => {
-    if (onApplePaySuccess) {
-      onApplePaySuccess(paymentMethod);
-    }
-  };
-
   return (
-    <PaymentSectionContainer title="Payment Details">
-      {/* Apple Pay Button - only shows on iOS devices with Apple Pay capability */}
-      {onApplePaySuccess && amountInPounds > 0 && (
-        <ApplePayButton 
-          amount={amountInPounds}
-          isLoading={isLoading}
-          onApplePaySuccess={handleApplePaySuccess}
-        />
-      )}
+    <div className="space-y-4">
+      <div className="text-lg font-medium">Payment Details</div>
       
-      {/* Regular credit card input field */}
       <FormField
         control={control}
         name="stripeCard"
         render={({ field }) => (
           <StripeCardElement 
-            isLoading={isLoading}
+            isLoading={isLoading} 
             onChange={(e) => {
+              if (onCardElementChange) {
+                onCardElementChange(e);
+              }
               field.onChange(e.complete ? e : { empty: true });
             }}
           />
         )}
       />
       
+      {onApplePaySuccess && amountInPounds > 0 && (
+        <div className="mt-4">
+          <ApplePayButton 
+            onApplePaySuccess={onApplePaySuccess}
+            isLoading={isLoading}
+            amount={amountInPounds}
+          />
+        </div>
+      )}
+      
       <div className="text-xs text-gray-500 mt-2">
         Your payment is secure and encrypted. We never store your full card details.
       </div>
-    </PaymentSectionContainer>
+    </div>
   );
 };
 

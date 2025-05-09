@@ -35,29 +35,30 @@ export function usePaymentIntent() {
     try {
       console.log('Initiating payment process for link ID:', linkData.id);
       
-      // IMPORTANT: linkData.amount is already in pence (cents) from the database
+      // IMPORTANT: Ensure we have a valid amount
+      const amount = linkData.amount || 0;
       console.log('Payment details:', {
-        amountInPence: linkData.amount,
+        amountInPence: amount,
         isRequest: linkData.isRequest ? 'Yes' : 'No',
         clinicId: linkData.clinic.id,
         paymentLinkId: linkData.id
       });
       
       // Add extra validation to ensure amount is never zero or negative
-      if (!linkData.amount || linkData.amount <= 0) {
-        console.error('Invalid zero or negative payment amount detected:', linkData.amount);
+      if (!amount || amount <= 0) {
+        console.error('Invalid zero or negative payment amount detected:', amount);
         toast.error('Invalid payment amount');
         return { success: false, error: 'Invalid payment amount (zero or negative)' };
       }
       
       // Validate the amount to catch potential errors
-      if (!validatePenceAmount(linkData.amount, 'usePaymentIntent')) {
-        console.error('Invalid payment amount detected:', linkData.amount);
+      if (!validatePenceAmount(amount, 'usePaymentIntent')) {
+        console.error('Invalid payment amount detected:', amount);
         toast.error('Invalid payment amount');
         return { success: false, error: 'Invalid payment amount' };
       }
       
-      console.log('Calling create-payment-intent edge function with amount:', linkData.amount);
+      console.log('Calling create-payment-intent edge function with amount:', amount);
       
       // Call the create-payment-intent edge function with the CORRECT amount
       // CRITICAL: The amount is already in cents, DO NOT multiply by 100 again
@@ -65,7 +66,7 @@ export function usePaymentIntent() {
         'create-payment-intent', 
         {
           body: JSON.stringify({
-            amount: linkData.amount, // Already in cents for Stripe
+            amount: amount, // Already in cents for Stripe
             clinicId: linkData.clinic.id,
             paymentLinkId: linkData.isRequest ? null : linkData.id,
             requestId: linkData.isRequest ? linkData.id : null,
@@ -101,7 +102,7 @@ export function usePaymentIntent() {
       }
       
       console.log('Associated payment link ID:', paymentIntentData.paymentLinkId);
-      // Removed success toast notification
+      // Success! Return the data
       
       return {
         success: true,

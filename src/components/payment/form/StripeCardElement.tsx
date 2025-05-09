@@ -27,6 +27,21 @@ const StripeCardElement = ({ onChange, isLoading = false, label = "Card Details"
     hidePostalCode: true,
   };
 
+  const handleCardChange = (event: any) => {
+    // Log card validation status to help with debugging
+    console.log('Card element change:', { 
+      isEmpty: event.empty, 
+      isComplete: event.complete, 
+      hasError: event.error ? true : false,
+      errorMessage: event.error?.message || 'No error'
+    });
+    
+    // Forward the event to parent component
+    if (onChange) {
+      onChange(event);
+    }
+  };
+
   return (
     <FormItem>
       <FormLabel>{label}</FormLabel>
@@ -34,7 +49,8 @@ const StripeCardElement = ({ onChange, isLoading = false, label = "Card Details"
         <FormControl>
           <CardElement 
             options={cardElementOptions} 
-            onChange={onChange} 
+            onChange={handleCardChange} 
+            id="card-element"
           />
         </FormControl>
       </div>

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { PaymentLinkData } from './usePaymentLinkData';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export function usePaymentRecord() {
   const [isCreatingRecord, setIsCreatingRecord] = useState(false);
@@ -29,9 +30,7 @@ export function usePaymentRecord() {
     setIsCreatingRecord(true);
     
     try {
-      console.log('Payment was successful:', paymentIntent.id);
-      
-      // Removed success toast notification
+      console.log('Payment was successful, recording payment data for:', paymentIntent.id);
       
       // Get the payment reference from metadata (should be consistent with webhook)
       const paymentReference = paymentIntent.metadata?.paymentReference;
@@ -118,11 +117,9 @@ export function usePaymentRecord() {
           
         if (insertError) {
           console.error('Fallback payment record creation failed:', insertError);
-          // Don't return error here, as the payment itself was successful
-          // The webhook may still create the record later
+          throw new Error(`Failed to create payment record: ${insertError.message}`);
         } else {
           console.log('Successfully created fallback payment record');
-          // Removed toast notification
         }
       } else {
         console.log(`Webhook successfully created payment record with reference: ${existingPayment.payment_ref}`);
@@ -131,6 +128,7 @@ export function usePaymentRecord() {
       return { success: true };
     } catch (error: any) {
       console.error('Error recording payment:', error);
+      toast.error(`Failed to record payment: ${error.message}`);
       return { success: false, error: error.message };
     } finally {
       setIsCreatingRecord(false);
