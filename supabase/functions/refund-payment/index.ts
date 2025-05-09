@@ -8,6 +8,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
 };
 
+/**
+ * Format a monetary value from pence/cents to pounds/dollars with 2 decimal places
+ * This ensures consistency in all notification payloads
+ */
+function formatMonetaryValue(amountInPence) {
+  if (amountInPence === null || amountInPence === undefined) return "0.00";
+  
+  // Convert from pence to pounds and ensure 2 decimal places
+  return (amountInPence / 100).toFixed(2);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -232,7 +243,7 @@ serve(async (req) => {
       );
     }
 
-    // NEW CODE: Update the payment plan to reflect this refund
+    // Update the payment plan to reflect this refund
     try {
       // First check if this payment is linked to a payment request
       const { data: paymentRequest, error: requestError } = await supabase
@@ -321,6 +332,13 @@ serve(async (req) => {
     
     try {
       if (payment.patient_email || payment.patient_phone) {
+        // Format all monetary values to proper currency values with 2 decimal places
+        const refundAmountFormatted = formatMonetaryValue(refundAmountToStore);
+        const amountPaidFormatted = formatMonetaryValue(payment.amount_paid);
+        
+        console.log(`💰 Formatting refund amount from ${refundAmountToStore}p to £${refundAmountFormatted} for notifications`);
+        console.log(`💰 Formatting payment amount from ${payment.amount_paid}p to £${amountPaidFormatted} for notifications`);
+        
         const refundPayload = {
           notification_type: "payment_refund",
           notification_method: {
@@ -334,8 +352,8 @@ serve(async (req) => {
           },
           payment: {
             reference: payment.payment_ref,
-            amount: payment.amount_paid,
-            refund_amount: refundAmountToStore,
+            amount: Number(amountPaidFormatted), // Using formatted amount with decimals
+            refund_amount: Number(refundAmountFormatted), // Using formatted amount with decimals
             payment_link: `https://clinipay.co.uk/payment-receipt/${paymentId}`,
             message: isFullRefund ? "Your payment has been fully refunded" : "Your payment has been partially refunded",
             is_full_refund: isFullRefund
@@ -363,6 +381,12 @@ serve(async (req) => {
           console.log(`✅ Successfully queued refund notification for patient`);
         }
         
+        // Format financial details for clinic notification
+        const stripeFeeFormatted = formatMonetaryValue(payment.stripe_fee || 0);
+        const platformFeeFormatted = formatMonetaryValue(payment.platform_fee || 0);
+        const netAmountFormatted = formatMonetaryValue(payment.net_amount || 0);
+        const refundFeeFormatted = formatMonetaryValue(refundFeeInCents);
+        
         const clinicPayload = {
           notification_type: "payment_refund",
           notification_method: {
@@ -376,17 +400,17 @@ serve(async (req) => {
           },
           payment: {
             reference: payment.payment_ref,
-            amount: payment.amount_paid,
-            refund_amount: refundAmountToStore,
+            amount: Number(amountPaidFormatted), // Using formatted amount with decimals
+            refund_amount: Number(refundAmountFormatted), // Using formatted amount with decimals
             payment_link: `https://clinipay.co.uk/payment-receipt/${paymentId}`,
             message: isFullRefund ? "Full payment refund processed" : "Partial payment refund processed",
             is_full_refund: isFullRefund,
             financial_details: {
-              gross_amount: payment.amount_paid,
-              stripe_fee: payment.stripe_fee ? payment.stripe_fee / 100 : 0,
-              platform_fee: payment.platform_fee ? payment.platform_fee / 100 : 0,
-              net_amount: payment.net_amount ? payment.net_amount / 100 : 0,
-              refund_fee: refundFeeInCents / 100
+              gross_amount: Number(amountPaidFormatted), // Using formatted amount with decimals
+              stripe_fee: Number(stripeFeeFormatted), // Using formatted amount with decimals
+              platform_fee: Number(platformFeeFormatted), // Using formatted amount with decimals
+              net_amount: Number(netAmountFormatted), // Using formatted amount with decimals
+              refund_fee: Number(refundFeeFormatted) // Using formatted amount with decimals
             }
           },
           clinic: {

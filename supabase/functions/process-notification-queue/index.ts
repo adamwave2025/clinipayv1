@@ -12,6 +12,51 @@ const BATCH_SIZE = 20;
 // Maximum number of retries before marking a notification as failed
 const MAX_RETRIES = 3;
 
+/**
+ * Format a monetary value from pence/cents to pounds/dollars with 2 decimal places
+ * This ensures consistency in all notification payloads
+ */
+function formatMonetaryValue(amountInPence) {
+  if (amountInPence === null || amountInPence === undefined) return 0.00;
+  
+  // Convert from pence to pounds and ensure 2 decimal places
+  return (amountInPence / 100).toFixed(2);
+}
+
+/**
+ * Recursively process an object to convert all numeric values that appear to be monetary amounts
+ * from pence/cents to properly formatted pounds/dollars with 2 decimal places
+ */
+function processMonetaryValues(obj, parentKey = '') {
+  // Skip if it's not an object or if it's null
+  if (!obj || typeof obj !== 'object') return obj;
+  
+  // Process arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => processMonetaryValues(item));
+  }
+  
+  // Process objects
+  const result = {...obj};
+  
+  for (const [key, value] of Object.entries(obj)) {
+    // Special handling for known monetary fields
+    const isMonetaryField = ['amount', 'refund_amount', 'gross_amount', 'stripe_fee', 'platform_fee', 'net_amount'].includes(key);
+    
+    if (isMonetaryField && typeof value === 'number') {
+      // Convert monetary values from pence to pounds with 2 decimal places
+      result[key] = Number(formatMonetaryValue(value));
+      console.log(`💰 Converted ${key} from ${value}p to £${result[key]}`);
+    } 
+    // Recursively process nested objects
+    else if (value && typeof value === 'object') {
+      result[key] = processMonetaryValues(value, key);
+    }
+  }
+  
+  return result;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -112,7 +157,7 @@ serve(async (req) => {
         // Process the notification payload based on the type
         let enhancedPayload = { ...notification.payload };
         
-        // Handle payment_success, payment_failed, and payment_request types
+        // STEP 1: First handle any special case logic for different notification types
         if (notification.type === 'payment_success' || notification.type === 'payment_failed') {
           // If this is a payment notification with payment_id, enrich with additional data
           if (notification.payment_id) {
@@ -131,18 +176,12 @@ serve(async (req) => {
               sms: !!enhancedPayload.patient.phone
             };
           }
-          
-          // IMPORTANT: Convert monetary values from cents to display currency (pounds/dollars)
-          // This ensures amounts in payment requests are properly formatted
-          if (enhancedPayload.payment && enhancedPayload.payment.amount) {
-            // Convert from cents to pounds/dollars if it appears to be stored in cents
-            // (determined by checking if it's a large integer likely to be in cents)
-            if (Number.isInteger(enhancedPayload.payment.amount) && enhancedPayload.payment.amount >= 1000) {
-              console.log(`💰 Converting amount from cents: ${enhancedPayload.payment.amount} to display currency: ${enhancedPayload.payment.amount / 100}`);
-              enhancedPayload.payment.amount = enhancedPayload.payment.amount / 100;
-            }
-          }
         }
+        
+        // STEP 2: Now convert ALL monetary values consistently to pounds with 2 decimal places
+        // This ensures the emails show correct formatting like £1000.00 instead of £1000 or £100000
+        console.log(`💰 Processing monetary values in notification payload`);
+        enhancedPayload = processMonetaryValues(enhancedPayload);
 
         console.log(`📤 Sending notification to webhook: ${webhookUrl.substring(0, 30)}...`);
         console.log(`📋 Payload: ${JSON.stringify(enhancedPayload).substring(0, 200)}...`);
@@ -336,17 +375,17 @@ async function enrichPayloadWithData(supabase, notification) {
       phone: payment.patient_phone || payload.patient_phone
     };
     
-    // IMPORTANT: Convert monetary values from cents to display currency
+    // IMPORTANT: Convert monetary values from cents to display currency with 2 decimal places
     // Add payment data with amounts converted from cents to display currency
-    const amountPaid = payment.amount_paid ? payment.amount_paid / 100 : 0;
-    const refundAmount = payment.refund_amount ? payment.refund_amount / 100 : null;
+    const amountPaid = payment.amount_paid ? formatMonetaryValue(payment.amount_paid) : "0.00";
+    const refundAmount = payment.refund_amount ? formatMonetaryValue(payment.refund_amount) : null;
     
     console.log(`💰 Converting amount_paid from cents: ${payment.amount_paid} to display currency: ${amountPaid}`);
     
     enhancedPayload.payment = {
       reference: payment.payment_ref || "N/A",
-      amount: amountPaid, // Converted from cents to pounds/dollars
-      refund_amount: refundAmount, // Converted from cents to pounds/dollars
+      amount: Number(amountPaid), // Converted from cents to pounds/dollars with 2 decimal places
+      refund_amount: refundAmount ? Number(refundAmount) : null, // Converted from cents to pounds/dollars
       payment_link: `https://clinipay.co.uk/payment-receipt/${payment.id}`,
       message: notification.type === 'payment_success' ? 
         "Your payment was successful" : 
@@ -355,12 +394,12 @@ async function enrichPayloadWithData(supabase, notification) {
     
     // For clinic notifications, add financial details
     if (recipientType === 'clinic') {
-      // Convert all financial values from cents to pounds/dollars
+      // Convert all financial values from cents to pounds/dollars with 2 decimal places
       enhancedPayload.payment.financial_details = {
-        gross_amount: amountPaid, // Already converted above
-        stripe_fee: payment.stripe_fee ? payment.stripe_fee / 100 : 0,
-        platform_fee: payment.platform_fee ? payment.platform_fee / 100 : 0,
-        net_amount: payment.net_amount ? payment.net_amount / 100 : 0
+        gross_amount: Number(amountPaid), // Already converted above
+        stripe_fee: Number(formatMonetaryValue(payment.stripe_fee || 0)),
+        platform_fee: Number(formatMonetaryValue(payment.platform_fee || 0)),
+        net_amount: Number(formatMonetaryValue(payment.net_amount || 0))
       };
     }
     
@@ -372,4 +411,3 @@ async function enrichPayloadWithData(supabase, notification) {
     return notification.payload;
   }
 }
-

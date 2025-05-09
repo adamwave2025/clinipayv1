@@ -2,6 +2,66 @@
 import { supabase } from '@/integrations/supabase/client';
 import { StandardNotificationPayload } from '@/types/notification';
 import { Json } from '@/integrations/supabase/types';
+import { formatUserInputCurrency } from '@/utils/formatters';
+
+/**
+ * Ensure all monetary values in the notification payload have proper decimal formatting
+ * This is critical for email/SMS templates to show amounts like £1000.00 instead of £1000 or £100000
+ */
+const formatMonetaryValues = (payload: StandardNotificationPayload): StandardNotificationPayload => {
+  const formattedPayload = { ...payload };
+  
+  // Format payment amount if it exists
+  if (formattedPayload.payment) {
+    const payment = formattedPayload.payment;
+    
+    // Ensure payment amount has 2 decimal places
+    if (payment.amount !== undefined) {
+      // The amount should already be in pounds, but we ensure proper formatting
+      console.log(`Formatting payment amount ${payment.amount} for notification`);
+      const amountNumber = typeof payment.amount === 'string' 
+        ? parseFloat(payment.amount) 
+        : payment.amount;
+      
+      if (!isNaN(amountNumber)) {
+        payment.amount = Number(amountNumber.toFixed(2));
+      }
+    }
+    
+    // Ensure refund amount has 2 decimal places if it exists
+    if (payment.refund_amount !== undefined && payment.refund_amount !== null) {
+      console.log(`Formatting refund amount ${payment.refund_amount} for notification`);
+      const refundNumber = typeof payment.refund_amount === 'string' 
+        ? parseFloat(payment.refund_amount) 
+        : payment.refund_amount;
+      
+      if (!isNaN(refundNumber)) {
+        payment.refund_amount = Number(refundNumber.toFixed(2));
+      }
+    }
+    
+    // Format financial details if they exist
+    if (payment.financial_details) {
+      const financials = payment.financial_details;
+      
+      // Ensure each financial value has 2 decimal places
+      for (const key of ['gross_amount', 'stripe_fee', 'platform_fee', 'net_amount', 'refund_fee']) {
+        if (financials[key] !== undefined) {
+          console.log(`Formatting ${key}: ${financials[key]} for notification`);
+          const value = typeof financials[key] === 'string' 
+            ? parseFloat(financials[key]) 
+            : financials[key];
+          
+          if (!isNaN(value)) {
+            financials[key] = Number(value.toFixed(2));
+          }
+        }
+      }
+    }
+  }
+  
+  return formattedPayload;
+};
 
 /**
  * Utility function to add a notification to the queue with better error handling
@@ -14,7 +74,10 @@ export async function addToNotificationQueue(
   paymentId?: string
 ) {
   console.log(`Adding ${recipientType} notification to queue: ${type}`, payload);
-  console.log(`Payload structure details:`, JSON.stringify(payload, null, 2));
+  
+  // Ensure monetary values in the payload have proper decimal formatting
+  const formattedPayload = formatMonetaryValues(payload);
+  console.log(`Payload structure details with formatted monetary values:`, JSON.stringify(formattedPayload, null, 2));
   console.log(`Using clinic_id: ${clinicId}`);
   
   try {
@@ -56,7 +119,7 @@ export async function addToNotificationQueue(
     // Add clinic_id to the payload itself instead of as a separate column
     // This ensures it's available for RLS policies that check payload->>'clinic_id'
     const enrichedPayload = {
-      ...payload,
+      ...formattedPayload,
       clinic_id: clinicId // Add clinic_id to the payload JSON
     };
     
