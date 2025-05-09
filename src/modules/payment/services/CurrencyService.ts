@@ -95,3 +95,33 @@ export const validatePoundsAmount = (poundsAmount: number, source: string = 'unk
   
   return true;
 };
+
+/**
+ * Debug utility for inspecting currency values
+ * @param amount - Amount to debug
+ * @param context - Context description for debugging
+ * @param isPence - Whether the amount is in pence (true) or pounds (false)
+ */
+export const debugCurrencyInfo = (amount: number | null | undefined, context: string, isPence: boolean = true): void => {
+  if (amount === null || amount === undefined) {
+    console.warn(`[CurrencyDebug] ${context}: null or undefined amount`);
+    return;
+  }
+  
+  if (isNaN(amount)) {
+    console.error(`[CurrencyDebug] ${context}: Invalid amount (NaN)`);
+    return;
+  }
+  
+  if (isPence) {
+    // Amount is in pence
+    const pounds = penceToPounds(amount);
+    console.info(`[CurrencyDebug] ${context}: ${amount}p (£${pounds.toFixed(2)})`);
+    validatePenceAmount(amount, context);
+  } else {
+    // Amount is in pounds
+    const pence = poundsToPence(amount);
+    console.info(`[CurrencyDebug] ${context}: £${amount} (${pence}p)`);
+    validatePoundsAmount(amount, context);
+  }
+};

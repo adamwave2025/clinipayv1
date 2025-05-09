@@ -34,9 +34,18 @@ export const penceToPounds = (penceAmount: number): number => {
  * @param poundsAmount - Amount in pounds
  * @returns Amount in pence
  */
-export const poundsToPence = (poundsAmount: number): number => {
-  const pence = Math.round(poundsAmount * 100);
-  console.info('[CurrencyService] Converting £' + poundsAmount + ' to ' + pence + 'p');
+export const poundsToPence = (poundsAmount: number | string): number => {
+  // Convert string input to number if needed
+  const numericAmount = typeof poundsAmount === 'string' ? parseFloat(poundsAmount) : poundsAmount;
+  
+  // Handle NaN case
+  if (isNaN(numericAmount)) {
+    console.warn('[CurrencyService] Invalid pounds amount:', poundsAmount);
+    return 0;
+  }
+  
+  const pence = Math.round(numericAmount * 100);
+  console.info('[CurrencyService] Converting £' + numericAmount + ' to ' + pence + 'p');
   return pence;
 };
 
@@ -94,6 +103,36 @@ export const validatePoundsAmount = (poundsAmount: number, source: string = 'unk
   }
   
   return true;
+};
+
+/**
+ * Debug utility for inspecting currency values
+ * @param amount - Amount to debug
+ * @param context - Context description for debugging
+ * @param isPence - Whether the amount is in pence (true) or pounds (false)
+ */
+export const debugCurrencyInfo = (amount: number | null | undefined, context: string, isPence: boolean = true): void => {
+  if (amount === null || amount === undefined) {
+    console.warn(`[CurrencyDebug] ${context}: null or undefined amount`);
+    return;
+  }
+  
+  if (isNaN(amount)) {
+    console.error(`[CurrencyDebug] ${context}: Invalid amount (NaN)`);
+    return;
+  }
+  
+  if (isPence) {
+    // Amount is in pence
+    const pounds = penceToPounds(amount);
+    console.info(`[CurrencyDebug] ${context}: ${amount}p (£${pounds.toFixed(2)})`);
+    validatePenceAmount(amount, context);
+  } else {
+    // Amount is in pounds
+    const pence = poundsToPence(amount);
+    console.info(`[CurrencyDebug] ${context}: £${amount} (${pence}p)`);
+    validatePoundsAmount(amount, context);
+  }
 };
 
 // Export all services to /modules/payment/services/index.ts
