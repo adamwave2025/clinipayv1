@@ -38,7 +38,7 @@ const PaymentDetailsSection = ({
         <div className="mt-4">
           <ApplePayButton 
             onApplePaySuccess={onApplePaySuccess}
-            isDisabled={isLoading}
+            isLoading={isLoading}
           />
         </div>
       )}
