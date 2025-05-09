@@ -17,3 +17,15 @@ export function generatePaymentReference(): string {
   }
   return result;
 }
+
+/**
+ * Validates payment amount to ensure it's a positive number
+ * @param amount The amount to validate
+ * @returns Boolean indicating if the amount is valid
+ */
+export function validatePaymentAmount(amount: number | null | undefined): boolean {
+  if (amount === null || amount === undefined) return false;
+  if (isNaN(amount)) return false;
+  if (amount <= 0) return false;
+  return true;
+}

@@ -8,6 +8,7 @@ import PaymentSectionContainer from '../PaymentSectionContainer';
 import ApplePayButton from './ApplePayButton';
 import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
 import { useParams } from 'react-router-dom';
+import { penceToPounds } from '@/services/CurrencyService';
 
 interface PaymentDetailsSectionProps {
   control: Control<PaymentFormValues>;
@@ -23,6 +24,9 @@ const PaymentDetailsSection = ({
   const { linkId } = useParams<{ linkId: string }>();
   const { linkData } = usePaymentLinkData(linkId);
   const amount = linkData?.amount || 0;
+  
+  // Convert amount from pence to pounds for Apple Pay
+  const amountInPounds = penceToPounds(amount);
 
   const handleApplePaySuccess = (paymentMethod: any) => {
     if (onApplePaySuccess) {
@@ -35,7 +39,7 @@ const PaymentDetailsSection = ({
       {/* Apple Pay Button - only shows on iOS devices with Apple Pay capability */}
       {onApplePaySuccess && (
         <ApplePayButton 
-          amount={amount}
+          amount={amountInPounds}
           isLoading={isLoading}
           onApplePaySuccess={handleApplePaySuccess}
         />

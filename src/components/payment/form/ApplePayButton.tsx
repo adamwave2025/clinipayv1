@@ -2,7 +2,9 @@
 import React, { useEffect, useState } from 'react';
 import { PaymentRequestButtonElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { poundsToPence } from '@/services/CurrencyService';
+import { poundsToPence, validatePoundsAmount } from '@/services/CurrencyService';
+import { AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ApplePayButtonProps {
   amount: number;
@@ -23,12 +25,12 @@ const ApplePayButton = ({ amount, isLoading, onApplePaySuccess }: ApplePayButton
     if (!stripe || !elements || isLoading) return;
 
     try {
-      console.log('Setting up Apple Pay with amount:', amount);
+      console.log('Setting up Apple Pay with amount (pounds):', amount);
       
-      // Validate amount to prevent errors
-      if (!amount || amount <= 0) {
+      // Validate amount to prevent errors - amount should be in pounds here
+      if (!amount || amount <= 0 || !validatePoundsAmount(amount, 'ApplePayButton')) {
         console.error('Invalid amount for Apple Pay:', amount);
-        setError('Invalid payment amount');
+        setError('Invalid payment amount. Please try again or use a different payment method.');
         return;
       }
       
@@ -84,9 +86,10 @@ const ApplePayButton = ({ amount, isLoading, onApplePaySuccess }: ApplePayButton
 
   if (error) {
     return (
-      <div className="mb-4 mt-2 p-2 bg-red-50 border border-red-100 rounded text-sm text-red-600">
-        {error}
-      </div>
+      <Alert variant="destructive" className="mb-4 mt-2">
+        <AlertTriangle className="h-4 w-4 mr-2" />
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
     );
   }
 

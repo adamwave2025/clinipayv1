@@ -6,6 +6,7 @@ import { usePaymentProcess } from '@/hooks/usePaymentProcess';
 import PaymentFormSection from '@/components/payment/PaymentFormSection';
 import { PaymentLinkData } from '@/types/paymentLink';
 import { toast } from 'sonner';
+import { validatePoundsAmount } from '@/services/CurrencyService';
 
 interface PaymentFormContainerProps {
   linkId?: string;
@@ -39,6 +40,10 @@ const PaymentFormContainer = ({
       setHasError(true);
     } else if (!isStripeConnected) {
       console.warn("Payment form container: Stripe not connected for clinic");
+    } else if (!linkData.amount || linkData.amount <= 0) {
+      console.error("Payment form container: Invalid payment amount:", linkData.amount);
+      setErrorDetails("Invalid payment amount");
+      setHasError(true);
     }
   }, [linkData, isStripeConnected]);
 
