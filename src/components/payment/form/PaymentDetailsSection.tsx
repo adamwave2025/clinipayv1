@@ -5,6 +5,7 @@ import { PaymentFormValues } from './FormSchema';
 import { FormField } from '@/components/ui/form';
 import StripeCardElement from './StripeCardElement';
 import ApplePayButton from './ApplePayButton';
+import { usePaymentLinkData } from '@/hooks/usePaymentLinkData';
 
 interface PaymentDetailsSectionProps {
   control: Control<PaymentFormValues>;
@@ -19,6 +20,12 @@ const PaymentDetailsSection = ({
   onApplePaySuccess,
   onCardElementChange
 }: PaymentDetailsSectionProps) => {
+  // Get the payment amount from the link data
+  const { linkData } = usePaymentLinkData();
+  
+  // Default to 0 if no amount is available
+  const amount = linkData?.amount ? linkData.amount / 100 : 0; // Convert from pence to pounds
+  
   return (
     <div className="space-y-4">
       <div className="text-lg font-medium">Payment Details</div>
@@ -39,6 +46,7 @@ const PaymentDetailsSection = ({
           <ApplePayButton 
             onApplePaySuccess={onApplePaySuccess}
             isLoading={isLoading}
+            amount={amount}
           />
         </div>
       )}
