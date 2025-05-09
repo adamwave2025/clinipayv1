@@ -35,38 +35,74 @@ export function usePaymentRecord() {
       // Display success message in the UI
       toast.success(`Payment successful! The payment reference will be shown on the next page.`);
       
-      // Primarily, the payment record is created by the Stripe webhook
-      // However, we'll add a fallback direct creation method to ensure records are created
+      // Get the payment reference from metadata (should be consistent with webhook)
+      const paymentReference = paymentIntent.metadata?.paymentReference;
       
-      // Wait a short time to see if the webhook has created the record
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (!paymentReference) {
+        console.warn('No payment reference found in metadata. This may indicate an issue with the payment intent creation.');
+      }
+      
+      // Maximum number of retries and initial delay
+      const maxRetries = 5;
+      const initialDelayMs = 2000;
+      let currentRetry = 0;
+      let existingPayment = null;
+      
+      // Function to check if payment record exists with exponential backoff
+      const checkForPaymentRecord = async () => {
+        while (currentRetry < maxRetries) {
+          // Calculate delay with exponential backoff
+          const delayMs = initialDelayMs * Math.pow(1.5, currentRetry);
+          console.log(`Waiting ${delayMs}ms before checking for payment record (attempt ${currentRetry + 1}/${maxRetries})`);
+          
+          // Wait for the calculated delay
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          
+          // Check if payment record already exists
+          const { data, error } = await supabase
+            .from('payments')
+            .select('id, payment_ref')
+            .eq('stripe_payment_id', paymentIntent.id)
+            .maybeSingle();
+          
+          if (error) {
+            console.error('Error checking for existing payment:', error);
+          }
+          
+          // If record exists, return it
+          if (data) {
+            console.log('Payment record found, created by webhook:', data);
+            return data;
+          }
+          
+          console.log(`Payment record not found after attempt ${currentRetry + 1}/${maxRetries}`);
+          currentRetry++;
+        }
+        
+        return null;
+      };
       
       // Check if payment record already exists
-      const { data: existingPayment, error: checkError } = await supabase
-        .from('payments')
-        .select('id')
-        .eq('stripe_payment_id', paymentIntent.id)
-        .maybeSingle();
-      
-      if (checkError) {
-        console.error('Error checking for existing payment:', checkError);
-      }
+      existingPayment = await checkForPaymentRecord();
       
       // If the webhook hasn't created the record yet, create it directly as a fallback
       if (!existingPayment) {
-        console.log('Payment record not found, creating directly as fallback');
+        console.log('Payment record not found after all retries, creating directly as fallback');
         
-        // Generate payment reference (should be same logic as in webhook)
-        const paymentRef = paymentIntent.metadata?.paymentReference || 
-          `PAY-${Math.random().toString(36).substring(2, 10).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+        // Use the payment reference from metadata
+        const paymentRef = paymentReference || 
+          `CLN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        
+        console.log(`Using payment reference for fallback creation: ${paymentRef}`);
         
         // Calculate the amount in cents (as integer)
         const amountInCents = paymentIntent.amount;
         
-        // Create payment record
-        const { error: insertError } = await supabase
+        // Create payment record - use an upsert operation with a constraint on stripe_payment_id
+        // This will ensure we don't create a duplicate if the webhook finally processed
+        const { data: insertedData, error: insertError } = await supabase
           .from('payments')
-          .insert({
+          .upsert({
             clinic_id: paymentIntent.metadata?.clinicId || linkData.clinic.id,
             payment_link_id: paymentIntent.metadata?.paymentLinkId || associatedPaymentLinkId || linkData.id,
             patient_name: formData.name,
@@ -77,6 +113,9 @@ export function usePaymentRecord() {
             paid_at: new Date().toISOString(),
             stripe_payment_id: paymentIntent.id,
             payment_ref: paymentRef
+          }, { 
+            onConflict: 'stripe_payment_id',
+            returning: 'minimal' // Don't need the returned data
           });
           
         if (insertError) {
@@ -85,9 +124,10 @@ export function usePaymentRecord() {
           // The webhook may still create the record later
         } else {
           console.log('Successfully created fallback payment record');
+          toast.info('Payment record created using fallback method. Full payment details may take a moment to appear.');
         }
       } else {
-        console.log('Payment record already exists, created by webhook');
+        console.log(`Webhook successfully created payment record with reference: ${existingPayment.payment_ref}`);
       }
       
       return { success: true };

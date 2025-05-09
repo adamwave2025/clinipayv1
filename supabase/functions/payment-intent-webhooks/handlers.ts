@@ -38,8 +38,11 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
     
     console.log(`Payment for clinic: ${clinicId}, amount: ${amountInPounds} (original: ${amountInCents} cents)`);
     
-    // Generate a payment reference if one doesn't exist
-    const paymentReference = existingReference || generatePaymentReference();
+    // Always use the reference from metadata
+    const paymentReference = existingReference;
+    if (!paymentReference) {
+      console.warn("No payment reference found in metadata. This is unexpected and may cause issues.");
+    }
     console.log(`Using payment reference: ${paymentReference}`);
     
     // Initialize fee data variables

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PaymentLayout from '@/components/layouts/PaymentLayout';
@@ -27,8 +28,8 @@ const PaymentSuccessPage = () => {
   const [paymentReference, setPaymentReference] = useState<string>('');
   const [isLoadingReference, setIsLoadingReference] = useState<boolean>(true);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 5;
-  const retryDelayMs = 2000;
+  const maxRetries = 8; // Increased from 5 to give more time
+  const retryDelayMs = 3000; // Increased from 2000 to 3000ms
   
   // Function to fetch payment reference
   const fetchPaymentReference = async () => {
@@ -41,26 +42,44 @@ const PaymentSuccessPage = () => {
     try {
       console.log('Fetching payment reference for payment ID:', paymentId);
       
-      const { data, error } = await supabase
+      // First try to find by stripe_payment_id
+      const { data: paymentByStripeId, error: stripeIdError } = await supabase
         .from('payments')
-        .select('payment_ref, stripe_payment_id')
+        .select('payment_ref, id')
         .eq('stripe_payment_id', paymentId)
         .maybeSingle();
         
-      if (error) {
-        console.error('Error fetching payment reference:', error);
-        return false;
-      }
-      
-      if (data && data.payment_ref) {
-        console.log('Found payment reference:', data.payment_ref);
-        setPaymentReference(data.payment_ref);
+      if (stripeIdError) {
+        console.error('Error fetching payment by stripe_payment_id:', stripeIdError);
+        // Continue to try by payment ID as fallback
+      } else if (paymentByStripeId && paymentByStripeId.payment_ref) {
+        console.log('Found payment reference by stripe_payment_id:', paymentByStripeId.payment_ref);
+        setPaymentReference(paymentByStripeId.payment_ref);
         setIsLoadingReference(false);
         return true;
-      } else {
-        console.log('Payment found, but no reference yet:', data);
       }
       
+      // Try to find by UUID if stripe_payment_id lookup failed
+      // This handles the case where paymentId might be a Supabase payment UUID
+      try {
+        const { data: paymentById, error: idError } = await supabase
+          .from('payments')
+          .select('payment_ref')
+          .eq('id', paymentId)
+          .maybeSingle();
+          
+        if (!idError && paymentById && paymentById.payment_ref) {
+          console.log('Found payment reference by payment id:', paymentById.payment_ref);
+          setPaymentReference(paymentById.payment_ref);
+          setIsLoadingReference(false);
+          return true;
+        }
+      } catch (err) {
+        console.log('Error or invalid UUID when looking up by id:', err);
+        // Continue with retry logic
+      }
+      
+      console.log('No payment reference found yet');
       return false;
     } catch (err) {
       console.error('Error fetching payment reference:', err);
@@ -84,7 +103,7 @@ const PaymentSuccessPage = () => {
       } else if (!found && retryCount >= maxRetries) {
         setIsLoadingReference(false);
         toast.error("Could not retrieve payment reference. Please contact the clinic for assistance.", {
-          duration: 5000,
+          duration: 8000, // Increased duration
           id: "payment-reference-error"
         });
       }
