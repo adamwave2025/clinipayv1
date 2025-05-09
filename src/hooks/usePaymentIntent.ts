@@ -85,7 +85,7 @@ export function usePaymentIntent() {
       }
       
       console.log('Associated payment link ID:', paymentIntentData.paymentLinkId);
-      toast.success('Payment processing started');
+      // Removed success toast notification
       
       return {
         success: true,
