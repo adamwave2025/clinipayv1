@@ -41,6 +41,12 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
     setIsSubmitting(true);
     
     try {
+      console.log('Starting payment submission with form data:', { 
+        name: formData.name, 
+        email: formData.email,
+        hasPhone: !!formData.phone
+      });
+      
       // Step 1: Create payment intent
       const intentResult = await createPaymentIntent({
         linkData,
@@ -54,6 +60,7 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       if (!intentResult.success) {
         // Check if the error is due to payment status issues
         const errorMessage = intentResult.error || 'Failed to create payment intent';
+        console.error('Payment intent creation failed:', errorMessage);
         
         // If the error indicates the payment is already paid, cancelled, or plan is paused
         if (errorMessage.includes('already been processed') || 
@@ -71,6 +78,7 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       
       // Step 2: Now set processingPayment to true to show the overlay, but keep the form mounted
       setProcessingPayment(true);
+      console.log('Processing payment with client secret:', intentResult.clientSecret ? 'Received' : 'Missing');
       
       // Step 3: Process the payment with Stripe
       const paymentResult = await processPayment({
@@ -93,8 +101,10 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         throw new Error(paymentResult.error || 'Payment processing failed');
       }
       
+      console.log('Payment processed successfully, recording payment...');
+      
       // Step 4: Create client-side record and update UI (webhook handles DB updates)
-      await createPaymentRecord({
+      const recordResult = await createPaymentRecord({
         paymentIntent: paymentResult.paymentIntent,
         linkData,
         formData: {
@@ -105,12 +115,15 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         associatedPaymentLinkId: intentResult.associatedPaymentLinkId
       });
       
-      // Removed success toast notification
+      console.log('Payment record result:', recordResult);
       
       // Navigate to success page with the link_id parameter
-      window.location.href = `/payment/success?link_id=${linkId}&payment_id=${paymentResult.paymentIntent.id || 'unknown'}`;
+      const successUrl = `/payment/success?link_id=${linkId || ''}&payment_id=${paymentResult.paymentIntent.id || 'unknown'}`;
+      console.log('Redirecting to success page:', successUrl);
+      window.location.href = successUrl;
+      
     } catch (error: any) {
-      console.error('Payment error:', error);
+      console.error('Payment submission error:', error);
       toast.error('Payment failed: ' + error.message);
       
       // If we haven't already redirected, do it now
@@ -120,6 +133,7 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
           if (linkId) {
             redirectUrl += `?link_id=${linkId}`;
           }
+          console.log('Redirecting to failure page due to error:', redirectUrl);
           window.location.href = redirectUrl;
         }, 1000); // Small delay to allow the toast to be seen
       }
