@@ -103,9 +103,11 @@ export const useManagePlans = (): ManagePlansContextType => {
     // Then apply search query if present
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(plan => 
-        plan.patientName.toLowerCase().includes(query)
-      );
+      filtered = filtered.filter(plan => {
+        // Check both patientName directly and nested patients.name
+        const patientName = plan.patientName || (plan.patients ? plan.patients.name : '');
+        return patientName.toLowerCase().includes(query);
+      });
     }
     
     return filtered;

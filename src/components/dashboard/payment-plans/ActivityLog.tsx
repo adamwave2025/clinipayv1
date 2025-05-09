@@ -1,7 +1,6 @@
 
 import React from 'react';
-import { PlanActivity } from '@/utils/planActivityUtils';
-import { getActionTypeLabel, capitalize } from '@/utils/planActivityUtils';
+import { PlanActivity, getActionTypeLabel, capitalize } from '@/utils/planActivityUtils';
 import { formatDate } from '@/utils/formatters';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 

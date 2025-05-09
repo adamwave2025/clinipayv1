@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
-import { PlanInstallment, formatPlanInstallments } from '@/utils/paymentPlanUtils';
+import { PlanInstallment, formatPlanInstallments, groupPaymentSchedulesByPlan } from '@/utils/paymentPlanUtils';
 import { fetchPlans, fetchPlanInstallments, fetchPlanActivities } from '@/services/PaymentScheduleService';
 import { formatPlanActivities } from '@/utils/planActivityUtils';
 import { toast } from 'sonner';
@@ -69,7 +69,7 @@ export const usePlanDataFetcher = () => {
         return [];
       }
       
-      // Use any type to bypass strict type checking for this legacy code path
+      // Use groupPaymentSchedulesByPlan to transform the data
       const planMap = groupPaymentSchedulesByPlan(scheduleData as any);
       const planList = Array.from(planMap.values()) as Plan[];
       
@@ -133,6 +133,3 @@ export const usePlanDataFetcher = () => {
     fetchPlanInstallmentsData
   };
 };
-
-// Import the groupPaymentSchedulesByPlan function directly from the file
-import { groupPaymentSchedulesByPlan } from '@/utils/paymentPlanUtils';

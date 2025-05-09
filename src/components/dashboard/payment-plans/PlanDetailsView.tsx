@@ -6,7 +6,7 @@ import { Plan } from '@/utils/planTypes';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { PlanActivity } from '@/utils/planActivityUtils';
 import PlanPaymentsList from './PlanPaymentsList';
-import PlanActivityLog from './PlanActivityLog';
+import ActivityLog from './ActivityLog';
 
 interface PlanDetailsViewProps {
   plan: Plan;
@@ -34,6 +34,22 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
     );
   };
 
+  // Extract patient name - handle both data formats
+  const patientName = plan.patientName || (plan.patients ? plan.patients.name : 'Unknown Patient');
+    
+  // Extract plan name/title - handle both data formats
+  const planTitle = plan.title || plan.planName || 'Payment Plan';
+
+  // Log plan details for debugging
+  console.log('Plan details:', {
+    id: plan.id,
+    patientName,
+    planTitle,
+    paidInstallments: plan.paidInstallments,
+    totalInstallments: plan.totalInstallments,
+    progress: plan.progress,
+  });
+  
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -45,15 +61,15 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
             <dl className="grid grid-cols-1 gap-4 text-sm">
               <div className="flex justify-between">
                 <dt className="font-medium text-gray-500">Plan Name:</dt>
-                <dd className="text-gray-900">{plan.title || plan.planName}</dd>
+                <dd className="text-gray-900">{planTitle}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium text-gray-500">Patient:</dt>
-                <dd className="text-gray-900">{plan.patientName}</dd>
+                <dd className="text-gray-900">{patientName}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium text-gray-500">Total Amount:</dt>
-                <dd className="text-gray-900 font-medium">{formatCurrency(plan.totalAmount)}</dd>
+                <dd className="text-gray-900 font-medium">{formatCurrency(plan.totalAmount || plan.amount || 0)}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium text-gray-500">Start Date:</dt>
@@ -86,13 +102,13 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
                   </div>
                   <div className="text-right">
                     <span className="text-xs font-semibold inline-block text-green-600">
-                      {plan.progress}%
+                      {plan.progress || 0}%
                     </span>
                   </div>
                 </div>
                 <div className="flex h-2 mb-4 overflow-hidden rounded bg-green-100">
                   <div
-                    style={{ width: `${plan.progress}%` }}
+                    style={{ width: `${plan.progress || 0}%` }}
                     className="bg-green-500"
                   />
                 </div>
@@ -100,12 +116,12 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
               
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div className="bg-green-50 p-3 rounded-lg">
-                  <p className="text-xl font-semibold text-green-600">{plan.paidInstallments}</p>
+                  <p className="text-xl font-semibold text-green-600">{plan.paidInstallments || 0}</p>
                   <p className="text-xs text-gray-500">Payments Made</p>
                 </div>
                 <div className="bg-blue-50 p-3 rounded-lg">
                   <p className="text-xl font-semibold text-blue-600">
-                    {plan.totalInstallments - plan.paidInstallments}
+                    {(plan.totalInstallments || 0) - (plan.paidInstallments || 0)}
                   </p>
                   <p className="text-xs text-gray-500">Payments Remaining</p>
                 </div>
@@ -139,7 +155,7 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
           <CardTitle>Activity Log</CardTitle>
         </CardHeader>
         <CardContent>
-          <PlanActivityLog activities={activities} />
+          <ActivityLog activities={activities} isLoading={false} />
         </CardContent>
       </Card>
     </div>

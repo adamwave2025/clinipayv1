@@ -57,6 +57,16 @@ const ActivePlansTable = ({
     const filterLabel = statusFilter === 'all' ? '' : statusFilter;
     return `No ${filterLabel} payment plans found.`;
   };
+
+  // Debug log to inspect the plan data
+  console.log('Plans being rendered:', plans.map(p => ({
+    id: p.id,
+    patientName: p.patientName || p.patients?.name,
+    planName: p.title || p.planName,
+    progress: p.progress,
+    paidInstallments: p.paidInstallments,
+    totalInstallments: p.totalInstallments
+  })));
   
   return (
     <Card>
@@ -96,7 +106,18 @@ const ActivePlansTable = ({
             <TableBody>
               {plans.map((plan) => {
                 // Debug currency info to help trace monetary values
-                debugCurrencyInfo(plan.amount, `Plan ${plan.id} amount`, true);
+                debugCurrencyInfo(plan.amount || plan.totalAmount, `Plan ${plan.id} amount`, true);
+                
+                // Extract patient name - handle both data formats
+                const patientName = plan.patientName || (plan.patients ? plan.patients.name : 'Unknown Patient');
+                
+                // Extract plan name/title - handle both data formats
+                const planTitle = plan.title || plan.planName || 'Payment Plan';
+                
+                // Handle the progress/installments count display
+                const paidInstallments = plan.paidInstallments || 0;
+                const totalInstallments = plan.totalInstallments || 0;
+                const progress = plan.progress || 0;
                 
                 return (
                   <TableRow 
@@ -104,24 +125,26 @@ const ActivePlansTable = ({
                     className="cursor-pointer hover:bg-gray-50"
                     onClick={() => onViewPlanDetails(plan)}
                   >
-                    <TableCell className="font-medium">{plan.patientName}</TableCell>
-                    <TableCell>{plan.planName}</TableCell>
-                    <TableCell>{formatCurrency(plan.amount)}</TableCell>
+                    <TableCell className="font-medium">{patientName}</TableCell>
+                    <TableCell>{planTitle}</TableCell>
+                    <TableCell>{formatCurrency(plan.amount || plan.totalAmount || 0)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="w-28 h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-gradient-primary rounded-full" 
-                            style={{ width: `${plan.progress}%` }}
+                            style={{ width: `${progress}%` }}
                           />
                         </div>
                         <span className="text-xs text-gray-500">
-                          {plan.paidInstallments}/{plan.totalInstallments}
+                          {paidInstallments}/{totalInstallments}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={plan.status} />
+                      <div className="inline-flex items-center px-3 py-1 rounded-full text-white text-sm font-medium bg-gradient-primary">
+                        CliniPay
+                      </div>
                     </TableCell>
                     <TableCell>
                       {formatDate(plan.nextDueDate)}
