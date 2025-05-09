@@ -29,6 +29,36 @@ export function validatePenceAmount(amount: number, source = 'unknown', verbose 
 }
 
 /**
+ * Validate if a pounds amount is reasonable
+ * @param amount Amount in pounds
+ * @param source Source of the log for tracing
+ * @param verbose Whether to log additional information
+ * @returns Whether the amount is valid (greater than zero)
+ */
+export function validatePoundsAmount(amount: number, source = 'unknown', verbose = false): boolean {
+  if (typeof amount !== 'number') {
+    console.error(`[CurrencyService] Invalid pounds amount type: ${typeof amount}, value: ${amount}`);
+    return false;
+  }
+  
+  if (amount <= 0) {
+    console.warn(`[CurrencyService] Suspicious pounds amount: ${amount}`);
+    return false;
+  }
+  
+  if (amount > 1000000) { // £1,000,000
+    console.warn(`[CurrencyService] Suspiciously large pounds amount: ${amount} from ${source}`);
+    return false;
+  }
+  
+  if (verbose) {
+    console.log(`[CurrencyService] Valid pounds amount: £${amount} from ${source}`);
+  }
+  
+  return true;
+}
+
+/**
  * Log detailed currency information for debugging
  * @param amount Amount in pence
  * @param source Source of the log for tracing
