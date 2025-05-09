@@ -43,7 +43,7 @@ export function usePaymentIntent() {
         paymentLinkId: linkData.id
       });
       
-      // Add extra validation to ensure amount is never zero
+      // Add extra validation to ensure amount is never zero or negative
       if (!linkData.amount || linkData.amount <= 0) {
         console.error('Invalid zero or negative payment amount detected:', linkData.amount);
         toast.error('Invalid payment amount');
@@ -56,6 +56,8 @@ export function usePaymentIntent() {
         toast.error('Invalid payment amount');
         return { success: false, error: 'Invalid payment amount' };
       }
+      
+      console.log('Calling create-payment-intent edge function with amount:', linkData.amount);
       
       // Call the create-payment-intent edge function with the CORRECT amount
       // CRITICAL: The amount is already in cents, DO NOT multiply by 100 again
@@ -82,6 +84,14 @@ export function usePaymentIntent() {
         console.error('Payment intent error:', paymentIntentError);
         toast.error(paymentIntentError.message || 'Error creating payment intent');
         throw new Error(paymentIntentError.message || 'Error creating payment intent');
+      }
+      
+      console.log('Payment intent response:', paymentIntentData);
+      
+      if (!paymentIntentData) {
+        console.error('No data returned from create-payment-intent');
+        toast.error('Payment processing failed - No data returned');
+        throw new Error('No data returned from create-payment-intent');
       }
       
       if (!paymentIntentData.success || !paymentIntentData.clientSecret) {

@@ -24,6 +24,9 @@ enabled = true
 [realtime]
 enabled = true
 
+[functions.get-stripe-public-key]
+verify_jwt = true
+
 [functions.resume-plan-debug]
 verify_jwt = true
 

@@ -16,50 +16,73 @@ const ApplePayButton = ({ amount, isLoading, onApplePaySuccess }: ApplePayButton
   
   const [paymentRequest, setPaymentRequest] = useState<any>(null);
   const [canMakePayment, setCanMakePayment] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!stripe || !elements || isLoading) return;
 
-    // Create the payment request object
-    const pr = stripe.paymentRequest({
-      country: 'GB',
-      currency: 'gbp',
-      total: {
-        label: 'Total',
-        amount: Math.round(amount), // Ensure amount is properly rounded (already in cents)
-      },
-      requestPayerName: true,
-      requestPayerEmail: true,
-      requestPayerPhone: true,
-    });
-
-    // Check if the user can make a payment with Apple Pay
-    pr.canMakePayment().then(result => {
-      if (result && result.applePay) {
-        console.log('Apple Pay is available'); // Add logging to help debug
-        setCanMakePayment(true);
-        setPaymentRequest(pr);
-      } else {
-        console.log('Apple Pay is not available', result); // Add logging to help debug
-        setCanMakePayment(false);
+    try {
+      console.log('Setting up Apple Pay with amount:', amount);
+      
+      // Validate amount to prevent errors
+      if (!amount || amount <= 0) {
+        console.error('Invalid amount for Apple Pay:', amount);
+        setError('Invalid payment amount');
+        return;
       }
-    });
+      
+      // Create the payment request object
+      const pr = stripe.paymentRequest({
+        country: 'GB',
+        currency: 'gbp',
+        total: {
+          label: 'Total',
+          amount: Math.round(amount), // Ensure amount is properly rounded (already in cents)
+        },
+        requestPayerName: true,
+        requestPayerEmail: true,
+        requestPayerPhone: true,
+      });
 
-    // Listen for the payment method event
-    pr.on('paymentmethod', (e) => {
-      console.log('Payment method received', e.paymentMethod); // Add logging to help debug
-      onApplePaySuccess(e.paymentMethod);
-    });
+      // Check if the user can make a payment with Apple Pay
+      pr.canMakePayment().then(result => {
+        if (result && result.applePay) {
+          console.log('Apple Pay is available');
+          setCanMakePayment(true);
+          setPaymentRequest(pr);
+        } else {
+          console.log('Apple Pay is not available', result);
+          setCanMakePayment(false);
+        }
+      });
 
-    return () => {
-      // Cleanup
-      pr.off('paymentmethod');
-    };
+      // Listen for the payment method event
+      pr.on('paymentmethod', (e) => {
+        console.log('Payment method received', e.paymentMethod);
+        onApplePaySuccess(e.paymentMethod);
+      });
+
+      return () => {
+        // Cleanup
+        pr.off('paymentmethod');
+      };
+    } catch (err: any) {
+      console.error('Error setting up Apple Pay:', err);
+      setError(err.message || 'Failed to initialize Apple Pay');
+    }
   }, [stripe, elements, amount, isLoading, onApplePaySuccess]);
 
   // Only render on iOS devices when Apple Pay is available
   if (!canMakePayment || !paymentRequest || !isMobile) {
     return null;
+  }
+
+  if (error) {
+    return (
+      <div className="mb-4 mt-2 p-2 bg-red-50 border border-red-100 rounded text-sm text-red-600">
+        {error}
+      </div>
+    );
   }
 
   const paymentRequestOptions = {
