@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders, initStripe, initSupabase, validatePaymentAmount, generatePaymentReference } from "./utils.ts";
-import { handleRequest } from "./handler.ts";
+import { corsHeaders } from "./utils.ts";
+import { handleCreatePaymentIntent } from "./handler.ts";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -10,7 +10,7 @@ serve(async (req) => {
   }
 
   try {
-    return await handleRequest(req);
+    return await handleCreatePaymentIntent(req);
   } catch (error) {
     console.error("Payment intent creation error:", error.message);
     return new Response(
