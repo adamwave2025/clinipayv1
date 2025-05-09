@@ -122,20 +122,45 @@ serve(async (req) => {
 async function handleRefundUpdated(refund: Stripe.Refund, stripe: Stripe, supabase: any) {
   try {
     console.log(`Processing refund update with ID: ${refund.id}`);
+    console.log(`Initial refund data:`, JSON.stringify({
+      id: refund.id,
+      amount: refund.amount,
+      status: refund.status,
+      hasBalanceTransaction: !!refund.balance_transaction
+    }));
     
-    // Skip if the balance_transaction is not set
-    if (!refund.balance_transaction) {
-      console.log("No balance_transaction found in refund, skipping fee update");
+    // Get the full refund details with expanded balance_transaction
+    // This is necessary because the webhook event might not include the expanded balance_transaction
+    const fullRefund = await stripe.refunds.retrieve(refund.id, {
+      expand: ['balance_transaction']
+    });
+    
+    console.log(`Retrieved full refund with expanded data:`, JSON.stringify({
+      id: fullRefund.id,
+      amount: fullRefund.amount,
+      status: fullRefund.status,
+      hasBalanceTransaction: !!fullRefund.balance_transaction,
+      balanceTransactionType: typeof fullRefund.balance_transaction
+    }));
+    
+    // Skip if the balance_transaction is still not available
+    if (!fullRefund.balance_transaction) {
+      console.log("No balance_transaction found in refund after expansion, skipping fee update");
       return;
     }
     
-    // Extract the balance transaction ID
-    const balanceTransactionId = refund.balance_transaction;
-    console.log(`Balance transaction ID: ${balanceTransactionId}`);
+    // Extract the balance transaction object
+    const balanceTransaction = typeof fullRefund.balance_transaction === 'string' 
+      ? await stripe.balanceTransactions.retrieve(fullRefund.balance_transaction)
+      : fullRefund.balance_transaction;
     
-    // Fetch the balance transaction to get the fee details
-    const balanceTransaction = await stripe.balanceTransactions.retrieve(balanceTransactionId);
-    console.log("Retrieved balance transaction:", JSON.stringify(balanceTransaction, null, 2));
+    console.log("Retrieved balance transaction:", JSON.stringify({
+      id: balanceTransaction.id,
+      amount: balanceTransaction.amount,
+      fee: balanceTransaction.fee,
+      net: balanceTransaction.net,
+      type: balanceTransaction.type
+    }));
     
     // Extract the fee amount (in cents/pence)
     // The fee is negative in refunds, so we take the absolute value
@@ -178,3 +203,4 @@ async function handleRefundUpdated(refund: Stripe.Refund, stripe: Stripe, supaba
     return { success: false, error: error.message };
   }
 }
+
