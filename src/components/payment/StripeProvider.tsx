@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { toast } from 'sonner';
@@ -14,9 +14,14 @@ const StripeProvider = ({ children }: StripeProviderProps) => {
   const [stripePromise, setStripePromise] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const initAttempted = useRef(false);
 
   useEffect(() => {
     const fetchPublishableKey = async () => {
+      // Prevent multiple initialization attempts
+      if (initAttempted.current) return;
+      initAttempted.current = true;
+
       try {
         console.log('Fetching Stripe publishable key...'); 
         // Fetch the publishable key from our edge function
@@ -52,6 +57,14 @@ const StripeProvider = ({ children }: StripeProviderProps) => {
           // Initialize Stripe with the publishable key
           const promise = loadStripe(data.publishableKey);
           console.log('Stripe initialization started');
+          
+          // Wait for the promise to resolve to catch any initialization errors
+          const stripeInstance = await promise;
+          if (!stripeInstance) {
+            throw new Error('Failed to initialize Stripe');
+          }
+          
+          console.log('Stripe initialization completed successfully');
           setStripePromise(promise);
         } catch (stripeError: any) {
           console.error('Error initializing Stripe:', stripeError);
@@ -91,8 +104,17 @@ const StripeProvider = ({ children }: StripeProviderProps) => {
     );
   }
 
+  // Use common options across all Elements
+  const elementsOptions = {
+    fonts: [
+      {
+        cssSrc: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap',
+      },
+    ],
+  };
+
   return (
-    <Elements stripe={stripePromise}>
+    <Elements stripe={stripePromise} options={elementsOptions}>
       {children}
     </Elements>
   );

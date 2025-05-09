@@ -51,7 +51,7 @@ const StripeCardElement = ({ onChange, isLoading = false, label = "Card Details"
             options={cardElementOptions} 
             onChange={handleCardChange} 
             id="card-element"
-            disabled={isLoading}
+            // Removed disabled prop as it's not supported by Stripe's CardElement
           />
         </FormControl>
       </div>

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form } from '@/components/ui/form';
@@ -26,6 +26,7 @@ const PaymentForm = ({
 }: PaymentFormProps) => {
   const [isCardComplete, setIsCardComplete] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const submissionInProgressRef = useRef(false); // Ref-based submission tracker
   
   console.log('PaymentForm: Rendering with amount:', amount);
   
@@ -43,13 +44,18 @@ const PaymentForm = ({
   useEffect(() => {
     if (!isLoading && formSubmitted) {
       setFormSubmitted(false);
+      submissionInProgressRef.current = false;
     }
   }, [isLoading, formSubmitted]);
 
   const handleSubmitForm = async (data: PaymentFormValues) => {
-    // Prevent multiple submissions
-    if (formSubmitted || isLoading) {
-      console.log('Preventing duplicate submission', { formSubmitted, isLoading });
+    // Multiple layers of protection against duplicate submissions
+    if (formSubmitted || isLoading || submissionInProgressRef.current) {
+      console.log('Preventing duplicate submission', { 
+        formSubmitted, 
+        isLoading, 
+        submissionInProgressRef: submissionInProgressRef.current 
+      });
       return;
     }
     
@@ -79,12 +85,16 @@ const PaymentForm = ({
     }
     
     try {
+      // Set both the state and ref to indicate submission is in progress
       setFormSubmitted(true);
-      console.log('Calling onSubmit handler with form data and amount:', amount);
+      submissionInProgressRef.current = true;
+      console.log('Before onSubmit handler with form data and amount:', amount);
       onSubmit(data);
+      console.log('After onSubmit handler call - this should appear if not redirecting');
     } catch (error) {
       console.error('Error in form submission:', error);
       setFormSubmitted(false);
+      submissionInProgressRef.current = false;
     }
   };
   
@@ -106,14 +116,22 @@ const PaymentForm = ({
       <form 
         onSubmit={(e) => {
           e.preventDefault(); // Prevent default form submission
+          e.stopPropagation(); // Stop propagation of the event
           console.log('Form onSubmit event triggered');
-          if (!formSubmitted && !isLoading) {
+          
+          // Additional layer of protection against duplicate submissions
+          if (!formSubmitted && !isLoading && !submissionInProgressRef.current) {
             form.handleSubmit(handleSubmitForm)(e);
           } else {
-            console.log('Form submission prevented - already submitted or loading');
+            console.log('Form submission prevented - already submitted or loading', {
+              formSubmitted,
+              isLoading,
+              submissionInProgressRef: submissionInProgressRef.current
+            });
           }
         }} 
         className="space-y-6"
+        data-testid="payment-form" // Add test ID for debugging
       >
         <PersonalInfoSection 
           control={form.control} 
