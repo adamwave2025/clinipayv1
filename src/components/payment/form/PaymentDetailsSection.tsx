@@ -21,7 +21,9 @@ const PaymentDetailsSection = ({
   onCardElementChange
 }: PaymentDetailsSectionProps) => {
   // Get the payment amount from the link data
-  const { linkData } = usePaymentLinkData();
+  // Note: We're passing null as linkId since we're using the hook in a different context
+  // where we expect the link data to be already available in context/state
+  const { linkData } = usePaymentLinkData(null);
   
   // Default to 0 if no amount is available
   const amount = linkData?.amount ? linkData.amount / 100 : 0; // Convert from pence to pounds
