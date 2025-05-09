@@ -15,19 +15,17 @@ export const formatPaymentLinks = (rawLinks: any[]): PaymentLink[] => {
       // Format the raw link data into our PaymentLink type
       return {
         id: link.id,
-        title: link.title,
+        title: link.title || '',
         description: link.description || '',
         amount: link.amount,
+        type: link.type || 'standard',
         status: link.status || 'active',
-        createdAt: new Date(link.created_at),
-        clinicId: link.clinic_id,
+        createdAt: link.created_at ? new Date(link.created_at).toISOString() : undefined,
+        isActive: link.is_active !== false,
         paymentPlan: isPaymentPlan,
-        planDetails: isPaymentPlan ? {
-          totalAmount: link.payment_plan?.total_amount || 0,
-          initialPayment: link.payment_plan?.initial_payment || 0,
-          numberOfPayments: link.payment_plan?.number_of_payments || 0,
-          frequency: link.payment_plan?.frequency || 'monthly'
-        } : null
+        paymentCount: isPaymentPlan ? link.payment_plan?.number_of_payments : undefined,
+        paymentCycle: isPaymentPlan ? link.payment_plan?.frequency : undefined,
+        planTotalAmount: isPaymentPlan ? link.payment_plan?.total_amount : undefined
       };
     });
   } catch (error) {

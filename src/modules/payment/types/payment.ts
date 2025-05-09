@@ -21,3 +21,18 @@ export enum PaymentStatus {
   FAILED = 'failed',
   PENDING = 'pending'
 }
+
+export interface PaymentLink {
+  id: string;
+  title: string;
+  amount: number;
+  type: string;
+  description?: string;
+  url?: string; 
+  createdAt?: string;
+  isActive?: boolean;
+  paymentPlan?: boolean;
+  paymentCount?: number;
+  paymentCycle?: string;
+  planTotalAmount?: number;
+}

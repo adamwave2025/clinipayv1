@@ -1,5 +1,3 @@
 
-// Export hooks related to sending payment links
-
-export { usePaymentLinkSender } from './usePaymentLinkSender';
-export type { SendLinkFormData } from './useSendLinkFormState';
+// Export sendLink related hooks
+export { usePaymentLinkSender } from '../usePaymentLinkSender';
