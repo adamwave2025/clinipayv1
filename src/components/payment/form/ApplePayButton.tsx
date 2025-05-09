@@ -26,7 +26,7 @@ const ApplePayButton = ({ amount, isLoading, onApplePaySuccess }: ApplePayButton
       currency: 'gbp',
       total: {
         label: 'Total',
-        amount: Math.round(amount * 100), // Convert to cents for Stripe
+        amount: Math.round(amount), // Ensure amount is properly rounded (already in cents)
       },
       requestPayerName: true,
       requestPayerEmail: true,
@@ -36,15 +36,18 @@ const ApplePayButton = ({ amount, isLoading, onApplePaySuccess }: ApplePayButton
     // Check if the user can make a payment with Apple Pay
     pr.canMakePayment().then(result => {
       if (result && result.applePay) {
+        console.log('Apple Pay is available'); // Add logging to help debug
         setCanMakePayment(true);
         setPaymentRequest(pr);
       } else {
+        console.log('Apple Pay is not available', result); // Add logging to help debug
         setCanMakePayment(false);
       }
     });
 
     // Listen for the payment method event
     pr.on('paymentmethod', (e) => {
+      console.log('Payment method received', e.paymentMethod); // Add logging to help debug
       onApplePaySuccess(e.paymentMethod);
     });
 

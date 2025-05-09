@@ -17,6 +17,7 @@ const StripeProvider = ({ children }: StripeProviderProps) => {
   useEffect(() => {
     const fetchPublishableKey = async () => {
       try {
+        console.log('Fetching Stripe publishable key...'); // Add logging
         // Fetch the publishable key from our edge function
         const { data, error } = await supabase.functions.invoke('get-stripe-public-key');
         
@@ -27,6 +28,7 @@ const StripeProvider = ({ children }: StripeProviderProps) => {
           return;
         }
         
+        console.log('Stripe key received, initializing...'); // Add logging
         // Initialize Stripe with the publishable key
         const promise = loadStripe(data.publishableKey);
         setStripePromise(promise);

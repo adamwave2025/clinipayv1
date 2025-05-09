@@ -36,13 +36,19 @@ export function usePaymentIntent() {
       console.log('Initiating payment process for link ID:', linkData.id);
       
       // IMPORTANT: linkData.amount is already in pence (cents) from the database
-      // Log full details to aid debugging
       console.log('Payment details:', {
         amountInPence: linkData.amount,
         isRequest: linkData.isRequest ? 'Yes' : 'No',
         clinicId: linkData.clinic.id,
         paymentLinkId: linkData.id
       });
+      
+      // Add extra validation to ensure amount is never zero
+      if (!linkData.amount || linkData.amount <= 0) {
+        console.error('Invalid zero or negative payment amount detected:', linkData.amount);
+        toast.error('Invalid payment amount');
+        return { success: false, error: 'Invalid payment amount (zero or negative)' };
+      }
       
       // Validate the amount to catch potential errors
       if (!validatePenceAmount(linkData.amount, 'usePaymentIntent')) {

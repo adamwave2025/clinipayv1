@@ -19,8 +19,11 @@ serve(async (req) => {
     const publishableKey = Deno.env.get("PUBLISHABLE_KEY");
     
     if (!publishableKey) {
+      console.error("Missing PUBLISHABLE_KEY in environment variables");
       throw new Error("Stripe publishable key is not configured");
     }
+    
+    console.log("Successfully retrieved publishable key");
     
     // Return the publishable key to the client
     return new Response(
