@@ -1,3 +1,4 @@
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { generatePaymentReference } from "./utils.ts";
@@ -38,7 +39,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
     
     console.log(`Payment for clinic: ${clinicId}, amount: ${amountInPounds} (original: ${amountInCents} cents)`);
     
-    // Always use the reference from metadata
+    // CRITICAL - Always use the reference from metadata and never generate a new one
     const paymentReference = existingReference;
     if (!paymentReference) {
       console.warn("No payment reference found in metadata. This is unexpected and may cause issues.");

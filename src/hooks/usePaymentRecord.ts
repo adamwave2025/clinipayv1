@@ -43,8 +43,8 @@ export function usePaymentRecord() {
       }
       
       // Maximum number of retries and initial delay
-      const maxRetries = 5;
-      const initialDelayMs = 2000;
+      const maxRetries = 8; // Increased from 5 to 8
+      const initialDelayMs = 3000; // Increased from 2000ms to 3000ms
       let currentRetry = 0;
       let existingPayment = null;
       
@@ -89,7 +89,8 @@ export function usePaymentRecord() {
       if (!existingPayment) {
         console.log('Payment record not found after all retries, creating directly as fallback');
         
-        // Use the payment reference from metadata
+        // IMPORTANT: Always use the payment reference from metadata
+        // Do not generate a new one to prevent reference inconsistency
         const paymentRef = paymentReference || 
           `CLN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
         
@@ -114,8 +115,7 @@ export function usePaymentRecord() {
             stripe_payment_id: paymentIntent.id,
             payment_ref: paymentRef
           }, { 
-            onConflict: 'stripe_payment_id',
-            returning: 'minimal' // Don't need the returned data
+            onConflict: 'stripe_payment_id'
           });
           
         if (insertError) {

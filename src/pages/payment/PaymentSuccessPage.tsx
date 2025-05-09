@@ -28,8 +28,8 @@ const PaymentSuccessPage = () => {
   const [paymentReference, setPaymentReference] = useState<string>('');
   const [isLoadingReference, setIsLoadingReference] = useState<boolean>(true);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 8; // Increased from 5 to give more time
-  const retryDelayMs = 3000; // Increased from 2000 to 3000ms
+  const maxRetries = 10; // Increased from 8 to 10
+  const retryDelayMs = 3000; // Using longer delay of 3000ms
   
   // Function to fetch payment reference
   const fetchPaymentReference = async () => {
@@ -94,10 +94,13 @@ const PaymentSuccessPage = () => {
       
       // If not found and we haven't exceeded retry attempts, set up retry logic
       if (!found && retryCount < maxRetries) {
+        // Use exponential backoff for retries
+        const delayMs = retryDelayMs * Math.pow(1.5, retryCount);
+        
         const timeout = setTimeout(() => {
-          console.log(`Retrying payment reference fetch (${retryCount + 1}/${maxRetries})...`);
+          console.log(`Retrying payment reference fetch (${retryCount + 1}/${maxRetries})... with delay ${delayMs}ms`);
           setRetryCount(prev => prev + 1);
-        }, retryDelayMs);
+        }, delayMs);
         
         return () => clearTimeout(timeout);
       } else if (!found && retryCount >= maxRetries) {

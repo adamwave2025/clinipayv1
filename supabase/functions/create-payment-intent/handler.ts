@@ -99,7 +99,7 @@ export async function handleCreatePaymentIntent(req: Request) {
     });
 
     // Generate consistent payment reference
-    // Always use CLN- prefix for all payment references
+    // Standard format with CLN- prefix for all payment references
     const paymentReference = `CLN-${Array(6)
       .fill(0)
       .map(() => 
