@@ -44,7 +44,7 @@ export function usePaymentFetcher() {
       }
 
       // Map the database fields to our Payment interface
-      return data.map(payment => ({
+      return data.map((payment: any) => ({
         id: payment.id,
         amount: payment.amount_paid || 0,
         clinicId: payment.clinic_id,
@@ -55,7 +55,7 @@ export function usePaymentFetcher() {
         refundAmount: payment.refund_amount,
         netAmount: payment.net_amount,
         paymentMethod: payment.payment_method || 'card',
-        paymentReference: payment.reference || payment.payment_ref, // Try both field names
+        paymentReference: payment.payment_ref, // Use payment_ref instead of reference
         stripePaymentId: payment.stripe_payment_id
       })) as Payment[];
     } catch (err: any) {
