@@ -13,6 +13,3 @@ export * from './services';
 
 // Re-export types
 export * from './types';
-
-// Re-export utils
-export * from './utils';

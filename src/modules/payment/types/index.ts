@@ -1,13 +1,4 @@
 
-// Export all payment types
-
-export type { PaymentLinkData } from './paymentLink';
-export type { 
-  Payment,
-  PaymentLink,
-  PaymentStats,
-  PaymentRecord,
-  PaymentRequest,
-  PaymentRefundParams,
-  RefundResult
-} from './payment';
+// Re-export all types from the payment module
+export * from './payment';
+export * from './paymentLink';

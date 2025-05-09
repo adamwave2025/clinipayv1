@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { PaymentRequestButtonElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { poundsToPence, validatePoundsAmount } from '../../services/CurrencyService';
+import { poundsToPence, validatePenceAmount } from '../../services/CurrencyService';
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -56,7 +56,7 @@ const ApplePayButton = ({ amount, isLoading, onApplePaySuccess }: ApplePayButton
       }
       
       // Validate the amount is in the expected format (should be pounds)
-      if (!validatePoundsAmount(numericAmount, 'ApplePayButton')) {
+      if (!validatePenceAmount(numericAmount, 'ApplePayButton')) {
         console.error('Apple Pay amount validation failed:', numericAmount);
         setError('Invalid payment amount. Please try again or use a different payment method.');
         return;
