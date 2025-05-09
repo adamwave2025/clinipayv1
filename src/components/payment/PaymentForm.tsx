@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form } from '@/components/ui/form';
@@ -22,6 +22,8 @@ const PaymentForm = ({
   defaultValues,
   onApplePaySuccess
 }: PaymentFormProps) => {
+  const [isCardComplete, setIsCardComplete] = useState(false);
+  
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
@@ -33,12 +35,51 @@ const PaymentForm = ({
   });
 
   const handleSubmitForm = async (data: PaymentFormValues) => {
-    onSubmit(data);
+    console.log('Form submission triggered', { 
+      formData: data,
+      isCardComplete,
+      formState: form.formState
+    });
+    
+    if (!isCardComplete) {
+      console.error('Card details are incomplete');
+      form.setError('stripeCard', { 
+        type: 'manual', 
+        message: 'Please complete your card details' 
+      });
+      return;
+    }
+    
+    try {
+      console.log('Calling onSubmit handler with form data');
+      onSubmit(data);
+    } catch (error) {
+      console.error('Error in form submission:', error);
+    }
+  };
+  
+  const handleCardElementChange = (event: any) => {
+    setIsCardComplete(event.complete);
+    
+    if (event.error) {
+      form.setError('stripeCard', { 
+        type: 'manual', 
+        message: event.error.message || 'Invalid card details' 
+      });
+    } else {
+      form.clearErrors('stripeCard');
+    }
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmitForm)} className="space-y-6">
+      <form 
+        onSubmit={(e) => {
+          console.log('Form onSubmit event triggered');
+          form.handleSubmit(handleSubmitForm)(e);
+        }} 
+        className="space-y-6"
+      >
         <PersonalInfoSection 
           control={form.control} 
           isLoading={isLoading} 
@@ -48,6 +89,7 @@ const PaymentForm = ({
           control={form.control}
           isLoading={isLoading}
           onApplePaySuccess={onApplePaySuccess}
+          onCardElementChange={handleCardElementChange}
         />
         
         <SubmitButton isLoading={isLoading} />
