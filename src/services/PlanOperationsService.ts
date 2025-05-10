@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -332,7 +333,7 @@ export class PlanOperationsService {
       const { data: schedulingResult, error: schedulingError } = await supabase
         .rpc('resume_payment_plan', { 
           plan_id: plan.id,
-          resume_date: formattedDate
+          resume_date: formattedDate // This must be a string in 'YYYY-MM-DD' format
         });
       
       if (schedulingError) {
@@ -347,7 +348,7 @@ export class PlanOperationsService {
         console.error('Database function returned error:', schedulingResult);
         throw new Error(
           typeof schedulingResult === 'object' && 'error' in schedulingResult 
-            ? schedulingResult.error 
+            ? String(schedulingResult.error) // Convert to string to ensure it's a string
             : 'Database function failed to reschedule payments'
         );
       }
@@ -396,7 +397,7 @@ export class PlanOperationsService {
             sent_payments_reset: sentPaymentsCount,
             days_shifted: schedulingResult ? 
               (typeof schedulingResult === 'object' && 'days_shifted' in schedulingResult ? 
-                schedulingResult.days_shifted : 0) : 0
+                String(schedulingResult.days_shifted) : '0') : '0' // Convert to string
           }
         });
       
