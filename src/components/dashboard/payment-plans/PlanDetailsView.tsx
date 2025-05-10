@@ -7,6 +7,7 @@ import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { PlanActivity } from '@/utils/planActivityUtils';
 import PlanPaymentsList from './PlanPaymentsList';
 import ActivityLog from './ActivityLog';
+import StatusBadge from '@/components/common/StatusBadge';
 
 interface PlanDetailsViewProps {
   plan: Plan;
@@ -25,15 +26,6 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
   onReschedule,
   isLoading
 }) => {
-  // Always show "CliniPay" as the status with the purple gradient
-  const renderPlanStatus = () => {
-    return (
-      <span className="inline-flex items-center px-3 py-1 rounded-full text-white text-sm font-medium bg-gradient-primary">
-        CliniPay
-      </span>
-    );
-  };
-
   // Extract patient name directly from patientName property
   const patientName = plan.patientName || 'Unknown Patient';
     
@@ -48,6 +40,7 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
     paidInstallments: plan.paidInstallments,
     totalInstallments: plan.totalInstallments,
     progress: plan.progress,
+    status: plan.status
   });
   
   return (
@@ -81,7 +74,9 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium text-gray-500">Status:</dt>
-                <dd className="text-right">{renderPlanStatus()}</dd>
+                <dd className="text-right">
+                  <StatusBadge status={plan.status} />
+                </dd>
               </div>
             </dl>
           </CardContent>
