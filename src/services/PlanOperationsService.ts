@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -245,7 +244,7 @@ export class PlanOperationsService {
         throw fetchError;
       }
       
-      // Count payments with payment requests that need to be reset
+      // Count payments with payment requests that need to be canceled
       let sentPaymentsCount = 0;
       const pausedPaymentIds = [];
       const paymentRequestIds = [];
@@ -276,50 +275,26 @@ export class PlanOperationsService {
         console.log(`Successfully cancelled ${paymentRequestIds.length} payment requests`);
       }
       
-      // CRITICAL CHANGE: Update ALL paused payments to pending status AND clear payment_request_id in one operation
-      const { error: scheduleStatusUpdateError } = await supabase
+      // Clear payment_request_id for all paused payments
+      const { error: clearRequestIdError } = await supabase
         .from('payment_schedule')
         .update({ 
-          status: 'pending',
-          payment_request_id: null, // CRITICAL: Clear payment_request_id for ALL payments
+          payment_request_id: null,
           updated_at: new Date().toISOString()
         })
         .eq('plan_id', plan.id)
         .eq('status', 'paused');
-        
-      if (scheduleStatusUpdateError) {
-        console.error('Error updating payment schedule statuses:', scheduleStatusUpdateError);
-        throw scheduleStatusUpdateError;
+      
+      if (clearRequestIdError) {
+        console.error('Error clearing payment request IDs:', clearRequestIdError);
+        throw clearRequestIdError;
       }
       
-      // Verify payments are now in pending status before proceeding
-      const { count: pendingCount, error: pendingCountError } = await supabase
-        .from('payment_schedule')
-        .select('*', { count: 'exact', head: true })
-        .eq('plan_id', plan.id)
-        .eq('status', 'pending');
-        
-      if (pendingCountError) {
-        console.error('Error verifying pending payments:', pendingCountError);
-        throw pendingCountError;
-      }
-      
-      if (pendingCount === 0) {
-        console.error('No pending payments found after status update - this will cause the rescheduling to fail');
-        throw new Error('Failed to set payments to pending status');
-      } else {
-        console.log(`Verified ${pendingCount} payments now in pending status`);
-      }
-      
-      // Format date as YYYY-MM-DD for the database function call
-      const formattedDate = effectiveResumeDate.toISOString().split('T')[0]; 
-      console.log('Calling resume_payment_plan with formatted date:', formattedDate);
-      
-      // Set a temporary status on plan to indicate we're processing
+      // Temporarily set plan status to indicate we're processing
       const { error: planUpdateError } = await supabase
         .from('plans')
         .update({ 
-          status: 'pending', // Always set to pending per requirements
+          status: 'pending',
           updated_at: new Date().toISOString()
         })
         .eq('id', plan.id);
@@ -329,7 +304,11 @@ export class PlanOperationsService {
         throw planUpdateError;
       }
       
-      // AFTER updating schedules to pending, call the resume_payment_plan RPC function
+      // Format date as YYYY-MM-DD for the database function call
+      const formattedDate = effectiveResumeDate.toISOString().split('T')[0]; 
+      console.log('Calling resume_payment_plan with formatted date:', formattedDate);
+      
+      // Call the resume_payment_plan RPC function - now directly works with paused payments
       const { data: schedulingResult, error: schedulingError } = await supabase
         .rpc('resume_payment_plan', { 
           plan_id: plan.id,
@@ -353,7 +332,7 @@ export class PlanOperationsService {
         );
       }
 
-      // Verify that the payments have been rescheduled
+      // Verify that the payments have been rescheduled and are now in pending status
       const { data: updatedPayments, error: updatedPaymentsError } = await supabase
         .from('payment_schedule')
         .select('id, due_date, status')
