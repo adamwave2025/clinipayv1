@@ -13,6 +13,12 @@ export interface PlanActivity {
 export function isPaymentLinkActive(linkData?: PaymentLinkData | null): boolean {
   if (!linkData) return false;
   
+  console.log('Checking payment link status:', {
+    status: linkData.status,
+    paymentPlan: linkData.paymentPlan,
+    id: linkData.id
+  });
+  
   // Check status - active links can be processed
   if (linkData.status === 'active') return true;
   

@@ -1,3 +1,4 @@
+
 import { PaymentLinkData } from '@/types/paymentLink';
 import { formatCurrency } from '@/utils/formatters';
 
@@ -21,6 +22,11 @@ export class PaymentLinkFormatter {
       stripeStatus: linkData.clinics?.stripe_status || 'not_connected'
     };
 
+    // Determine the status - if is_active is false, set status to 'cancelled', otherwise use existing status or default to 'active'
+    const status = linkData.is_active === false 
+      ? 'cancelled' 
+      : this.formatPaymentStatus(linkData.status) || 'active';
+
     // Format the payment link data
     return {
       id: linkData.id,
@@ -29,7 +35,7 @@ export class PaymentLinkFormatter {
       amount: linkData.amount || 0,
       description: linkData.description || '',
       clinic: clinic,
-      status: this.formatPaymentStatus(linkData.status),
+      status: status,
       isRequest: false,
       paymentPlan: linkData.payment_plan || false,
       planTotalAmount: linkData.plan_total_amount || linkData.amount,
@@ -62,6 +68,9 @@ export class PaymentLinkFormatter {
                   (requestData.payment_links?.amount) || 
                   0;
 
+    // Determine status - respect existing status for payment requests
+    const status = this.formatPaymentStatus(requestData.status);
+
     // Format the payment request data
     return {
       id: requestData.id,
@@ -70,7 +79,7 @@ export class PaymentLinkFormatter {
       amount: amount,
       description: requestData.payment_links?.description || '',
       clinic: clinic,
-      status: this.formatPaymentStatus(requestData.status),
+      status: status,
       isRequest: true,
       patientName: requestData.patient_name || '',
       patientEmail: requestData.patient_email || '',
@@ -164,7 +173,8 @@ export class PaymentLinkFormatter {
       'overdue',
       'paused',
       'rescheduled',
-      'completed'
+      'completed',
+      'active'
     ];
     
     // Check if the status is valid

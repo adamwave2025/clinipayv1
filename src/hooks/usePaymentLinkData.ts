@@ -36,6 +36,10 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
           const formattedRequestData = PaymentLinkFormatter.formatPaymentRequest(requestData);
           if (formattedRequestData) {
             console.log('usePaymentLinkData: Successfully formatted payment request data');
+            console.log('Debug - Payment request active status:', {
+              status: formattedRequestData.status,
+              isActive: formattedRequestData.status === 'active'
+            });
             
             // Log and validate the payment amount
             console.log('Payment amount in pence:', formattedRequestData.amount);
@@ -68,7 +72,7 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
           throw new Error('Payment link not found');
         }
 
-        console.log('usePaymentLinkData: Found payment link:', linkData);
+        console.log('usePaymentLinkData: Found payment link raw data:', linkData);
         
         // Format the link data before setting state
         const formattedLinkData = PaymentLinkFormatter.formatPaymentLink(linkData);
@@ -76,6 +80,12 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
           console.error('usePaymentLinkData: Failed to format payment link data');
           throw new Error('Failed to format payment link data');
         }
+        
+        console.log('Debug - Payment link active status:', {
+          isActive: linkData.is_active,
+          formattedStatus: formattedLinkData.status,
+          isActiveStatus: formattedLinkData.status === 'active'
+        });
         
         // Log and validate the payment amount
         console.log('Payment amount in pence:', formattedLinkData.amount);
