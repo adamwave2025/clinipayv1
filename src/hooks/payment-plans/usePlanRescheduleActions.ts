@@ -69,15 +69,12 @@ export const usePlanRescheduleActions = (
         toast.success('Payment plan rescheduled successfully');
         setShowRescheduleDialog(false);
         setShowPlanDetails(false); // Close the plan details modal
-        return { success: true };
       } else {
         toast.error('Failed to reschedule payment plan');
-        return { success: false };
       }
     } catch (error) {
       console.error('Error rescheduling plan:', error);
       toast.error('Failed to reschedule payment plan');
-      return { success: false, error };
     } finally {
       setIsProcessing(false);
     }

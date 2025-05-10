@@ -27,15 +27,12 @@ export const usePlanPauseActions = (
         toast.success('Payment plan paused successfully');
         setShowPauseDialog(false);
         setShowPlanDetails(false); // Close the plan details modal
-        return { success: true };
       } else {
         toast.error('Failed to pause payment plan');
-        return { success: false };
       }
     } catch (error) {
       console.error('Error pausing plan:', error);
       toast.error('Failed to pause payment plan');
-      return { success: false, error };
     } finally {
       setIsProcessing(false);
     }

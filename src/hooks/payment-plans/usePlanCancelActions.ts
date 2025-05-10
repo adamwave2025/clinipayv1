@@ -27,15 +27,12 @@ export const usePlanCancelActions = (
         toast.success('Payment plan cancelled successfully');
         setShowCancelDialog(false);
         setShowPlanDetails(false); // Close the plan details modal
-        return { success: true };
       } else {
         toast.error('Failed to cancel payment plan');
-        return { success: false };
       }
     } catch (error) {
       console.error('Error cancelling plan:', error);
       toast.error('Failed to cancel payment plan');
-      return { success: false, error };
     } finally {
       setIsProcessing(false);
     }

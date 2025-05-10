@@ -78,18 +78,14 @@ export const useManagePlans = (): ManagePlansContextType => {
   // Pass fetchPaymentPlans directly as it returns Promise<Plan[]>
   const { 
     isProcessing,
-    handleSendReminder: sendReminder, 
-    handleCancelPlan: cancelPlan, 
-    handlePausePlan: pausePlan,
-    handleResumePlan: resumePlan,
-    handleReschedulePlan: reschedulePlan
+    handleSendReminder: sendReminder
   } = usePlanActions(() => fetchPaymentPlans(user?.id || ''));
   
   // Use specialized action hooks
-  const cancelActions = usePlanCancelActions(selectedPlan, cancelPlan, setShowPlanDetails);
-  const pauseActions = usePlanPauseActions(selectedPlan, pausePlan, setShowPlanDetails);
-  const resumeActions = usePlanResumeActions(selectedPlan, resumePlan, setShowPlanDetails);
-  const rescheduleActions = usePlanRescheduleActions(selectedPlan, reschedulePlan, setShowPlanDetails);
+  const cancelActions = usePlanCancelActions(selectedPlan, setShowPlanDetails);
+  const pauseActions = usePlanPauseActions(selectedPlan, setShowPlanDetails);
+  const resumeActions = usePlanResumeActions(selectedPlan, setShowPlanDetails);
+  const rescheduleActions = usePlanRescheduleActions(selectedPlan, setShowPlanDetails);
 
   // Apply filters to get the filtered plans
   const plans = useMemo(() => {
