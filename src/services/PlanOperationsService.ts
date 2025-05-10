@@ -783,10 +783,5 @@ export class PlanOperationsService {
   }
 }
 
-// Helper function to execute RPC calls with dynamic parameters
-async function executeRpc(functionName: string, params: Record<string, any>) {
-  return supabase.rpc(functionName, params);
-}
-
 // Import at the end to avoid circular dependencies
 import { sendPaymentReminder } from '@/services/PaymentReminderService';

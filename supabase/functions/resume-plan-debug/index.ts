@@ -49,11 +49,12 @@ serve(async (req) => {
     
     console.log('Before resume state:', JSON.stringify(beforeSchedule, null, 2));
     
-    // Call the resume_payment_plan function
+    // Use the same type assertion approach when calling the function
     const { data: result, error } = await supabase
-      .rpc('resume_payment_plan', {
+      .rpc('resume_payment_plan' as any, {
         plan_id: planId,
-        resume_date: resumeDate
+        resume_date: resumeDate,
+        payment_status: 'paused'  // Also include this parameter here
       });
       
     if (error) {
