@@ -1,0 +1,81 @@
+
+-- Updated resume_payment_plan function to properly reschedule payments from resume date
+CREATE OR REPLACE FUNCTION public.resume_payment_plan(plan_id uuid, resume_date date)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  result JSONB;
+  days_paused INTEGER;
+  first_pending_date DATE;
+  current_schedule RECORD;
+  plan_record RECORD;
+  payment_interval INTERVAL;
+  i INTEGER := 0;
+  payment_ids UUID[];
+  payment_dates DATE[];
+BEGIN
+  -- Get plan details to determine payment frequency
+  SELECT payment_frequency INTO plan_record
+  FROM plans
+  WHERE plans.id = plan_id;
+  
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('error', 'Plan not found');
+  END IF;
+  
+  -- Determine the interval based on payment frequency
+  CASE plan_record.payment_frequency
+    WHEN 'weekly' THEN payment_interval := '7 days'::INTERVAL;
+    WHEN 'bi-weekly' THEN payment_interval := '14 days'::INTERVAL;
+    WHEN 'monthly' THEN payment_interval := '1 month'::INTERVAL;
+    ELSE payment_interval := '1 month'::INTERVAL; -- Default to monthly if unknown
+  END CASE;
+  
+  -- Find the first pending payment date (before any changes)
+  SELECT MIN(due_date) INTO first_pending_date
+  FROM payment_schedule
+  WHERE payment_schedule.plan_id = plan_id AND status = 'pending';
+  
+  -- If there are no pending payments, nothing to reschedule
+  IF first_pending_date IS NULL THEN
+    RETURN jsonb_build_object('message', 'No pending payments to reschedule');
+  END IF;
+  
+  -- Calculate how many days to shift the schedule
+  days_paused := resume_date - first_pending_date;
+  
+  -- Get all pending payments ordered by due date
+  SELECT ARRAY_AGG(id ORDER BY due_date) INTO payment_ids
+  FROM payment_schedule
+  WHERE payment_schedule.plan_id = plan_id AND status = 'pending';
+  
+  -- Set the first payment to the resume date exactly
+  UPDATE payment_schedule
+  SET due_date = resume_date
+  WHERE id = payment_ids[1];
+  
+  -- Now update subsequent payments based on the frequency interval
+  FOR i IN 2..ARRAY_LENGTH(payment_ids, 1) LOOP
+    UPDATE payment_schedule
+    SET due_date = resume_date + ((i-1) * payment_interval)
+    WHERE id = payment_ids[i];
+  END LOOP;
+  
+  -- Update the plan's next_due_date
+  UPDATE plans
+  SET next_due_date = resume_date
+  WHERE plans.id = plan_id;
+  
+  result := jsonb_build_object(
+    'success', true,
+    'days_shifted', days_paused,
+    'resume_date', resume_date,
+    'payments_rescheduled', ARRAY_LENGTH(payment_ids, 1)
+  );
+  
+  RETURN result;
+END;
+$function$;

@@ -39,7 +39,7 @@ export class PlanOperationsService {
         .from('payment_schedule')
         .select('payment_request_id')
         .eq('plan_id', plan.id)
-        .is('payment_request_id', 'not.null');
+        .not('payment_request_id', 'is', null);
         
       if (requestsError) throw requestsError;
       
