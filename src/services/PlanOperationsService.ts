@@ -1,4 +1,3 @@
-
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -473,14 +472,8 @@ export class PlanOperationsService {
         console.error('Error logging reschedule activity:', activityError);
       }
 
-      // Update plan status using PlanStatusService for consistency
-      const statusResult = await PlanStatusService.updatePlanStatus(plan.id);
-      
-      if (!statusResult.success) {
-        console.error('Error updating plan status after rescheduling:', statusResult.error);
-      } else {
-        console.log(`Plan rescheduled successfully with calculated status: ${statusResult.status}`);
-      }
+      // REMOVED: No longer call updatePlanStatus here - the status is set explicitly above based on payment history
+      // Let the cron job handle overdue detection, we've set active/pending status based on payment history
       
       return true;
       

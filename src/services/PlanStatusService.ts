@@ -4,8 +4,11 @@ import { Plan } from '@/utils/planTypes';
 
 /**
  * Service for managing plan status calculations and validations.
- * Note: The primary source of truth for a plan's status is now the update-plan-statuses
- * cron job, which calculates status based on payment_schedule entries.
+ * 
+ * NOTE: The plan status lifecycle is now managed as follows:
+ * - Manual operations (pause/resume/reschedule/cancel) explicitly set status
+ * - Payment webhooks update status on payment (overdue -> active, final payment -> completed)
+ * - The update-plan-statuses cron job ONLY handles setting overdue status
  */
 export class PlanStatusService {
   /**
@@ -78,6 +81,7 @@ export class PlanStatusService {
   /**
    * Trigger the status update manually for a specific plan
    * This calls the update-plan-statuses edge function for a single plan
+   * Note: This will now ONLY update the overdue status, not other statuses
    */
   static async triggerStatusUpdate(planId: string): Promise<{success: boolean, status?: Plan['status'], error?: any}> {
     try {
@@ -112,8 +116,7 @@ export class PlanStatusService {
   
   /**
    * This is a legacy method that exists for backward compatibility.
-   * It now simply refreshes the plan status from the database since
-   * the actual status calculation is done by the cron job.
+   * It now simply refreshes the plan status from the database.
    */
   static async updatePlanStatus(planId: string): Promise<{success: boolean, status?: Plan['status'], error?: any}> {
     return this.refreshPlanStatus(planId);

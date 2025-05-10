@@ -38,11 +38,9 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
     
     console.log(`Payment for clinic: ${clinicId}, amount: ${amountInPounds} (original: ${amountInCents} cents)`);
     
-    // CRITICAL - Always use the reference from metadata and never generate a new one
-    const paymentReference = existingReference;
-    if (!paymentReference) {
-      console.warn("No payment reference found in metadata. This is unexpected and may cause issues.");
-    }
+    // CRITICAL - Always use the reference from metadata if provided
+    const paymentReference = existingReference || generatePaymentReference();
+    
     console.log(`Using payment reference: ${paymentReference}`);
     
     // Initialize fee data variables
@@ -625,6 +623,277 @@ export async function handlePaymentIntentFailed(paymentIntent: any, supabaseClie
     console.log("Failed payment processing completed");
   } catch (error) {
     console.error("Error processing failed payment intent:", error);
+    console.error("Stack trace:", error.stack);
+  }
+}
+
+// Function to handle refund events
+export async function handleRefundUpdated(refund: any, stripeClient: Stripe, supabaseClient: any) {
+  console.log("Processing refund.updated event:", refund.id);
+  console.log("Refund details:", JSON.stringify({
+    id: refund.id,
+    amount: refund.amount,
+    status: refund.status,
+    charge: refund.charge
+  }));
+  
+  try {
+    // Only process completed refunds
+    if (refund.status !== 'succeeded') {
+      console.log(`Refund ${refund.id} status is ${refund.status}, not processing further`);
+      return;
+    }
+    
+    // Get the charge ID to find the payment
+    const chargeId = refund.charge;
+    if (!chargeId) {
+      console.error("No charge ID found in refund");
+      return;
+    }
+    
+    console.log(`Looking up payment for charge: ${chargeId}`);
+    
+    // Get the payment intent from the charge
+    const charge = await stripeClient.charges.retrieve(chargeId);
+    if (!charge || !charge.payment_intent) {
+      console.error("No payment intent found for charge");
+      return;
+    }
+    
+    const paymentIntentId = typeof charge.payment_intent === 'string' 
+      ? charge.payment_intent 
+      : charge.payment_intent.id;
+    
+    console.log(`Found payment intent: ${paymentIntentId}`);
+    
+    // Find the payment record in our database
+    const { data: paymentData, error: paymentError } = await supabaseClient
+      .from("payments")
+      .select("*")
+      .eq("stripe_payment_id", paymentIntentId)
+      .maybeSingle();
+      
+    if (paymentError) {
+      console.error("Error finding payment record:", paymentError);
+      return;
+    }
+    
+    if (!paymentData) {
+      console.error(`No payment record found for payment intent: ${paymentIntentId}`);
+      return;
+    }
+    
+    console.log(`Found payment record: ${paymentData.id}`);
+    
+    // Check if this is a full or partial refund
+    const paymentAmount = paymentData.amount_paid;
+    const refundAmount = refund.amount / 100; // Convert from cents to pounds
+    const isFullRefund = refundAmount >= paymentAmount;
+    
+    console.log(`Refund amount: ${refundAmount}, Payment amount: ${paymentAmount}, Full refund: ${isFullRefund}`);
+    
+    // Update the payment record
+    const { error: updateError } = await supabaseClient
+      .from("payments")
+      .update({
+        status: isFullRefund ? 'refunded' : 'partially_refunded',
+        refund_amount: refundAmount,
+        refunded_at: new Date().toISOString()
+      })
+      .eq("id", paymentData.id);
+      
+    if (updateError) {
+      console.error("Error updating payment record:", updateError);
+      return;
+    }
+    
+    console.log(`Updated payment ${paymentData.id} status to ${isFullRefund ? 'refunded' : 'partially_refunded'}`);
+    
+    // Check if this payment is associated with a payment request
+    const { data: requestData, error: requestError } = await supabaseClient
+      .from("payment_requests")
+      .select("id")
+      .eq("payment_id", paymentData.id)
+      .maybeSingle();
+      
+    if (requestError) {
+      console.error("Error checking for payment request:", requestError);
+    } else if (requestData) {
+      console.log(`Found associated payment request: ${requestData.id}`);
+      
+      // Check if this payment request is part of a payment plan
+      const { data: scheduleData, error: scheduleError } = await supabaseClient
+        .from("payment_schedule")
+        .select("id, plan_id")
+        .eq("payment_request_id", requestData.id)
+        .maybeSingle();
+        
+      if (scheduleError) {
+        console.error("Error checking for payment schedule:", scheduleError);
+      } else if (scheduleData) {
+        console.log(`Found associated payment schedule: ${scheduleData.id}`);
+        
+        // Update the payment schedule status
+        const { error: updateScheduleError } = await supabaseClient
+          .from("payment_schedule")
+          .update({
+            status: isFullRefund ? 'refunded' : 'partially_refunded'
+          })
+          .eq("id", scheduleData.id);
+          
+        if (updateScheduleError) {
+          console.error("Error updating payment schedule:", updateScheduleError);
+        } else {
+          console.log(`Updated payment schedule ${scheduleData.id} status to ${isFullRefund ? 'refunded' : 'partially_refunded'}`);
+        }
+        
+        // If this is a full refund, we need to update the plan's paid_installments count
+        if (isFullRefund && scheduleData.plan_id) {
+          console.log(`Updating plan ${scheduleData.plan_id} for refunded payment`);
+          
+          // Get the current plan data
+          const { data: planData, error: planError } = await supabaseClient
+            .from("plans")
+            .select("paid_installments, total_installments")
+            .eq("id", scheduleData.plan_id)
+            .single();
+            
+          if (planError) {
+            console.error("Error fetching plan data:", planError);
+          } else if (planData) {
+            // Decrement the paid installments count
+            const newPaidCount = Math.max(0, (planData.paid_installments || 1) - 1);
+            const progress = Math.floor((newPaidCount / planData.total_installments) * 100) || 0;
+            
+            // Update the plan
+            const { error: planUpdateError } = await supabaseClient
+              .from("plans")
+              .update({
+                paid_installments: newPaidCount,
+                progress: progress,
+                // Don't change the status - let the cron job handle that
+              })
+              .eq("id", scheduleData.plan_id);
+              
+            if (planUpdateError) {
+              console.error("Error updating plan:", planUpdateError);
+            } else {
+              console.log(`Updated plan ${scheduleData.plan_id} paid_installments to ${newPaidCount}`);
+            }
+          }
+        }
+      }
+    }
+    
+    // Queue notifications for the refund
+    try {
+      // Get clinic data
+      const { data: clinicData, error: clinicError } = await supabaseClient
+        .from("clinics")
+        .select("*")
+        .eq("id", paymentData.clinic_id)
+        .single();
+        
+      if (clinicError) {
+        console.error("Error fetching clinic data:", clinicError);
+      }
+      
+      // Notify the patient if we have contact details
+      if (paymentData.patient_email || paymentData.patient_phone) {
+        const patientPayload = {
+          notification_type: "refund_processed",
+          notification_method: {
+            email: !!paymentData.patient_email,
+            sms: !!paymentData.patient_phone
+          },
+          patient: {
+            name: paymentData.patient_name || 'Patient',
+            email: paymentData.patient_email,
+            phone: paymentData.patient_phone
+          },
+          payment: {
+            reference: paymentData.payment_ref,
+            amount: paymentData.amount_paid,
+            refund_amount: refundAmount,
+            payment_link: `https://clinipay.co.uk/payment-receipt/${paymentData.id}`,
+            message: `Your refund of £${refundAmount.toFixed(2)} has been processed`
+          },
+          clinic: {
+            name: clinicData?.clinic_name || 'Your healthcare provider',
+            email: clinicData?.email,
+            phone: clinicData?.phone
+          }
+        };
+        
+        const { error: notifyError } = await supabaseClient
+          .from("notification_queue")
+          .insert({
+            type: 'refund_processed',
+            payload: patientPayload,
+            payment_id: paymentData.id,
+            recipient_type: 'patient'
+          });
+          
+        if (notifyError) {
+          console.error("Error queueing patient refund notification:", notifyError);
+        } else {
+          console.log("Successfully queued refund notification for patient");
+        }
+      }
+      
+      // Notify the clinic
+      if (clinicData) {
+        const clinicPayload = {
+          notification_type: "refund_processed",
+          notification_method: {
+            email: clinicData?.email_notifications ?? true,
+            sms: clinicData?.sms_notifications ?? false
+          },
+          patient: {
+            name: paymentData.patient_name || 'Patient',
+            email: paymentData.patient_email,
+            phone: paymentData.patient_phone
+          },
+          payment: {
+            reference: paymentData.payment_ref,
+            amount: paymentData.amount_paid,
+            refund_amount: refundAmount,
+            payment_link: `https://clinipay.co.uk/payment-receipt/${paymentData.id}`,
+            message: `A refund of £${refundAmount.toFixed(2)} has been processed`,
+            financial_details: {
+              gross_amount: paymentData.amount_paid,
+              refund_amount: refundAmount
+            }
+          },
+          clinic: {
+            name: clinicData?.clinic_name || 'Your clinic',
+            email: clinicData?.email,
+            phone: clinicData?.phone
+          }
+        };
+        
+        const { error: clinicNotifyError } = await supabaseClient
+          .from("notification_queue")
+          .insert({
+            type: 'refund_processed',
+            payload: clinicPayload,
+            payment_id: paymentData.id,
+            recipient_type: 'clinic'
+          });
+          
+        if (clinicNotifyError) {
+          console.error("Error queueing clinic refund notification:", clinicNotifyError);
+        } else {
+          console.log("Successfully queued refund notification for clinic");
+        }
+      }
+    } catch (notifyError) {
+      console.error("Error processing refund notifications:", notifyError);
+    }
+    
+    console.log("Refund processing completed successfully");
+  } catch (error) {
+    console.error("Error processing refund:", error);
     console.error("Stack trace:", error.stack);
   }
 }
