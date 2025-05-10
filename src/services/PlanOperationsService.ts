@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { PlanStatusService } from '@/services/PlanStatusService';
 import { isPaymentStatusTransitionValid, getModifiableStatuses } from '@/utils/paymentStatusUtils';
 import { CompleteResumePlanResponse } from '@/types/supabaseRpcTypes';
+import { sendPaymentReminder } from '@/services/PaymentReminderService';
 
 /**
  * Consolidated service for plan operations like pausing, resuming, cancelling
@@ -627,7 +628,7 @@ export class PlanOperationsService {
    */
   static async sendPaymentReminder(installmentId: string): Promise<{ success: boolean, error?: any }> {
     try {
-      // Call the existing sendPaymentReminder function from PaymentReminderService
+      // Call the imported sendPaymentReminder function from PaymentReminderService
       const result = await sendPaymentReminder(installmentId);
       return result;
     } catch (error) {
