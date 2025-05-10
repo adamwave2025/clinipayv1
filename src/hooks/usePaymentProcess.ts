@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { toast } from 'sonner';
 import { PaymentLinkData } from './usePaymentLinkData';
@@ -18,6 +18,8 @@ interface ApplePayFormData {
 export function usePaymentProcess(linkId: string | undefined, linkData: PaymentLinkData | null) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const processingRef = useRef(false); // Additional ref to prevent race conditions
+  const navigatingRef = useRef(false); // Track if we're currently navigating
   
   const { isProcessing, processPayment, processApplePayPayment } = useStripePayment();
   const { isCreatingIntent, createPaymentIntent } = usePaymentIntent();
@@ -29,16 +31,28 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       return;
     }
     
-    // Check if the payment link is still active before proceeding
-    if (!isPaymentLinkActive(linkData)) {
-      console.log('Payment link is no longer active, status:', linkData.status);
-      // Reload the page to show the updated status UI
-      window.location.reload();
+    // Triple protection against duplicate submissions with both state and ref
+    if (isSubmitting || processingPayment || processingRef.current || navigatingRef.current) {
+      console.log('Payment submission blocked - already in progress', {
+        isSubmitting,
+        processingPayment,
+        processingRef: processingRef.current,
+        navigatingRef: navigatingRef.current
+      });
       return;
     }
     
-    // Set isSubmitting to true to disable form inputs
+    // Check if the payment link is still active before proceeding
+    if (!isPaymentLinkActive(linkData)) {
+      console.log('Payment link is no longer active, status:', linkData.status);
+      // Show a message instead of reloading
+      toast.error('This payment link is no longer active');
+      return;
+    }
+    
+    // Set both state and ref flags
     setIsSubmitting(true);
+    processingRef.current = true;
     
     try {
       console.log('Starting payment submission with form data:', { 
@@ -48,6 +62,7 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       });
       
       // Step 1: Create payment intent
+      console.log('Creating payment intent...');
       const intentResult = await createPaymentIntent({
         linkData,
         formData: {
@@ -56,6 +71,8 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
           phone: formData.phone
         }
       });
+      
+      console.log('Payment intent creation result:', intentResult.success);
       
       if (!intentResult.success) {
         // Check if the error is due to payment status issues
@@ -68,8 +85,9 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
             errorMessage.includes('plan is currently paused') ||
             errorMessage.includes('plan has been cancelled') ||
             errorMessage.includes('has been rescheduled')) {
-          console.log('Payment status issue detected, reloading page to show updated status');
-          window.location.reload();
+          
+          console.log('Payment status issue detected, showing toast instead of reloading');
+          toast.error(errorMessage);
           return;
         }
         
@@ -81,6 +99,7 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       console.log('Processing payment with client secret:', intentResult.clientSecret ? 'Received' : 'Missing');
       
       // Step 3: Process the payment with Stripe
+      console.log('Confirming payment with Stripe...');
       const paymentResult = await processPayment({
         clientSecret: intentResult.clientSecret,
         formData: {
@@ -90,20 +109,16 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         }
       });
       
+      console.log('Payment processing result:', paymentResult.success);
+      
       if (!paymentResult.success) {
         console.error('Payment processing failed:', paymentResult.error);
-        // Explicitly redirect to the failed payment page
-        let redirectUrl = `/payment/failed`;
-        if (linkId) {
-          redirectUrl += `?link_id=${linkId}`;
-        }
-        window.location.href = redirectUrl;
         throw new Error(paymentResult.error || 'Payment processing failed');
       }
       
       console.log('Payment processed successfully, recording payment...');
       
-      // Step 4: Create client-side record and update UI (webhook handles DB updates)
+      // Step 4: Create client-side record
       const recordResult = await createPaymentRecord({
         paymentIntent: paymentResult.paymentIntent,
         linkData,
@@ -115,31 +130,35 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         associatedPaymentLinkId: intentResult.associatedPaymentLinkId
       });
       
-      console.log('Payment record result:', recordResult);
+      console.log('Payment record created:', recordResult);
       
-      // Navigate to success page with the link_id parameter
-      const successUrl = `/payment/success?link_id=${linkId || ''}&payment_id=${paymentResult.paymentIntent.id || 'unknown'}`;
-      console.log('Redirecting to success page:', successUrl);
-      window.location.href = successUrl;
+      // Safely navigate to success page - using window.location with manual control
+      navigatingRef.current = true;
+      
+      // Show a success message before navigating
+      toast.success('Payment successful! Redirecting to confirmation page...');
+      
+      // Use a small delay to ensure toast is seen
+      console.log('Will navigate to success page in 1.5 seconds...');
+      setTimeout(() => {
+        const successUrl = `/payment/success?link_id=${linkId || ''}&payment_id=${paymentResult.paymentIntent.id || 'unknown'}`;
+        console.log('Navigating to success page:', successUrl);
+        window.location.href = successUrl;
+      }, 1500);
       
     } catch (error: any) {
       console.error('Payment submission error:', error);
       toast.error('Payment failed: ' + error.message);
       
-      // If we haven't already redirected, do it now
-      if (!window.location.pathname.includes('/payment/failed')) {
-        setTimeout(() => {
-          let redirectUrl = `/payment/failed`;
-          if (linkId) {
-            redirectUrl += `?link_id=${linkId}`;
-          }
-          console.log('Redirecting to failure page due to error:', redirectUrl);
-          window.location.href = redirectUrl;
-        }, 1000); // Small delay to allow the toast to be seen
-      }
+      // No automatic navigation on error - let the user retry or see the error
     } finally {
-      setIsSubmitting(false);
-      setProcessingPayment(false);
+      // Reset state flags if we're not navigating away
+      if (!navigatingRef.current) {
+        console.log('Resetting payment submission flags');
+        setIsSubmitting(false);
+        setProcessingPayment(false);
+        processingRef.current = false;
+      }
     }
   };
 
@@ -149,18 +168,25 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       return;
     }
     
+    // Triple protection against duplicate submissions
+    if (isSubmitting || processingPayment || processingRef.current || navigatingRef.current) {
+      console.log('Apple Pay submission blocked - already in progress');
+      return;
+    }
+    
     // Check if the payment link is still active before proceeding
     if (!isPaymentLinkActive(linkData)) {
       console.log('Payment link is no longer active, status:', linkData.status);
-      // Reload the page to show the updated status UI
-      window.location.reload();
+      toast.error('This payment link is no longer active');
       return;
     }
     
     setIsSubmitting(true);
     setProcessingPayment(true);
+    processingRef.current = true;
     
     try {
+      console.log('Creating payment intent for Apple Pay...');
       // Step 1: Create payment intent
       const intentResult = await createPaymentIntent({
         linkData,
@@ -178,14 +204,16 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         if (errorMessage.includes('plan is currently paused') || 
             errorMessage.includes('plan has been cancelled') ||
             errorMessage.includes('has been rescheduled')) {
-          console.log('Plan status issue detected, reloading page to show updated status');
-          window.location.reload();
+          
+          console.log('Plan status issue detected, showing toast instead of reloading');
+          toast.error(errorMessage);
           return;
         }
         
         throw new Error(intentResult.error || 'Failed to create payment intent');
       }
       
+      console.log('Processing Apple Pay payment...');
       // Step 2: Process the payment with Apple Pay
       const paymentResult = await processApplePayPayment({
         clientSecret: intentResult.clientSecret,
@@ -197,7 +225,8 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         throw new Error(paymentResult.error || 'Apple Pay processing failed');
       }
       
-      // Step 3: Create client-side record and update UI
+      console.log('Recording Apple Pay payment...');
+      // Step 3: Create client-side record
       await createPaymentRecord({
         paymentIntent: paymentResult.paymentIntent,
         linkData,
@@ -209,26 +238,29 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         associatedPaymentLinkId: intentResult.associatedPaymentLinkId
       });
       
-      // Removed success toast notification
+      // Safely navigate to success page with manual control
+      navigatingRef.current = true;
       
-      // Navigate to success page
-      window.location.href = `/payment/success?link_id=${linkId}&payment_id=${paymentResult.paymentIntent.id || 'unknown'}`;
+      toast.success('Apple Pay payment successful! Redirecting to confirmation page...');
+      
+      setTimeout(() => {
+        const successUrl = `/payment/success?link_id=${linkId || ''}&payment_id=${paymentResult.paymentIntent.id || 'unknown'}`;
+        console.log('Navigating to success page:', successUrl);
+        window.location.href = successUrl;
+      }, 1500);
+      
     } catch (error: any) {
       console.error('Apple Pay error:', error);
       toast.error('Apple Pay payment failed: ' + error.message);
       
-      if (!window.location.pathname.includes('/payment/failed')) {
-        setTimeout(() => {
-          let redirectUrl = `/payment/failed`;
-          if (linkId) {
-            redirectUrl += `?link_id=${linkId}`;
-          }
-          window.location.href = redirectUrl;
-        }, 1000);
-      }
+      // No automatic navigation on error
     } finally {
-      setIsSubmitting(false);
-      setProcessingPayment(false);
+      // Reset state flags if we're not navigating away
+      if (!navigatingRef.current) {
+        setIsSubmitting(false);
+        setProcessingPayment(false);
+        processingRef.current = false;
+      }
     }
   };
 

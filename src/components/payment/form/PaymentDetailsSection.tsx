@@ -55,7 +55,7 @@ const PaymentDetailsSection = ({
       />
       
       {onApplePaySuccess && amountInPounds > 0 && (
-        <div className="mt-4">
+        <div className="mt-4" data-testid="apple-pay-container">
           <ApplePayButton 
             onApplePaySuccess={onApplePaySuccess}
             isLoading={isLoading}

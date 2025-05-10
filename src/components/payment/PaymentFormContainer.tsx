@@ -91,10 +91,11 @@ const PaymentFormContainer = ({
         throw new Error("Invalid payment amount: " + safeAmount);
       }
       
+      // Important: We're not using window.location, but letting the handler do its job
       await handlePaymentSubmit(formData);
     } catch (error) {
       console.error("Payment form error:", error);
-      toast.error("Payment processing failed. Please try again later.");
+      toast.error("Payment processing failed. Please try again.");
       setErrorDetails(error instanceof Error ? error.message : String(error));
       setHasError(true);
     }
@@ -110,7 +111,6 @@ const PaymentFormContainer = ({
       
       toast.info("Processing Apple Pay payment...");
       
-      // Use the payment method to complete the payment
       await handleApplePaySubmit({
         name: paymentMethod.billing_details.name || defaultValues?.name || '',
         email: paymentMethod.billing_details.email || defaultValues?.email || '',

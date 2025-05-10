@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { CardElement } from '@stripe/react-stripe-js';
 import { FormControl, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
@@ -45,13 +45,17 @@ const StripeCardElement = ({ onChange, isLoading = false, label = "Card Details"
   return (
     <FormItem>
       <FormLabel>{label}</FormLabel>
-      <div className={`mt-1 p-3 border rounded-md ${isLoading ? 'opacity-50' : ''}`}>
+      <div 
+        className={`mt-1 p-3 border rounded-md ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+        aria-disabled={isLoading}
+      >
         <FormControl>
           <CardElement 
             options={cardElementOptions} 
             onChange={handleCardChange} 
             id="card-element"
-            // Removed disabled prop as it's not supported by Stripe's CardElement
+            // Note: Removed disabled prop as it's not supported by Stripe's CardElement
+            // Instead, we control the disabled state via the parent div's classes
           />
         </FormControl>
       </div>

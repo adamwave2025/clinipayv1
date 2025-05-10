@@ -15,6 +15,7 @@ const StripeProvider = ({ children }: StripeProviderProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const initAttempted = useRef(false);
+  const initTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchPublishableKey = async () => {
@@ -24,8 +25,19 @@ const StripeProvider = ({ children }: StripeProviderProps) => {
 
       try {
         console.log('Fetching Stripe publishable key...'); 
+        // Set a timeout to detect slow responses
+        initTimeoutRef.current = setTimeout(() => {
+          console.log('Stripe key fetch taking longer than expected...');
+        }, 5000);
+        
         // Fetch the publishable key from our edge function
         const { data, error: invokeError } = await supabase.functions.invoke('get-stripe-public-key');
+        
+        // Clear timeout
+        if (initTimeoutRef.current) {
+          clearTimeout(initTimeoutRef.current);
+          initTimeoutRef.current = null;
+        }
         
         if (invokeError) {
           console.error('Error invoking function:', invokeError);
@@ -59,13 +71,19 @@ const StripeProvider = ({ children }: StripeProviderProps) => {
           console.log('Stripe initialization started');
           
           // Wait for the promise to resolve to catch any initialization errors
-          const stripeInstance = await promise;
-          if (!stripeInstance) {
-            throw new Error('Failed to initialize Stripe');
-          }
-          
-          console.log('Stripe initialization completed successfully');
-          setStripePromise(promise);
+          promise.then(stripeInstance => {
+            if (!stripeInstance) {
+              throw new Error('Failed to initialize Stripe');
+            }
+            console.log('Stripe initialized successfully:', !!stripeInstance);
+            setStripePromise(promise);
+            setLoading(false);
+          }).catch(stripeError => {
+            console.error('Error resolving Stripe promise:', stripeError);
+            setError(`Stripe initialization error: ${stripeError.message || 'Unknown error'}`);
+            toast.error('Failed to initialize Stripe library');
+            setLoading(false);
+          });
         } catch (stripeError: any) {
           console.error('Error initializing Stripe:', stripeError);
           setError(`Stripe initialization error: ${stripeError.message || 'Unknown error'}`);
@@ -77,12 +95,17 @@ const StripeProvider = ({ children }: StripeProviderProps) => {
         setError(`Unexpected error: ${error.message || 'Unknown error'}`);
         toast.error('Failed to initialize payment system');
         setLoading(false);
-      } finally {
-        setLoading(false);
       }
     };
     
     fetchPublishableKey();
+    
+    // Clean up timeout on unmount
+    return () => {
+      if (initTimeoutRef.current) {
+        clearTimeout(initTimeoutRef.current);
+      }
+    };
   }, []);
   
   if (loading) {
@@ -111,6 +134,12 @@ const StripeProvider = ({ children }: StripeProviderProps) => {
         cssSrc: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap',
       },
     ],
+    // Set locale to improve default UX
+    locale: 'en',
+    // Explicitly set appearance mode to ensure consistent styling
+    appearance: {
+      theme: 'stripe',
+    },
   };
 
   return (

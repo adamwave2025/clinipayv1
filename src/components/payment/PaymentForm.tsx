@@ -111,27 +111,31 @@ const PaymentForm = ({
     }
   };
 
+  // New function to strictly prevent any default form submission
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Form submit event captured and prevented');
+    
+    // Only process if not already submitting
+    if (!formSubmitted && !isLoading && !submissionInProgressRef.current) {
+      form.handleSubmit(handleSubmitForm)(e);
+    } else {
+      console.log('Form submission blocked - already in progress', {
+        formSubmitted,
+        isLoading,
+        submissionInProgressRef: submissionInProgressRef.current
+      });
+    }
+  };
+
   return (
     <Form {...form}>
       <form 
-        onSubmit={(e) => {
-          e.preventDefault(); // Prevent default form submission
-          e.stopPropagation(); // Stop propagation of the event
-          console.log('Form onSubmit event triggered');
-          
-          // Additional layer of protection against duplicate submissions
-          if (!formSubmitted && !isLoading && !submissionInProgressRef.current) {
-            form.handleSubmit(handleSubmitForm)(e);
-          } else {
-            console.log('Form submission prevented - already submitted or loading', {
-              formSubmitted,
-              isLoading,
-              submissionInProgressRef: submissionInProgressRef.current
-            });
-          }
-        }} 
+        onSubmit={handleFormSubmit}
         className="space-y-6"
-        data-testid="payment-form" // Add test ID for debugging
+        data-testid="payment-form"
+        noValidate // Add noValidate to prevent browser validation
       >
         <PersonalInfoSection 
           control={form.control} 
@@ -146,7 +150,11 @@ const PaymentForm = ({
           onCardElementChange={handleCardElementChange}
         />
         
-        <SubmitButton isLoading={isLoading} />
+        <SubmitButton 
+          isLoading={isLoading} 
+          defaultText="Pay Now"
+          loadingText="Processing payment..."
+        />
         
         {/* Security text below the submit button */}
         <div className="text-center text-sm text-gray-500 flex items-center justify-center mt-4">
