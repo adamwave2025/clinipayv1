@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -154,7 +153,7 @@ export class PlanOperationsService {
         const { error: requestUpdateError } = await supabase
           .from('payment_requests')
           .update({ 
-            status: 'paused',
+            status: 'cancelled',
           })
           .in('id', paymentRequestIds)
           .is('payment_id', null); // Only update requests that don't have a payment (not paid)

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,6 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PausePlanDialogProps {
   showDialog: boolean;
@@ -19,6 +20,7 @@ interface PausePlanDialogProps {
   planName: string;
   patientName: string;
   isProcessing?: boolean;
+  hasSentPayments?: boolean;
 }
 
 const PausePlanDialog = ({
@@ -28,6 +30,7 @@ const PausePlanDialog = ({
   planName,
   patientName,
   isProcessing = false,
+  hasSentPayments = false,
 }: PausePlanDialogProps) => {
   const handleConfirm = () => {
     onConfirm();
@@ -45,6 +48,16 @@ const PausePlanDialog = ({
           <p className="text-sm text-muted-foreground mt-2">
             This will pause all upcoming payments. You can resume the plan later.
           </p>
+          
+          {hasSentPayments && (
+            <Alert className="mt-4 bg-amber-50 border-amber-200">
+              <AlertCircle className="h-4 w-4 text-amber-500" />
+              <AlertDescription className="text-xs text-amber-700">
+                This plan has payment requests that have been sent to the patient.
+                Pausing will cancel those requests.
+              </AlertDescription>
+            </Alert>
+          )}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>

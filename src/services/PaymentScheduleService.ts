@@ -213,6 +213,47 @@ export const cancelPaymentPlan = async (planId: string) => {
  */
 export const pausePaymentPlan = async (planId: string) => {
   try {
+    // Get the current plan to ensure it exists
+    const { data: planData, error: planFetchError } = await supabase
+      .from('plans')
+      .select('*')
+      .eq('id', planId)
+      .single();
+      
+    if (planFetchError) throw planFetchError;
+    
+    // Find payment requests that need to be cancelled
+    const { data: scheduleData, error: scheduleError } = await supabase
+      .from('payment_schedule')
+      .select('id, payment_request_id')
+      .eq('plan_id', planId)
+      .in('status', ['pending', 'sent', 'overdue'])
+      .not('payment_request_id', 'is', null);
+      
+    if (scheduleError) throw scheduleError;
+    
+    // Extract payment request IDs
+    const paymentRequestIds = scheduleData
+      ?.filter(item => item.payment_request_id)
+      .map(item => item.payment_request_id) || [];
+      
+    // Cancel payment requests first
+    if (paymentRequestIds.length > 0) {
+      const { error: requestCancelError } = await supabase
+        .from('payment_requests')
+        .update({
+          status: 'cancelled',
+          updated_at: new Date().toISOString()
+        })
+        .in('id', paymentRequestIds)
+        .is('payment_id', null); // Only cancel requests that haven't been paid
+        
+      if (requestCancelError) {
+        console.error('Error cancelling payment requests:', requestCancelError);
+        // Continue with the operation even if this fails
+      }
+    }
+    
     // Update the plan status
     const { error: updatePlanError } = await supabase
       .from('plans')
@@ -222,19 +263,27 @@ export const pausePaymentPlan = async (planId: string) => {
       })
       .eq('id', planId);
     
-    if (updatePlanError) {
-      throw updatePlanError;
-    }
+    if (updatePlanError) throw updatePlanError;
     
-    // We don't change the payment_schedule statuses when pausing,
-    // just mark the plan as paused to prevent sending new payments
+    // Update all pending/upcoming payments to paused
+    const { error: updateScheduleError } = await supabase
+      .from('payment_schedule')
+      .update({
+        status: 'paused',
+        updated_at: new Date().toISOString()
+      })
+      .eq('plan_id', planId)
+      .in('status', ['pending', 'sent', 'overdue']);
+      
+    if (updateScheduleError) throw updateScheduleError;
     
     // Record the activity
     await recordPaymentPlanActivity({
       planId,
       actionType: 'plan_paused',
       details: {
-        paused_at: new Date().toISOString()
+        paused_at: new Date().toISOString(),
+        payment_requests_cancelled: paymentRequestIds.length
       }
     });
     
