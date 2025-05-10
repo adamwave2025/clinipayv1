@@ -72,6 +72,7 @@ export interface ManagePlansContextType {
   handleResumePlan: (resumeDate: Date) => Promise<void>;
   handleOpenResumeDialog: () => void;
   hasSentPayments: boolean;
+  resumeError?: string | null;
   
   // Reschedule plan properties
   showRescheduleDialog: boolean;

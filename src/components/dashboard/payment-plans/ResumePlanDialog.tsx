@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Loader2, AlertCircle, Info } from "lucide-react";
+import { CalendarIcon, Loader2, AlertCircle, Info, XCircle } from "lucide-react";
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
@@ -33,6 +33,7 @@ interface ResumePlanDialogProps {
   hasSentPayments?: boolean;
   hasOverduePayments?: boolean;
   hasPaidPayments?: boolean;
+  resumeError?: string | null;
 }
 
 const ResumePlanDialog = ({
@@ -45,6 +46,7 @@ const ResumePlanDialog = ({
   hasSentPayments = false,
   hasOverduePayments = false,
   hasPaidPayments = false,
+  resumeError = null,
 }: ResumePlanDialogProps) => {
   // Initialize with current date but set hours to midnight
   const today = new Date();
@@ -56,7 +58,7 @@ const ResumePlanDialog = ({
     // Ensure the date is normalized to midnight to avoid timezone issues
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
-    console.log('Confirming with date:', normalizedDate.toISOString());
+    console.log('Confirming resume with normalized date:', normalizedDate.toISOString());
     setDateSelectionConfirmed(true);
     onConfirm(normalizedDate);
   };
@@ -68,9 +70,14 @@ const ResumePlanDialog = ({
     return date < today;
   };
   
-  // If the dialog is closed, reset the date confirmation state
-  React.useEffect(() => {
-    if (!showDialog) {
+  // Reset state when dialog opens/closes
+  useEffect(() => {
+    if (showDialog) {
+      // Set today's date when dialog opens
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      setDate(today);
+    } else {
       setDateSelectionConfirmed(false);
     }
   }, [showDialog]);
@@ -85,6 +92,15 @@ const ResumePlanDialog = ({
             <span className="font-semibold">{patientName}</span>.
           </DialogDescription>
         </DialogHeader>
+        
+        {resumeError && (
+          <Alert variant="destructive" className="bg-red-50 border-red-400 text-red-800">
+            <XCircle className="h-4 w-4" />
+            <AlertDescription>
+              Error: {resumeError}
+            </AlertDescription>
+          </Alert>
+        )}
         
         {hasSentPayments && (
           <Alert variant="default" className="bg-amber-50 border-amber-300 text-amber-800">
@@ -127,7 +143,7 @@ const ResumePlanDialog = ({
                     "w-full justify-start text-left font-normal",
                     !date && "text-muted-foreground"
                   )}
-                  disabled={isProcessing}
+                  disabled={isProcessing || dateSelectionConfirmed}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? format(date, "PPP") : <span>Pick a date</span>}
@@ -159,7 +175,11 @@ const ResumePlanDialog = ({
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowDialog(false)} disabled={isProcessing || dateSelectionConfirmed}>
+          <Button 
+            variant="outline" 
+            onClick={() => setShowDialog(false)} 
+            disabled={isProcessing || dateSelectionConfirmed}
+          >
             Cancel
           </Button>
           <Button 

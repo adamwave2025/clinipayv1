@@ -191,6 +191,9 @@ export const useManagePlans = (): ManagePlansContextType => {
     // Explicitly add hasOverduePayments from rescheduleActions
     hasOverduePayments: rescheduleActions.hasOverduePayments,
     
+    // Add resumeError from resumeActions
+    resumeError: resumeActions.resumeError,
+    
     // Plan state helpers
     isPlanPaused,
     isProcessing: isProcessing || isProcessingInstallment

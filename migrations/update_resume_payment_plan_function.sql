@@ -35,18 +35,19 @@ BEGIN
     ELSE payment_interval := '1 month'::INTERVAL; -- Default to monthly if unknown
   END CASE;
   
-  -- Get all PAUSED payments - the critical change is here
+  -- Get all PENDING payments - the critical change is here
+  -- Note: Paused payments should have been changed to pending before this function is called
   SELECT ARRAY_AGG(id ORDER BY due_date), ARRAY_AGG(due_date ORDER BY due_date)
   INTO payment_ids, payment_dates
   FROM payment_schedule
-  WHERE payment_schedule.plan_id = plan_id AND status = 'paused'
+  WHERE payment_schedule.plan_id = plan_id AND status = 'pending'
   ORDER BY due_date;
   
-  -- If there are no paused payments, nothing to reschedule
+  -- If there are no pending payments, nothing to reschedule
   IF payment_ids IS NULL OR ARRAY_LENGTH(payment_ids, 1) IS NULL THEN
     RETURN jsonb_build_object(
-      'message', 'No paused payments to reschedule',
-      'warning', 'Check that plan has paused payments to resume'
+      'message', 'No pending payments to reschedule',
+      'warning', 'Check that plan has pending payments to resume'
     );
   END IF;
   
@@ -69,11 +70,6 @@ BEGIN
     SET due_date = resume_date + ((i-1) * payment_interval)
     WHERE id = payment_ids[i];
   END LOOP;
-  
-  -- After rescheduling, now set all payments to pending status
-  UPDATE payment_schedule
-  SET status = 'pending'
-  WHERE id = ANY(payment_ids);
   
   -- Update the plan's next_due_date
   UPDATE plans

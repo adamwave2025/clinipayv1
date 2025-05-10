@@ -1,117 +1,93 @@
 
 import React from 'react';
-import PlanDetailsDialog from '@/components/dashboard/payment-plans/PlanDetailsDialog';
-import InstallmentPaymentDialog from '@/components/dashboard/payment-plans/InstallmentPaymentDialog';
-import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
-import PlanActionDialogs from '@/components/dashboard/payment-plans/PlanActionDialogs';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
+import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
+import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
+import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDialog';
+import ReschedulePlanDialog from '@/components/dashboard/payment-plans/ReschedulePlanDialog';
+import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 
-const ManagePlansDialogs: React.FC = () => {
+export const ManagePlansDialogs = () => {
   const {
-    // Plan details dialog
-    showPlanDetails,
-    setShowPlanDetails,
     selectedPlan,
-    installments,
-    activities,
-    isLoadingActivities,
-    handleSendReminder,
-    handleViewPaymentDetails,
-    handleOpenCancelDialog,
-    handleOpenPauseDialog,
-    handleOpenResumeDialog,
-    handleOpenRescheduleDialog,
-    isPlanPaused,
-    
-    // Payment details dialog
-    showPaymentDetails,
-    setShowPaymentDetails,
-    paymentData,
-    handleBackToPlans,
-    openRefundDialog,
-    
-    // Refund dialog
-    refundDialogOpen,
-    setRefundDialogOpen,
-    processRefund,
-    
-    // Cancel, pause, resume, reschedule plan dialog states
     showCancelDialog,
     setShowCancelDialog,
+    handleCancelPlan,
     showPauseDialog,
     setShowPauseDialog,
+    handlePausePlan,
     showResumeDialog,
     setShowResumeDialog,
+    handleResumePlan,
+    hasSentPayments,
+    hasOverduePayments,
+    hasPaidPayments,
     showRescheduleDialog,
     setShowRescheduleDialog,
-    
-    // Plan operation handlers
-    handleCancelPlan,
-    handlePausePlan,
-    handleResumePlan,
     handleReschedulePlan,
-    
     isProcessing,
-    hasSentPayments,
-    hasOverduePayments
+    refundDialogOpen,
+    setRefundDialogOpen,
+    paymentToRefund,
+    processRefund,
+    resumeError
   } = useManagePlansContext();
+
+  if (!selectedPlan) {
+    return null;
+  }
 
   return (
     <>
-      {/* Plan Details Dialog */}
-      <PlanDetailsDialog 
-        showPlanDetails={showPlanDetails}
-        setShowPlanDetails={setShowPlanDetails}
-        selectedPlan={selectedPlan}
-        installments={installments}
-        activities={activities}
-        isLoadingActivities={isLoadingActivities}
-        onSendReminder={handleSendReminder}
-        onViewPaymentDetails={handleViewPaymentDetails}
-        onCancelPlan={handleOpenCancelDialog}
-        onPausePlan={handleOpenPauseDialog}
-        onResumePlan={handleOpenResumeDialog}
-        onReschedulePlan={handleOpenRescheduleDialog}
-        isPlanPaused={isPlanPaused}
+      <CancelPlanDialog
+        showDialog={showCancelDialog}
+        setShowDialog={setShowCancelDialog}
+        onConfirm={handleCancelPlan}
+        planName={selectedPlan.title || selectedPlan.planName || ''}
+        patientName={selectedPlan.patientName}
+        isLoading={isProcessing}
       />
-
-      {/* Payment Details Dialog */}
-      <InstallmentPaymentDialog
-        showDialog={showPaymentDetails}
-        setShowDialog={setShowPaymentDetails}
-        paymentData={paymentData}
-        onBack={handleBackToPlans}
-        onRefund={openRefundDialog}
+      
+      <PausePlanDialog
+        showDialog={showPauseDialog}
+        setShowDialog={setShowPauseDialog}
+        onConfirm={handlePausePlan}
+        planName={selectedPlan.title || selectedPlan.planName || ''}
+        patientName={selectedPlan.patientName}
+        isLoading={isProcessing}
       />
-
-      {/* Payment Refund Dialog */}
-      <PaymentRefundDialog
-        open={refundDialogOpen}
-        onOpenChange={setRefundDialogOpen}
-        onConfirm={processRefund}
-        paymentAmount={paymentData?.amount || 0}
-        patientName={paymentData?.patientName || ''}
-      />
-
-      {/* Use the shared PlanActionDialogs component */}
-      <PlanActionDialogs
-        showCancelDialog={showCancelDialog}
-        setShowCancelDialog={setShowCancelDialog}
-        showPauseDialog={showPauseDialog}
-        setShowPauseDialog={setShowPauseDialog}
-        showResumeDialog={showResumeDialog}
-        setShowResumeDialog={setShowResumeDialog}
-        showRescheduleDialog={showRescheduleDialog}
-        setShowRescheduleDialog={setShowRescheduleDialog}
-        selectedPlan={selectedPlan}
-        handleCancelPlan={handleCancelPlan}
-        handlePausePlan={handlePausePlan}
-        handleResumePlan={handleResumePlan}
-        handleReschedulePlan={handleReschedulePlan}
+      
+      <ResumePlanDialog
+        showDialog={showResumeDialog}
+        setShowDialog={setShowResumeDialog}
+        onConfirm={handleResumePlan}
+        planName={selectedPlan.title || selectedPlan.planName || ''}
+        patientName={selectedPlan.patientName}
         isProcessing={isProcessing}
         hasSentPayments={hasSentPayments}
         hasOverduePayments={hasOverduePayments}
+        hasPaidPayments={hasPaidPayments}
+        resumeError={resumeError}
       />
+      
+      <ReschedulePlanDialog
+        showDialog={showRescheduleDialog}
+        setShowDialog={setShowRescheduleDialog}
+        onConfirm={handleReschedulePlan}
+        planName={selectedPlan.title || selectedPlan.planName || ''}
+        patientName={selectedPlan.patientName}
+        startDate={selectedPlan.startDate}
+        isLoading={isProcessing}
+      />
+      
+      {paymentToRefund && (
+        <PaymentRefundDialog
+          open={refundDialogOpen}
+          onOpenChange={setRefundDialogOpen}
+          paymentId={paymentToRefund}
+          onRefund={processRefund}
+        />
+      )}
     </>
   );
 };
