@@ -16,6 +16,12 @@ export interface PaymentLinkData {
   totalPaid?: number;
   totalOutstanding?: number;
   payment_link_id?: string;
+  isActive?: boolean; // Add the isActive property from is_active in DB
+  isRescheduled?: boolean;
+  customAmount?: number;
+  hasOverduePayments?: boolean;
+  type?: string;
+  description?: string;
 }
 
 export interface ClinicDetails {
