@@ -186,7 +186,7 @@ export const cancelPaymentPlan = async (planId: string) => {
         updated_at: new Date().toISOString()
       })
       .eq('plan_id', planId)
-      .in('status', ['pending', 'scheduled']);
+      .in('status', ['pending', 'scheduled', 'sent', 'overdue']);
       
     if (updateScheduleError) {
       throw updateScheduleError;
@@ -254,17 +254,6 @@ export const pausePaymentPlan = async (planId: string) => {
       }
     }
     
-    // Update the plan status
-    const { error: updatePlanError } = await supabase
-      .from('plans')
-      .update({
-        status: 'paused',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', planId);
-    
-    if (updatePlanError) throw updatePlanError;
-    
     // Update all pending/upcoming payments to paused
     const { error: updateScheduleError } = await supabase
       .from('payment_schedule')
@@ -287,6 +276,9 @@ export const pausePaymentPlan = async (planId: string) => {
       }
     });
     
+    // The plan status will be updated by the cron job based on payment_schedule rows
+    // No need to manually set the plan status here, let the cron job handle it
+    
     return { success: true };
   } catch (error) {
     console.error('Error pausing payment plan:', error);
@@ -299,12 +291,12 @@ export const pausePaymentPlan = async (planId: string) => {
  */
 export const resumePaymentPlan = async (planId: string, resumeDate: Date) => {
   try {
-    // Get all pending payment_schedule entries for this plan
+    // Get all paused payment_schedule entries for this plan
     const { data: scheduleData, error: scheduleError } = await supabase
       .from('payment_schedule')
       .select('*')
       .eq('plan_id', planId)
-      .in('status', ['pending', 'scheduled'])
+      .eq('status', 'paused')
       .order('payment_number', { ascending: true });
       
     if (scheduleError) {
@@ -312,38 +304,55 @@ export const resumePaymentPlan = async (planId: string, resumeDate: Date) => {
     }
     
     if (!scheduleData || scheduleData.length === 0) {
-      throw new Error('No pending payments found for this plan');
+      throw new Error('No paused payments found for this plan');
     }
     
     // Find the next payment due date
     const firstPendingPayment = scheduleData[0];
     const formattedResumeDate = format(resumeDate, 'yyyy-MM-dd');
     
-    // Update the plan status
-    const { error: updatePlanError } = await supabase
-      .from('plans')
-      .update({
-        status: 'active',
-        next_due_date: formattedResumeDate,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', planId);
-    
-    if (updatePlanError) {
-      throw updatePlanError;
-    }
-    
-    // Update the next payment due date
-    const { error: updateScheduleError } = await supabase
-      .from('payment_schedule')
-      .update({
-        due_date: formattedResumeDate,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', firstPendingPayment.id);
+    // Update the paused payments to pending status with new due dates
+    for (let i = 0; i < scheduleData.length; i++) {
+      const payment = scheduleData[i];
+      let newDueDate;
       
-    if (updateScheduleError) {
-      throw updateScheduleError;
+      // Calculate the new due date for each payment
+      if (i === 0) {
+        // First payment starts on the resume date
+        newDueDate = formattedResumeDate;
+      } else {
+        // Calculate subsequent payments based on frequency
+        const previousPayment = scheduleData[i - 1];
+        const previousDate = new Date(previousPayment.due_date);
+        
+        if (payment.payment_frequency === 'weekly') {
+          previousDate.setDate(previousDate.getDate() + 7);
+        } else if (payment.payment_frequency === 'bi-weekly') {
+          previousDate.setDate(previousDate.getDate() + 14);
+        } else if (payment.payment_frequency === 'monthly') {
+          previousDate.setMonth(previousDate.getMonth() + 1);
+        } else {
+          // Default to monthly if frequency is unknown
+          previousDate.setMonth(previousDate.getMonth() + 1);
+        }
+        
+        newDueDate = format(previousDate, 'yyyy-MM-dd');
+      }
+      
+      // Update the payment schedule entry
+      const { error: updateError } = await supabase
+        .from('payment_schedule')
+        .update({
+          status: 'pending',
+          due_date: newDueDate,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', payment.id);
+        
+      if (updateError) {
+        console.error(`Failed to update payment schedule ${payment.id}:`, updateError);
+        // Continue with other updates even if one fails
+      }
     }
     
     // Record the activity
@@ -355,6 +364,9 @@ export const resumePaymentPlan = async (planId: string, resumeDate: Date) => {
         next_payment_date: formattedResumeDate
       }
     });
+    
+    // The plan status will be updated by the cron job based on payment_schedule rows
+    // No need to manually set the plan status, let the cron job handle it
     
     return { success: true };
   } catch (error) {
@@ -384,7 +396,7 @@ export const reschedulePaymentPlan = async (planId: string, newStartDate: Date) 
       .from('payment_schedule')
       .select('*')
       .eq('plan_id', planId)
-      .in('status', ['pending', 'scheduled'])
+      .in('status', ['pending', 'scheduled', 'overdue'])
       .order('payment_number', { ascending: true });
       
     if (scheduleError) {
@@ -410,6 +422,8 @@ export const reschedulePaymentPlan = async (planId: string, newStartDate: Date) 
         .from('payment_schedule')
         .update({
           due_date: newDates[index],
+          // If we're rescheduling an overdue payment to a future date, reset it to pending
+          status: payment.status === 'overdue' && new Date(newDates[index]) > new Date() ? 'pending' : payment.status,
           updated_at: new Date().toISOString()
         })
         .eq('id', payment.id);
@@ -417,19 +431,6 @@ export const reschedulePaymentPlan = async (planId: string, newStartDate: Date) 
     
     // Run all updates in parallel
     await Promise.all(updates.map(query => query));
-    
-    // Update the plan's next due date
-    const { error: updatePlanError } = await supabase
-      .from('plans')
-      .update({
-        next_due_date: newDates[0],
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', planId);
-    
-    if (updatePlanError) {
-      throw updatePlanError;
-    }
     
     // Record the activity
     await recordPaymentPlanActivity({
@@ -442,6 +443,9 @@ export const reschedulePaymentPlan = async (planId: string, newStartDate: Date) 
         affected_payments: scheduleData.length
       }
     });
+    
+    // The plan status will be updated by the cron job based on payment_schedule rows
+    // No need to manually set the plan status here, let the cron job handle it
     
     return { success: true };
   } catch (error) {
@@ -505,6 +509,21 @@ export const recordPaymentRefund = async (paymentId: string, amount: number, isF
       
     if (updatePaymentError) {
       throw updatePaymentError;
+    }
+    
+    // If this payment was part of a payment plan, update the payment_schedule status
+    if (scheduleData?.plan_id && requestsData?.id) {
+      const { error: updateScheduleError } = await supabase
+        .from('payment_schedule')
+        .update({
+          status: isFullRefund ? 'refunded' : 'partially_refunded',
+          updated_at: new Date().toISOString()
+        })
+        .eq('payment_request_id', requestsData.id);
+        
+      if (updateScheduleError) {
+        console.warn('Could not update payment schedule status:', updateScheduleError);
+      }
     }
     
     // If this is part of a payment plan, record the activity

@@ -11,125 +11,96 @@ const corsHeaders = {
 };
 
 /**
- * Check if a payment schedule entry has been paid
- * This is a safeguard to ensure we never change paid statuses
- */
-function isSchedulePaid(schedule: any): boolean {
-  return (
-    schedule.payment_request_id !== null && 
-    schedule.payment_requests !== null &&
-    schedule.payment_requests.payment_id !== null
-  );
-}
-
-/**
- * Get allowed status transitions for a given status
- */
-function getAllowedStatusTransitions(currentStatus: string): string[] {
-  const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
-    'pending': ['overdue', 'paused', 'cancelled'],
-    'sent': ['overdue', 'paid', 'paused', 'cancelled'],  // Added 'overdue' as valid transition from 'sent'
-    'paid': ['refunded', 'partially_refunded'],
-    'overdue': ['paid', 'paused', 'cancelled'],
-    'paused': ['pending', 'cancelled'],
-    'cancelled': [],
-    'refunded': [],
-    'partially_refunded': ['refunded']
-  };
-  
-  return ALLOWED_STATUS_TRANSITIONS[currentStatus] || [];
-}
-
-/**
- * Check if a status transition is valid
- */
-function isStatusTransitionValid(currentStatus: string, newStatus: string): boolean {
-  if (currentStatus === newStatus) return true;
-  return getAllowedStatusTransitions(currentStatus).includes(newStatus);
-}
-
-/**
  * Determine appropriate plan status based on payment history
- * This function follows the status priority rules:
- * 1. cancelled (highest priority)
- * 2. paused
- * 3. completed
- * 4. overdue
- * 5. active
- * 6. pending (lowest priority)
+ * This function implements the status priority rules:
+ * 1. COMPLETED: All payments are 'paid' or 'refunded'
+ * 2. OVERDUE: Any payment is past due and not paid/cancelled/paused
+ * 3. ACTIVE: At least one payment is paid, some pending, no overdue
+ * 4. PENDING: No payments made yet (all unpaid), not paused
+ * 5. PAUSED: All unpaid payments are in 'paused' status
+ * 6. CANCELLED: All payments are 'cancelled' (should be set manually though)
  */
 async function determinePlanStatus(supabase: any, planId: string): Promise<string> {
   try {
-    // Step 1: Get the plan record to check for manual override statuses
-    const { data: plan, error: planError } = await supabase
-      .from('plans')
-      .select('status, total_installments')
-      .eq('id', planId)
-      .single();
-      
-    if (planError) throw planError;
-    
-    // Priority 1: Check for manually set override statuses first (highest priority)
-    if (plan.status === 'cancelled') {
-      console.log(`Plan ${planId} status determined as: cancelled (manual override)`);
-      return 'cancelled';
-    }
-    
-    if (plan.status === 'paused') {
-      console.log(`Plan ${planId} status determined as: paused (manual override)`);
-      return 'paused';
-    }
-    
-    // Step 2: Check if the plan is completed
-    const { count: paidCount, error: paidError } = await supabase
-      .from('payment_schedule')
-      .select('id', { count: 'exact', head: true })
-      .eq('plan_id', planId)
-      .eq('status', 'paid');
-      
-    if (paidError) throw paidError;
-    
-    if (paidCount && paidCount >= plan.total_installments) {
-      console.log(`Plan ${planId} status determined as: completed (all payments made)`);
-      return 'completed';
-    }
-    
-    // Step 3: Check for overdue payments
+    // Get current date in YYYY-MM-DD format for overdue check
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     
-    const { data: overduePayments, error: overdueError } = await supabase
+    // Step 1: Get all schedule entries for this plan
+    const { data: scheduleData, error: scheduleError } = await supabase
       .from('payment_schedule')
-      .select('id')
-      .eq('plan_id', planId)
-      .not('status', 'in', ['paid', 'cancelled', 'paused'])
-      .lt('due_date', todayStr)
-      .limit(1);
+      .select('id, status, due_date')
+      .eq('plan_id', planId);
       
-    if (overdueError) throw overdueError;
+    if (scheduleError) throw scheduleError;
+    if (!scheduleData || scheduleData.length === 0) return 'pending';
     
-    if (overduePayments && overduePayments.length > 0) {
-      console.log(`Plan ${planId} status determined as: overdue (has overdue payments)`);
+    // Count payments in each status
+    const statusCounts: Record<string, number> = {
+      paid: 0,
+      pending: 0,
+      sent: 0,
+      paused: 0,
+      cancelled: 0,
+      refunded: 0,
+      partially_refunded: 0,
+      overdue: 0
+    };
+    
+    // Track if we have overdue payments that aren't yet marked as 'overdue'
+    let hasActualOverduePayments = false;
+    
+    scheduleData.forEach((payment: any) => {
+      // Count by status
+      if (payment.status in statusCounts) {
+        statusCounts[payment.status]++;
+      }
+      
+      // Check for payments that are past due but not marked as overdue yet
+      if (['pending', 'sent'].includes(payment.status) && payment.due_date < todayStr) {
+        hasActualOverduePayments = true;
+      }
+    });
+    
+    const totalPayments = scheduleData.length;
+    const paidOrRefundedPayments = statusCounts.paid + statusCounts.refunded + statusCounts.partially_refunded;
+    const pausedOrCancelledPayments = statusCounts.paused + statusCounts.cancelled;
+    const unpaidPayments = totalPayments - paidOrRefundedPayments;
+    
+    // Logic for determining status:
+    
+    // COMPLETED: All payments are paid or refunded
+    if (paidOrRefundedPayments === totalPayments && totalPayments > 0) {
+      console.log(`Plan ${planId} status: COMPLETED (all payments made)`);
+      return 'completed';
+    }
+    
+    // CANCELLED: Check if this is a manually cancelled plan (all payments cancelled)
+    if (statusCounts.cancelled === totalPayments && totalPayments > 0) {
+      console.log(`Plan ${planId} status: CANCELLED (manually set)`);
+      return 'cancelled';
+    }
+    
+    // PAUSED: All remaining (unpaid) payments are paused
+    if (statusCounts.paused > 0 && statusCounts.paused === unpaidPayments) {
+      console.log(`Plan ${planId} status: PAUSED (all remaining payments paused)`);
+      return 'paused';
+    }
+    
+    // OVERDUE: Any payment is overdue or should be marked overdue
+    if (statusCounts.overdue > 0 || hasActualOverduePayments) {
+      console.log(`Plan ${planId} status: OVERDUE (has overdue payments)`);
       return 'overdue';
     }
     
-    // Step 4: Check for any paid payments
-    const { data: anyPaidPayments, error: anyPaidError } = await supabase
-      .from('payment_schedule')
-      .select('id')
-      .eq('plan_id', planId)
-      .eq('status', 'paid')
-      .limit(1);
-      
-    if (anyPaidError) throw anyPaidError;
-    
-    if (anyPaidPayments && anyPaidPayments.length > 0) {
-      console.log(`Plan ${planId} status determined as: active (has at least one payment)`);
+    // ACTIVE: At least one payment made, but not all
+    if (paidOrRefundedPayments > 0) {
+      console.log(`Plan ${planId} status: ACTIVE (some payments made)`);
       return 'active';
     }
     
-    // Default to pending
-    console.log(`Plan ${planId} status determined as: pending (no payments made yet)`);
+    // PENDING: Default state, no payments made yet
+    console.log(`Plan ${planId} status: PENDING (no payments made yet)`);
     return 'pending';
   } catch (error) {
     console.error('Error determining plan status:', error);
@@ -149,151 +120,82 @@ serve(async (req) => {
     // Initialize Supabase client with service role key (needed for RLS bypass)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Get current date in YYYY-MM-DD format (adjusted for UTC)
+    // Get current date in YYYY-MM-DD format
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
     
     console.log(`📅 Checking for overdue payments before: ${todayStr}`);
     
-    // 1. First get all active or pending plans
+    // 1. First get all plans that are not already cancelled or completed
     const { data: activePlans, error: plansError } = await supabase
       .from('plans')
       .select('id, title, status, has_overdue_payments')
-      .not('status', 'in', ['cancelled', 'paused', 'completed'])
-      .order('created_at', { ascending: false });
+      .not('status', 'in', '(cancelled,completed)');
     
     if (plansError) {
       throw new Error(`Error fetching active plans: ${plansError.message}`);
     }
     
-    console.log(`📋 Found ${activePlans.length} active/pending/overdue plans to check`);
+    console.log(`📋 Found ${activePlans?.length || 0} active/pending/overdue/paused plans to check`);
     
     // Track results for reporting
     const updatedPlans = [];
     const updatedSchedules = [];
     const errors = [];
     
-    // 2. For each plan, check if any payments are overdue
-    for (const plan of activePlans) {
+    // 2. For each plan, update status and check overdue payments
+    for (const plan of activePlans || []) {
       try {
         console.log(`🔍 Checking plan ${plan.id} (${plan.title || 'Untitled Plan'})`);
         
-        // Get all payment schedules for this plan
-        const { data: schedules, error: scheduleError } = await supabase
+        // First, update any overdue payments
+        const { data: overdueUpdates, error: overdueError } = await supabase
           .from('payment_schedule')
-          .select(`
-            id, 
-            payment_number, 
-            due_date, 
-            status,
-            payment_request_id,
-            payment_requests (
-              payment_id,
-              status
-            )
-          `)
+          .update({ 
+            status: 'overdue',
+            updated_at: new Date().toISOString()
+          })
           .eq('plan_id', plan.id)
-          .not('status', 'in', ['cancelled', 'paused', 'paid']);
-        
-        if (scheduleError) {
-          throw new Error(`Error fetching schedules for plan ${plan.id}: ${scheduleError.message}`);
+          .in('status', ['pending', 'sent'])
+          .lt('due_date', todayStr)
+          .select('id');
+          
+        if (overdueError) {
+          console.error(`Error updating overdue payments for plan ${plan.id}:`, overdueError);
+        } else if (overdueUpdates && overdueUpdates.length > 0) {
+          console.log(`Updated ${overdueUpdates.length} payments to overdue status for plan ${plan.id}`);
+          updatedSchedules.push(...overdueUpdates.map(s => s.id));
         }
         
-        // Check if any payment is overdue
-        const overduePayments = schedules.filter(schedule => {
-          // Check if the schedule is not paid and due date has passed
-          // IMPORTANT: Never mark a paid payment as overdue
-          const isPaid = isSchedulePaid(schedule);
-          
-          // Compare dates without the time component
-          // Convert both dates to YYYY-MM-DD format and then compare them
-          const dueDateStr = new Date(schedule.due_date).toISOString().split('T')[0];
-          
-          // A payment is overdue if:
-          // 1. It's not paid
-          // 2. The due date is strictly before today (not including today)
-          // 3. It's not already overdue
-          const isOverdue = !isPaid && 
-                           dueDateStr < todayStr && 
-                           schedule.status !== 'overdue';
-          
-          return isOverdue;
-        });
+        // Now determine the plan status
+        const newStatus = await determinePlanStatus(supabase, plan.id);
+        const hasActualOverduePayments = newStatus === 'overdue';
         
-        // If there are overdue payments
-        if (overduePayments.length > 0) {
-          console.log(`⚠️ Found ${overduePayments.length} overdue payments for plan ${plan.id}`);
+        // Only update if status has changed
+        if (plan.status !== newStatus || plan.has_overdue_payments !== hasActualOverduePayments) {
+          console.log(`Updating plan ${plan.id} status from ${plan.status} to ${newStatus}`);
           
-          // Update the overdue payment schedules to overdue status
-          const overdueIds = overduePayments.map(payment => payment.id);
-          
-          if (overdueIds.length > 0) {
-            console.log(`Updating ${overdueIds.length} payment schedules to overdue status`);
+          const { error: updateError } = await supabase
+            .from('plans')
+            .update({ 
+              status: newStatus,
+              has_overdue_payments: hasActualOverduePayments,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', plan.id);
             
-            // Batch update all overdue payment schedules
-            const { error: scheduleUpdateError } = await supabase
-              .from('payment_schedule')
-              .update({ 
-                status: 'overdue',
-                updated_at: new Date().toISOString()
-              })
-              .in('id', overdueIds);
-            
-            if (scheduleUpdateError) {
-              console.error(`Warning: Failed to update schedule statuses: ${scheduleUpdateError.message}`);
-            } else {
-              updatedSchedules.push(...overdueIds);
-              console.log(`Successfully updated ${overdueIds.length} payment schedules to overdue status`);
-            }
-            
-            // Determine the appropriate status for the plan using our priority rules
-            const newStatus = await determinePlanStatus(supabase, plan.id);
-            
-            // Update the plan status accordingly
-            const { error: updateError } = await supabase
-              .from('plans')
-              .update({ 
-                status: newStatus,
-                has_overdue_payments: newStatus === 'overdue'
-              })
-              .eq('id', plan.id);
-            
-            if (updateError) {
-              throw new Error(`Error updating plan ${plan.id}: ${updateError.message}`);
-            }
-            
-            // Record activity for tracking purposes
-            const { error: activityError } = await supabase
-              .from('payment_activity')
-              .insert({
-                plan_id: plan.id,
-                action_type: 'overdue',
-                details: {
-                  previous_status: plan.status,
-                  new_status: newStatus,
-                  overdue_count: overduePayments.length,
-                  overdue_items: overduePayments.map(p => ({
-                    id: p.id,
-                    payment_number: p.payment_number,
-                    due_date: p.due_date
-                  }))
-                }
-              });
-            
-            if (activityError) {
-              console.error(`Warning: Failed to record activity for plan ${plan.id}: ${activityError.message}`);
-            }
-            
-            updatedPlans.push({
-              plan_id: plan.id,
-              title: plan.title,
-              previous_status: plan.status,
-              new_status: newStatus,
-              overdue_count: overduePayments.length
-            });
+          if (updateError) {
+            throw new Error(`Error updating plan ${plan.id}: ${updateError.message}`);
           }
+          
+          updatedPlans.push({
+            plan_id: plan.id,
+            title: plan.title,
+            previous_status: plan.status,
+            new_status: newStatus
+          });
         } else {
-          console.log(`✅ No overdue payments for plan ${plan.id} or already marked as overdue`);
+          console.log(`No status change needed for plan ${plan.id}, current status: ${plan.status}`);
         }
       } catch (planError: any) {
         console.error(`Error processing plan ${plan.id}:`, planError);
@@ -305,7 +207,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         timestamp: new Date().toISOString(),
-        plans_checked: activePlans.length,
+        plans_checked: activePlans?.length || 0,
         plans_updated: updatedPlans.length,
         schedules_updated: updatedSchedules.length,
         updated_plans: updatedPlans,

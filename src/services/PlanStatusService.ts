@@ -3,7 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 
 /**
- * Service for managing plan status calculations and validations
+ * Service for managing plan status calculations and validations.
+ * Note: The primary source of truth for a plan's status is now the update-plan-statuses
+ * cron job, which calculates status based on payment_schedule entries.
  */
 export class PlanStatusService {
   /**
@@ -46,137 +48,83 @@ export class PlanStatusService {
   }
   
   /**
-   * Calculate and update the correct status for a plan based on its payments
+   * Refreshes a plan's status from the database
+   * This is useful after operations like pausing or resuming a plan
    */
-  static async updatePlanStatus(planId: string): Promise<{success: boolean, status?: Plan['status'], error?: any}> {
+  static async refreshPlanStatus(planId: string): Promise<{success: boolean, status?: Plan['status'], error?: any}> {
     try {
-      // Get the plan
-      const { data: plan, error: planError } = await supabase
+      // Get the plan's current status from the database
+      const { data: plan, error } = await supabase
         .from('plans')
-        .select('*')
+        .select('status')
         .eq('id', planId)
         .single();
         
-      if (planError) throw planError;
-      if (!plan) throw new Error('Plan not found');
+      if (error) throw error;
       
-      // Skip updating status for cancelled or completed plans
-      if (plan.status === 'cancelled' || plan.status === 'completed') {
-        return { success: true, status: plan.status as Plan['status'] };
-      }
+      // Validate the status
+      const validStatus = this.validatePlanStatus(plan.status);
       
-      // Get all schedule entries for this plan
-      const { data: schedules, error: scheduleError } = await supabase
-        .from('payment_schedule')
-        .select('status, due_date')
-        .eq('plan_id', planId);
-        
-      if (scheduleError) throw scheduleError;
-      
-      // Count the different statuses
-      const counts = {
-        paid: 0,
-        pending: 0,
-        sent: 0,
-        paused: 0,
-        overdue: 0,
-        cancelled: 0
+      return { 
+        success: true, 
+        status: validStatus
       };
-      
-      let hasOverduePayments = false;
-      
-      schedules?.forEach(item => {
-        if (item.status in counts) {
-          counts[item.status]++;
-        }
-        
-        // Check if any payments are overdue
-        if (item.status === 'overdue') {
-          hasOverduePayments = true;
-        }
-      });
-      
-      // Calculate the total installments and paid installments
-      const totalInstallments = schedules?.length || 0;
-      const paidInstallments = counts.paid;
-      
-      // Calculate progress percentage
-      let progress = 0;
-      if (totalInstallments > 0) {
-        progress = Math.round((paidInstallments / totalInstallments) * 100);
-      }
-      
-      // Determine the next due date
-      let nextDueDate = null;
-      
-      if (counts.pending > 0 || counts.sent > 0 || counts.overdue > 0) {
-        // Get the earliest pending, sent, or overdue payment
-        const { data: nextPayment, error: nextPaymentError } = await supabase
-          .from('payment_schedule')
-          .select('due_date')
-          .eq('plan_id', planId)
-          .in('status', ['pending', 'sent', 'overdue'])
-          .order('due_date', { ascending: true })
-          .limit(1)
-          .single();
-          
-        if (!nextPaymentError && nextPayment) {
-          nextDueDate = nextPayment.due_date;
-        }
-      }
-      
-      // Determine new status
-      let newStatus: Plan['status'] = 'pending';
-      
-      if (counts.paused > 0 && counts.pending === 0 && counts.sent === 0 && counts.overdue === 0) {
-        // If all remaining payments are paused
-        newStatus = 'paused';
-      } else if (paidInstallments === totalInstallments && totalInstallments > 0) {
-        // All payments are completed
-        newStatus = 'completed';
-      } else if (counts.cancelled === totalInstallments && totalInstallments > 0) {
-        // All payments are cancelled
-        newStatus = 'cancelled';
-      } else if (hasOverduePayments) {
-        // Has at least one overdue payment
-        newStatus = 'overdue';
-      } else if (paidInstallments > 0) {
-        // Has at least one paid payment but not all
-        newStatus = 'active';
-      } else {
-        // Default to pending
-        newStatus = 'pending';
-      }
-      
-      // Update the plan
-      const { error: updateError } = await supabase
-        .from('plans')
-        .update({
-          status: newStatus,
-          progress,
-          paid_installments: paidInstallments,
-          next_due_date: nextDueDate,
-          has_overdue_payments: hasOverduePayments,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', planId);
-        
-      if (updateError) throw updateError;
-      
-      return { success: true, status: newStatus };
     } catch (error) {
-      console.error('Error updating plan status:', error);
+      console.error('Error refreshing plan status:', error);
       return { success: false, error };
     }
   }
   
   /**
-   * Calculate the correct status for a plan based on its payment schedulea
-   * This is used directly when we don't want to update the database
+   * Trigger the status update manually for a specific plan
+   * This calls the update-plan-statuses edge function for a single plan
+   */
+  static async triggerStatusUpdate(planId: string): Promise<{success: boolean, status?: Plan['status'], error?: any}> {
+    try {
+      // Call the edge function to update the plan status
+      const { data, error } = await supabase.functions.invoke('update-plan-statuses', {
+        body: JSON.stringify({ planId })
+      });
+      
+      if (error) throw error;
+      
+      // Get the updated plan status
+      const { data: plan, error: planError } = await supabase
+        .from('plans')
+        .select('status')
+        .eq('id', planId)
+        .single();
+        
+      if (planError) throw planError;
+      
+      // Validate the status
+      const validStatus = this.validatePlanStatus(plan.status);
+      
+      return {
+        success: true,
+        status: validStatus
+      };
+    } catch (error) {
+      console.error('Error triggering plan status update:', error);
+      return { success: false, error };
+    }
+  }
+  
+  /**
+   * This is a legacy method that exists for backward compatibility.
+   * It now simply refreshes the plan status from the database since
+   * the actual status calculation is done by the cron job.
+   */
+  static async updatePlanStatus(planId: string): Promise<{success: boolean, status?: Plan['status'], error?: any}> {
+    return this.refreshPlanStatus(planId);
+  }
+  
+  /**
+   * Legacy method for backward compatibility
    */
   static async calculatePlanStatus(planId: string): Promise<Plan['status']> {
     try {
-      const result = await this.updatePlanStatus(planId);
+      const result = await this.refreshPlanStatus(planId);
       return result.status || 'pending';
     } catch (error) {
       console.error('Error calculating plan status:', error);

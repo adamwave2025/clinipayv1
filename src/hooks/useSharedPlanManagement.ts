@@ -7,6 +7,7 @@ import { PlanDataService } from '@/services/PlanDataService';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { isPlanPaused, validatePlanStatus } from '@/utils/plan-status-utils';
 import { supabase } from '@/integrations/supabase/client';
+import { PlanStatusService } from '@/services/PlanStatusService';
 
 /**
  * Shared hook to manage payment plan operations across different parts of the application.
@@ -118,10 +119,13 @@ export const useSharedPlanManagement = () => {
       const success = await PlanOperationsService.cancelPlan(selectedPlan);
       
       if (success && selectedPlan) {
+        // Get the updated status from the service
+        const { status } = await PlanStatusService.refreshPlanStatus(selectedPlan.id);
+        
         // Update local state to reflect the change
         setSelectedPlan({
           ...selectedPlan,
-          status: 'cancelled'
+          status: status || 'cancelled'
         });
       }
     } finally {
@@ -142,10 +146,13 @@ export const useSharedPlanManagement = () => {
       const success = await PlanOperationsService.pausePlan(selectedPlan);
       
       if (success && selectedPlan) {
+        // Get the updated status from the service
+        const { status } = await PlanStatusService.refreshPlanStatus(selectedPlan.id);
+        
         // Update local state to reflect the change
         setSelectedPlan({
           ...selectedPlan,
-          status: 'paused'
+          status: status || 'paused'
         });
       }
     } finally {
@@ -167,25 +174,13 @@ export const useSharedPlanManagement = () => {
       
       if (success && selectedPlan) {
         // After successful resume, fetch the updated plan data to get correct status
-        const { data: updatedPlan, error } = await supabase
-          .from('plans')
-          .select('*')
-          .eq('id', selectedPlan.id)
-          .single();
+        const { status } = await PlanStatusService.refreshPlanStatus(selectedPlan.id);
         
-        if (error) {
-          console.error('Error fetching updated plan:', error);
-        } else if (updatedPlan) {
-          // Validate the status is one of the allowed values in our union type
-          const validStatus = validatePlanStatus(updatedPlan.status);
-          
-          // Update local state with the latest plan data from the server
-          setSelectedPlan({
-            ...selectedPlan,
-            status: validStatus,
-            hasOverduePayments: updatedPlan.has_overdue_payments
-          });
-        }
+        // Update local state to reflect the change
+        setSelectedPlan({
+          ...selectedPlan,
+          status: status || 'pending'
+        });
         
         // Refresh the installments to show updated statuses
         await refreshPlanDetails();
@@ -213,22 +208,22 @@ export const useSharedPlanManagement = () => {
       
       if (success) {
         // After successful reschedule, fetch the updated plan data to get correct status
+        const { status } = await PlanStatusService.refreshPlanStatus(selectedPlan.id);
+        
+        // Get updated plan details
         const { data: updatedPlan, error } = await supabase
           .from('plans')
-          .select('*')
+          .select('start_date, next_due_date, has_overdue_payments')
           .eq('id', selectedPlan.id)
           .single();
         
         if (error) {
           console.error('Error fetching updated plan:', error);
         } else if (updatedPlan) {
-          // Validate the status is one of the allowed values in our union type
-          const validStatus = validatePlanStatus(updatedPlan.status);
-          
           // Update local state with the latest plan data from the server
           setSelectedPlan({
             ...selectedPlan,
-            status: validStatus,
+            status: status || selectedPlan.status,
             hasOverduePayments: updatedPlan.has_overdue_payments,
             startDate: updatedPlan.start_date,
             nextDueDate: updatedPlan.next_due_date
