@@ -52,7 +52,10 @@ export class PlanOperationsService {
       if (requestIds.length > 0) {
         const { error: requestUpdateError } = await supabase
           .from('payment_requests')
-          .update({ status: 'cancelled' })
+          .update({
+            status: 'cancelled',
+            updated_at: new Date().toISOString()
+          })
           .in('id', requestIds)
           .is('payment_id', null); // Only update requests that don't have a payment (not paid)
           
@@ -96,111 +99,105 @@ export class PlanOperationsService {
    */
   static async pausePlan(plan: Plan): Promise<boolean> {
     try {
-      // Track original statuses for activity log
-      const { data: originalSchedules, error: fetchError } = await supabase
-        .from('payment_schedule')
-        .select('id, status, payment_request_id')
-        .eq('plan_id', plan.id)
-        .in('status', getModifiableStatuses());
-        
-      if (fetchError) throw fetchError;
-      
-      // Count of schedules by status type for logging
-      const statusCounts = {
-        pending: 0,
-        sent: 0,
-        overdue: 0
-      };
-
-      // Collect payment request IDs to update
-      const paymentRequestIds = [];
-      
-      originalSchedules?.forEach(schedule => {
-        if (schedule.status === 'pending') statusCounts.pending++;
-        if (schedule.status === 'sent') statusCounts.sent++;
-        if (schedule.status === 'overdue') statusCounts.overdue++;
-        
-        // Track payment requests that need to be paused
-        if (schedule.payment_request_id) {
-          paymentRequestIds.push(schedule.payment_request_id);
-        }
-      });
-      
-      // 1. Update the plan status in the plans table
-      const { error: planUpdateError } = await supabase
+      // Get the current plan to ensure it exists
+      const { data: planData, error: planFetchError } = await supabase
         .from('plans')
-        .update({ status: 'paused' })
-        .eq('id', plan.id);
+        .select('*')
+        .eq('id', plan.id)
+        .single();
+        
+      if (planFetchError) throw planFetchError;
       
-      if (planUpdateError) throw planUpdateError;
-      
-      // 2. Update all pending, sent, and overdue payment schedules to paused
-      // Only update schedules that are in a modifiable state (not paid)
-      const modifiableStatuses = getModifiableStatuses();
-      
-      const { error: scheduleUpdateError } = await supabase
+      // Find payment requests that need to be cancelled
+      const { data: scheduleData, error: scheduleError } = await supabase
         .from('payment_schedule')
-        .update({ 
+        .select('id, payment_request_id')
+        .eq('plan_id', plan.id)
+        .in('status', getModifiableStatuses())
+        .not('payment_request_id', 'is', null);
+        
+      if (scheduleError) throw scheduleError;
+      
+      console.log('Found schedules with payment requests to cancel:', scheduleData?.length || 0);
+      
+      // Extract payment request IDs
+      const paymentRequestIds = scheduleData
+        ?.filter(item => item.payment_request_id)
+        .map(item => item.payment_request_id) || [];
+        
+      console.log('Payment request IDs to cancel:', paymentRequestIds);
+      
+      // Cancel payment requests first - CHANGED: Remove the is('payment_id', null) condition
+      // This ensures ALL requests get cancelled, even if they have a payment_id reference
+      if (paymentRequestIds.length > 0) {
+        const { data: updatedRequests, error: requestCancelError } = await supabase
+          .from('payment_requests')
+          .update({
+            status: 'cancelled',
+            updated_at: new Date().toISOString()
+          })
+          .in('id', paymentRequestIds)
+          .select();
+          
+        if (requestCancelError) {
+          console.error('Error cancelling payment requests:', requestCancelError);
+          // No longer just a warning - throw the error to stop the operation
+          throw new Error(`Failed to cancel payment requests: ${requestCancelError.message}`);
+        } else {
+          console.log('Successfully cancelled payment requests:', updatedRequests?.length || 0);
+        }
+      }
+      
+      // After successfully cancelling requests, update payment schedules
+      const { error: updateScheduleError } = await supabase
+        .from('payment_schedule')
+        .update({
           status: 'paused',
           updated_at: new Date().toISOString()
         })
         .eq('plan_id', plan.id)
-        .in('status', modifiableStatuses);
+        .in('status', getModifiableStatuses());
         
-      if (scheduleUpdateError) throw scheduleUpdateError;
+      if (updateScheduleError) throw updateScheduleError;
       
-      // 3. Also update any active payment requests to paused
-      if (paymentRequestIds.length > 0) {
-        const { error: requestUpdateError } = await supabase
-          .from('payment_requests')
-          .update({ 
-            status: 'cancelled',
-          })
-          .in('id', paymentRequestIds)
-          .is('payment_id', null); // Only update requests that don't have a payment (not paid)
-          
-        if (requestUpdateError) {
-          console.error('Error updating payment requests:', requestUpdateError);
-          // Non-critical error, continue with the operation
-        }
-      }
+      // After payment schedules are updated, update the plan status
+      const { error: planUpdateError } = await supabase
+        .from('plans')
+        .update({ 
+          status: 'paused',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', plan.id);
+        
+      if (planUpdateError) throw planUpdateError;
       
-      // 4. Add an activity log entry with detailed information about what was paused
-      const { error: activityError } = await supabase
+      // Record the activity
+      await supabase
         .from('payment_activity')
         .insert({
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,
           clinic_id: plan.clinicId,
-          plan_id: plan.id, // Include plan_id for easier activity tracking
-          action_type: 'pause_plan',
+          plan_id: plan.id,
+          action_type: 'plan_paused',
           details: {
-            plan_name: plan.title || plan.planName,
-            previous_status: plan.status,
-            installments_affected: originalSchedules?.length || 0,
-            pending_count: statusCounts.pending,
-            sent_count: statusCounts.sent,
-            overdue_count: statusCounts.overdue,
-            payment_requests_paused: paymentRequestIds.length
+            paused_at: new Date().toISOString(),
+            payment_requests_cancelled: paymentRequestIds.length
           }
         });
-      
-      if (activityError) {
-        console.error('Error logging pause activity:', activityError);
-      }
       
       toast.success('Payment plan paused successfully');
       return true;
       
     } catch (error: any) {
-      console.error('Error pausing plan:', error);
+      console.error('Error pausing payment plan:', error);
       toast.error('Failed to pause plan: ' + error.message);
       return false;
     }
   }
   
   /**
-   * Resume a payment plan
+   * Resume a paused payment plan
    */
   static async resumePlan(plan: Plan, resumeDate?: Date): Promise<boolean> {
     try {
@@ -414,6 +411,8 @@ export class PlanOperationsService {
         
       if (scheduleError) throw scheduleError;
       
+      console.log(`Found ${scheduleEntries?.length || 0} modifiable payment schedules`);
+      
       // Identify payment requests to cancel
       for (const entry of scheduleEntries || []) {
         if (entry.payment_request_id) {
@@ -422,20 +421,26 @@ export class PlanOperationsService {
         }
       }
       
-      // Cancel active payment requests since dates will change
+      console.log(`Found ${paymentRequestIds.length} payment requests to cancel`);
+      
+      // Cancel active payment requests since dates will change - CHANGED: remove is('payment_id', null) condition
+      // to ensure ALL requests get cancelled
       if (paymentRequestIds.length > 0) {
-        const { error: requestUpdateError } = await supabase
+        const { data: updatedRequests, error: requestUpdateError } = await supabase
           .from('payment_requests')
           .update({
             status: 'cancelled', 
             updated_at: new Date().toISOString()
           })
           .in('id', paymentRequestIds)
-          .is('payment_id', null); // Only update requests that haven't been paid
+          .select();
           
         if (requestUpdateError) {
           console.error('Error updating payment requests:', requestUpdateError);
-          // Non-critical error, continue with the operation
+          // Now throwing an error to stop the operation if request cancellation fails
+          throw new Error(`Failed to cancel payment requests: ${requestUpdateError.message}`);
+        } else {
+          console.log(`Successfully cancelled ${updatedRequests?.length || 0} payment requests`);
         }
       }
       
@@ -474,6 +479,8 @@ export class PlanOperationsService {
         }
       }
       
+      console.log(`Successfully shifted ${shiftedCount} payment schedules`);
+      
       // Calculate next due date
       const { data: nextPayment, error: nextPaymentError } = await supabase
         .from('payment_schedule')
@@ -492,6 +499,8 @@ export class PlanOperationsService {
             next_due_date: nextPayment.due_date
           })
           .eq('id', plan.id);
+          
+        console.log(`Updated plan next due date to ${nextPayment.due_date}`);
       }
       
       // Record the reschedule activity
@@ -518,7 +527,13 @@ export class PlanOperationsService {
       }
 
       // Update plan status using PlanStatusService for consistency
-      await PlanStatusService.updatePlanStatus(plan.id);
+      const statusResult = await PlanStatusService.updatePlanStatus(plan.id);
+      
+      if (!statusResult.success) {
+        console.error('Error updating plan status after rescheduling:', statusResult.error);
+      } else {
+        console.log(`Plan rescheduled successfully with calculated status: ${statusResult.status}`);
+      }
       
       toast.success('Payment plan rescheduled successfully');
       return true;
