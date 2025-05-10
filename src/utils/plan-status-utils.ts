@@ -42,6 +42,7 @@ export const recordPaymentOverdue = async (planId: string, details: any) => {
 
 /**
  * Check if a plan is currently paused
+ * Delegates to PlanStatusService
  */
 export const isPlanPaused = (plan: Plan | null): boolean => {
   return PlanStatusService.isPlanPaused(plan);
@@ -49,6 +50,7 @@ export const isPlanPaused = (plan: Plan | null): boolean => {
 
 /**
  * Check if a plan is currently active
+ * Delegates to PlanStatusService
  */
 export const isPlanActive = (plan: Plan | null): boolean => {
   return PlanStatusService.isPlanActive(plan);
@@ -56,6 +58,7 @@ export const isPlanActive = (plan: Plan | null): boolean => {
 
 /**
  * Check if a plan is cancelled or completed
+ * Delegates to PlanStatusService
  */
 export const isPlanFinished = (plan: Plan | null): boolean => {
   return PlanStatusService.isPlanFinished(plan);
@@ -63,7 +66,7 @@ export const isPlanFinished = (plan: Plan | null): boolean => {
 
 /**
  * Determine the appropriate plan status based on the payment status and plan history
- * This now delegates to our PlanStatusService for a single source of truth
+ * This delegates to PlanStatusService for a single source of truth
  */
 export const determinePlanStatus = async (planId: string): Promise<Plan['status']> => {
   return PlanStatusService.calculatePlanStatus(planId);
@@ -72,6 +75,7 @@ export const determinePlanStatus = async (planId: string): Promise<Plan['status'
 /**
  * Validate that a status string is one of the valid plan statuses
  * This ensures type safety when working with statuses from the database
+ * Delegates to PlanStatusService
  */
 export const validatePlanStatus = (status: string): Plan['status'] => {
   return PlanStatusService.validatePlanStatus(status);
