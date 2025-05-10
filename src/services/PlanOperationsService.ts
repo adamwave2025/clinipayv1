@@ -1,3 +1,4 @@
+
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -277,8 +278,9 @@ export class PlanOperationsService {
    */
   static async reschedulePlan(plan: Plan, newStartDate: Date): Promise<boolean> {
     try {
-      // Format date as YYYY-MM-DD for the database
-      const formattedDate = newStartDate.toISOString().split('T')[0];
+      // FIXED: Use date-fns format to ensure correct date preservation for UK timezone
+      // Format date as YYYY-MM-DD using date-fns format which preserves the date regardless of timezone
+      const formattedDate = format(newStartDate, 'yyyy-MM-dd');
       console.log('Rescheduling plan with formatted date:', formattedDate);
       
       // Get the current plan to calculate days difference
@@ -394,7 +396,7 @@ export class PlanOperationsService {
         const { error: firstPaymentUpdateError } = await supabase
           .from('payment_schedule')
           .update({
-            due_date: formattedDate,
+            due_date: formattedDate, // FIXED: Using the formatted date string directly
             status: 'pending', // Reset status to pending
             payment_request_id: null, // Clear any payment request associations
             updated_at: new Date().toISOString()
@@ -412,10 +414,13 @@ export class PlanOperationsService {
           const newDueDate = new Date(newStartDate);
           newDueDate.setDate(newDueDate.getDate() + (i * paymentInterval));
           
+          // FIXED: Use format consistently to convert to string and prevent timezone issues
+          const formattedDueDate = format(newDueDate, 'yyyy-MM-dd');
+          
           const { error: dueDateUpdateError } = await supabase
             .from('payment_schedule')
             .update({
-              due_date: newDueDate.toISOString().split('T')[0],
+              due_date: formattedDueDate, // FIXED: Using formatted date string
               status: 'pending', // Reset status to pending
               payment_request_id: null, // Clear any payment request associations
               updated_at: new Date().toISOString()
@@ -436,7 +441,7 @@ export class PlanOperationsService {
       const { error: nextDueDateUpdateError } = await supabase
         .from('plans')
         .update({
-          next_due_date: formattedDate
+          next_due_date: formattedDate // FIXED: Using formatted date string
         })
         .eq('id', plan.id);
         
@@ -458,7 +463,7 @@ export class PlanOperationsService {
           details: {
             plan_name: plan.title || plan.planName,
             previous_date: currentPlan.start_date,
-            new_date: formattedDate,
+            new_date: formattedDate, // FIXED: Using formatted date string
             payments_shifted: scheduleEntries?.length || 0,
             payment_requests_cancelled: paymentRequestCount
           }
