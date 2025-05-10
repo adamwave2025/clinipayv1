@@ -29,21 +29,12 @@ const PaymentFormSection: React.FC<PaymentFormSectionProps> = ({
 }) => {
   console.log('PaymentFormSection: Rendered with amount:', amount);
   
-  // Format the amount for display
-  const formattedAmount = formatCurrency(amount);
-
   return (
     <Card className="card-shadow h-full">
       <CardContent className="p-6">
-        <h2 className="text-xl font-bold text-center mb-2 text-gray-800">
+        <h2 className="text-xl font-bold text-center mb-6 text-gray-800">
           Complete Your Payment
         </h2>
-        
-        {amount > 0 && (
-          <p className="text-center mb-6 text-lg font-medium text-emerald-600">
-            {formattedAmount}
-          </p>
-        )}
         
         {!isStripeConnected ? (
           <Alert variant="destructive" className="mb-6">
