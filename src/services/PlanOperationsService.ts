@@ -239,7 +239,10 @@ export class PlanOperationsService {
         .eq('plan_id', plan.id)
         .eq('status', 'paused');
         
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Error fetching paused schedules:', fetchError);
+        throw fetchError;
+      }
       
       // Count payments with payment requests that need to be reset
       let sentPaymentsCount = 0;
@@ -255,30 +258,29 @@ export class PlanOperationsService {
         }
       }
       
-      // Reset any payment requests that were sent but not paid
+      console.log(`Found ${pausedPaymentIds.length} paused payments, ${sentPaymentsCount} with payment requests`);
+      
+      // First step: Cancel any active payment requests - CRITICAL: Removed the conditional is('payment_id', null)
       if (paymentRequestIds.length > 0) {
         const { error: requestUpdateError } = await supabase
           .from('payment_requests')
-          .update({ 
-            status: 'cancelled'
-            // Removed updated_at as it doesn't exist in the table
-          })
+          .update({ status: 'cancelled' })
           .in('id', paymentRequestIds);
-          // CRITICAL: Removed is('payment_id', null) condition
           
         if (requestUpdateError) {
-          console.error('Error updating payment requests:', requestUpdateError);
+          console.error('Error cancelling payment requests:', requestUpdateError);
           throw requestUpdateError;
         }
+        
+        console.log(`Successfully cancelled ${paymentRequestIds.length} payment requests`);
       }
       
-      // CRITICAL CHANGE: First update previously paused payment schedules to pending status
-      // This ensures they are ready to be rescheduled by the database function
+      // CRITICAL CHANGE: Update ALL paused payments to pending status AND clear payment_request_id in one operation
       const { error: scheduleStatusUpdateError } = await supabase
         .from('payment_schedule')
         .update({ 
           status: 'pending',
-          payment_request_id: null, // ALWAYS clear payment_request_id when resuming
+          payment_request_id: null, // CRITICAL: Clear payment_request_id for ALL payments
           updated_at: new Date().toISOString()
         })
         .eq('plan_id', plan.id)
@@ -298,12 +300,14 @@ export class PlanOperationsService {
         
       if (pendingCountError) {
         console.error('Error verifying pending payments:', pendingCountError);
+        throw pendingCountError;
+      }
+      
+      if (pendingCount === 0) {
+        console.error('No pending payments found after status update - this will cause the rescheduling to fail');
+        throw new Error('Failed to set payments to pending status');
       } else {
         console.log(`Verified ${pendingCount} payments now in pending status`);
-        
-        if (pendingCount === 0) {
-          console.warn('No pending payments found after status update - this may cause issues with the rescheduling');
-        }
       }
       
       // Format date as YYYY-MM-DD for the database function call
@@ -314,12 +318,15 @@ export class PlanOperationsService {
       const { error: planUpdateError } = await supabase
         .from('plans')
         .update({ 
-          status: 'pending', // Temporary status, will be recalculated
+          status: 'pending', // Always set to pending per requirements
           updated_at: new Date().toISOString()
         })
         .eq('id', plan.id);
       
-      if (planUpdateError) throw planUpdateError;
+      if (planUpdateError) {
+        console.error('Error updating plan status:', planUpdateError);
+        throw planUpdateError;
+      }
       
       // AFTER updating schedules to pending, call the resume_payment_plan RPC function
       const { data: schedulingResult, error: schedulingError } = await supabase
@@ -330,9 +337,19 @@ export class PlanOperationsService {
       
       if (schedulingError) {
         console.error('Error rescheduling payments:', schedulingError);
-        throw schedulingError; // Escalate error to ensure we don't proceed with bad data
-      } else {
-        console.log('Rescheduling result:', schedulingResult);
+        throw schedulingError;
+      }
+      
+      // Log scheduling result for debugging
+      console.log('Rescheduling result:', schedulingResult);
+      
+      if (!schedulingResult || (typeof schedulingResult === 'object' && 'error' in schedulingResult)) {
+        console.error('Database function returned error:', schedulingResult);
+        throw new Error(
+          typeof schedulingResult === 'object' && 'error' in schedulingResult 
+            ? schedulingResult.error 
+            : 'Database function failed to reschedule payments'
+        );
       }
 
       // Verify that the payments have been rescheduled
@@ -344,8 +361,22 @@ export class PlanOperationsService {
         
       if (updatedPaymentsError) {
         console.error('Error fetching updated payments:', updatedPaymentsError);
-      } else {
-        console.log('Updated payment schedule:', updatedPayments);
+        throw updatedPaymentsError;
+      }
+      
+      console.log('Updated payment schedule:', updatedPayments);
+      
+      // Verify at least one payment has been scheduled on or after the resume date
+      if (updatedPayments && updatedPayments.length > 0) {
+        const firstDueDate = new Date(updatedPayments[0].due_date);
+        const resumeDateObj = new Date(formattedDate);
+        
+        if (firstDueDate < resumeDateObj) {
+          console.error('First payment date not updated correctly:', firstDueDate, 'should be >=', resumeDateObj);
+          throw new Error('Payment rescheduling failed - dates not updated correctly');
+        } else {
+          console.log('First payment correctly scheduled for', firstDueDate);
+        }
       }
       
       // Add an activity log entry with detailed information
@@ -370,7 +401,6 @@ export class PlanOperationsService {
         });
       
       // CRITICAL: Calculate the correct plan status based on payments
-      // This is now our single source of truth
       const result = await PlanStatusService.updatePlanStatus(plan.id);
       
       if (!result.success) {
@@ -384,6 +414,13 @@ export class PlanOperationsService {
       
     } catch (error: any) {
       console.error('Error resuming plan:', error);
+      // Log specific error details for easier troubleshooting
+      if (error.message) {
+        console.error('Error message:', error.message);
+      }
+      if (error.details) {
+        console.error('Error details:', error.details);
+      }
       return false;
     }
   }
