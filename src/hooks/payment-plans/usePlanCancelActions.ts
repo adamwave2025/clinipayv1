@@ -1,33 +1,51 @@
 
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
+import { PlanOperationsService } from '@/services/PlanOperationsService';
+import { toast } from 'sonner';
 
 export const usePlanCancelActions = (
   selectedPlan: Plan | null,
-  handleCancelPlan: (planId: string) => Promise<any>,
   setShowPlanDetails: (show: boolean) => void
 ) => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleOpenCancelDialog = () => {
     setShowCancelDialog(true);
   };
 
-  const handleConfirmCancelPlan = async () => {
+  const handleCancelPlan = async () => {
     if (!selectedPlan) return;
     
-    const result = await handleCancelPlan(selectedPlan.id);
-    
-    if (result.success) {
-      setShowCancelDialog(false);
-      setShowPlanDetails(false); // Close the plan details modal
+    setIsProcessing(true);
+    try {
+      // Use the consolidated PlanOperationsService directly
+      const success = await PlanOperationsService.cancelPlan(selectedPlan);
+      
+      if (success) {
+        toast.success('Payment plan cancelled successfully');
+        setShowCancelDialog(false);
+        setShowPlanDetails(false); // Close the plan details modal
+        return { success: true };
+      } else {
+        toast.error('Failed to cancel payment plan');
+        return { success: false };
+      }
+    } catch (error) {
+      console.error('Error cancelling plan:', error);
+      toast.error('Failed to cancel payment plan');
+      return { success: false, error };
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   return {
     showCancelDialog,
     setShowCancelDialog,
-    handleCancelPlan: handleConfirmCancelPlan,
-    handleOpenCancelDialog
+    handleCancelPlan,
+    handleOpenCancelDialog,
+    isProcessing
   };
 };

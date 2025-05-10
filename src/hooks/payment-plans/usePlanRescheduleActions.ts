@@ -2,18 +2,22 @@
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
+import { PlanOperationsService } from '@/services/PlanOperationsService';
+import { toast } from 'sonner';
 
 export const usePlanRescheduleActions = (
   selectedPlan: Plan | null,
-  handleReschedulePlan: (planId: string, newStartDate: Date) => Promise<any>,
   setShowPlanDetails: (show: boolean) => void
 ) => {
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [hasSentPayments, setHasSentPayments] = useState(false);
   const [hasOverduePayments, setHasOverduePayments] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleOpenRescheduleDialog = async () => {
     if (selectedPlan) {
+      setIsProcessing(true);
+      
       try {
         // Check for sent payments that haven't been paid yet
         const { data: sentPayments, error: sentError } = await supabase
@@ -43,29 +47,49 @@ export const usePlanRescheduleActions = (
         
       } catch (error) {
         console.error('Error checking plan payment statuses:', error);
+      } finally {
+        setIsProcessing(false);
+        setShowRescheduleDialog(true);
       }
+    } else {
+      setShowRescheduleDialog(true);
     }
-    
-    setShowRescheduleDialog(true);
   };
 
-  const handleConfirmReschedulePlan = async (newStartDate: Date) => {
+  const handleReschedulePlan = async (newStartDate: Date) => {
     if (!selectedPlan) return;
     
-    const result = await handleReschedulePlan(selectedPlan.id, newStartDate);
+    setIsProcessing(true);
     
-    if (result.success) {
-      setShowRescheduleDialog(false);
-      setShowPlanDetails(false); // Close the plan details modal
+    try {
+      // Use PlanOperationsService directly
+      const success = await PlanOperationsService.reschedulePlan(selectedPlan, newStartDate);
+      
+      if (success) {
+        toast.success('Payment plan rescheduled successfully');
+        setShowRescheduleDialog(false);
+        setShowPlanDetails(false); // Close the plan details modal
+        return { success: true };
+      } else {
+        toast.error('Failed to reschedule payment plan');
+        return { success: false };
+      }
+    } catch (error) {
+      console.error('Error rescheduling plan:', error);
+      toast.error('Failed to reschedule payment plan');
+      return { success: false, error };
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   return {
     showRescheduleDialog,
     setShowRescheduleDialog,
-    handleReschedulePlan: handleConfirmReschedulePlan,
+    handleReschedulePlan,
     handleOpenRescheduleDialog,
     hasSentPayments,
-    hasOverduePayments
+    hasOverduePayments,
+    isProcessing
   };
 };

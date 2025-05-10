@@ -116,6 +116,7 @@ export const useSharedPlanManagement = () => {
     setIsProcessing(true);
     
     try {
+      // Use the consolidated PlanOperationsService
       const success = await PlanOperationsService.cancelPlan(selectedPlan);
       
       if (success && selectedPlan) {
@@ -128,6 +129,8 @@ export const useSharedPlanManagement = () => {
           status: status || 'cancelled'
         });
       }
+    } catch (error) {
+      console.error('Error in handleCancelPlan:', error);
     } finally {
       setIsProcessing(false);
       setShowCancelDialog(false);
@@ -143,6 +146,7 @@ export const useSharedPlanManagement = () => {
     setIsProcessing(true);
     
     try {
+      // Use the consolidated PlanOperationsService
       const success = await PlanOperationsService.pausePlan(selectedPlan);
       
       if (success && selectedPlan) {
@@ -155,6 +159,8 @@ export const useSharedPlanManagement = () => {
           status: status || 'paused'
         });
       }
+    } catch (error) {
+      console.error('Error in handlePausePlan:', error);
     } finally {
       setIsProcessing(false);
       setShowPauseDialog(false);
@@ -170,6 +176,7 @@ export const useSharedPlanManagement = () => {
     setIsProcessing(true);
     
     try {
+      // Use the consolidated PlanOperationsService
       const success = await PlanOperationsService.resumePlan(selectedPlan, resumeDate);
       
       if (success && selectedPlan) {
@@ -204,6 +211,7 @@ export const useSharedPlanManagement = () => {
     try {
       console.log('Rescheduling plan with new start date:', newStartDate);
       
+      // Use the consolidated PlanOperationsService
       const success = await PlanOperationsService.reschedulePlan(selectedPlan, newStartDate);
       
       if (success) {

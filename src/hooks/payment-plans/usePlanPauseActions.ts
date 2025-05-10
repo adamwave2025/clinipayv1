@@ -1,33 +1,51 @@
 
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
+import { PlanOperationsService } from '@/services/PlanOperationsService';
+import { toast } from 'sonner';
 
 export const usePlanPauseActions = (
   selectedPlan: Plan | null,
-  handlePausePlan: (planId: string) => Promise<any>,
   setShowPlanDetails: (show: boolean) => void
 ) => {
   const [showPauseDialog, setShowPauseDialog] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleOpenPauseDialog = () => {
     setShowPauseDialog(true);
   };
 
-  const handleConfirmPausePlan = async () => {
+  const handlePausePlan = async () => {
     if (!selectedPlan) return;
     
-    const result = await handlePausePlan(selectedPlan.id);
-    
-    if (result.success) {
-      setShowPauseDialog(false);
-      setShowPlanDetails(false); // Close the plan details modal
+    setIsProcessing(true);
+    try {
+      // Use the consolidated PlanOperationsService directly
+      const success = await PlanOperationsService.pausePlan(selectedPlan);
+      
+      if (success) {
+        toast.success('Payment plan paused successfully');
+        setShowPauseDialog(false);
+        setShowPlanDetails(false); // Close the plan details modal
+        return { success: true };
+      } else {
+        toast.error('Failed to pause payment plan');
+        return { success: false };
+      }
+    } catch (error) {
+      console.error('Error pausing plan:', error);
+      toast.error('Failed to pause payment plan');
+      return { success: false, error };
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   return {
     showPauseDialog,
     setShowPauseDialog,
-    handlePausePlan: handleConfirmPausePlan,
-    handleOpenPauseDialog
+    handlePausePlan,
+    handleOpenPauseDialog,
+    isProcessing
   };
 };

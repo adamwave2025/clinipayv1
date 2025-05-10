@@ -1,18 +1,26 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
 import { isPaymentStatusModifiable, getModifiableStatuses } from '@/utils/paymentStatusUtils';
 import { PlanStatusService } from '@/services/PlanStatusService';
+import { format } from 'date-fns';
+import { recordPaymentPlanActivity } from './PaymentScheduleService';
 
 /**
  * Service for performing operations on payment plans
+ * Consolidated service that handles all plan modifications in one place
  */
 export class PlanOperationsService {
   /**
    * Cancel a payment plan
+   * @param plan The plan to cancel
+   * @returns boolean indicating success or failure
    */
   static async cancelPlan(plan: Plan): Promise<boolean> {
     try {
+      console.log(`Cancelling plan ${plan.id} (${plan.title || plan.planName})`);
+      
       // 1. Update the plan status in the plans table
       const { error: planUpdateError } = await supabase
         .from('plans')
@@ -55,8 +63,8 @@ export class PlanOperationsService {
             status: 'cancelled',
             updated_at: new Date().toISOString()
           })
-          .in('id', requestIds)
-          .is('payment_id', null); // Only update requests that don't have a payment (not paid)
+          .in('id', requestIds);
+          // CRITICAL: Removed conditional is('payment_id', null) to ensure ALL requests get cancelled
           
         if (requestUpdateError) {
           console.error('Error updating payment requests:', requestUpdateError);
@@ -83,18 +91,19 @@ export class PlanOperationsService {
         console.error('Error logging cancel activity:', activityError);
       }
       
-      toast.success('Payment plan cancelled successfully');
+      console.log('Plan cancelled successfully');
       return true;
       
     } catch (error: any) {
       console.error('Error cancelling plan:', error);
-      toast.error('Failed to cancel plan: ' + error.message);
       return false;
     }
   }
   
   /**
    * Pause a payment plan
+   * @param plan The plan to pause
+   * @returns boolean indicating success or failure
    */
   static async pausePlan(plan: Plan): Promise<boolean> {
     try {
@@ -204,18 +213,19 @@ export class PlanOperationsService {
         });
       
       console.log('Plan paused successfully');
-      toast.success('Payment plan paused successfully');
       return true;
       
     } catch (error: any) {
       console.error('Error pausing payment plan:', error);
-      toast.error('Failed to pause plan: ' + error.message);
       return false;
     }
   }
   
   /**
    * Resume a paused payment plan
+   * @param plan The plan to resume
+   * @param resumeDate Optional date to resume the plan (defaults to current date)
+   * @returns boolean indicating success or failure
    */
   static async resumePlan(plan: Plan, resumeDate?: Date): Promise<boolean> {
     try {
@@ -254,11 +264,12 @@ export class PlanOperationsService {
             status: 'cancelled',
             updated_at: new Date().toISOString()
           })
-          .in('id', paymentRequestIds)
-          .is('payment_id', null); // Only update requests that don't have a payment (not paid)
+          .in('id', paymentRequestIds);
+          // CRITICAL: Removed is('payment_id', null) condition
           
         if (requestUpdateError) {
           console.error('Error updating payment requests:', requestUpdateError);
+          throw requestUpdateError;
         }
       }
       
@@ -370,18 +381,19 @@ export class PlanOperationsService {
       
       console.log(`Plan resumed successfully with calculated status: ${result.status}`);
       
-      toast.success('Payment plan resumed successfully');
       return true;
       
     } catch (error: any) {
       console.error('Error resuming plan:', error);
-      toast.error('Failed to resume plan: ' + error.message);
       return false;
     }
   }
   
   /**
    * Reschedule a payment plan with a new start date
+   * @param plan The plan to reschedule
+   * @param newStartDate The new start date for the plan
+   * @returns boolean indicating success or failure
    */
   static async reschedulePlan(plan: Plan, newStartDate: Date): Promise<boolean> {
     try {
@@ -441,8 +453,7 @@ export class PlanOperationsService {
       
       console.log(`Found ${paymentRequestIds.length} payment requests to cancel`);
       
-      // Cancel active payment requests since dates will change - CHANGED: remove is('payment_id', null) condition
-      // to ensure ALL requests get cancelled
+      // Cancel active payment requests since dates will change - CRITICAL: removed is('payment_id', null) condition
       if (paymentRequestIds.length > 0) {
         const { data: updatedRequests, error: requestUpdateError } = await supabase
           .from('payment_requests')
@@ -455,7 +466,6 @@ export class PlanOperationsService {
           
         if (requestUpdateError) {
           console.error('Error updating payment requests:', requestUpdateError);
-          // Now throwing an error to stop the operation if request cancellation fails
           throw new Error(`Failed to cancel payment requests: ${requestUpdateError.message}`);
         } else {
           console.log(`Successfully cancelled ${updatedRequests?.length || 0} payment requests`);
@@ -553,13 +563,152 @@ export class PlanOperationsService {
         console.log(`Plan rescheduled successfully with calculated status: ${statusResult.status}`);
       }
       
-      toast.success('Payment plan rescheduled successfully');
       return true;
       
     } catch (error: any) {
       console.error('Error rescheduling plan:', error);
-      toast.error('Failed to reschedule plan: ' + error.message);
       return false;
     }
   }
+  
+  /**
+   * Record a refund for a payment
+   * @param paymentId The payment ID to refund
+   * @param amount The refund amount
+   * @param isFullRefund Whether this is a full refund
+   * @returns Object indicating success or failure
+   */
+  static async recordPaymentRefund(paymentId: string, amount: number, isFullRefund: boolean): Promise<{ success: boolean, error?: any }> {
+    try {
+      // Get the payment details
+      const { data: paymentData, error: paymentError } = await supabase
+        .from('payments')
+        .select('payment_link_id')
+        .eq('id', paymentId)
+        .single();
+        
+      if (paymentError) throw paymentError;
+      
+      // Find the payment schedule entry through payment requests if it exists
+      const { data: requestsData, error: requestsError } = await supabase
+        .from('payment_requests')
+        .select('id')
+        .eq('payment_id', paymentId)
+        .maybeSingle();
+        
+      if (requestsError) {
+        console.warn('Could not fetch payment request:', requestsError);
+      }
+      
+      let scheduleData = null;
+      if (requestsData?.id) {
+        // Look for associated payment schedule
+        const { data: scheduleResult, error: scheduleError } = await supabase
+          .from('payment_schedule')
+          .select('plan_id')
+          .eq('payment_request_id', requestsData.id)
+          .maybeSingle();
+          
+        if (scheduleError) {
+          console.warn('Could not find payment_schedule entry:', scheduleError);
+        } else {
+          scheduleData = scheduleResult;
+        }
+      }
+      
+      // Record the refund in payments table
+      const { error: updatePaymentError } = await supabase
+        .from('payments')
+        .update({
+          status: isFullRefund ? 'refunded' : 'partially_refunded',
+          refund_amount: amount,
+          refunded_at: new Date().toISOString()
+        })
+        .eq('id', paymentId);
+        
+      if (updatePaymentError) {
+        throw updatePaymentError;
+      }
+      
+      // If this payment was part of a payment plan, update the payment_schedule status
+      if (scheduleData?.plan_id && requestsData?.id) {
+        const { error: updateScheduleError } = await supabase
+          .from('payment_schedule')
+          .update({
+            status: isFullRefund ? 'refunded' : 'partially_refunded',
+            updated_at: new Date().toISOString()
+          })
+          .eq('payment_request_id', requestsData.id);
+          
+        if (updateScheduleError) {
+          console.warn('Could not update payment schedule status:', updateScheduleError);
+        }
+      }
+      
+      // If this is part of a payment plan, record the activity
+      if (scheduleData?.plan_id) {
+        await recordPaymentPlanActivity({
+          planId: scheduleData.plan_id,
+          actionType: 'payment_refunded',
+          details: {
+            payment_id: paymentId,
+            amount: amount,
+            is_full_refund: isFullRefund,
+            refunded_at: new Date().toISOString()
+          }
+        });
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error recording payment refund:', error);
+      return { success: false, error };
+    }
+  }
+  
+  /**
+   * Helper function to calculate new payment dates based on frequency
+   * @private
+   */
+  private static calculateNewPaymentDates(startDate: Date, frequency: string, count: number): string[] {
+    const dates: string[] = [];
+    let currentDate = new Date(startDate);
+    
+    for (let i = 0; i < count; i++) {
+      dates.push(format(currentDate, 'yyyy-MM-dd'));
+      
+      // Calculate next date based on frequency
+      if (frequency === 'weekly') {
+        currentDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
+      } else if (frequency === 'bi-weekly') {
+        currentDate = new Date(currentDate.setDate(currentDate.getDate() + 14));
+      } else if (frequency === 'monthly') {
+        currentDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+      } else {
+        // Default to monthly if frequency is unknown
+        currentDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+      }
+    }
+    
+    return dates;
+  }
+  
+  /**
+   * Send a payment reminder for an installment
+   * @param installmentId The installment ID to send a reminder for
+   * @returns Object indicating success or failure
+   */
+  static async sendPaymentReminder(installmentId: string): Promise<{ success: boolean, error?: any }> {
+    try {
+      // Call the existing sendPaymentReminder function from PaymentReminderService
+      const result = await sendPaymentReminder(installmentId);
+      return result;
+    } catch (error) {
+      console.error('Error sending payment reminder:', error);
+      return { success: false, error };
+    }
+  }
 }
+
+// Import at the end to avoid circular dependencies
+import { sendPaymentReminder } from '@/services/PaymentReminderService';

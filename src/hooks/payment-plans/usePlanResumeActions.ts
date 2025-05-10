@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { PlanStatusService } from '@/services/PlanStatusService';
+import { PlanOperationsService } from '@/services/PlanOperationsService';
+import { toast } from 'sonner';
 
 export const usePlanResumeActions = (
   selectedPlan: Plan | null,
-  handleResumePlan: (planId: string, resumeDate: Date) => Promise<any>,
   setShowPlanDetails: (show: boolean) => void
 ) => {
   const [showResumeDialog, setShowResumeDialog] = useState(false);
@@ -72,7 +73,7 @@ export const usePlanResumeActions = (
     }
   };
 
-  const handleConfirmResumePlan = async (resumeDate: Date) => {
+  const handleResumePlan = async (resumeDate: Date) => {
     if (!selectedPlan) return;
     
     setIsProcessing(true);
@@ -84,16 +85,22 @@ export const usePlanResumeActions = (
       
       console.log('Confirming resume with date:', normalizedDate.toISOString());
       
-      const result = await handleResumePlan(selectedPlan.id, normalizedDate);
+      // Use PlanOperationsService directly
+      const success = await PlanOperationsService.resumePlan(selectedPlan, normalizedDate);
       
-      if (result?.success) {
+      if (success) {
+        toast.success('Payment plan resumed successfully');
         setShowResumeDialog(false);
         setShowPlanDetails(false); // Close the plan details modal
+        return { success: true };
       } else {
-        console.error('Resume plan returned error:', result);
+        toast.error('Failed to resume payment plan');
+        return { success: false };
       }
     } catch (error) {
       console.error('Error resuming plan:', error);
+      toast.error('Failed to resume payment plan');
+      return { success: false, error };
     } finally {
       setIsProcessing(false);
     }
@@ -102,7 +109,7 @@ export const usePlanResumeActions = (
   return {
     showResumeDialog,
     setShowResumeDialog,
-    handleResumePlan: handleConfirmResumePlan,
+    handleResumePlan,
     handleOpenResumeDialog,
     hasSentPayments,
     hasOverduePayments,

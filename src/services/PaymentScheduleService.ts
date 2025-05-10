@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { PlanOperationsService } from '@/services/PlanOperationsService';
 
 /**
  * Fetch plans directly from the plans table
@@ -162,267 +163,13 @@ export const recordPaymentPlanActivity = async (params: {
 
 /**
  * Cancel a payment plan
+ * @deprecated Use PlanOperationsService.cancelPlan instead
  */
 export const cancelPaymentPlan = async (planId: string) => {
+  console.warn('DEPRECATED: cancelPaymentPlan is deprecated. Use PlanOperationsService.cancelPlan instead.');
+  
   try {
-    // Update the plan status
-    const { error: updatePlanError } = await supabase
-      .from('plans')
-      .update({
-        status: 'cancelled',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', planId);
-    
-    if (updatePlanError) {
-      throw updatePlanError;
-    }
-    
-    // Update all pending/upcoming payments to cancelled
-    const { error: updateScheduleError } = await supabase
-      .from('payment_schedule')
-      .update({
-        status: 'cancelled',
-        updated_at: new Date().toISOString()
-      })
-      .eq('plan_id', planId)
-      .in('status', ['pending', 'scheduled', 'sent', 'overdue']);
-      
-    if (updateScheduleError) {
-      throw updateScheduleError;
-    }
-    
-    // Record the activity
-    await recordPaymentPlanActivity({
-      planId,
-      actionType: 'plan_cancelled',
-      details: {
-        cancelled_at: new Date().toISOString()
-      }
-    });
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error cancelling payment plan:', error);
-    return { success: false, error };
-  }
-};
-
-/**
- * Pause a payment plan
- */
-export const pausePaymentPlan = async (planId: string) => {
-  try {
-    console.log(`Starting plan pause operation for plan ${planId}`);
-    
-    // Get the current plan to ensure it exists
-    const { data: planData, error: planFetchError } = await supabase
-      .from('plans')
-      .select('*')
-      .eq('id', planId)
-      .single();
-      
-    if (planFetchError) {
-      console.error('Error fetching plan data:', planFetchError);
-      throw planFetchError;
-    }
-    
-    // Find payment requests that need to be cancelled
-    const { data: scheduleData, error: scheduleError } = await supabase
-      .from('payment_schedule')
-      .select('id, payment_request_id, status')
-      .eq('plan_id', planId)
-      .in('status', ['pending', 'sent', 'overdue'])
-      .not('payment_request_id', 'is', null);
-      
-    if (scheduleError) {
-      console.error('Error fetching payment schedules:', scheduleError);
-      throw scheduleError;
-    }
-    
-    console.log(`Found ${scheduleData?.length || 0} payment schedules with request IDs`);
-    
-    // Extract payment request IDs
-    const paymentRequestIds = scheduleData
-      ?.filter(item => item.payment_request_id)
-      .map(item => item.payment_request_id) || [];
-      
-    console.log(`Identified ${paymentRequestIds.length} payment requests to cancel:`, paymentRequestIds);
-    
-    // Cancel payment requests first - CRITICAL CHANGE: Remove the is('payment_id', null) condition
-    if (paymentRequestIds.length > 0) {
-      const { data: updatedRequests, error: requestCancelError } = await supabase
-        .from('payment_requests')
-        .update({
-          status: 'cancelled',
-          updated_at: new Date().toISOString()
-        })
-        .in('id', paymentRequestIds)
-        // Removed condition: .is('payment_id', null)
-        .select();
-        
-      if (requestCancelError) {
-        console.error('Error cancelling payment requests:', requestCancelError);
-        // Continue with the operation even if this fails - but log it
-        console.warn('Will proceed despite payment request cancellation error');
-      } else {
-        console.log(`Successfully cancelled ${updatedRequests?.length || 0} payment requests:`, 
-          updatedRequests?.map(r => r.id));
-      }
-    }
-    
-    // Update all pending/upcoming payments to paused
-    const { data: updatedSchedules, error: updateScheduleError } = await supabase
-      .from('payment_schedule')
-      .update({
-        status: 'paused',
-        updated_at: new Date().toISOString()
-      })
-      .eq('plan_id', planId)
-      .in('status', ['pending', 'sent', 'overdue'])
-      .select();
-      
-    if (updateScheduleError) {
-      console.error('Error pausing payment schedules:', updateScheduleError);
-      throw updateScheduleError;
-    }
-    
-    console.log(`Successfully paused ${updatedSchedules?.length || 0} payment schedules`);
-    
-    // Record the activity
-    await recordPaymentPlanActivity({
-      planId,
-      actionType: 'plan_paused',
-      details: {
-        paused_at: new Date().toISOString(),
-        payment_requests_cancelled: paymentRequestIds.length
-      }
-    });
-    
-    // The plan status will be updated by the cron job based on payment_schedule rows
-    // But also update it manually for immediate feedback
-    try {
-      const { data: planUpdateData, error: planUpdateError } = await supabase
-        .from('plans')
-        .update({
-          status: 'paused',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', planId)
-        .select();
-      
-      if (planUpdateError) {
-        console.error('Error updating plan status:', planUpdateError);
-      } else {
-        console.log('Plan status updated to paused');
-      }
-    } catch (err) {
-      console.error('Error in plan status update:', err);
-    }
-    
-    console.log('Plan paused successfully');
-    return { success: true };
-  } catch (error) {
-    console.error('Error pausing payment plan:', error);
-    return { success: false, error };
-  }
-};
-
-/**
- * Resume a paused payment plan
- */
-export const resumePaymentPlan = async (planId: string, resumeDate: Date) => {
-  try {
-    // Get all paused payment_schedule entries for this plan
-    const { data: scheduleData, error: scheduleError } = await supabase
-      .from('payment_schedule')
-      .select('*')
-      .eq('plan_id', planId)
-      .eq('status', 'paused')
-      .order('payment_number', { ascending: true });
-      
-    if (scheduleError) {
-      throw scheduleError;
-    }
-    
-    if (!scheduleData || scheduleData.length === 0) {
-      throw new Error('No paused payments found for this plan');
-    }
-    
-    // Find the next payment due date
-    const firstPendingPayment = scheduleData[0];
-    const formattedResumeDate = format(resumeDate, 'yyyy-MM-dd');
-    
-    // Update the paused payments to pending status with new due dates
-    for (let i = 0; i < scheduleData.length; i++) {
-      const payment = scheduleData[i];
-      let newDueDate;
-      
-      // Calculate the new due date for each payment
-      if (i === 0) {
-        // First payment starts on the resume date
-        newDueDate = formattedResumeDate;
-      } else {
-        // Calculate subsequent payments based on frequency
-        const previousPayment = scheduleData[i - 1];
-        const previousDate = new Date(previousPayment.due_date);
-        
-        if (payment.payment_frequency === 'weekly') {
-          previousDate.setDate(previousDate.getDate() + 7);
-        } else if (payment.payment_frequency === 'bi-weekly') {
-          previousDate.setDate(previousDate.getDate() + 14);
-        } else if (payment.payment_frequency === 'monthly') {
-          previousDate.setMonth(previousDate.getMonth() + 1);
-        } else {
-          // Default to monthly if frequency is unknown
-          previousDate.setMonth(previousDate.getMonth() + 1);
-        }
-        
-        newDueDate = format(previousDate, 'yyyy-MM-dd');
-      }
-      
-      // Update the payment schedule entry
-      const { error: updateError } = await supabase
-        .from('payment_schedule')
-        .update({
-          status: 'pending',
-          due_date: newDueDate,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', payment.id);
-        
-      if (updateError) {
-        console.error(`Failed to update payment schedule ${payment.id}:`, updateError);
-        // Continue with other updates even if one fails
-      }
-    }
-    
-    // Record the activity
-    await recordPaymentPlanActivity({
-      planId,
-      actionType: 'plan_resumed',
-      details: {
-        resumed_at: new Date().toISOString(),
-        next_payment_date: formattedResumeDate
-      }
-    });
-    
-    // The plan status will be updated by the cron job based on payment_schedule rows
-    // No need to manually set the plan status, let the cron job handle it
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error resuming payment plan:', error);
-    return { success: false, error };
-  }
-};
-
-/**
- * Reschedule all remaining payments in a plan
- */
-export const reschedulePaymentPlan = async (planId: string, newStartDate: Date) => {
-  try {
-    // Get the plan details
+    // Get the plan details first to provide to PlanOperationsService
     const { data: planData, error: planError } = await supabase
       .from('plans')
       .select('*')
@@ -433,166 +180,135 @@ export const reschedulePaymentPlan = async (planId: string, newStartDate: Date) 
       throw planError;
     }
     
-    // Get all pending payment_schedule entries for this plan
-    const { data: scheduleData, error: scheduleError } = await supabase
-      .from('payment_schedule')
-      .select('*')
-      .eq('plan_id', planId)
-      .in('status', ['pending', 'scheduled', 'overdue'])
-      .order('payment_number', { ascending: true });
-      
-    if (scheduleError) {
-      throw scheduleError;
-    }
+    const plan = formatPlanFromDb(planData);
     
-    if (!scheduleData || scheduleData.length === 0) {
-      throw new Error('No pending payments found to reschedule');
-    }
+    // Use the new service method
+    const success = await PlanOperationsService.cancelPlan(plan);
+    return { success };
     
-    const originalDates = scheduleData.map(s => s.due_date);
-    
-    // Calculate new dates based on payment frequency and new start date
-    const newDates = calculateNewPaymentDates(
-      newStartDate, 
-      planData.payment_frequency, 
-      scheduleData.length
-    );
-    
-    // Update each payment schedule entry with its new date
-    const updates = scheduleData.map((payment, index) => {
-      return supabase
-        .from('payment_schedule')
-        .update({
-          due_date: newDates[index],
-          // If we're rescheduling an overdue payment to a future date, reset it to pending
-          status: payment.status === 'overdue' && new Date(newDates[index]) > new Date() ? 'pending' : payment.status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', payment.id);
-    });
-    
-    // Run all updates in parallel
-    await Promise.all(updates.map(query => query));
-    
-    // Record the activity
-    await recordPaymentPlanActivity({
-      planId,
-      actionType: 'plan_rescheduled',
-      details: {
-        rescheduled_at: new Date().toISOString(),
-        original_next_date: originalDates[0],
-        new_next_date: newDates[0],
-        affected_payments: scheduleData.length
-      }
-    });
-    
-    // The plan status will be updated by the cron job based on payment_schedule rows
-    // No need to manually set the plan status here, let the cron job handle it
-    
-    return { success: true };
   } catch (error) {
-    console.error('Error rescheduling payment plan:', error);
+    console.error('Error in deprecated cancelPaymentPlan:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Pause a payment plan
+ * @deprecated Use PlanOperationsService.pausePlan instead
+ */
+export const pausePaymentPlan = async (planId: string) => {
+  console.warn('DEPRECATED: pausePaymentPlan is deprecated. Use PlanOperationsService.pausePlan instead.');
+  
+  try {
+    // Get the plan details first to provide to PlanOperationsService
+    const { data: planData, error: planError } = await supabase
+      .from('plans')
+      .select('*')
+      .eq('id', planId)
+      .single();
+      
+    if (planError) {
+      throw planError;
+    }
+    
+    const plan = formatPlanFromDb(planData);
+    
+    // Use the new service method
+    const success = await PlanOperationsService.pausePlan(plan);
+    return { success };
+    
+  } catch (error) {
+    console.error('Error in deprecated pausePaymentPlan:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Resume a paused payment plan
+ * @deprecated Use PlanOperationsService.resumePlan instead
+ */
+export const resumePaymentPlan = async (planId: string, resumeDate: Date) => {
+  console.warn('DEPRECATED: resumePaymentPlan is deprecated. Use PlanOperationsService.resumePlan instead.');
+  
+  try {
+    // Get the plan details first to provide to PlanOperationsService
+    const { data: planData, error: planError } = await supabase
+      .from('plans')
+      .select('*')
+      .eq('id', planId)
+      .single();
+      
+    if (planError) {
+      throw planError;
+    }
+    
+    const plan = formatPlanFromDb(planData);
+    
+    // Use the new service method
+    const success = await PlanOperationsService.resumePlan(plan, resumeDate);
+    return { success };
+    
+  } catch (error) {
+    console.error('Error in deprecated resumePaymentPlan:', error);
+    return { success: false, error };
+  }
+};
+
+/**
+ * Reschedule all remaining payments in a plan
+ * @deprecated Use PlanOperationsService.reschedulePlan instead
+ */
+export const reschedulePaymentPlan = async (planId: string, newStartDate: Date) => {
+  console.warn('DEPRECATED: reschedulePaymentPlan is deprecated. Use PlanOperationsService.reschedulePlan instead.');
+  
+  try {
+    // Get the plan details first to provide to PlanOperationsService
+    const { data: planData, error: planError } = await supabase
+      .from('plans')
+      .select('*')
+      .eq('id', planId)
+      .single();
+      
+    if (planError) {
+      throw planError;
+    }
+    
+    const plan = formatPlanFromDb(planData);
+    
+    // Use the new service method
+    const success = await PlanOperationsService.reschedulePlan(plan, newStartDate);
+    return { success };
+    
+  } catch (error) {
+    console.error('Error in deprecated reschedulePaymentPlan:', error);
     return { success: false, error };
   }
 };
 
 /**
  * Record a refund for a payment
+ * @deprecated Use PlanOperationsService.recordPaymentRefund instead
  */
 export const recordPaymentRefund = async (paymentId: string, amount: number, isFullRefund: boolean) => {
+  console.warn('DEPRECATED: recordPaymentRefund is deprecated. Use PlanOperationsService.recordPaymentRefund instead.');
+  
   try {
-    // Get the payment details
-    const { data: paymentData, error: paymentError } = await supabase
-      .from('payments')
-      .select('payment_link_id')
-      .eq('id', paymentId)
-      .single();
-      
-    if (paymentError) {
-      throw paymentError;
-    }
-    
-    // Find the payment schedule entry through payment requests if it exists
-    const { data: requestsData, error: requestsError } = await supabase
-      .from('payment_requests')
-      .select('id')
-      .eq('payment_id', paymentId)
-      .maybeSingle();
-      
-    if (requestsError) {
-      console.warn('Could not fetch payment request:', requestsError);
-    }
-    
-    let scheduleData = null;
-    if (requestsData?.id) {
-      // Look for associated payment schedule
-      const { data: scheduleResult, error: scheduleError } = await supabase
-        .from('payment_schedule')
-        .select('plan_id')
-        .eq('payment_request_id', requestsData.id)
-        .maybeSingle();
-        
-      if (scheduleError) {
-        console.warn('Could not find payment_schedule entry:', scheduleError);
-      } else {
-        scheduleData = scheduleResult;
-      }
-    }
-    
-    // Record the refund in payments table
-    const { error: updatePaymentError } = await supabase
-      .from('payments')
-      .update({
-        status: isFullRefund ? 'refunded' : 'partially_refunded',
-        refund_amount: amount,
-        refunded_at: new Date().toISOString()
-      })
-      .eq('id', paymentId);
-      
-    if (updatePaymentError) {
-      throw updatePaymentError;
-    }
-    
-    // If this payment was part of a payment plan, update the payment_schedule status
-    if (scheduleData?.plan_id && requestsData?.id) {
-      const { error: updateScheduleError } = await supabase
-        .from('payment_schedule')
-        .update({
-          status: isFullRefund ? 'refunded' : 'partially_refunded',
-          updated_at: new Date().toISOString()
-        })
-        .eq('payment_request_id', requestsData.id);
-        
-      if (updateScheduleError) {
-        console.warn('Could not update payment schedule status:', updateScheduleError);
-      }
-    }
-    
-    // If this is part of a payment plan, record the activity
-    if (scheduleData?.plan_id) {
-      await recordPaymentPlanActivity({
-        planId: scheduleData.plan_id,
-        actionType: 'payment_refunded',
-        details: {
-          payment_id: paymentId,
-          amount: amount,
-          is_full_refund: isFullRefund,
-          refunded_at: new Date().toISOString()
-        }
-      });
-    }
-    
-    return { success: true };
+    // Use the new service method
+    const result = await PlanOperationsService.recordPaymentRefund(paymentId, amount, isFullRefund);
+    return result;
   } catch (error) {
-    console.error('Error recording payment refund:', error);
+    console.error('Error in deprecated recordPaymentRefund:', error);
     return { success: false, error };
   }
 };
 
 /**
  * Helper function to calculate new payment dates based on frequency
+ * @deprecated Use PlanOperationsService private methods instead
  */
 const calculateNewPaymentDates = (startDate: Date, frequency: string, count: number): string[] => {
+  console.warn('DEPRECATED: calculateNewPaymentDates is deprecated. This functionality is now internal to PlanOperationsService.');
+  
   const dates: string[] = [];
   let currentDate = new Date(startDate);
   
