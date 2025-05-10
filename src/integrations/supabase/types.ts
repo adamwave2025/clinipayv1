@@ -795,7 +795,9 @@ export type Database = {
         Returns: string
       }
       resume_payment_plan: {
-        Args: { plan_id: string; resume_date: string }
+        Args:
+          | { plan_id: string; resume_date: string }
+          | { plan_id: string; resume_date: string; payment_status?: string }
         Returns: Json
       }
       text_to_bytea: {

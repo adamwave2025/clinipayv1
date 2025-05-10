@@ -331,9 +331,13 @@ export class PlanOperationsService {
         payment_status: 'paused'
       };
       
-      // Fixed: Using rpc() correctly - specify the return type, NOT using generic parameters for function name constraints
+      console.log('Calling DB function with params:', JSON.stringify(params));
+      
+      // Call the database function directly with proper typing
       const { data: schedulingResult, error: schedulingError } = await supabase
         .rpc('resume_payment_plan', params);
+      
+      console.log('Raw DB function response:', schedulingResult);
       
       if (schedulingError) {
         console.error('❌ Error in resume_payment_plan function:', schedulingError);
@@ -348,9 +352,16 @@ export class PlanOperationsService {
         throw new Error('Database function failed to reschedule payments');
       }
       
+      // Check if the function returned an error message
       if (typeof schedulingResult === 'object' && 'error' in schedulingResult) {
         console.error('❌ Database function returned error:', schedulingResult.error);
         throw new Error(`Database function error: ${String(schedulingResult.error)}`);
+      }
+      
+      // Verify the function reported success
+      if (typeof schedulingResult === 'object' && 'success' in schedulingResult && !schedulingResult.success) {
+        console.error('❌ Database function reported failure:', schedulingResult.message || 'Unknown reason');
+        throw new Error(`Database function reported failure: ${schedulingResult.message || 'Unknown reason'}`);
       }
       
       // STEP 6: ONLY NOW update the status of payments from paused to pending
