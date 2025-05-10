@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -28,9 +29,10 @@ interface ReschedulePlanDialogProps {
   onConfirm: (newStartDate: Date) => void;
   planName: string;
   patientName: string;
-  isProcessing?: boolean;
+  isLoading?: boolean;
   hasSentPayments?: boolean;
-  hasOverduePayments?: boolean; // New prop to check for overdue payments
+  hasOverduePayments?: boolean;
+  startDate?: string; // Added this prop for compatibility
 }
 
 const ReschedulePlanDialog = ({
@@ -39,14 +41,16 @@ const ReschedulePlanDialog = ({
   onConfirm,
   planName,
   patientName,
-  isProcessing = false,
+  isLoading = false,
   hasSentPayments = false,
-  hasOverduePayments = false, // Default to false if not provided
+  hasOverduePayments = false,
+  startDate, // Accept the startDate prop
 }: ReschedulePlanDialogProps) => {
-  // Initialize with current date but set hours to midnight
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const [date, setDate] = useState<Date>(today);
+  // Initialize with current date or parse the startDate if provided
+  const initialDate = startDate ? new Date(startDate) : new Date();
+  initialDate.setHours(0, 0, 0, 0); // Normalize to midnight
+  
+  const [date, setDate] = useState<Date>(initialDate);
 
   const handleConfirm = () => {
     // Ensure the date is normalized to midnight to avoid timezone issues
@@ -87,7 +91,7 @@ const ReschedulePlanDialog = ({
                     "w-full justify-start text-left font-normal",
                     !date && "text-muted-foreground"
                   )}
-                  disabled={isProcessing}
+                  disabled={isLoading}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? format(date, "PPP") : <span>Pick a date</span>}
@@ -139,15 +143,15 @@ const ReschedulePlanDialog = ({
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowDialog(false)} disabled={isProcessing}>
+          <Button variant="outline" onClick={() => setShowDialog(false)} disabled={isLoading}>
             Cancel
           </Button>
           <Button 
             onClick={handleConfirm}
             className="btn-gradient"
-            disabled={isProcessing}
+            disabled={isLoading}
           >
-            {isProcessing ? (
+            {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Processing...

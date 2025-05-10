@@ -72,6 +72,8 @@ export interface ManagePlansContextType {
   handleResumePlan: (resumeDate: Date) => Promise<void>;
   handleOpenResumeDialog: () => void;
   hasSentPayments: boolean;
+  hasOverduePayments: boolean;
+  hasPaidPayments: boolean; // Added missing property
   resumeError?: string | null;
   
   // Reschedule plan properties
@@ -79,7 +81,6 @@ export interface ManagePlansContextType {
   setShowRescheduleDialog: (show: boolean) => void;
   handleReschedulePlan: (newStartDate: Date) => Promise<void>;
   handleOpenRescheduleDialog: () => void;
-  hasOverduePayments: boolean;
   
   // Plan state helpers
   isPlanPaused: (plan: Plan | null) => boolean;

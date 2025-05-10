@@ -19,7 +19,9 @@ import { penceToPounds, poundsToPence } from '@/services/CurrencyService';
 interface PaymentRefundDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (amount?: number) => void;
+  onRefund: (amount?: number) => void;
+  paymentId?: string; // Added paymentId prop to match usage
+  paymentToRefund?: string; // For backward compatibility
   paymentAmount?: number;
   patientName?: string;
 }
@@ -27,7 +29,9 @@ interface PaymentRefundDialogProps {
 const PaymentRefundDialog = ({
   open,
   onOpenChange,
-  onConfirm,
+  onRefund,
+  paymentId, // Accept the new paymentId prop
+  paymentToRefund, // Keep the old prop for backward compatibility
   paymentAmount = 0,
   patientName = '',
 }: PaymentRefundDialogProps) => {
@@ -103,7 +107,7 @@ const PaymentRefundDialog = ({
   const handleConfirm = () => {
     // Only proceed if there's no error and amount is valid
     if (!error && refundAmount > 0 && refundAmount <= amountInPounds) {
-      onConfirm(refundAmount);
+      onRefund(refundAmount);
     }
   };
 
