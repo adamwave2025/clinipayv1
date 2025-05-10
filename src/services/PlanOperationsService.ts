@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -323,15 +322,13 @@ export class PlanOperationsService {
       console.log('📞 Calling resume_payment_plan with formatted date:', formattedDate);
       
       // STEP 5: Call the resume_payment_plan function to reschedule the payments
-      // We need to use executeRpc to work around the TypeScript constraints
-      const { data: schedulingResult, error: schedulingError } = await executeRpc(
-        'resume_payment_plan',
-        {
+      // Using type assertion to bypass TypeScript's strict function name checking
+      const { data: schedulingResult, error: schedulingError } = await supabase
+        .rpc('resume_payment_plan' as any, { 
           plan_id: plan.id,
           resume_date: formattedDate,
           payment_status: 'paused'  // Explicitly pass 'paused'
-        }
-      );
+        });
       
       if (schedulingError) {
         console.error('❌ Error in resume_payment_plan function:', schedulingError);
