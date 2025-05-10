@@ -66,7 +66,8 @@ const ActivePlansTable = ({
     planName: p.title || p.planName,
     progress: p.progress,
     paidInstallments: p.paidInstallments,
-    totalInstallments: p.totalInstallments
+    totalInstallments: p.totalInstallments,
+    status: p.status // Log the status to debug
   })));
   
   return (
@@ -143,9 +144,7 @@ const ActivePlansTable = ({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="inline-flex items-center px-3 py-1 rounded-full text-white text-sm font-medium bg-gradient-primary">
-                        CliniPay
-                      </div>
+                      <StatusBadge status={plan.status} />
                     </TableCell>
                     <TableCell>
                       {formatDate(plan.nextDueDate)}
