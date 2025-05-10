@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -330,9 +331,9 @@ export class PlanOperationsService {
         payment_status: 'paused'
       };
       
-      // Fixed: Correctly specify both type arguments (parameters and response) for the RPC call
+      // Fixed: Using rpc() correctly - specify the return type, NOT using generic parameters for function name constraints
       const { data: schedulingResult, error: schedulingError } = await supabase
-        .rpc<ResumePlanResponse, ResumePlanParams>('resume_payment_plan', params);
+        .rpc('resume_payment_plan', params);
       
       if (schedulingError) {
         console.error('❌ Error in resume_payment_plan function:', schedulingError);
