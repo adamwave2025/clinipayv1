@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -322,13 +323,15 @@ export class PlanOperationsService {
       console.log('📞 Calling resume_payment_plan with formatted date:', formattedDate);
       
       // STEP 5: Call the resume_payment_plan function to reschedule the payments
-      // IMPORTANT: We now pass 'paused' as the status to search for
-      const { data: schedulingResult, error: schedulingError } = await supabase
-        .rpc('resume_payment_plan', { 
+      // We need to use executeRpc to work around the TypeScript constraints
+      const { data: schedulingResult, error: schedulingError } = await executeRpc(
+        'resume_payment_plan',
+        {
           plan_id: plan.id,
           resume_date: formattedDate,
           payment_status: 'paused'  // Explicitly pass 'paused'
-        });
+        }
+      );
       
       if (schedulingError) {
         console.error('❌ Error in resume_payment_plan function:', schedulingError);
@@ -781,6 +784,11 @@ export class PlanOperationsService {
       return { success: false, error };
     }
   }
+}
+
+// Helper function to execute RPC calls with dynamic parameters
+async function executeRpc(functionName: string, params: Record<string, any>) {
+  return supabase.rpc(functionName, params);
 }
 
 // Import at the end to avoid circular dependencies
