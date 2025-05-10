@@ -340,7 +340,8 @@ export class PlanOperationsService {
       console.log('Raw DB function response:', schedulingResult);
       
       if (schedulingError) {
-        console.error('❌ Error in resume_payment_plan function:', schedulingError);
+        console.error('❌ Error in resume_payment_plan function:', schedulingError.message);
+        console.error('Error details:', schedulingError);
         throw new Error(`Database function error: ${schedulingError.message}`);
       }
       
