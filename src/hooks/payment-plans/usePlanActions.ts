@@ -1,7 +1,7 @@
+
 import { useState } from 'react';
 import { 
   cancelPaymentPlan, 
-  pausePaymentPlan,
   resumePaymentPlan,
   reschedulePaymentPlan,
   recordPaymentRefund
@@ -10,6 +10,7 @@ import { sendPaymentReminder } from '@/services/PaymentReminderService';
 import { toast } from 'sonner';
 import { Plan } from '@/utils/planTypes';
 import { PlanStatusService } from '@/services/PlanStatusService';
+import { PlanOperationsService } from '@/services/PlanOperationsService';
 
 export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -54,16 +55,17 @@ export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
   const handlePausePlan = async (planId: string) => {
     try {
       setIsProcessing(true);
-      const result = await pausePaymentPlan(planId);
+      // Use PlanOperationsService directly instead of PaymentScheduleService
+      const success = await PlanOperationsService.pausePlan({ id: planId } as Plan);
       
-      if (result.success) {
+      if (success) {
         toast.success('Payment plan paused successfully');
         await refreshPlans();
+        return { success: true };
       } else {
         toast.error('Failed to pause payment plan');
+        return { success: false };
       }
-      
-      return result;
     } catch (error) {
       console.error('Error pausing plan:', error);
       toast.error('Failed to pause payment plan');

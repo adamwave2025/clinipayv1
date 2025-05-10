@@ -213,6 +213,8 @@ export const cancelPaymentPlan = async (planId: string) => {
  */
 export const pausePaymentPlan = async (planId: string) => {
   try {
+    console.log(`Starting plan pause operation for plan ${planId}`);
+    
     // Get the current plan to ensure it exists
     const { data: planData, error: planFetchError } = await supabase
       .from('plans')
@@ -220,51 +222,72 @@ export const pausePaymentPlan = async (planId: string) => {
       .eq('id', planId)
       .single();
       
-    if (planFetchError) throw planFetchError;
+    if (planFetchError) {
+      console.error('Error fetching plan data:', planFetchError);
+      throw planFetchError;
+    }
     
     // Find payment requests that need to be cancelled
     const { data: scheduleData, error: scheduleError } = await supabase
       .from('payment_schedule')
-      .select('id, payment_request_id')
+      .select('id, payment_request_id, status')
       .eq('plan_id', planId)
       .in('status', ['pending', 'sent', 'overdue'])
       .not('payment_request_id', 'is', null);
       
-    if (scheduleError) throw scheduleError;
+    if (scheduleError) {
+      console.error('Error fetching payment schedules:', scheduleError);
+      throw scheduleError;
+    }
+    
+    console.log(`Found ${scheduleData?.length || 0} payment schedules with request IDs`);
     
     // Extract payment request IDs
     const paymentRequestIds = scheduleData
       ?.filter(item => item.payment_request_id)
       .map(item => item.payment_request_id) || [];
       
-    // Cancel payment requests first
+    console.log(`Identified ${paymentRequestIds.length} payment requests to cancel:`, paymentRequestIds);
+    
+    // Cancel payment requests first - CRITICAL CHANGE: Remove the is('payment_id', null) condition
     if (paymentRequestIds.length > 0) {
-      const { error: requestCancelError } = await supabase
+      const { data: updatedRequests, error: requestCancelError } = await supabase
         .from('payment_requests')
         .update({
           status: 'cancelled',
           updated_at: new Date().toISOString()
         })
         .in('id', paymentRequestIds)
-        .is('payment_id', null); // Only cancel requests that haven't been paid
+        // Removed condition: .is('payment_id', null)
+        .select();
         
       if (requestCancelError) {
         console.error('Error cancelling payment requests:', requestCancelError);
-        // Continue with the operation even if this fails
+        // Continue with the operation even if this fails - but log it
+        console.warn('Will proceed despite payment request cancellation error');
+      } else {
+        console.log(`Successfully cancelled ${updatedRequests?.length || 0} payment requests:`, 
+          updatedRequests?.map(r => r.id));
       }
     }
     
     // Update all pending/upcoming payments to paused
-    const { error: updateScheduleError } = await supabase
+    const { data: updatedSchedules, error: updateScheduleError } = await supabase
       .from('payment_schedule')
       .update({
         status: 'paused',
         updated_at: new Date().toISOString()
       })
       .eq('plan_id', planId)
-      .in('status', ['pending', 'sent', 'overdue']);
+      .in('status', ['pending', 'sent', 'overdue'])
+      .select();
       
-    if (updateScheduleError) throw updateScheduleError;
+    if (updateScheduleError) {
+      console.error('Error pausing payment schedules:', updateScheduleError);
+      throw updateScheduleError;
+    }
+    
+    console.log(`Successfully paused ${updatedSchedules?.length || 0} payment schedules`);
     
     // Record the activity
     await recordPaymentPlanActivity({
@@ -277,8 +300,27 @@ export const pausePaymentPlan = async (planId: string) => {
     });
     
     // The plan status will be updated by the cron job based on payment_schedule rows
-    // No need to manually set the plan status here, let the cron job handle it
+    // But also update it manually for immediate feedback
+    try {
+      const { data: planUpdateData, error: planUpdateError } = await supabase
+        .from('plans')
+        .update({
+          status: 'paused',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', planId)
+        .select();
+      
+      if (planUpdateError) {
+        console.error('Error updating plan status:', planUpdateError);
+      } else {
+        console.log('Plan status updated to paused');
+      }
+    } catch (err) {
+      console.error('Error in plan status update:', err);
+    }
     
+    console.log('Plan paused successfully');
     return { success: true };
   } catch (error) {
     console.error('Error pausing payment plan:', error);
