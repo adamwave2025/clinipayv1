@@ -1,5 +1,5 @@
 
-import { corsHeaders } from "./utils.ts";
+import { corsHeaders, initStripe, initSupabase, validatePaymentAmount, generatePaymentReference } from "./utils.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 
@@ -34,16 +34,8 @@ export async function handleCreatePaymentIntent(req: Request) {
       });
     }
 
-    // Fetch the clinic's Stripe account ID
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("Missing Supabase environment variables");
-      throw new Error("Server configuration error");
-    }
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Initialize Supabase using the utility function
+    const supabase = initSupabase();
 
     // Get clinic details
     const { data: clinic, error: clinicError } = await supabase
@@ -93,26 +85,25 @@ export async function handleCreatePaymentIntent(req: Request) {
     const platformFeeAmount = Math.round((amount * platformFeePercent) / 100);
     console.log(`Platform fee: ${platformFeePercent}%, Platform fee amount: ${platformFeeAmount}`);
 
-    // Configure Stripe
-    const stripe = new Stripe(Deno.env.get("SECRET_KEY") || "", {
-      apiVersion: "2023-10-16",
-    });
+    // Initialize Stripe using the utility function
+    const stripe = initStripe();
 
-    // Generate consistent payment reference
-    // Standard format with CLN- prefix for all payment references
-    const paymentReference = `CLN-${Array(6)
-      .fill(0)
-      .map(() => 
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".charAt(
-          Math.floor(Math.random() * 36)
-        )
-      )
-      .join("")}`;
-      
+    // Generate payment reference using the utility function
+    const paymentReference = generatePaymentReference();
     console.log(`Generated payment reference: ${paymentReference}`);
 
+    // Validate the payment amount for additional security
+    if (!validatePaymentAmount(amount)) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: "Payment amount validation failed"
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400
+      });
+    }
+
     // Create a PaymentIntent
-    // FIX: Remove the amount from transfer_data since we're using application_fee_amount
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: "gbp",
@@ -134,7 +125,6 @@ export async function handleCreatePaymentIntent(req: Request) {
       },
       transfer_data: {
         destination: clinic.stripe_account_id,
-        // Removed the amount parameter here to avoid the conflict with application_fee_amount
       },
       application_fee_amount: platformFeeAmount,
     });

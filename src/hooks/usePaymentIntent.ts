@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentLinkData } from './usePaymentLinkData';
 import { validatePenceAmount } from '@/services/CurrencyService';
@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 export function usePaymentIntent() {
   const [isCreatingIntent, setIsCreatingIntent] = useState(false);
+  const intentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const createPaymentIntent = async ({
     linkData,
@@ -31,6 +32,17 @@ export function usePaymentIntent() {
     }
 
     setIsCreatingIntent(true);
+    
+    // Set a timeout to detect if the edge function hangs
+    if (intentTimeoutRef.current) {
+      clearTimeout(intentTimeoutRef.current);
+    }
+    
+    intentTimeoutRef.current = setTimeout(() => {
+      console.error('Payment intent creation timed out after 15 seconds');
+      toast.error('Payment processing timed out. Please try again.');
+      setIsCreatingIntent(false);
+    }, 15000);
     
     try {
       console.log('Initiating payment process for link ID:', linkData.id);
@@ -61,8 +73,8 @@ export function usePaymentIntent() {
       console.log('Calling create-payment-intent edge function with amount:', amount);
       
       // Call the create-payment-intent edge function with the CORRECT amount
-      // CRITICAL: The amount is already in cents, DO NOT multiply by 100 again
-      const { data: paymentIntentData, error: paymentIntentError } = await supabase.functions.invoke(
+      // Add a timeout promise to handle edge function freezing
+      const invokePromise = supabase.functions.invoke(
         'create-payment-intent', 
         {
           body: JSON.stringify({
@@ -80,6 +92,14 @@ export function usePaymentIntent() {
           })
         }
       );
+      
+      // Clear the timeout when the edge function responds
+      const { data: paymentIntentData, error: paymentIntentError } = await invokePromise;
+      
+      if (intentTimeoutRef.current) {
+        clearTimeout(intentTimeoutRef.current);
+        intentTimeoutRef.current = null;
+      }
       
       if (paymentIntentError) {
         console.error('Payment intent error:', paymentIntentError);
@@ -114,6 +134,10 @@ export function usePaymentIntent() {
       toast.error(error.message || 'Error processing payment');
       return { success: false, error: error.message || 'Unknown error occurred' };
     } finally {
+      if (intentTimeoutRef.current) {
+        clearTimeout(intentTimeoutRef.current);
+        intentTimeoutRef.current = null;
+      }
       setIsCreatingIntent(false);
     }
   };

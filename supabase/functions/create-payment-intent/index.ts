@@ -12,6 +12,7 @@ serve(async (req) => {
   try {
     return await handleCreatePaymentIntent(req);
   } catch (error) {
+    // Ensure we capture and return any errors without using process.nextTick
     console.error("Payment intent creation error:", error.message);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
