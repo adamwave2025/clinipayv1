@@ -14,23 +14,36 @@ export const usePlanRescheduleActions = (
 
   const handleOpenRescheduleDialog = async () => {
     if (selectedPlan) {
-      // Check if the plan has any payments in 'sent' status
-      const { data: sentPayments, error: sentError } = await supabase
-        .from('payment_schedule')
-        .select('id')
-        .eq('plan_id', selectedPlan.id)
-        .eq('status', 'sent');
-      
-      // Check if the plan has any payments in 'overdue' status
-      const { data: overduePayments, error: overdueError } = await supabase
-        .from('payment_schedule')
-        .select('id')
-        .eq('plan_id', selectedPlan.id)
-        .eq('status', 'overdue');
-      
-      // Set state based on whether there are sent or overdue payments
-      setHasSentPayments(sentPayments && sentPayments.length > 0);
-      setHasOverduePayments((overduePayments && overduePayments.length > 0) || selectedPlan.status === 'overdue');
+      try {
+        // Check for sent payments that haven't been paid yet
+        const { data: sentPayments, error: sentError } = await supabase
+          .from('payment_schedule')
+          .select('id')
+          .eq('plan_id', selectedPlan.id)
+          .eq('status', 'sent')
+          .not('payment_request_id', 'is', null);
+        
+        if (sentError) throw sentError;
+        
+        // Check for overdue payments
+        const { data: overduePayments, error: overdueError } = await supabase
+          .from('payment_schedule')
+          .select('id')
+          .eq('plan_id', selectedPlan.id)
+          .eq('status', 'overdue');
+        
+        if (overdueError) throw overdueError;
+        
+        // Set flags for the dialog to show appropriate notices
+        setHasSentPayments(sentPayments && sentPayments.length > 0);
+        setHasOverduePayments(
+          (overduePayments && overduePayments.length > 0) || 
+          selectedPlan.status === 'overdue'
+        );
+        
+      } catch (error) {
+        console.error('Error checking plan payment statuses:', error);
+      }
     }
     
     setShowRescheduleDialog(true);
