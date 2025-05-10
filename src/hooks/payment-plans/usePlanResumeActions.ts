@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
-import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { toast } from 'sonner';
 
 export const usePlanResumeActions = (
@@ -58,9 +57,9 @@ export const usePlanResumeActions = (
         .not('payment_request_id', 'is', null);
       
       // Check if any payments have been made for this plan
-      const { count: paidCount, error: paidCountError } = await supabase
+      const { data: paidPayments, error: paidError } = await supabase
         .from('payment_schedule')
-        .select('id', { count: 'exact', head: false })
+        .select('id')
         .eq('plan_id', selectedPlan.id)
         .eq('status', 'paid');
       
@@ -78,7 +77,7 @@ export const usePlanResumeActions = (
       
       const hasSent = sentPayments && sentPayments.length > 0;
       const hasOverdue = potentialOverduePayments && potentialOverduePayments.length > 0;
-      const hasPaid = !paidCountError && paidCount && paidCount > 0;
+      const hasPaid = paidPayments && paidPayments.length > 0;
       
       setHasSentPayments(hasSent);
       setHasOverduePayments(hasOverdue);
@@ -92,7 +91,7 @@ export const usePlanResumeActions = (
         hasOverduePayments: hasOverdue,
         overduePaymentsCount: potentialOverduePayments?.length || 0,
         hasPaidPayments: hasPaid,
-        paidCount: paidCount || 0
+        paidCount: paidPayments?.length || 0
       });
       
       // Now open the dialog
@@ -126,67 +125,35 @@ export const usePlanResumeActions = (
         throw new Error('Resume date cannot be in the past');
       }
       
-      // For debugging, let's first try with the edge function directly
       const formattedDate = resumeDate.toISOString().split('T')[0];
-      console.log('Calling edge function directly for debugging');
       
-      const { data, error } = await supabase.functions.invoke('resume-plan-debug', {
-        body: {
-          plan_id: selectedPlan.id,
-          resume_date: formattedDate,
-          payment_status: 'paused',
-          update_statuses: true // Request the edge function to update statuses too
-        }
+      // Call our new complete_resume_plan database function
+      const { data, error } = await supabase.rpc('complete_resume_plan', {
+        p_plan_id: selectedPlan.id,
+        p_resume_date: formattedDate
       });
       
-      console.log('Edge function direct call result:', data);
+      console.log('Complete resume plan result:', data);
       
       if (error) {
-        throw new Error(`Edge function error: ${error.message}`);
+        throw new Error(`Database function error: ${error.message}`);
       }
       
-      if (!data || !data.result || !data.result.success) {
-        throw new Error('Edge function reported failure: ' + (data?.error || 'Unknown error'));
+      if (!data || !data.success) {
+        const errorMessage = data?.error || 'Unknown error resuming plan';
+        throw new Error(errorMessage);
       }
       
-      // If edge function was successful, let's reload the plan data
-      if (data && data.result && data.result.success) {
-        console.log('Edge function reports success, refreshing data');
-        
-        // Close the dialogs
-        setShowResumeDialog(false);
-        
-        // If refreshPlans callback exists, use it to reload data
-        if (refreshPlans) {
-          await refreshPlans();
-        }
-        
-        toast.success('Payment plan resumed successfully');
-        setShowPlanDetails(false);
-        
-        return;
-      }
+      // Successfully resumed the plan
+      toast.success('Payment plan resumed successfully');
       
-      // Fallback to using the service
-      console.log('Using PlanOperationsService as fallback');
-      const success = await PlanOperationsService.resumePlan(selectedPlan, resumeDate);
+      // Close the dialog
+      setShowResumeDialog(false);
+      setShowPlanDetails(false);
       
-      if (success) {
-        console.log('Plan resumed successfully');
-        toast.success('Payment plan resumed successfully');
-        
-        // Close the dialogs
-        setShowResumeDialog(false);
-        setShowPlanDetails(false); 
-        
-        // Refresh the plans list if a refresh function is provided
-        if (refreshPlans) {
-          await refreshPlans();
-        }
-      } else {
-        console.error('Resume plan operation returned false');
-        toast.error('Failed to resume payment plan');
-        setResumeError('Operation failed. Please check the console for more details.');
+      // Refresh the plans list if a refresh function is provided
+      if (refreshPlans) {
+        await refreshPlans();
       }
     } catch (error) {
       console.error('Error resuming plan:', error);

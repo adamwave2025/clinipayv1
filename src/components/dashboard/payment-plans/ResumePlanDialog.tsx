@@ -140,7 +140,7 @@ const ResumePlanDialog = ({
             <Alert className="mt-4 bg-amber-50 border-amber-200">
               <AlertCircle className="h-4 w-4 text-amber-500" />
               <AlertDescription className="text-xs text-amber-700">
-                This plan has overdue payments. Resuming will keep them marked as overdue.
+                This plan has overdue payments. Resuming will reset them to pending status.
               </AlertDescription>
             </Alert>
           )}
@@ -149,7 +149,16 @@ const ResumePlanDialog = ({
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-xs text-blue-700">
                 <strong>Note:</strong> This plan has payment(s) that have already been made. 
-                Those payments will remain recorded.
+                The plan will resume with status 'active' and those payments will remain recorded.
+              </p>
+            </div>
+          )}
+          
+          {!hasPaidPayments && (
+            <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
+              <p className="text-xs text-gray-700">
+                <strong>Note:</strong> This plan has no payments made yet. 
+                The plan will resume with status 'pending' until the first payment is made.
               </p>
             </div>
           )}

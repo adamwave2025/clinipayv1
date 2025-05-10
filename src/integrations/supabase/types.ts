@@ -722,6 +722,10 @@ export type Database = {
         Args: { data: string }
         Returns: string
       }
+      complete_resume_plan: {
+        Args: { p_plan_id: string; p_resume_date: string }
+        Returns: Json
+      }
       execute_sql: {
         Args: { sql: string }
         Returns: Json

@@ -1,101 +1,51 @@
-import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { isPaymentStatusModifiable, getModifiableStatuses } from '@/utils/paymentStatusUtils';
-import { PlanStatusService } from '@/services/PlanStatusService';
-import { format } from 'date-fns';
-import { recordPaymentPlanActivity } from './PaymentScheduleService';
-import { ResumePlanParams, ResumePlanResponse } from '@/types/supabaseRpcTypes';
 
 /**
- * Service for performing operations on payment plans
- * Consolidated service that handles all plan modifications in one place
+ * Consolidated service for plan operations like pausing, resuming, cancelling
  */
 export class PlanOperationsService {
+  
   /**
-   * Cancel a payment plan
-   * @param plan The plan to cancel
-   * @returns boolean indicating success or failure
+   * Resume a paused plan
+   * @param plan The plan to resume
+   * @param resumeDate Optional date to resume the plan (defaults to tomorrow)
+   * @returns Promise<boolean> indicating success or failure
    */
-  static async cancelPlan(plan: Plan): Promise<boolean> {
+  static async resumePlan(plan: Plan, resumeDate?: Date): Promise<boolean> {
     try {
-      console.log(`Cancelling plan ${plan.id} (${plan.title || plan.planName})`);
+      // Default to tomorrow if no date is specified
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
       
-      // 1. Update the plan status in the plans table
-      const { error: planUpdateError } = await supabase
-        .from('plans')
-        .update({ status: 'cancelled' })
-        .eq('id', plan.id);
+      const dateToUse = resumeDate || tomorrow;
+      const formattedDate = dateToUse.toISOString().split('T')[0];
       
-      if (planUpdateError) throw planUpdateError;
+      console.log(`Resuming plan ${plan.id} with date:`, formattedDate);
       
-      // 2. Update all pending payment schedules to cancelled
-      // Only update schedules that are in a modifiable state (not paid)
-      const modifiableStatuses = getModifiableStatuses();
+      // Call our complete_resume_plan database function
+      const { data, error } = await supabase.rpc('complete_resume_plan', {
+        p_plan_id: plan.id,
+        p_resume_date: formattedDate
+      });
       
-      const { error: scheduleUpdateError } = await supabase
-        .from('payment_schedule')
-        .update({ status: 'cancelled' })
-        .eq('plan_id', plan.id)
-        .in('status', modifiableStatuses);
-        
-      if (scheduleUpdateError) throw scheduleUpdateError;
-      
-      // 3. Also cancel any active payment requests associated with this plan's schedules
-      const { data: paymentRequests, error: requestsError } = await supabase
-        .from('payment_schedule')
-        .select('payment_request_id')
-        .eq('plan_id', plan.id)
-        .not('payment_request_id', 'is', null);
-        
-      if (requestsError) throw requestsError;
-      
-      // Extract the request IDs
-      const requestIds = paymentRequests
-        .map(item => item.payment_request_id)
-        .filter(id => id !== null);
-        
-      // Update payment requests if there are any
-      if (requestIds.length > 0) {
-        const { error: requestUpdateError } = await supabase
-          .from('payment_requests')
-          .update({
-            status: 'cancelled'
-            // Removed updated_at as it doesn't exist in the table
-          })
-          .in('id', requestIds);
-          // CRITICAL: Removed conditional is('payment_id', null) to ensure ALL requests get cancelled
-          
-        if (requestUpdateError) {
-          console.error('Error updating payment requests:', requestUpdateError);
-          // Non-critical error, continue with the operation
-        }
+      if (error) {
+        console.error('Error calling complete_resume_plan:', error);
+        throw new Error(`Failed to resume plan: ${error.message}`);
       }
       
-      // 3. Add an activity log entry
-      const { error: activityError } = await supabase
-        .from('payment_activity')
-        .insert({
-          payment_link_id: plan.paymentLinkId,
-          patient_id: plan.patientId,
-          clinic_id: plan.clinicId,
-          plan_id: plan.id, // Make sure to include plan_id for easier activity tracking
-          action_type: 'cancel_plan',
-          details: {
-            plan_name: plan.title || plan.planName,
-            previous_status: plan.status
-          }
-        });
-      
-      if (activityError) {
-        console.error('Error logging cancel activity:', activityError);
+      if (!data || !data.success) {
+        const errorMessage = data?.error || 'Unknown error resuming plan';
+        console.error('Resume plan operation failed:', data);
+        throw new Error(errorMessage);
       }
       
-      console.log('Plan cancelled successfully');
+      console.log('Plan resumed successfully:', data);
       return true;
-      
-    } catch (error: any) {
-      console.error('Error cancelling plan:', error);
+    } catch (error) {
+      console.error('Error in resumePlan:', error);
+      toast.error(`Failed to resume plan: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }
@@ -222,185 +172,89 @@ export class PlanOperationsService {
   }
   
   /**
-   * Resume a paused payment plan
-   * @param plan The plan to resume
-   * @param resumeDate Required date to resume the plan
+   * Cancel a payment plan
+   * @param plan The plan to cancel
    * @returns boolean indicating success or failure
    */
-  static async resumePlan(plan: Plan, resumeDate: Date): Promise<boolean> {
+  static async cancelPlan(plan: Plan): Promise<boolean> {
     try {
-      console.log('▶️ RESUME PLAN OPERATION STARTED');
-      console.log(`📋 Plan ID: ${plan.id}, Plan Title: ${plan.title || plan.planName}`);
-      console.log(`📅 Resume Date: ${resumeDate.toISOString()}`);
+      console.log(`Cancelling plan ${plan.id} (${plan.title || plan.planName})`);
       
-      // Validate the resume date
-      if (!resumeDate) {
-        console.error('❌ No resume date provided');
-        throw new Error('Resume date is required');
-      }
-      
-      // STEP 1: Verify the plan exists and is in paused status
-      const { data: currentPlan, error: planError } = await supabase
+      // 1. Update the plan status in the plans table
+      const { error: planUpdateError } = await supabase
         .from('plans')
-        .select('id, status')
-        .eq('id', plan.id)
-        .single();
-        
-      if (planError) {
-        console.error('❌ Error fetching plan:', planError);
-        throw new Error(`Failed to fetch plan: ${planError.message}`);
-      }
+        .update({ status: 'cancelled' })
+        .eq('id', plan.id);
       
-      if (!currentPlan) {
-        console.error('❌ Plan not found:', plan.id);
-        throw new Error('Plan not found');
-      }
+      if (planUpdateError) throw planUpdateError;
       
-      if (currentPlan.status !== 'paused') {
-        console.error('❌ Plan is not in paused status:', currentPlan.status);
-        throw new Error(`Plan is in ${currentPlan.status} status and cannot be resumed`);
-      }
+      // 2. Update all pending payment schedules to cancelled
+      // Only update schedules that are in a modifiable state (not paid)
+      const modifiableStatuses = getModifiableStatuses();
       
-      console.log('✅ Plan verified: exists and is in paused status');
-      
-      // STEP 2: Get all paused payments for this plan
-      const { data: pausedSchedules, error: fetchError } = await supabase
+      const { error: scheduleUpdateError } = await supabase
         .from('payment_schedule')
-        .select('id, status, payment_request_id, due_date')
+        .update({ status: 'cancelled' })
         .eq('plan_id', plan.id)
-        .eq('status', 'paused');
+        .in('status', modifiableStatuses);
         
-      if (fetchError) {
-        console.error('❌ Error fetching paused schedules:', fetchError);
-        throw new Error(`Failed to fetch paused schedules: ${fetchError.message}`);
-      }
+      if (scheduleUpdateError) throw scheduleUpdateError;
       
-      if (!pausedSchedules || pausedSchedules.length === 0) {
-        console.error('❌ No paused payments found to resume');
-        throw new Error('No paused payments found to resume');
-      }
-      
-      console.log(`✅ Found ${pausedSchedules.length} paused payments to resume`);
-      
-      // STEP 3: Cancel any payment requests for paused payments
-      const paymentRequestIds = pausedSchedules
-        .filter(schedule => schedule.payment_request_id)
-        .map(schedule => schedule.payment_request_id);
-      
-      if (paymentRequestIds.length > 0) {
-        console.log(`🚫 Cancelling ${paymentRequestIds.length} existing payment requests`);
+      // 3. Also cancel any active payment requests associated with this plan's schedules
+      const { data: paymentRequests, error: requestsError } = await supabase
+        .from('payment_schedule')
+        .select('payment_request_id')
+        .eq('plan_id', plan.id)
+        .not('payment_request_id', 'is', null);
         
+      if (requestsError) throw requestsError;
+      
+      // Extract the request IDs
+      const requestIds = paymentRequests
+        .map(item => item.payment_request_id)
+        .filter(id => id !== null);
+        
+      // Update payment requests if there are any
+      if (requestIds.length > 0) {
         const { error: requestUpdateError } = await supabase
           .from('payment_requests')
-          .update({ status: 'cancelled' })
-          .in('id', paymentRequestIds);
+          .update({
+            status: 'cancelled'
+            // Removed updated_at as it doesn't exist in the table
+          })
+          .in('id', requestIds);
+          // CRITICAL: Removed conditional is('payment_id', null) to ensure ALL requests get cancelled
           
         if (requestUpdateError) {
-          console.error('❌ Error cancelling payment requests:', requestUpdateError);
-          throw new Error(`Failed to cancel payment requests: ${requestUpdateError.message}`);
+          console.error('Error updating payment requests:', requestUpdateError);
+          // Non-critical error, continue with the operation
         }
-        
-        // Clear payment_request_id for all paused payments
-        const { error: clearRequestIdError } = await supabase
-          .from('payment_schedule')
-          .update({ 
-            payment_request_id: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('plan_id', plan.id)
-          .eq('status', 'paused');
-        
-        if (clearRequestIdError) {
-          console.error('❌ Error clearing payment request IDs:', clearRequestIdError);
-          throw new Error(`Failed to clear payment request IDs: ${clearRequestIdError.message}`);
-        }
-        
-        console.log('✅ Successfully cancelled payment requests and cleared payment_request_id');
-      }
-
-      // STEP 4: Format date as YYYY-MM-DD for the database function call
-      const formattedDate = resumeDate.toISOString().split('T')[0]; 
-      console.log('📞 Calling resume_payment_plan with formatted date:', formattedDate);
-      
-      // STEP 5: Call the resume-plan-debug edge function
-      // FIX: Remove the direct URL construction and use the invoke method directly
-      const { data: response, error: edgeFuncError } = await supabase.functions.invoke('resume-plan-debug', {
-        body: {
-          plan_id: plan.id, 
-          resume_date: formattedDate,
-          payment_status: 'paused',
-          update_statuses: true // Request the edge function to update statuses after rescheduling
-        }
-      });
-      
-      console.log('Edge function response:', response);
-      
-      if (edgeFuncError) {
-        console.error('❌ Error calling resume-plan-debug edge function:', edgeFuncError);
-        throw new Error(`Error from edge function: ${edgeFuncError.message}`);
       }
       
-      if (!response || !response.result || !response.result.success) {
-        const errorMessage = response?.error || 'Unknown error from edge function';
-        console.error('❌ Edge function returned error:', errorMessage);
-        throw new Error(`Failed to reschedule payments: ${errorMessage}`);
-      }
-      
-      // STEP 6: Record the resume activity
-      await supabase
+      // 3. Add an activity log entry
+      const { error: activityError } = await supabase
         .from('payment_activity')
         .insert({
           payment_link_id: plan.paymentLinkId,
           patient_id: plan.patientId,
           clinic_id: plan.clinicId,
-          plan_id: plan.id,
-          action_type: 'resume_plan',
+          plan_id: plan.id, // Make sure to include plan_id for easier activity tracking
+          action_type: 'cancel_plan',
           details: {
             plan_name: plan.title || plan.planName,
-            previous_status: 'paused',
-            resume_date: resumeDate.toISOString(),
-            installments_affected: pausedSchedules.length,
-            sent_payments_reset: paymentRequestIds.length,
-            days_shifted: response.result && 
-              typeof response.result === 'object' && 
-              'days_shifted' in response.result ? 
-              String(response.result.days_shifted) : '0'
+            previous_status: plan.status
           }
         });
       
-      console.log('✅ RESUME PLAN OPERATION COMPLETED SUCCESSFULLY');
+      if (activityError) {
+        console.error('Error logging cancel activity:', activityError);
+      }
+      
+      console.log('Plan cancelled successfully');
       return true;
       
     } catch (error: any) {
-      console.error('❌ ERROR RESUMING PLAN:', error);
-      
-      // Log detailed error information
-      if (error.message) {
-        console.error('Error message:', error.message);
-      }
-      if (error.details) {
-        console.error('Error details:', error.details);
-      }
-      
-      // Try to add a recovery record to track the error
-      try {
-        await supabase
-          .from('payment_activity')
-          .insert({
-            payment_link_id: plan.paymentLinkId,
-            patient_id: plan.patientId,
-            clinic_id: plan.clinicId,
-            plan_id: plan.id,
-            action_type: 'resume_plan_error',
-            details: {
-              error: error instanceof Error ? error.message : String(error),
-              timestamp: new Date().toISOString()
-            }
-          });
-      } catch (logError) {
-        console.error('Failed to log resume plan error:', logError);
-      }
-      
+      console.error('Error cancelling plan:', error);
       return false;
     }
   }
