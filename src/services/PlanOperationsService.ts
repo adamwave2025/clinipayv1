@@ -230,14 +230,13 @@ export class PlanOperationsService {
     try {
       console.log('▶️ RESUME PLAN OPERATION STARTED');
       console.log(`📋 Plan ID: ${plan.id}, Plan Title: ${plan.title || plan.planName}`);
+      console.log(`📅 Resume Date: ${resumeDate.toISOString()}`);
       
       // Validate the resume date
       if (!resumeDate) {
         console.error('❌ No resume date provided');
         throw new Error('Resume date is required');
       }
-      
-      console.log('📅 Resume Date:', resumeDate.toISOString());
       
       // STEP 1: Verify the plan exists and is in paused status
       const { data: currentPlan, error: planError } = await supabase
@@ -318,32 +317,17 @@ export class PlanOperationsService {
         console.log('✅ Successfully cancelled payment requests and cleared payment_request_id');
       }
 
-      // STEP 4: Set all paused payments to pending status first
-      const { error: updateStatusError } = await supabase
-        .from('payment_schedule')
-        .update({ 
-          status: 'pending',
-          updated_at: new Date().toISOString()
-        })
-        .eq('plan_id', plan.id)
-        .eq('status', 'paused');
-      
-      if (updateStatusError) {
-        console.error('❌ Error updating payment status to pending:', updateStatusError);
-        throw new Error(`Failed to update payment status: ${updateStatusError.message}`);
-      }
-      
-      console.log('✅ Successfully updated all paused payments to pending status');
-      
-      // STEP 5: Format date as YYYY-MM-DD for the database function call
+      // STEP 4: Format date as YYYY-MM-DD for the database function call
       const formattedDate = resumeDate.toISOString().split('T')[0]; 
       console.log('📞 Calling resume_payment_plan with formatted date:', formattedDate);
       
-      // STEP 6: Call the resume_payment_plan function to reschedule the payments
+      // STEP 5: Call the resume_payment_plan function to reschedule the payments
+      // IMPORTANT: We now pass 'paused' as the status to search for
       const { data: schedulingResult, error: schedulingError } = await supabase
         .rpc('resume_payment_plan', { 
           plan_id: plan.id,
-          resume_date: formattedDate
+          resume_date: formattedDate,
+          payment_status: 'paused'  // Explicitly pass 'paused'
         });
       
       if (schedulingError) {
@@ -363,6 +347,26 @@ export class PlanOperationsService {
         console.error('❌ Database function returned error:', schedulingResult.error);
         throw new Error(`Database function error: ${String(schedulingResult.error)}`);
       }
+      
+      // STEP 6: ONLY NOW update the status of payments from paused to pending
+      // This is the critical fix - we update statuses AFTER rescheduling, not before
+      console.log('🔄 Now updating payment statuses from paused to pending');
+      
+      const { error: statusUpdateError } = await supabase
+        .from('payment_schedule')
+        .update({ 
+          status: 'pending',
+          updated_at: new Date().toISOString()
+        })
+        .eq('plan_id', plan.id)
+        .eq('status', 'paused');
+      
+      if (statusUpdateError) {
+        console.error('❌ Error updating payment status to pending:', statusUpdateError);
+        throw new Error(`Failed to update payment status: ${statusUpdateError.message}`);
+      }
+      
+      console.log('✅ Successfully updated all paused payments to pending status');
       
       // STEP 7: Verify that the payments have been rescheduled
       const { data: updatedPayments, error: updatedPaymentsError } = await supabase

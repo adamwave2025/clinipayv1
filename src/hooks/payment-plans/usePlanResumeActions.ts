@@ -119,23 +119,10 @@ export const usePlanResumeActions = (
     try {
       console.log(`Resuming plan ${selectedPlan.id} with date:`, resumeDate.toISOString());
       
-      // First update all paused payments to pending to prepare for rescheduling
-      const { error: statusUpdateError } = await supabase
-        .from('payment_schedule')
-        .update({ 
-          status: 'pending',
-          updated_at: new Date().toISOString()
-        })
-        .eq('plan_id', selectedPlan.id)
-        .eq('status', 'paused');
-        
-      if (statusUpdateError) {
-        throw new Error(`Error updating payment status: ${statusUpdateError.message}`);
-      }
+      // REMOVED: We no longer update status to pending here
+      // Instead, we'll let PlanOperationsService handle the status update AFTER rescheduling
       
-      console.log('Successfully updated all paused payments to pending status');
-      
-      // Now call the service to complete the resume operation
+      // Now call the service to complete the resume operation with the paused payments
       const success = await PlanOperationsService.resumePlan(selectedPlan, resumeDate);
       
       if (success) {

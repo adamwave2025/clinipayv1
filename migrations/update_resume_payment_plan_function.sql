@@ -1,6 +1,7 @@
 
 -- Updated resume_payment_plan function to properly reschedule payments from resume date
-CREATE OR REPLACE FUNCTION public.resume_payment_plan(plan_id uuid, resume_date date)
+-- and specify the status to look for
+CREATE OR REPLACE FUNCTION public.resume_payment_plan(plan_id uuid, resume_date date, payment_status text DEFAULT 'paused')
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -35,19 +36,20 @@ BEGIN
     ELSE payment_interval := '1 month'::INTERVAL; -- Default to monthly if unknown
   END CASE;
   
-  -- Get all PENDING payments - the critical change is here
-  -- Note: Paused payments should have been changed to pending before this function is called
+  -- IMPORTANT CHANGE: Use the provided status parameter instead of hardcoding 'pending'
   SELECT ARRAY_AGG(id ORDER BY due_date), ARRAY_AGG(due_date ORDER BY due_date)
   INTO payment_ids, payment_dates
   FROM payment_schedule
-  WHERE payment_schedule.plan_id = plan_id AND status = 'pending'
+  WHERE payment_schedule.plan_id = plan_id AND status = payment_status
   ORDER BY due_date;
   
-  -- If there are no pending payments, nothing to reschedule
+  -- If there are no payments with the specified status, nothing to reschedule
   IF payment_ids IS NULL OR ARRAY_LENGTH(payment_ids, 1) IS NULL THEN
     RETURN jsonb_build_object(
-      'message', 'No pending payments to reschedule',
-      'warning', 'Check that plan has pending payments to resume'
+      'message', 'No ' || payment_status || ' payments to reschedule',
+      'warning', 'Check that plan has ' || payment_status || ' payments to resume',
+      'plan_id', plan_id,
+      'status_checked', payment_status
     );
   END IF;
   
@@ -56,7 +58,8 @@ BEGIN
     'payment_count', ARRAY_LENGTH(payment_ids, 1),
     'first_date', payment_dates[1],
     'resume_date', resume_date,
-    'payment_ids', payment_ids
+    'payment_ids', payment_ids,
+    'status_used', payment_status
   );
   
   -- Set the first payment to the resume date exactly
@@ -84,6 +87,7 @@ BEGIN
     'days_shifted', days_paused,
     'resume_date', resume_date,
     'payments_rescheduled', ARRAY_LENGTH(payment_ids, 1),
+    'status_used', payment_status,
     'debug', debug_info
   );
   
