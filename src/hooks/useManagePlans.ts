@@ -46,6 +46,13 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleViewPaymentDetails
   } = useInstallmentHandler();
   
+  // Create a refresh function for use after operations
+  const refreshData = async () => {
+    if (user) {
+      await fetchPaymentPlans(user.id);
+    }
+  };
+  
   // Use plan details view hook
   const { 
     selectedPlan, 
@@ -74,13 +81,6 @@ export const useManagePlans = (): ManagePlansContextType => {
     }
   );
   
-  // Create a refresh function for use after operations
-  const refreshData = async () => {
-    if (user) {
-      await fetchPaymentPlans(user.id);
-    }
-  };
-  
   // Pass fetchPaymentPlans directly as it returns Promise<Plan[]>
   const { 
     isProcessing,
@@ -89,7 +89,7 @@ export const useManagePlans = (): ManagePlansContextType => {
   
   // Use specialized action hooks with refresh capability
   const cancelActions = usePlanCancelActions(selectedPlan, setShowPlanDetails);
-  const pauseActions = usePlanPauseActions(selectedPlan, setShowPlanDetails);
+  const pauseActions = usePlanPauseActions(selectedPlan, setShowPlanDetails, refreshData); // Pass refreshData here
   const resumeActions = usePlanResumeActions(selectedPlan, setShowPlanDetails, refreshData);
   const rescheduleActions = usePlanRescheduleActions(selectedPlan, setShowPlanDetails);
   

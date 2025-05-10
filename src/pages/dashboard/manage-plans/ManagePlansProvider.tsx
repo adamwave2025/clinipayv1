@@ -16,3 +16,5 @@ export const ManagePlansProvider: React.FC<ManagePlansProviderProps> = ({ childr
     </ManagePlansContext.Provider>
   );
 };
+
+export default ManagePlansProvider;
