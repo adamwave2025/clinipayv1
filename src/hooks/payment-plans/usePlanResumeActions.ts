@@ -4,6 +4,7 @@ import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CompleteResumePlanResponse } from '@/types/supabaseRpcTypes';
+import { format } from 'date-fns';
 
 export const usePlanResumeActions = (
   selectedPlan: Plan | null,
@@ -117,7 +118,7 @@ export const usePlanResumeActions = (
     setResumeError(null);
     
     try {
-      console.log(`Resuming plan ${selectedPlan.id} with date:`, resumeDate.toISOString());
+      console.log(`Resuming plan ${selectedPlan.id} with date:`, resumeDate);
 
       // Add validation check for date in the past
       const today = new Date();
@@ -126,7 +127,9 @@ export const usePlanResumeActions = (
         throw new Error('Resume date cannot be in the past');
       }
       
-      const formattedDate = resumeDate.toISOString().split('T')[0];
+      // Use date-fns format to ensure the correct date is preserved, regardless of timezone
+      const formattedDate = format(resumeDate, 'yyyy-MM-dd');
+      console.log('Formatted date for database:', formattedDate);
       
       // Call our new complete_resume_plan database function
       const { data, error } = await supabase.rpc('complete_resume_plan', {

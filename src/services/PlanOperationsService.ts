@@ -1,3 +1,4 @@
+
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -24,7 +25,9 @@ export class PlanOperationsService {
       tomorrow.setDate(tomorrow.getDate() + 1);
       
       const dateToUse = resumeDate || tomorrow;
-      const formattedDate = dateToUse.toISOString().split('T')[0];
+      
+      // Use date-fns format to ensure correct date preservation for UK timezone
+      const formattedDate = format(dateToUse, 'yyyy-MM-dd');
       
       console.log(`Resuming plan ${plan.id} with date:`, formattedDate);
       
@@ -633,6 +636,3 @@ export class PlanOperationsService {
     }
   }
 }
-
-// Import at the end to avoid circular dependencies
-import { sendPaymentReminder } from '@/services/PaymentReminderService';
