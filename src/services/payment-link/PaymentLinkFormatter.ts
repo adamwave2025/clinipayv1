@@ -22,10 +22,21 @@ export class PaymentLinkFormatter {
       stripeStatus: linkData.clinics?.stripe_status || 'not_connected'
     };
 
-    // Determine the status - if is_active is false, set status to 'cancelled', otherwise use existing status or default to 'active'
-    const status = linkData.is_active === false 
-      ? 'cancelled' 
-      : this.formatPaymentStatus(linkData.status) || 'active';
+    // Determine the status based on is_active and existing status
+    let status = this.formatPaymentStatus(linkData.status) || 'active';
+    
+    // If is_active is explicitly false, override the status to cancelled
+    const isActive = linkData.is_active !== false; // Consider undefined as active
+    if (!isActive) {
+      status = 'cancelled';
+      console.log(`PaymentLinkFormatter: Link ${linkData.id} marked as cancelled due to is_active=false`);
+    }
+
+    console.log(`PaymentLinkFormatter: Link ${linkData.id} status calculation:`, {
+      rawStatus: linkData.status,
+      isActive: isActive,
+      finalStatus: status
+    });
 
     // Format the payment link data
     return {
@@ -36,6 +47,7 @@ export class PaymentLinkFormatter {
       description: linkData.description || '',
       clinic: clinic,
       status: status,
+      isActive: isActive, // Add the original is_active value for reference
       isRequest: false,
       paymentPlan: linkData.payment_plan || false,
       planTotalAmount: linkData.plan_total_amount || linkData.amount,
@@ -68,8 +80,23 @@ export class PaymentLinkFormatter {
                   (requestData.payment_links?.amount) || 
                   0;
 
-    // Determine status - respect existing status for payment requests
-    const status = this.formatPaymentStatus(requestData.status);
+    // Determine status based on request status and payment link status
+    let status = this.formatPaymentStatus(requestData.status) || 'active';
+    
+    // For payment requests, if they're associated with an inactive link, also mark as cancelled
+    const linkedLinkIsActive = requestData.payment_links?.is_active !== false;
+    const isActive = linkedLinkIsActive && (status !== 'cancelled'); // Request is active if both link is active and status isn't cancelled
+    
+    if (!linkedLinkIsActive) {
+      status = 'cancelled';
+      console.log(`PaymentLinkFormatter: Request ${requestData.id} marked as cancelled due to inactive payment link`);
+    }
+
+    console.log(`PaymentLinkFormatter: Request ${requestData.id} status calculation:`, {
+      rawStatus: requestData.status, 
+      linkedLinkIsActive,
+      finalStatus: status
+    });
 
     // Format the payment request data
     return {
@@ -80,6 +107,7 @@ export class PaymentLinkFormatter {
       description: requestData.payment_links?.description || '',
       clinic: clinic,
       status: status,
+      isActive: isActive, // Add the isActive flag
       isRequest: true,
       patientName: requestData.patient_name || '',
       patientEmail: requestData.patient_email || '',
@@ -115,6 +143,24 @@ export class PaymentLinkFormatter {
     const totalPaid = planData.total_paid || 0;
     const totalOutstanding = totalAmount - totalPaid;
 
+    // Determine status and active state
+    let status = this.formatPaymentStatus(planData.status);
+    
+    // For payment plans, also check the associated link's active state
+    const linkedLinkIsActive = planData.payment_links?.is_active !== false;
+    const isActive = linkedLinkIsActive && ['active', 'overdue'].includes(status);
+    
+    if (!linkedLinkIsActive) {
+      console.log(`PaymentLinkFormatter: Plan ${planData.id} associated with inactive payment link`);
+    }
+
+    console.log(`PaymentLinkFormatter: Plan ${planData.id} status calculation:`, {
+      rawStatus: planData.status, 
+      linkedLinkIsActive,
+      finalStatus: status,
+      isActive
+    });
+
     // Format the payment plan data
     return {
       id: planData.id,
@@ -123,7 +169,8 @@ export class PaymentLinkFormatter {
       amount: planData.next_payment_amount || 0,
       description: planData.description || planData.payment_links?.description || '',
       clinic: clinic,
-      status: this.formatPaymentStatus(planData.status),
+      status: status,
+      isActive: isActive, // Add the isActive flag
       isRequest: false,
       paymentPlan: true,
       planTotalAmount: totalAmount,

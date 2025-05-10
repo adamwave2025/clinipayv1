@@ -5,6 +5,7 @@ import { PaymentLinkService } from '@/services/PaymentLinkService';
 import { PaymentLinkDataService } from '@/services/payment-link/PaymentLinkDataService';
 import { PaymentLinkFormatter } from '@/services/payment-link/PaymentLinkFormatter';
 import { validatePenceAmount } from '@/services/CurrencyService';
+import { isPaymentLinkActive } from '@/utils/planActivityUtils';
 
 export function usePaymentLinkData(linkId: string | undefined | null) {
   const [linkData, setLinkData] = useState<PaymentLinkData | null>(null);
@@ -31,14 +32,18 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
         
         // If we found a payment request
         if (requestData) {
-          console.log('usePaymentLinkData: Found payment request:', requestData);
+          console.log('usePaymentLinkData: Found payment request, raw data:', requestData);
+          
           // Format the request data before setting state
           const formattedRequestData = PaymentLinkFormatter.formatPaymentRequest(requestData);
           if (formattedRequestData) {
             console.log('usePaymentLinkData: Successfully formatted payment request data');
             console.log('Debug - Payment request active status:', {
+              id: formattedRequestData.id,
               status: formattedRequestData.status,
-              isActive: formattedRequestData.status === 'active'
+              isActive: formattedRequestData.isActive,
+              isActiveStatus: formattedRequestData.status === 'active',
+              isActiveFunction: isPaymentLinkActive(formattedRequestData)
             });
             
             // Log and validate the payment amount
@@ -73,6 +78,10 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
         }
 
         console.log('usePaymentLinkData: Found payment link raw data:', linkData);
+        console.log('Raw active status:', {
+          is_active: linkData.is_active,
+          type: typeof linkData.is_active
+        });
         
         // Format the link data before setting state
         const formattedLinkData = PaymentLinkFormatter.formatPaymentLink(linkData);
@@ -82,9 +91,12 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
         }
         
         console.log('Debug - Payment link active status:', {
+          id: formattedLinkData.id,
           isActive: linkData.is_active,
+          formattedIsActive: formattedLinkData.isActive,
           formattedStatus: formattedLinkData.status,
-          isActiveStatus: formattedLinkData.status === 'active'
+          isActiveStatus: formattedLinkData.status === 'active',
+          isActiveFunction: isPaymentLinkActive(formattedLinkData)
         });
         
         // Log and validate the payment amount

@@ -77,21 +77,47 @@ export const capitalize = (str: string): string => {
  * Check if a payment link is active and can be processed
  */
 export const isPaymentLinkActive = (linkData?: any | null): boolean => {
-  if (!linkData) return false;
-  
-  // Check status - active links can be processed
-  if (linkData.status === 'active') return true;
-  
-  // For payment plans, check more detailed status
-  if (linkData.paymentPlan) {
-    // If the plan is active or overdue, we can still process payments
-    if (linkData.status === 'active' || linkData.status === 'overdue') {
-      return true;
-    }
-    // All other statuses for payment plans are considered inactive
+  if (!linkData) {
+    console.log('Payment link check: No link data provided');
     return false;
   }
   
-  // For regular payment links, only active links are processable
-  return linkData.status === 'active';
+  console.log('Main utils: Checking payment link status:', {
+    id: linkData.id,
+    status: linkData.status, 
+    isActive: linkData.isActive,
+    paymentPlan: linkData.paymentPlan
+  });
+  
+  // First check for an explicit isActive property (from database is_active)
+  if (linkData.isActive === false) {
+    console.log(`Main utils: Payment link ${linkData.id} is explicitly marked as inactive`);
+    return false;
+  }
+  
+  // For status-based checks
+  const activeStatuses = ['active', 'overdue', 'pending', 'sent'];
+  
+  if (activeStatuses.includes(linkData.status)) {
+    console.log(`Main utils: Payment link ${linkData.id} has active status: ${linkData.status}`);
+    return true;
+  }
+  
+  // For payment plans with special handling
+  if (linkData.paymentPlan) {
+    // Payment plans can be processed if they are active or overdue
+    if (linkData.status === 'active' || linkData.status === 'overdue') {
+      console.log(`Main utils: Payment plan ${linkData.id} is processable with status: ${linkData.status}`);
+      return true;
+    }
+    
+    // All other statuses for payment plans are considered inactive
+    console.log(`Main utils: Payment plan ${linkData.id} is not processable with status: ${linkData.status}`);
+    return false;
+  }
+  
+  // If we have no clear indication that it's inactive, assume it's active
+  // This is a fallback to prevent false negatives
+  console.log(`Main utils: Payment link ${linkData.id} status check defaulting to: ${linkData.status === 'cancelled' ? 'inactive' : 'active'}`);
+  return linkData.status !== 'cancelled';
 };

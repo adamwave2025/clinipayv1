@@ -30,9 +30,14 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
     
     // Check if the payment link is still active before proceeding
     if (!isPaymentLinkActive(linkData)) {
-      console.log('Payment link is no longer active, status:', linkData.status);
-      // Reload the page to show the updated status UI
-      window.location.reload();
+      console.log('Payment link is no longer active:', { 
+        status: linkData.status,
+        isActive: linkData.isActive,
+        id: linkData.id
+      });
+      
+      // Show a toast instead of reloading the page
+      toast.error('This payment link is no longer active');
       return;
     }
     
@@ -60,8 +65,9 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
             errorMessage.includes('plan is currently paused') ||
             errorMessage.includes('plan has been cancelled') ||
             errorMessage.includes('has been rescheduled')) {
-          console.log('Payment status issue detected, reloading page to show updated status');
-          window.location.reload();
+          
+          console.log('Payment status issue detected:', errorMessage);
+          toast.error(errorMessage);
           return;
         }
         
@@ -83,12 +89,8 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       
       if (!paymentResult.success) {
         console.error('Payment processing failed:', paymentResult.error);
-        // Explicitly redirect to the failed payment page
-        let redirectUrl = `/payment/failed`;
-        if (linkId) {
-          redirectUrl += `?link_id=${linkId}`;
-        }
-        window.location.href = redirectUrl;
+        // Show error toast instead of redirecting to failed page
+        toast.error(paymentResult.error || 'Payment processing failed');
         throw new Error(paymentResult.error || 'Payment processing failed');
       }
       
@@ -104,24 +106,14 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         associatedPaymentLinkId: intentResult.associatedPaymentLinkId
       });
       
-      // Removed success toast notification
+      // Show success toast before redirect
+      toast.success('Payment successful!');
       
       // Navigate to success page with the link_id parameter
       window.location.href = `/payment/success?link_id=${linkId}&payment_id=${paymentResult.paymentIntent.id || 'unknown'}`;
     } catch (error: any) {
       console.error('Payment error:', error);
       toast.error('Payment failed: ' + error.message);
-      
-      // If we haven't already redirected, do it now
-      if (!window.location.pathname.includes('/payment/failed')) {
-        setTimeout(() => {
-          let redirectUrl = `/payment/failed`;
-          if (linkId) {
-            redirectUrl += `?link_id=${linkId}`;
-          }
-          window.location.href = redirectUrl;
-        }, 1000); // Small delay to allow the toast to be seen
-      }
     } finally {
       setIsSubmitting(false);
       setProcessingPayment(false);
@@ -136,9 +128,14 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
     
     // Check if the payment link is still active before proceeding
     if (!isPaymentLinkActive(linkData)) {
-      console.log('Payment link is no longer active, status:', linkData.status);
-      // Reload the page to show the updated status UI
-      window.location.reload();
+      console.log('Payment link is no longer active:', { 
+        status: linkData.status,
+        isActive: linkData.isActive,
+        id: linkData.id
+      });
+      
+      // Show a toast instead of reloading the page
+      toast.error('This payment link is no longer active');
       return;
     }
     
@@ -163,8 +160,9 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         if (errorMessage.includes('plan is currently paused') || 
             errorMessage.includes('plan has been cancelled') ||
             errorMessage.includes('has been rescheduled')) {
-          console.log('Plan status issue detected, reloading page to show updated status');
-          window.location.reload();
+          
+          console.log('Plan status issue detected:', errorMessage);
+          toast.error(errorMessage);
           return;
         }
         
@@ -179,6 +177,7 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
       
       if (!paymentResult.success) {
         console.error('Apple Pay processing failed:', paymentResult.error);
+        toast.error(paymentResult.error || 'Apple Pay processing failed');
         throw new Error(paymentResult.error || 'Apple Pay processing failed');
       }
       
@@ -194,23 +193,14 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
         associatedPaymentLinkId: intentResult.associatedPaymentLinkId
       });
       
-      // Removed success toast notification
+      // Show success toast before redirect
+      toast.success('Apple Pay payment successful!');
       
       // Navigate to success page
       window.location.href = `/payment/success?link_id=${linkId}&payment_id=${paymentResult.paymentIntent.id || 'unknown'}`;
     } catch (error: any) {
       console.error('Apple Pay error:', error);
       toast.error('Apple Pay payment failed: ' + error.message);
-      
-      if (!window.location.pathname.includes('/payment/failed')) {
-        setTimeout(() => {
-          let redirectUrl = `/payment/failed`;
-          if (linkId) {
-            redirectUrl += `?link_id=${linkId}`;
-          }
-          window.location.href = redirectUrl;
-        }, 1000);
-      }
     } finally {
       setIsSubmitting(false);
       setProcessingPayment(false);

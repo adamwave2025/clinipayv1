@@ -27,7 +27,8 @@ export interface PaymentLinkData {
     address?: string;
     stripeStatus: string;
   };
-  status: string; // Now consistently using the status from the plans table when applicable
+  status: string;
+  isActive?: boolean; // Add the isActive property from is_active in DB
   isRequest: boolean;
   patientName?: string;
   patientEmail?: string;
@@ -37,8 +38,8 @@ export interface PaymentLinkData {
   planTotalAmount?: number;
   totalPaid?: number;
   totalOutstanding?: number;
-  customAmount?: number; // Added to match the usage in PaymentLinkFormatter
-  hasOverduePayments?: boolean; // From plans table has_overdue_payments flag
-  payment_link_id?: string; // Added this property to fix the TypeScript error
-  isRescheduled?: boolean; // Flag to indicate if a payment has been rescheduled
+  customAmount?: number;
+  hasOverduePayments?: boolean;
+  payment_link_id?: string;
+  isRescheduled?: boolean;
 }

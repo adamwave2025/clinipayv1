@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { PaymentLinkData } from '../types/paymentLink';
 import { validatePenceAmount } from '../services/CurrencyService';
+import { isPaymentLinkActive } from '../utils/planActivityUtils';
 
 export function usePaymentLinkData(linkId: string | undefined | null) {
   const [linkData, setLinkData] = useState<PaymentLinkData | null>(null);
@@ -30,7 +31,24 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
           throw new Error('Failed to fetch payment link data');
         }
         
-        const linkData = await response.json();
+        const rawLinkData = await response.json();
+        console.log('Raw payment link data:', rawLinkData);
+        
+        // In this module version, we'll add isActive if not already present
+        const linkData = {
+          ...rawLinkData,
+          isActive: rawLinkData.isActive !== undefined ? 
+                    rawLinkData.isActive : 
+                    (rawLinkData.is_active !== false) // Default to true if not explicitly false
+        };
+        
+        // Log the active status for debugging
+        console.log('Module - Payment link active check:', {
+          id: linkData.id,
+          status: linkData.status,
+          isActive: linkData.isActive,
+          isActiveByFunction: isPaymentLinkActive(linkData)
+        });
         
         // Validate the payment amount
         console.log('Payment amount in pence:', linkData.amount);
