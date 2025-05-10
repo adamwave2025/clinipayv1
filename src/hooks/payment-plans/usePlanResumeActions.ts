@@ -73,7 +73,7 @@ export const usePlanResumeActions = (
     }
   };
 
-  const handleResumePlan = async (resumeDate: Date) => {
+  const handleResumePlan = async (resumeDate: Date): Promise<void> => {
     if (!selectedPlan) return;
     
     setIsProcessing(true);
@@ -92,15 +92,12 @@ export const usePlanResumeActions = (
         toast.success('Payment plan resumed successfully');
         setShowResumeDialog(false);
         setShowPlanDetails(false); // Close the plan details modal
-        return { success: true };
       } else {
         toast.error('Failed to resume payment plan');
-        return { success: false };
       }
     } catch (error) {
       console.error('Error resuming plan:', error);
       toast.error('Failed to resume payment plan');
-      return { success: false, error };
     } finally {
       setIsProcessing(false);
     }
