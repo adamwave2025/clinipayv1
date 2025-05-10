@@ -126,7 +126,49 @@ export const usePlanResumeActions = (
         throw new Error('Resume date cannot be in the past');
       }
       
-      // Now call the service to complete the resume operation with the paused payments
+      // For debugging, let's first try with the edge function directly
+      const formattedDate = resumeDate.toISOString().split('T')[0];
+      console.log('Calling edge function directly for debugging');
+      
+      const { data, error } = await supabase.functions.invoke('resume-plan-debug', {
+        body: {
+          plan_id: selectedPlan.id,
+          resume_date: formattedDate,
+          payment_status: 'paused',
+          update_statuses: true // Request the edge function to update statuses too
+        }
+      });
+      
+      console.log('Edge function direct call result:', data);
+      
+      if (error) {
+        throw new Error(`Edge function error: ${error.message}`);
+      }
+      
+      if (!data || !data.result || !data.result.success) {
+        throw new Error('Edge function reported failure: ' + (data?.error || 'Unknown error'));
+      }
+      
+      // If edge function was successful, let's reload the plan data
+      if (data && data.result && data.result.success) {
+        console.log('Edge function reports success, refreshing data');
+        
+        // Close the dialogs
+        setShowResumeDialog(false);
+        
+        // If refreshPlans callback exists, use it to reload data
+        if (refreshPlans) {
+          await refreshPlans();
+        }
+        
+        toast.success('Payment plan resumed successfully');
+        setShowPlanDetails(false);
+        
+        return;
+      }
+      
+      // Fallback to using the service
+      console.log('Using PlanOperationsService as fallback');
       const success = await PlanOperationsService.resumePlan(selectedPlan, resumeDate);
       
       if (success) {

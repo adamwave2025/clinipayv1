@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -323,88 +322,33 @@ export class PlanOperationsService {
       const formattedDate = resumeDate.toISOString().split('T')[0]; 
       console.log('📞 Calling resume_payment_plan with formatted date:', formattedDate);
       
-      // STEP 5: Call the resume_payment_plan function to reschedule the payments
-      // Using our custom type for proper parameter passing
-      const params: ResumePlanParams = {
-        plan_id: plan.id,
-        resume_date: formattedDate,
-        payment_status: 'paused'
-      };
+      // STEP 5: Call the resume_payment_plan function to reschedule the payments using Edge Function for debugging
+      // This gives us more detailed logs and transparency about what's happening
       
-      console.log('Calling DB function with params:', JSON.stringify(params));
+      const edgeFunctionUrl = `${supabase.supabaseUrl}/functions/v1/resume-plan-debug`;
+      const { data: response, error: edgeFuncError } = await supabase.functions.invoke('resume-plan-debug', {
+        body: {
+          plan_id: plan.id, 
+          resume_date: formattedDate,
+          payment_status: 'paused',
+          update_statuses: true // Request the edge function to update statuses after rescheduling
+        }
+      });
       
-      // Call the database function directly with proper typing
-      const { data: schedulingResult, error: schedulingError } = await supabase
-        .rpc('resume_payment_plan', params);
+      console.log('Edge function response:', response);
       
-      console.log('Raw DB function response:', schedulingResult);
-      
-      if (schedulingError) {
-        console.error('❌ Error in resume_payment_plan function:', schedulingError.message);
-        console.error('Error details:', schedulingError);
-        throw new Error(`Database function error: ${schedulingError.message}`);
+      if (edgeFuncError) {
+        console.error('❌ Error calling resume-plan-debug edge function:', edgeFuncError);
+        throw new Error(`Error from edge function: ${edgeFuncError.message}`);
       }
       
-      // Log scheduling result for debugging
-      console.log('📊 Rescheduling result:', schedulingResult);
-      
-      if (!schedulingResult) {
-        console.error('❌ Database function returned no result');
-        throw new Error('Database function failed to reschedule payments');
+      if (!response || !response.result || !response.result.success) {
+        const errorMessage = response?.error || 'Unknown error from edge function';
+        console.error('❌ Edge function returned error:', errorMessage);
+        throw new Error(`Failed to reschedule payments: ${errorMessage}`);
       }
       
-      // Check if the function returned an error message
-      if (typeof schedulingResult === 'object' && 'error' in schedulingResult) {
-        console.error('❌ Database function returned error:', schedulingResult.error);
-        throw new Error(`Database function error: ${String(schedulingResult.error)}`);
-      }
-      
-      // Verify the function reported success
-      if (typeof schedulingResult === 'object' && 'success' in schedulingResult && !schedulingResult.success) {
-        console.error('❌ Database function reported failure:', schedulingResult.message || 'Unknown reason');
-        throw new Error(`Database function reported failure: ${schedulingResult.message || 'Unknown reason'}`);
-      }
-      
-      // STEP 6: ONLY NOW update the status of payments from paused to pending
-      // This is the critical fix - we update statuses AFTER rescheduling, not before
-      console.log('🔄 Now updating payment statuses from paused to pending');
-      
-      const { error: statusUpdateError } = await supabase
-        .from('payment_schedule')
-        .update({ 
-          status: 'pending',
-          updated_at: new Date().toISOString()
-        })
-        .eq('plan_id', plan.id)
-        .eq('status', 'paused');
-      
-      if (statusUpdateError) {
-        console.error('❌ Error updating payment status to pending:', statusUpdateError);
-        throw new Error(`Failed to update payment status: ${statusUpdateError.message}`);
-      }
-      
-      console.log('✅ Successfully updated all paused payments to pending status');
-      
-      // STEP 7: Verify that the payments have been rescheduled
-      const { data: updatedPayments, error: updatedPaymentsError } = await supabase
-        .from('payment_schedule')
-        .select('id, due_date, status')
-        .eq('plan_id', plan.id)
-        .order('due_date', { ascending: true });
-        
-      if (updatedPaymentsError) {
-        console.error('❌ Error fetching updated payments:', updatedPaymentsError);
-        throw new Error(`Failed to verify updated payments: ${updatedPaymentsError.message}`);
-      }
-      
-      console.log('🔄 Updated payment schedule:', updatedPayments);
-      
-      if (!updatedPayments || updatedPayments.length === 0) {
-        console.error('❌ No payments found after rescheduling');
-        throw new Error('No payments found after rescheduling');
-      }
-      
-      // STEP 8: Record the resume activity
+      // STEP 6: Record the resume activity
       await supabase
         .from('payment_activity')
         .insert({
@@ -419,28 +363,12 @@ export class PlanOperationsService {
             resume_date: resumeDate.toISOString(),
             installments_affected: pausedSchedules.length,
             sent_payments_reset: paymentRequestIds.length,
-            days_shifted: schedulingResult && 
-              typeof schedulingResult === 'object' && 
-              'days_shifted' in schedulingResult ? 
-              String(schedulingResult.days_shifted) : '0'
+            days_shifted: response.result && 
+              typeof response.result === 'object' && 
+              'days_shifted' in response.result ? 
+              String(response.result.days_shifted) : '0'
           }
         });
-      
-      // STEP 9: Update the plan status
-      const { error: planUpdateError } = await supabase
-        .from('plans')
-        .update({ 
-          status: 'active', 
-          updated_at: new Date().toISOString() 
-        })
-        .eq('id', plan.id);
-      
-      if (planUpdateError) {
-        console.error('⚠️ Warning: Failed to update plan status after resume:', planUpdateError);
-        // Don't throw an error here, as the resumption operation was successful
-      } else {
-        console.log('✅ Plan status updated to active');
-      }
       
       console.log('✅ RESUME PLAN OPERATION COMPLETED SUCCESSFULLY');
       return true;

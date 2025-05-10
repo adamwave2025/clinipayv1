@@ -22,7 +22,7 @@ serve(async (req) => {
   try {
     // Get the request body
     const requestData = await req.json()
-    const { plan_id, resume_date, payment_status = 'paused' } = requestData
+    const { plan_id, resume_date, payment_status = 'paused', update_statuses = false } = requestData
     
     if (!plan_id || !resume_date) {
       return new Response(
@@ -36,7 +36,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') as string
     const supabase = createClient(supabaseUrl, supabaseKey)
     
-    console.log('Resuming plan with parameters:', { plan_id, resume_date, payment_status })
+    console.log('Resuming plan with parameters:', { plan_id, resume_date, payment_status, update_statuses })
     
     // First check if the plan exists and is in paused status
     const { data: planData, error: planError } = await supabase
@@ -72,7 +72,7 @@ serve(async (req) => {
     
     console.log(`Found ${pausedPayments?.length || 0} ${payment_status} payments`)
     
-    // Call the database function directly
+    // Step 1: Call the database function to reschedule due dates
     console.log('Calling resume_payment_plan with params:', { plan_id, resume_date, payment_status })
     const { data: result, error } = await supabase.rpc('resume_payment_plan', {
       plan_id,
@@ -93,13 +93,58 @@ serve(async (req) => {
       )
     }
     
-    // Return the result
+    console.log('Database function result:', result)
+    
+    // Step 2: Now update the status from paused to pending (if requested)
+    let statusUpdateResult = null
+    let statusUpdateError = null
+    
+    if (update_statuses && result.success) {
+      console.log('Now updating payment statuses from paused to pending')
+      
+      const { data, error: updateError } = await supabase
+        .from('payment_schedule')
+        .update({ 
+          status: 'pending',
+          updated_at: new Date().toISOString()
+        })
+        .eq('plan_id', plan_id)
+        .eq('status', payment_status)
+        .select()
+      
+      if (updateError) {
+        console.error('Error updating payment status to pending:', updateError)
+        statusUpdateError = updateError
+      } else {
+        console.log(`Successfully updated ${data?.length || 0} payments from ${payment_status} to pending`, data)
+        statusUpdateResult = data
+      }
+      
+      // Update plan status too
+      const { error: planUpdateError } = await supabase
+        .from('plans')
+        .update({ 
+          status: 'active', 
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', plan_id)
+        
+      if (planUpdateError) {
+        console.error('Error updating plan status:', planUpdateError)
+      } else {
+        console.log('Successfully updated plan status to active')
+      }
+    }
+    
+    // Return the combined results
     return new Response(
       JSON.stringify({ 
         success: true, 
         result,
         planStatus: planData.status,
-        pausedPaymentsCount: pausedPayments?.length || 0
+        pausedPaymentsCount: pausedPayments?.length || 0,
+        statusUpdateResult,
+        statusUpdateError
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
