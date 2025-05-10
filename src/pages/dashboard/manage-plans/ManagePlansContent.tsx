@@ -1,8 +1,9 @@
+
 import React from 'react';
 import PaymentPlanFilters from '@/components/dashboard/payment-plans/PaymentPlanFilters';
 import ActivePlansTable from '@/components/dashboard/payment-plans/ActivePlansTable';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
-import PlanDetails from './PlanDetails';
+import PlanDetailsDialog from '@/components/dashboard/payment-plans/PlanDetailsDialog';
 
 const ManagePlansContent: React.FC = () => {
   const {
@@ -16,7 +17,18 @@ const ManagePlansContent: React.FC = () => {
     handleViewPlanDetails,
     handleCreatePlanClick,
     showPlanDetails,
-    selectedPlan
+    setShowPlanDetails,
+    selectedPlan,
+    installments,
+    activities,
+    isLoadingActivities,
+    handleSendReminder,
+    handleViewPaymentDetails,
+    handleOpenCancelDialog,
+    handleOpenPauseDialog,
+    handleOpenResumeDialog,
+    handleOpenRescheduleDialog,
+    isPlanPaused
   } = useManagePlansContext();
 
   // Calculate the total number of plans from the unfiltered allPlans array
@@ -25,13 +37,6 @@ const ManagePlansContent: React.FC = () => {
   console.log('ManagePlansContent rendering with showPlanDetails:', showPlanDetails);
   console.log('ManagePlansContent has selectedPlan:', selectedPlan?.id);
 
-  // If we're showing plan details, render the PlanDetails component
-  if (showPlanDetails && selectedPlan) {
-    console.log('Rendering PlanDetails component for plan:', selectedPlan.id);
-    return <PlanDetails />;
-  }
-
-  // Otherwise, render the plans list
   return (
     <div className="space-y-6">
       {/* Filters */}
@@ -53,6 +58,23 @@ const ManagePlansContent: React.FC = () => {
           handleViewPlanDetails(plan);
         }}
         statusFilter={statusFilter}
+      />
+
+      {/* Plan Details Dialog (Side Drawer) */}
+      <PlanDetailsDialog
+        showPlanDetails={showPlanDetails}
+        setShowPlanDetails={setShowPlanDetails}
+        selectedPlan={selectedPlan}
+        installments={installments}
+        activities={activities}
+        isLoadingActivities={isLoadingActivities}
+        onSendReminder={handleSendReminder}
+        onViewPaymentDetails={handleViewPaymentDetails}
+        onCancelPlan={handleOpenCancelDialog}
+        onPausePlan={handleOpenPauseDialog}
+        onResumePlan={handleOpenResumeDialog}
+        onReschedulePlan={handleOpenRescheduleDialog}
+        isPlanPaused={isPlanPaused}
       />
     </div>
   );

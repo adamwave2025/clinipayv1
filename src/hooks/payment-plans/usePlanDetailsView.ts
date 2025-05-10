@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plan } from '@/utils/planTypes';
 
 export const usePlanDetailsView = () => {
@@ -7,6 +7,19 @@ export const usePlanDetailsView = () => {
   const [showPlanDetails, setShowPlanDetails] = useState(false);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const [selectedInstallment, setSelectedInstallment] = useState<any | null>(null);
+  
+  // This effect fixes the timing issue with state updates
+  useEffect(() => {
+    if (selectedPlan && !showPlanDetails) {
+      console.log('Auto-showing plan details because we have a selected plan');
+      setShowPlanDetails(true);
+    }
+    
+    if (!selectedPlan && showPlanDetails) {
+      console.log('Auto-hiding plan details because we have no selected plan');
+      setShowPlanDetails(false);
+    }
+  }, [selectedPlan, showPlanDetails]);
   
   const handleViewPlanDetails = async (
     plan: Plan, 
@@ -16,6 +29,9 @@ export const usePlanDetailsView = () => {
     
     // Set the selected plan immediately
     setSelectedPlan(plan);
+    
+    // Explicitly set showPlanDetails to true
+    setShowPlanDetails(true);
     
     // Fetch the installments for this plan
     if (plan && plan.id) {
@@ -28,23 +44,20 @@ export const usePlanDetailsView = () => {
       }
     }
     
-    // Explicitly log when we're setting showPlanDetails to true
-    console.log('Setting showPlanDetails to true');
-    setShowPlanDetails(true);
-    
-    // Verify that state was set correctly after a short delay
-    setTimeout(() => {
-      console.log('State check - selectedPlan:', selectedPlan?.id);
-      console.log('State check - showPlanDetails:', showPlanDetails);
-    }, 100);
+    // Verify state update
+    console.log('Plan details should be visible now.');
   };
   
   const handleBackToPlans = () => {
     console.log('handleBackToPlans called');
     setShowPlanDetails(false);
     setShowPaymentDetails(false);
-    setSelectedPlan(null);
     setSelectedInstallment(null);
+    
+    // Wait for the drawer to close before clearing the selected plan
+    setTimeout(() => {
+      setSelectedPlan(null);
+    }, 300); // Match the drawer animation duration
   };
   
   // Helper to check if a plan is paused
