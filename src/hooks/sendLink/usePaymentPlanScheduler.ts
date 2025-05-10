@@ -5,9 +5,11 @@ import { toast } from 'sonner';
 import { recordPaymentPlanActivity } from '@/services/PaymentScheduleService';
 import { PaymentLink } from '@/types/payment';
 import { SendLinkFormData } from './useSendLinkFormState';
+import { useNavigate } from 'react-router-dom';
 
 export function usePaymentPlanScheduler() {
   const [isSchedulingPlan, setIsSchedulingPlan] = useState(false);
+  const navigate = useNavigate();
 
   const generatePaymentSchedule = (startDate: Date, frequency: string, count: number, amount: number) => {
     const schedule = [];
@@ -250,7 +252,8 @@ export function usePaymentPlanScheduler() {
       return { success: false };
     }
 
-    const loadingToastId = toast.loading('Scheduling payment plan...');
+    // Use a single loading toast for the entire process
+    const loadingToastId = toast.loading('Setting up payment plan...');
 
     try {
       setIsSchedulingPlan(true);
@@ -319,8 +322,6 @@ export function usePaymentPlanScheduler() {
       let firstPaymentRequest = null;
       if (isFirstPaymentToday) {
         try {
-          toast.dismiss(loadingToastId);
-          const firstPaymentToastId = toast.loading('Creating first payment request...');
           firstPaymentRequest = await createPaymentRequest(
             clinicId,
             patientId,
@@ -331,20 +332,16 @@ export function usePaymentPlanScheduler() {
             formData.patientEmail,
             formData.patientPhone
           );
-          toast.dismiss(firstPaymentToastId);
           console.log('Created first payment request for today:', firstPaymentRequest.id);
         } catch (reqError: any) {
           console.error('Error creating first payment request:', reqError);
-          toast.warning('Could not create first payment notification, but will continue scheduling plan');
+          // Continue with plan creation even if first payment request fails
         }
       }
       
       // Create a new plan record in the plans table
       const totalAmount = selectedLink.amount * selectedLink.paymentCount;
       const firstPaymentDueDate = schedule[0].due_date;
-      
-      toast.dismiss(loadingToastId);
-      const finalToastId = toast.loading('Finalizing payment plan...');
       
       const { data: planData, error: planError } = await supabase
         .from('plans')
@@ -369,7 +366,7 @@ export function usePaymentPlanScheduler() {
         .single();
 
       if (planError || !planData) {
-        toast.dismiss(finalToastId);
+        toast.dismiss(loadingToastId);
         toast.error('Failed to create payment plan');
         setIsSchedulingPlan(false);
         return { success: false };
@@ -408,7 +405,7 @@ export function usePaymentPlanScheduler() {
         .insert(scheduleEntries);
 
       if (scheduleError) {
-        toast.dismiss(finalToastId);
+        toast.dismiss(loadingToastId);
         toast.error('Failed to schedule payment plan');
         setIsSchedulingPlan(false);
         return { success: false };
@@ -433,10 +430,8 @@ export function usePaymentPlanScheduler() {
         console.error('Error recording plan activity:', activityError);
       }
 
-      // If the first payment is due today, send it immediately
+      // If the first payment is due today, send it immediately but don't show a separate toast
       if (isFirstPaymentToday && firstPaymentRequest) {
-        toast.dismiss(finalToastId);
-        const sendPaymentToastId = toast.loading('Sending first payment notification...');
         const firstPayment = schedule[0];
         
         try {
@@ -452,20 +447,21 @@ export function usePaymentPlanScheduler() {
             firstPaymentRequest.id
           );
           
-          toast.dismiss(sendPaymentToastId);
-          if (sentSuccessfully) {
-            toast.success('Payment plan scheduled and first payment sent immediately');
-          } else {
-            toast.success('Payment plan scheduled, but there was an issue sending the first payment');
+          if (!sentSuccessfully) {
+            console.warn('First payment notification may not have been sent properly');
           }
         } catch (sendError: any) {
-          toast.dismiss(sendPaymentToastId);
-          toast.success('Payment plan scheduled successfully, but first payment notification failed');
+          console.error('Error sending first payment:', sendError);
+          // Continue with success flow despite this error
         }
-      } else {
-        toast.dismiss(finalToastId);
-        toast.success('Payment plan scheduled successfully');
       }
+
+      // Show a single success notification
+      toast.dismiss(loadingToastId);
+      toast.success('Payment plan created successfully');
+      
+      // Redirect to payment plans page
+      navigate('/dashboard/payment-plans');
 
       return { success: true };
     } catch (error: any) {
