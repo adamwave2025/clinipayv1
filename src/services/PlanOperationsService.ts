@@ -1,4 +1,3 @@
-
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -40,8 +39,8 @@ export class PlanOperationsService {
         throw new Error(`Failed to resume plan: ${error.message}`);
       }
       
-      // Type assertion to ensure we can access properties safely
-      const result = data as CompleteResumePlanResponse;
+      // First convert data to unknown, then to our expected type to avoid type errors
+      const result = data as unknown as CompleteResumePlanResponse;
       
       if (!result || !result.success) {
         const errorMessage = result?.error || 'Unknown error resuming plan';

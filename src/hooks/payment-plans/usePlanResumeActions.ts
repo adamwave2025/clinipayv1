@@ -140,8 +140,8 @@ export const usePlanResumeActions = (
         throw new Error(`Database function error: ${error.message}`);
       }
       
-      // Type assertion to ensure we can access properties safely
-      const result = data as CompleteResumePlanResponse;
+      // First convert data to unknown, then to our expected type to avoid type errors
+      const result = data as unknown as CompleteResumePlanResponse;
       
       if (!result || !result.success) {
         const errorMessage = result?.error || 'Unknown error resuming plan';
