@@ -223,17 +223,21 @@ export class PlanOperationsService {
   /**
    * Resume a paused payment plan
    * @param plan The plan to resume
-   * @param resumeDate Optional date to resume the plan (defaults to current date)
+   * @param resumeDate Required date to resume the plan
    * @returns boolean indicating success or failure
    */
-  static async resumePlan(plan: Plan, resumeDate?: Date): Promise<boolean> {
+  static async resumePlan(plan: Plan, resumeDate: Date): Promise<boolean> {
     try {
       console.log('▶️ RESUME PLAN OPERATION STARTED');
       console.log(`📋 Plan ID: ${plan.id}, Plan Title: ${plan.title || plan.planName}`);
       
-      // If resumeDate is not provided, use current date
-      const effectiveResumeDate = resumeDate || new Date();
-      console.log('📅 Resume Date:', effectiveResumeDate.toISOString());
+      // Validate the resume date
+      if (!resumeDate) {
+        console.error('❌ No resume date provided');
+        throw new Error('Resume date is required');
+      }
+      
+      console.log('📅 Resume Date:', resumeDate.toISOString());
       
       // STEP 1: Verify the plan exists and is in paused status
       const { data: currentPlan, error: planError } = await supabase
@@ -332,7 +336,7 @@ export class PlanOperationsService {
       console.log('✅ Successfully updated all paused payments to pending status');
       
       // STEP 5: Format date as YYYY-MM-DD for the database function call
-      const formattedDate = effectiveResumeDate.toISOString().split('T')[0]; 
+      const formattedDate = resumeDate.toISOString().split('T')[0]; 
       console.log('📞 Calling resume_payment_plan with formatted date:', formattedDate);
       
       // STEP 6: Call the resume_payment_plan function to reschedule the payments
@@ -391,7 +395,7 @@ export class PlanOperationsService {
           details: {
             plan_name: plan.title || plan.planName,
             previous_status: 'paused',
-            resume_date: effectiveResumeDate.toISOString(),
+            resume_date: resumeDate.toISOString(),
             installments_affected: pausedSchedules.length,
             sent_payments_reset: paymentRequestIds.length,
             days_shifted: schedulingResult && 
@@ -402,13 +406,19 @@ export class PlanOperationsService {
         });
       
       // STEP 9: Update the plan status
-      const updateResult = await PlanStatusService.updatePlanStatus(plan.id);
+      const { error: planUpdateError } = await supabase
+        .from('plans')
+        .update({ 
+          status: 'active', 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', plan.id);
       
-      if (!updateResult.success) {
-        console.error('⚠️ Warning: Failed to update plan status after resume:', updateResult.error);
+      if (planUpdateError) {
+        console.error('⚠️ Warning: Failed to update plan status after resume:', planUpdateError);
         // Don't throw an error here, as the resumption operation was successful
       } else {
-        console.log(`✅ Plan resumed successfully with calculated status: ${updateResult.status}`);
+        console.log('✅ Plan status updated to active');
       }
       
       console.log('✅ RESUME PLAN OPERATION COMPLETED SUCCESSFULLY');

@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plan } from '@/utils/planTypes';
@@ -75,16 +74,23 @@ export const useManagePlans = (): ManagePlansContextType => {
     }
   );
   
+  // Create a refresh function for use after operations
+  const refreshData = async () => {
+    if (user) {
+      await fetchPaymentPlans(user.id);
+    }
+  };
+  
   // Pass fetchPaymentPlans directly as it returns Promise<Plan[]>
   const { 
     isProcessing,
     handleSendReminder: sendReminder
   } = usePlanActions(() => fetchPaymentPlans(user?.id || ''));
   
-  // Use specialized action hooks
+  // Use specialized action hooks with refresh capability
   const cancelActions = usePlanCancelActions(selectedPlan, setShowPlanDetails);
   const pauseActions = usePlanPauseActions(selectedPlan, setShowPlanDetails);
-  const resumeActions = usePlanResumeActions(selectedPlan, setShowPlanDetails);
+  const resumeActions = usePlanResumeActions(selectedPlan, setShowPlanDetails, refreshData);
   const rescheduleActions = usePlanRescheduleActions(selectedPlan, setShowPlanDetails);
   
   // Add the hasPaidPayments state explicitly
@@ -207,7 +213,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     ...rescheduleActions,
     
     // Explicitly add hasOverduePayments from rescheduleActions
-    hasOverduePayments: rescheduleActions.hasOverduePayments,
+    hasOverduePayments: resumeActions.hasOverduePayments,
     
     // Add resumeError from resumeActions
     resumeError: resumeActions.resumeError,

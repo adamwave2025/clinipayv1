@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Calendar } from '@/components/ui/calendar';
-import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
@@ -21,15 +20,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 
 interface ResumePlanDialogProps {
   showDialog: boolean;
   setShowDialog: (show: boolean) => void;
-  onConfirm: (resumeDate?: Date) => void;
+  onConfirm: (resumeDate: Date) => void;
   planName: string;
   patientName: string;
   isProcessing?: boolean;
-  isLoading?: boolean;
   hasSentPayments?: boolean;
   hasOverduePayments?: boolean;
   hasPaidPayments?: boolean;
@@ -43,31 +42,25 @@ const ResumePlanDialog = ({
   planName,
   patientName,
   isProcessing = false,
-  isLoading = false,
   hasSentPayments = false,
   hasOverduePayments = false,
   hasPaidPayments = false,
   resumeError = null,
 }: ResumePlanDialogProps) => {
-  // Use either isLoading or isProcessing (prioritize isProcessing)
-  const isWorking = isProcessing || isLoading;
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [resumeDate, setResumeDate] = useState<Date>(new Date());
+  // Default resume date set to tomorrow to avoid issues with today's date
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const [resumeDate, setResumeDate] = useState<Date>(tomorrow);
+  const [dateSelected, setDateSelected] = useState(false);
 
   const handleConfirm = () => {
-    onConfirm(showDatePicker ? resumeDate : undefined);
+    if (!dateSelected) {
+      setDateSelected(true);
+      return;
+    }
+    onConfirm(resumeDate);
   };
-
-  console.log('ResumePlanDialog props:', {
-    showDialog,
-    planName,
-    patientName,
-    isWorking,
-    hasSentPayments,
-    hasOverduePayments,
-    hasPaidPayments,
-    resumeError
-  });
 
   // Disable dates in the past
   const disablePastDates = (date: Date) => {
@@ -82,12 +75,9 @@ const ResumePlanDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Resume Payment Plan</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to resume the <span className="font-semibold">{planName}</span> payment plan for{' '}
-            <span className="font-semibold">{patientName}</span>?
+            Select a date to resume the <span className="font-semibold">{planName}</span> payment plan for{' '}
+            <span className="font-semibold">{patientName}</span>.
           </AlertDialogDescription>
-          <p className="text-sm text-muted-foreground mt-2">
-            This will activate all upcoming payments according to the original schedule.
-          </p>
           
           {resumeError && (
             <Alert className="mt-4 bg-red-50 border-red-200">
@@ -126,53 +116,51 @@ const ResumePlanDialog = ({
             </div>
           )}
           
-          <div className="mt-4">
-            <label className="flex items-center space-x-2">
-              <input 
-                type="checkbox" 
-                checked={showDatePicker} 
-                onChange={() => setShowDatePicker(!showDatePicker)}
-                className="form-checkbox h-4 w-4 text-blue-600"
-              />
-              <span className="text-sm">Schedule a future resume date</span>
-            </label>
-            
-            {showDatePicker && (
-              <div className="mt-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !resumeDate && "text-muted-foreground"
-                      )}
-                    >
-                      {resumeDate ? format(resumeDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={resumeDate}
-                      onSelect={(date) => date && setResumeDate(date)}
-                      disabled={disablePastDates}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            )}
+          {/* Date picker is now always visible */}
+          <div className="mt-6">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Select a resume date:</p>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dateSelected && "border-red-300"
+                    )}
+                  >
+                    {resumeDate ? format(resumeDate, "PPP") : <span>Select a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={resumeDate}
+                    onSelect={(date) => {
+                      if (date) {
+                        setResumeDate(date);
+                        setDateSelected(true);
+                      }
+                    }}
+                    disabled={disablePastDates}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {!dateSelected && (
+                <p className="text-xs text-red-500">Please select a resume date</p>
+              )}
+            </div>
           </div>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isWorking}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
           <AlertDialogAction 
             onClick={handleConfirm}
             className="bg-green-600 hover:bg-green-700"
-            disabled={isWorking}
+            disabled={isProcessing}
           >
-            {isWorking ? (
+            {isProcessing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Processing...

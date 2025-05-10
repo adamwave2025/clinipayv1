@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -10,6 +9,7 @@ import { useViewModeState } from '@/hooks/payment-plans/useViewModeState';
 import { usePlanDetailsView } from '@/hooks/payment-plans/usePlanDetailsView';
 import { useInstallmentActions } from '@/hooks/payment-plans/useInstallmentActions';
 import { useInstallmentHandler } from '@/hooks/payment-plans/useInstallmentHandler';
+import { usePlanResumeActions } from '@/hooks/payment-plans/usePlanResumeActions';
 
 export const ManagePlansProvider: React.FC<{
   children: React.ReactNode;
@@ -29,6 +29,13 @@ export const ManagePlansProvider: React.FC<{
     fetchPaymentPlans, 
     fetchPlanInstallmentsData 
   } = usePlanDataFetcher();
+  
+  // Create a refresh function for use after operations
+  const refreshData = async () => {
+    if (user) {
+      await fetchPaymentPlans(user.id);
+    }
+  };
   
   // Use plan details view hook
   const { 
@@ -95,11 +102,10 @@ export const ManagePlansProvider: React.FC<{
     }
   }, [user]);
   
-  // Function to handle viewing plan details - key function that needs fixing
+  // Function to handle viewing plan details
   const handleViewPlanDetails = async (plan: Plan) => {
     console.log("ManagePlansProvider: Viewing plan details for:", plan.id, plan.title || plan.planName);
     await viewPlanDetailsHook(plan, fetchPlanInstallmentsData);
-    console.log("After viewPlanDetailsHook, showPlanDetails:", showPlanDetails, "selectedPlan:", selectedPlan?.id);
   };
   
   // For debugging
@@ -113,13 +119,20 @@ export const ManagePlansProvider: React.FC<{
   // Set up properties for plan action dialogs
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showPauseDialog, setShowPauseDialog] = useState(false);
-  const [showResumeDialog, setShowResumeDialog] = useState(false);
-  const [hasSentPayments, setHasSentPayments] = useState(false);
-  const [hasOverduePayments, setHasOverduePayments] = useState(false);
-  const [hasPaidPayments, setHasPaidPayments] = useState(false); 
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
-  const [resumeError, setResumeError] = useState<string | null>(null);
+  
+  // Use the improved resume actions hook
+  const { 
+    showResumeDialog, 
+    setShowResumeDialog, 
+    handleResumePlan, 
+    handleOpenResumeDialog,
+    hasSentPayments,
+    hasOverduePayments,
+    hasPaidPayments,
+    resumeError
+  } = usePlanResumeActions(selectedPlan, setShowPlanDetails, refreshData);
   
   // Open dialog handlers
   const handleOpenCancelDialog = () => {
@@ -132,16 +145,6 @@ export const ManagePlansProvider: React.FC<{
     setShowPauseDialog(true);
   };
   
-  const handleOpenResumeDialog = () => {
-    console.log("Opening resume dialog");
-    setShowResumeDialog(true);
-  };
-  
-  const handleOpenRescheduleDialog = () => {
-    console.log("Opening reschedule dialog");
-    setShowRescheduleDialog(true);
-  };
-
   const openRefundDialog = () => {
     console.log("Opening refund dialog");
     setRefundDialogOpen(true);
@@ -157,12 +160,6 @@ export const ManagePlansProvider: React.FC<{
   const handlePausePlan = async () => {
     console.log("Pause plan action called");
     setShowPauseDialog(false);
-    // Actual implementation would go here
-  };
-  
-  const handleResumePlan = async () => {
-    console.log("Resume plan action called");
-    setShowResumeDialog(false);
     // Actual implementation would go here
   };
   

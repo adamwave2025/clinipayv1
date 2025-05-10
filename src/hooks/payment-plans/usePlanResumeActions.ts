@@ -7,7 +7,8 @@ import { toast } from 'sonner';
 
 export const usePlanResumeActions = (
   selectedPlan: Plan | null,
-  setShowPlanDetails: (show: boolean) => void
+  setShowPlanDetails: (show: boolean) => void,
+  refreshPlans?: () => Promise<void>
 ) => {
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [hasSentPayments, setHasSentPayments] = useState(false);
@@ -17,7 +18,10 @@ export const usePlanResumeActions = (
   const [resumeError, setResumeError] = useState<string | null>(null);
 
   const handleOpenResumeDialog = async () => {
-    if (!selectedPlan) return;
+    if (!selectedPlan) {
+      toast.error('No plan selected');
+      return;
+    }
     
     setIsProcessing(true);
     setResumeError(null);
@@ -32,7 +36,9 @@ export const usePlanResumeActions = (
         .eq('plan_id', selectedPlan.id)
         .eq('status', 'paused');
       
-      if (pausedError) throw new Error(`Error checking paused payments: ${pausedError.message}`);
+      if (pausedError) {
+        throw new Error(`Error checking paused payments: ${pausedError.message}`);
+      }
       
       if (!pausedPayments || pausedPayments.length === 0) {
         console.warn('No paused payments found for this plan');
@@ -88,12 +94,16 @@ export const usePlanResumeActions = (
         hasPaidPayments: hasPaid,
         paidCount: paidCount || 0
       });
+      
+      // Now open the dialog
+      setShowResumeDialog(true);
+      
     } catch (error) {
       console.error('Error preparing resume dialog:', error);
       setResumeError(error instanceof Error ? error.message : String(error));
+      toast.error('Error preparing to resume plan');
     } finally {
       setIsProcessing(false);
-      setShowResumeDialog(true);
     }
   };
 
@@ -107,20 +117,39 @@ export const usePlanResumeActions = (
     setResumeError(null);
     
     try {
-      // Normalize date to midnight UTC to avoid timezone issues
-      const normalizedDate = new Date(resumeDate);
-      normalizedDate.setHours(0, 0, 0, 0);
+      console.log(`Resuming plan ${selectedPlan.id} with date:`, resumeDate.toISOString());
       
-      console.log(`Resuming plan ${selectedPlan.id} with date:`, normalizedDate.toISOString());
+      // First update all paused payments to pending to prepare for rescheduling
+      const { error: statusUpdateError } = await supabase
+        .from('payment_schedule')
+        .update({ 
+          status: 'pending',
+          updated_at: new Date().toISOString()
+        })
+        .eq('plan_id', selectedPlan.id)
+        .eq('status', 'paused');
+        
+      if (statusUpdateError) {
+        throw new Error(`Error updating payment status: ${statusUpdateError.message}`);
+      }
       
-      // Call the resume plan operation
-      const success = await PlanOperationsService.resumePlan(selectedPlan, normalizedDate);
+      console.log('Successfully updated all paused payments to pending status');
+      
+      // Now call the service to complete the resume operation
+      const success = await PlanOperationsService.resumePlan(selectedPlan, resumeDate);
       
       if (success) {
         console.log('Plan resumed successfully');
         toast.success('Payment plan resumed successfully');
+        
+        // Close the dialogs
         setShowResumeDialog(false);
-        setShowPlanDetails(false); // Close the plan details modal
+        setShowPlanDetails(false); 
+        
+        // Refresh the plans list if a refresh function is provided
+        if (refreshPlans) {
+          await refreshPlans();
+        }
       } else {
         console.error('Resume plan operation returned false');
         toast.error('Failed to resume payment plan');
