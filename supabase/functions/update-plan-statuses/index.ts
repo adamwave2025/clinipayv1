@@ -40,6 +40,41 @@ async function checkPlanForOverduePayments(supabase: any, planId: string): Promi
   }
 }
 
+/**
+ * Counts the number of paid installments for a plan directly from the payment_schedule table
+ * This ensures an accurate count even if webhook duplicates occur
+ */
+async function getAccuratePaidInstallmentCount(supabase: any, planId: string): Promise<number> {
+  try {
+    const { count, error } = await supabase
+      .from('payment_schedule')
+      .select('id', { count: 'exact', head: true })
+      .eq('plan_id', planId)
+      .eq('status', 'paid');
+      
+    if (error) {
+      console.error('Error counting paid installments:', error);
+      return 0;
+    }
+    
+    return count || 0;
+  } catch (err) {
+    console.error('Exception counting paid installments:', err);
+    return 0;
+  }
+}
+
+/**
+ * Calculate accurate progress percentage based on paid vs total installments
+ */
+function calculateProgress(paidInstallments: number, totalInstallments: number): number {
+  if (!totalInstallments || totalInstallments <= 0) return 0;
+  
+  // Ensure progress doesn't exceed 100%
+  const progress = Math.floor((paidInstallments / totalInstallments) * 100);
+  return Math.min(progress, 100);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -58,11 +93,23 @@ serve(async (req) => {
     
     console.log(`📅 Checking for overdue payments before: ${todayStr}`);
     
-    // 1. Get all plans that are active, pending, or overdue (not paused, cancelled or completed)
-    const { data: activePlans, error: plansError } = await supabase
+    // Parse request body to check if a specific planId was requested
+    const requestBody = await req.json().catch(() => ({}));
+    const specificPlanId = requestBody.planId;
+    
+    let plansQuery = supabase
       .from('plans')
-      .select('id, title, status, has_overdue_payments')
+      .select('id, title, status, has_overdue_payments, total_installments')
       .in('status', ['active', 'pending', 'overdue']); // Only check these statuses
+      
+    // If a specific planId was provided, filter to just that plan
+    if (specificPlanId) {
+      plansQuery = plansQuery.eq('id', specificPlanId);
+      console.log(`🔍 Checking single plan with ID: ${specificPlanId}`);
+    }
+    
+    // 1. Get all active plans or the specific requested plan
+    const { data: activePlans, error: plansError } = await plansQuery;
     
     if (plansError) {
       throw new Error(`Error fetching active plans: ${plansError.message}`);
@@ -131,17 +178,9 @@ serve(async (req) => {
             if (!hasActualOverduePayments) {
               // No overdue payments, so plan shouldn't be overdue
               // Change to 'active' if at least one payment has been made, otherwise 'pending'
-              const { data: paidCount, error: paidError } = await supabase
-                .from('payment_schedule')
-                .select('id', { count: 'exact', head: true })
-                .eq('plan_id', plan.id)
-                .eq('status', 'paid');
-                
-              if (paidError) {
-                throw new Error(`Error checking paid payments: ${paidError.message}`);
-              }
+              const paidInstallments = await getAccuratePaidInstallmentCount(supabase, plan.id);
               
-              const newStatus = paidCount && paidCount > 0 ? 'active' : 'pending';
+              const newStatus = paidInstallments > 0 ? 'active' : 'pending';
               console.log(`Plan ${plan.id} is marked overdue but has no overdue payments, changing to ${newStatus}`);
               
               const { error: updateError } = await supabase
@@ -165,6 +204,27 @@ serve(async (req) => {
               });
             }
           }
+        }
+        
+        // Always update the metrics to ensure they're accurate
+        // This fixes issues with potentially incorrect paid_installments and progress
+        const paidInstallments = await getAccuratePaidInstallmentCount(supabase, plan.id);
+        const progress = calculateProgress(paidInstallments, plan.total_installments);
+        
+        // Update the plan with accurate metrics
+        const { error: metricsUpdateError } = await supabase
+          .from('plans')
+          .update({ 
+            paid_installments: paidInstallments,
+            progress: progress,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', plan.id);
+          
+        if (metricsUpdateError) {
+          console.error(`Error updating plan metrics: ${metricsUpdateError.message}`);
+        } else {
+          console.log(`Updated plan metrics: ${paidInstallments}/${plan.total_installments} payments (${progress}%)`);
         }
         
         // Always update the has_overdue_payments flag to be accurate

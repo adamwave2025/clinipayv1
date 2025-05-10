@@ -18,7 +18,7 @@ const PaymentPlanBreakdown: React.FC<PaymentPlanBreakdownProps> = ({
   isOverdue = false,
   paymentLinkId
 }) => {
-  // Calculate payment progress percentage
+  // Calculate payment progress percentage with safety checks
   const progressPercentage = planTotalAmount > 0 
     ? Math.min(Math.round((totalPaid / planTotalAmount) * 100), 100)
     : 0;

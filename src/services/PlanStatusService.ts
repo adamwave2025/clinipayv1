@@ -79,6 +79,82 @@ export class PlanStatusService {
   }
   
   /**
+   * Calculate an accurate count of paid installments for a plan by counting
+   * directly from the payment_schedule table.
+   * This ensures an accurate count even if webhook duplicates occur.
+   */
+  static async getAccuratePaidInstallmentCount(planId: string): Promise<number> {
+    try {
+      const { count, error } = await supabase
+        .from('payment_schedule')
+        .select('id', { count: 'exact', head: true })
+        .eq('plan_id', planId)
+        .eq('status', 'paid');
+        
+      if (error) {
+        console.error('Error counting paid installments:', error);
+        return 0;
+      }
+      
+      return count || 0;
+    } catch (err) {
+      console.error('Exception counting paid installments:', err);
+      return 0;
+    }
+  }
+  
+  /**
+   * Calculate accurate progress percentage based on paid vs total installments
+   */
+  static calculateProgress(paidInstallments: number, totalInstallments: number): number {
+    if (!totalInstallments || totalInstallments <= 0) return 0;
+    
+    // Ensure progress doesn't exceed 100%
+    const progress = Math.floor((paidInstallments / totalInstallments) * 100);
+    return Math.min(progress, 100);
+  }
+  
+  /**
+   * Updates a plan's payment metrics with accurate counts
+   * This should be used after payments are processed or status changes occur
+   */
+  static async updatePlanPaymentMetrics(planId: string): Promise<{success: boolean, error?: any}> {
+    try {
+      // Get the current plan data
+      const { data: plan, error: planError } = await supabase
+        .from('plans')
+        .select('total_installments')
+        .eq('id', planId)
+        .single();
+        
+      if (planError) throw planError;
+      
+      // Count actual paid installments
+      const paidInstallments = await this.getAccuratePaidInstallmentCount(planId);
+      
+      // Calculate progress
+      const progress = this.calculateProgress(paidInstallments, plan.total_installments);
+      
+      // Update the plan
+      const { error: updateError } = await supabase
+        .from('plans')
+        .update({
+          paid_installments: paidInstallments,
+          progress: progress,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', planId);
+        
+      if (updateError) throw updateError;
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating plan payment metrics:', error);
+      return { success: false, error };
+    }
+  }
+  
+  /**
    * Trigger the status update manually for a specific plan
    * This calls the update-plan-statuses edge function for a single plan
    * Note: This will now ONLY update the overdue status, not other statuses
@@ -116,10 +192,19 @@ export class PlanStatusService {
   
   /**
    * This is a legacy method that exists for backward compatibility.
-   * It now simply refreshes the plan status from the database.
+   * It now refreshes the plan status from the database and updates metrics.
    */
   static async updatePlanStatus(planId: string): Promise<{success: boolean, status?: Plan['status'], error?: any}> {
-    return this.refreshPlanStatus(planId);
+    try {
+      // First update the payment metrics
+      await this.updatePlanPaymentMetrics(planId);
+      
+      // Then refresh the status
+      return this.refreshPlanStatus(planId);
+    } catch (error) {
+      console.error('Error updating plan status:', error);
+      return { success: false, error };
+    }
   }
   
   /**
