@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -60,8 +59,8 @@ export class PlanOperationsService {
         const { error: requestUpdateError } = await supabase
           .from('payment_requests')
           .update({
-            status: 'cancelled',
-            updated_at: new Date().toISOString()
+            status: 'cancelled'
+            // Removed updated_at as it doesn't exist in the table
           })
           .in('id', requestIds);
           // CRITICAL: Removed conditional is('payment_id', null) to ensure ALL requests get cancelled
@@ -148,8 +147,8 @@ export class PlanOperationsService {
         const { data: updatedRequests, error: requestCancelError } = await supabase
           .from('payment_requests')
           .update({
-            status: 'cancelled',
-            updated_at: new Date().toISOString()
+            status: 'cancelled'
+            // Removed updated_at as it doesn't exist in the table
           })
           .in('id', paymentRequestIds)
           // No condition here for payment_id
@@ -261,8 +260,8 @@ export class PlanOperationsService {
         const { error: requestUpdateError } = await supabase
           .from('payment_requests')
           .update({ 
-            status: 'cancelled',
-            updated_at: new Date().toISOString()
+            status: 'cancelled'
+            // Removed updated_at as it doesn't exist in the table
           })
           .in('id', paymentRequestIds);
           // CRITICAL: Removed is('payment_id', null) condition
@@ -458,8 +457,8 @@ export class PlanOperationsService {
         const { data: updatedRequests, error: requestUpdateError } = await supabase
           .from('payment_requests')
           .update({
-            status: 'cancelled', 
-            updated_at: new Date().toISOString()
+            status: 'cancelled'
+            // Removed updated_at as it doesn't exist in the table
           })
           .in('id', paymentRequestIds)
           .select();
