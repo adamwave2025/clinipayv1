@@ -73,33 +73,50 @@ serve(async (req) => {
     console.log(`Found ${pausedPayments?.length || 0} ${payment_status} payments`)
     
     // Step 1: Call the database function to reschedule due dates
+    // Important: Use SQL query directly to avoid column reference ambiguities
     console.log('Calling resume_payment_plan with params:', { plan_id, resume_date, payment_status })
-    const { data: result, error } = await supabase.rpc('resume_payment_plan', {
-      plan_id,
-      resume_date,
-      payment_status,
-    })
     
-    if (error) {
-      console.error('Error from resume_payment_plan:', error)
+    // Use raw SQL with explicit table aliases to avoid ambiguity
+    const sql = `
+      SELECT resume_payment_plan($1, $2, $3) as result
+    `
+    
+    const { data: sqlResult, error: sqlError } = await supabase
+      .rpc('execute_sql', {
+        sql: `SELECT resume_payment_plan('${plan_id}', '${resume_date}', '${payment_status}') as result`
+      })
+    
+    if (sqlError) {
+      console.error('SQL Error from resume_payment_plan:', sqlError)
       return new Response(
         JSON.stringify({ 
-          error: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
+          error: sqlError.message,
+          details: sqlError.details,
+          hint: sqlError.hint,
+          code: sqlError.code,
+          sql: sql
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       )
     }
     
+    // Get the actual result from the SQL execution
+    const result = sqlResult ? (sqlResult as any)?.result : null
     console.log('Database function result:', result)
+    
+    // If there was an error in the result, return that
+    if (result && result.error) {
+      return new Response(
+        JSON.stringify({ error: result.error, details: result }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      )
+    }
     
     // Step 2: Now update the status from paused to pending (if requested)
     let statusUpdateResult = null
     let statusUpdateError = null
     
-    if (update_statuses && result.success) {
+    if (update_statuses && result && result.success) {
       console.log('Now updating payment statuses from paused to pending')
       
       const { data, error: updateError } = await supabase

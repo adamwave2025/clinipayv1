@@ -20,9 +20,9 @@ DECLARE
   debug_info JSONB;
 BEGIN
   -- Get plan details to determine payment frequency
-  SELECT payment_frequency INTO plan_record
-  FROM plans
-  WHERE plans.id = plan_id;
+  SELECT p.payment_frequency INTO plan_record
+  FROM plans p
+  WHERE p.id = plan_id;
   
   IF NOT FOUND THEN
     RETURN jsonb_build_object('error', 'Plan not found');
@@ -37,20 +37,21 @@ BEGIN
   END CASE;
   
   -- IMPORTANT: Use the provided status parameter instead of hardcoding 'pending'
-  SELECT ARRAY_AGG(id ORDER BY due_date), ARRAY_AGG(due_date ORDER BY due_date)
+  -- AND fully qualify all column references to avoid ambiguity
+  SELECT ARRAY_AGG(ps.id ORDER BY ps.due_date), ARRAY_AGG(ps.due_date ORDER BY ps.due_date)
   INTO payment_ids, payment_dates
-  FROM payment_schedule
-  WHERE payment_schedule.plan_id = plan_id AND status = payment_status
-  ORDER BY due_date;
+  FROM payment_schedule ps
+  WHERE ps.plan_id = resume_payment_plan.plan_id AND ps.status = resume_payment_plan.payment_status
+  ORDER BY ps.due_date;
   
   -- If there are no payments with the specified status, nothing to reschedule
   IF payment_ids IS NULL OR ARRAY_LENGTH(payment_ids, 1) IS NULL THEN
     RETURN jsonb_build_object(
       'success', false,
-      'message', 'No ' || payment_status || ' payments to reschedule',
-      'warning', 'Check that plan has ' || payment_status || ' payments to resume',
-      'plan_id', plan_id,
-      'status_used', payment_status
+      'message', 'No ' || resume_payment_plan.payment_status || ' payments to reschedule',
+      'warning', 'Check that plan has ' || resume_payment_plan.payment_status || ' payments to resume',
+      'plan_id', resume_payment_plan.plan_id,
+      'status_used', resume_payment_plan.payment_status
     );
   END IF;
   
@@ -58,37 +59,37 @@ BEGIN
   debug_info := jsonb_build_object(
     'payment_count', ARRAY_LENGTH(payment_ids, 1),
     'first_date', payment_dates[1],
-    'resume_date', resume_date,
+    'resume_date', resume_payment_plan.resume_date,
     'payment_ids', payment_ids,
-    'status_used', payment_status
+    'status_used', resume_payment_plan.payment_status
   );
   
   -- Set the first payment to the resume date exactly
-  UPDATE payment_schedule
-  SET due_date = resume_date
-  WHERE id = payment_ids[1];
+  UPDATE payment_schedule ps
+  SET due_date = resume_payment_plan.resume_date
+  WHERE ps.id = payment_ids[1];
   
   -- Now update subsequent payments based on the frequency interval
   FOR i IN 2..ARRAY_LENGTH(payment_ids, 1) LOOP
-    UPDATE payment_schedule
-    SET due_date = resume_date + ((i-1) * payment_interval)
-    WHERE id = payment_ids[i];
+    UPDATE payment_schedule ps
+    SET due_date = resume_payment_plan.resume_date + ((i-1) * payment_interval)
+    WHERE ps.id = payment_ids[i];
   END LOOP;
   
   -- Update the plan's next_due_date
-  UPDATE plans
-  SET next_due_date = resume_date
-  WHERE plans.id = plan_id;
+  UPDATE plans p
+  SET next_due_date = resume_payment_plan.resume_date
+  WHERE p.id = resume_payment_plan.plan_id;
   
   -- Calculate days shifted for reporting
-  days_paused := resume_date - payment_dates[1];
+  days_paused := resume_payment_plan.resume_date - payment_dates[1];
   
   result := jsonb_build_object(
     'success', true,
     'days_shifted', days_paused,
-    'resume_date', resume_date,
+    'resume_date', resume_payment_plan.resume_date,
     'payments_rescheduled', ARRAY_LENGTH(payment_ids, 1),
-    'status_used', payment_status,
+    'status_used', resume_payment_plan.payment_status,
     'debug', debug_info
   );
   

@@ -322,10 +322,8 @@ export class PlanOperationsService {
       const formattedDate = resumeDate.toISOString().split('T')[0]; 
       console.log('📞 Calling resume_payment_plan with formatted date:', formattedDate);
       
-      // STEP 5: Call the resume_payment_plan function to reschedule the payments using Edge Function for debugging
-      // This gives us more detailed logs and transparency about what's happening
-      
-      const edgeFunctionUrl = `${supabase.supabaseUrl}/functions/v1/resume-plan-debug`;
+      // STEP 5: Call the resume-plan-debug edge function
+      // FIX: Remove the direct URL construction and use the invoke method directly
       const { data: response, error: edgeFuncError } = await supabase.functions.invoke('resume-plan-debug', {
         body: {
           plan_id: plan.id, 
