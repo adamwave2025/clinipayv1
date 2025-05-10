@@ -49,12 +49,37 @@ serve(async (req) => {
     
     console.log('Before resume state:', JSON.stringify(beforeSchedule, null, 2));
     
-    // Use the same type assertion approach when calling the function
+    // Check how many payments are in paused status
+    const pausedPayments = beforeSchedule.filter(payment => payment.status === 'paused');
+    console.log(`Found ${pausedPayments.length} paused payments to resume`);
+    
+    if (pausedPayments.length === 0) {
+      throw new Error('No paused payments found to resume');
+    }
+    
+    // Check the plan's current status
+    const { data: planData, error: planError } = await supabase
+      .from('plans')
+      .select('status')
+      .eq('id', planId)
+      .single();
+      
+    if (planError) {
+      throw new Error(`Error fetching plan: ${planError.message}`);
+    }
+    
+    console.log(`Plan status before resuming: ${planData.status}`);
+    
+    if (planData.status !== 'paused') {
+      throw new Error(`Plan is in ${planData.status} status and cannot be resumed`);
+    }
+    
+    // Call the resume_payment_plan function with proper parameters
     const { data: result, error } = await supabase
-      .rpc('resume_payment_plan' as any, {
+      .rpc('resume_payment_plan', { 
         plan_id: planId,
         resume_date: resumeDate,
-        payment_status: 'paused'  // Also include this parameter here
+        payment_status: 'paused'
       });
       
     if (error) {
@@ -63,6 +88,15 @@ serve(async (req) => {
     }
     
     console.log('Resume function result:', JSON.stringify(result, null, 2));
+    
+    // Check if we got the expected success response
+    if (!result || typeof result !== 'object' || !('success' in result)) {
+      throw new Error('Invalid response from resume_payment_plan function');
+    }
+    
+    if (result.success !== true) {
+      throw new Error(`Resume operation failed: ${result.message || 'Unknown error'}`);
+    }
     
     // Get updated payment schedule after the function call
     const { data: afterSchedule, error: afterError } = await supabase
@@ -77,6 +111,45 @@ serve(async (req) => {
     
     console.log('After resume state:', JSON.stringify(afterSchedule, null, 2));
     
+    // Now we need to update the payment statuses from paused to pending
+    console.log('Updating payment statuses from paused to pending');
+    const { error: statusUpdateError } = await supabase
+      .from('payment_schedule')
+      .update({ 
+        status: 'pending',
+        updated_at: new Date().toISOString()
+      })
+      .eq('plan_id', planId)
+      .eq('status', 'paused');
+    
+    if (statusUpdateError) {
+      throw new Error(`Error updating payment status to pending: ${statusUpdateError.message}`);
+    }
+    
+    // Update the plan status to active
+    const { error: planUpdateError } = await supabase
+      .from('plans')
+      .update({ 
+        status: 'active', 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', planId);
+    
+    if (planUpdateError) {
+      throw new Error(`Error updating plan status: ${planUpdateError.message}`);
+    }
+    
+    console.log('Plan status updated to active');
+    
+    // Get final payment schedule state
+    const { data: finalSchedule } = await supabase
+      .from('payment_schedule')
+      .select('id, payment_number, due_date, status')
+      .eq('plan_id', planId)
+      .order('payment_number', { ascending: true });
+    
+    console.log('Final payment schedule state:', JSON.stringify(finalSchedule, null, 2));
+    
     // Return the full debugging information
     return new Response(
       JSON.stringify({
@@ -85,7 +158,8 @@ serve(async (req) => {
         resumeDate,
         result,
         before: beforeSchedule,
-        after: afterSchedule
+        after: afterSchedule,
+        final: finalSchedule
       }),
       {
         headers: {

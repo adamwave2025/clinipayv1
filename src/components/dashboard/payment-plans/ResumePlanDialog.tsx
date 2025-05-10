@@ -53,13 +53,30 @@ const ResumePlanDialog = ({
   
   const [resumeDate, setResumeDate] = useState<Date>(tomorrow);
   const [dateSelected, setDateSelected] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  const validateDate = (date: Date) => {
+    const errors = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (date < today) {
+      errors.push('Resume date cannot be in the past');
+    }
+    
+    setValidationErrors(errors);
+    return errors.length === 0;
+  };
 
   const handleConfirm = () => {
     if (!dateSelected) {
       setDateSelected(true);
       return;
     }
-    onConfirm(resumeDate);
+    
+    if (validateDate(resumeDate)) {
+      onConfirm(resumeDate);
+    }
   };
 
   // Disable dates in the past
@@ -68,6 +85,18 @@ const ResumePlanDialog = ({
     today.setHours(0, 0, 0, 0);
     return date < today;
   };
+  
+  // Clear validation errors when dialog is opened or closed
+  React.useEffect(() => {
+    if (showDialog) {
+      setValidationErrors([]);
+      setDateSelected(false);
+      // Reset to tomorrow's date when dialog opens
+      const newTomorrow = new Date();
+      newTomorrow.setDate(newTomorrow.getDate() + 1);
+      setResumeDate(newTomorrow);
+    }
+  }, [showDialog]);
 
   return (
     <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
@@ -84,6 +113,15 @@ const ResumePlanDialog = ({
               <AlertCircle className="h-4 w-4 text-red-500" />
               <AlertDescription className="text-xs text-red-700">
                 {resumeError}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {validationErrors.length > 0 && (
+            <Alert className="mt-4 bg-red-50 border-red-200">
+              <AlertCircle className="h-4 w-4 text-red-500" />
+              <AlertDescription className="text-xs text-red-700">
+                {validationErrors.join(', ')}
               </AlertDescription>
             </Alert>
           )}
@@ -140,6 +178,7 @@ const ResumePlanDialog = ({
                       if (date) {
                         setResumeDate(date);
                         setDateSelected(true);
+                        validateDate(date);
                       }
                     }}
                     disabled={disablePastDates}
@@ -158,7 +197,7 @@ const ResumePlanDialog = ({
           <AlertDialogAction 
             onClick={handleConfirm}
             className="bg-green-600 hover:bg-green-700"
-            disabled={isProcessing}
+            disabled={isProcessing || (dateSelected && validationErrors.length > 0)}
           >
             {isProcessing ? (
               <>

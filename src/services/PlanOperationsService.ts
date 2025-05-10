@@ -5,6 +5,7 @@ import { isPaymentStatusModifiable, getModifiableStatuses } from '@/utils/paymen
 import { PlanStatusService } from '@/services/PlanStatusService';
 import { format } from 'date-fns';
 import { recordPaymentPlanActivity } from './PaymentScheduleService';
+import { ResumePlanParams, ResumePlanResponse } from '@/types/supabaseRpcTypes';
 
 /**
  * Service for performing operations on payment plans
@@ -322,13 +323,16 @@ export class PlanOperationsService {
       console.log('📞 Calling resume_payment_plan with formatted date:', formattedDate);
       
       // STEP 5: Call the resume_payment_plan function to reschedule the payments
-      // Using type assertion to bypass TypeScript's strict function name checking
+      // Using our custom type for proper parameter passing
+      const params: ResumePlanParams = {
+        plan_id: plan.id,
+        resume_date: formattedDate,
+        payment_status: 'paused'
+      };
+      
+      // Use explicit typing for the RPC call
       const { data: schedulingResult, error: schedulingError } = await supabase
-        .rpc('resume_payment_plan' as any, { 
-          plan_id: plan.id,
-          resume_date: formattedDate,
-          payment_status: 'paused'  // Explicitly pass 'paused'
-        });
+        .rpc<ResumePlanResponse>('resume_payment_plan', params);
       
       if (schedulingError) {
         console.error('❌ Error in resume_payment_plan function:', schedulingError);

@@ -36,7 +36,7 @@ BEGIN
     ELSE payment_interval := '1 month'::INTERVAL; -- Default to monthly if unknown
   END CASE;
   
-  -- IMPORTANT CHANGE: Use the provided status parameter instead of hardcoding 'pending'
+  -- IMPORTANT: Use the provided status parameter instead of hardcoding 'pending'
   SELECT ARRAY_AGG(id ORDER BY due_date), ARRAY_AGG(due_date ORDER BY due_date)
   INTO payment_ids, payment_dates
   FROM payment_schedule
@@ -46,10 +46,11 @@ BEGIN
   -- If there are no payments with the specified status, nothing to reschedule
   IF payment_ids IS NULL OR ARRAY_LENGTH(payment_ids, 1) IS NULL THEN
     RETURN jsonb_build_object(
+      'success', false,
       'message', 'No ' || payment_status || ' payments to reschedule',
       'warning', 'Check that plan has ' || payment_status || ' payments to resume',
       'plan_id', plan_id,
-      'status_checked', payment_status
+      'status_used', payment_status
     );
   END IF;
   

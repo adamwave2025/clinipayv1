@@ -118,9 +118,13 @@ export const usePlanResumeActions = (
     
     try {
       console.log(`Resuming plan ${selectedPlan.id} with date:`, resumeDate.toISOString());
-      
-      // REMOVED: We no longer update status to pending here
-      // Instead, we'll let PlanOperationsService handle the status update AFTER rescheduling
+
+      // Add validation check for date in the past
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (resumeDate < today) {
+        throw new Error('Resume date cannot be in the past');
+      }
       
       // Now call the service to complete the resume operation with the paused payments
       const success = await PlanOperationsService.resumePlan(selectedPlan, resumeDate);
