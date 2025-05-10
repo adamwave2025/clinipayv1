@@ -1,4 +1,3 @@
-
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -291,13 +290,6 @@ export class PlanOperationsService {
       
       if (planError) throw planError;
       
-      // Calculate the difference in days between the old and new start dates
-      const oldStartDate = new Date(currentPlan.start_date);
-      const diffTime = newStartDate.getTime() - oldStartDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      console.log('Shifting all pending payments by', diffDays, 'days');
-      
       // Check if there are any paid payments for this plan
       const { count: paidCount, error: paidCountError } = await supabase
         .from('payment_schedule')
@@ -318,7 +310,8 @@ export class PlanOperationsService {
         .from('payment_schedule')
         .select('id, payment_request_id, status, due_date')
         .eq('plan_id', plan.id)
-        .in('status', getModifiableStatuses());
+        .in('status', getModifiableStatuses())
+        .order('due_date', { ascending: true });
         
       if (scheduleError) throw scheduleError;
       
@@ -365,51 +358,92 @@ export class PlanOperationsService {
         
       if (startDateUpdateError) throw startDateUpdateError;
       
-      // Shift all modifiable payment due dates by the day difference
-      let shiftedCount = 0;
-      for (const entry of scheduleEntries || []) {
-        const currentDueDate = new Date(entry.due_date);
-        const newDueDate = new Date(currentDueDate.getTime() + diffDays * 24 * 60 * 60 * 1000);
+      // Get payment frequency to calculate new dates
+      const { data: planData, error: planFrequencyError } = await supabase
+        .from('plans')
+        .select('payment_frequency')
+        .eq('id', plan.id)
+        .single();
         
-        const { error: dueDateUpdateError } = await supabase
+      if (planFrequencyError) throw planFrequencyError;
+      
+      const paymentFrequency = planData.payment_frequency;
+      
+      // Calculate payment interval
+      let paymentInterval: number;
+      switch (paymentFrequency) {
+        case 'weekly':
+          paymentInterval = 7; // 7 days
+          break;
+        case 'bi-weekly':
+          paymentInterval = 14; // 14 days
+          break;
+        case 'monthly':
+        default:
+          paymentInterval = 30; // ~1 month
+          break;
+      }
+      
+      // Update modifiable payment schedules using the new date as the starting point
+      // Instead of shifting all dates by the difference, we set the first one to the exact new date
+      // and calculate subsequent dates based on the frequency
+      if (scheduleEntries && scheduleEntries.length > 0) {
+        let shiftedCount = 0;
+        
+        // Set the first modifiable payment to the exact new start date
+        const { error: firstPaymentUpdateError } = await supabase
           .from('payment_schedule')
           .update({
-            due_date: newDueDate.toISOString().split('T')[0],
+            due_date: formattedDate,
             status: 'pending', // Reset status to pending
             payment_request_id: null, // Clear any payment request associations
             updated_at: new Date().toISOString()
           })
-          .eq('id', entry.id);
+          .eq('id', scheduleEntries[0].id);
           
-        if (dueDateUpdateError) {
-          console.error('Error updating due date:', dueDateUpdateError);
+        if (firstPaymentUpdateError) {
+          console.error('Error updating first payment due date:', firstPaymentUpdateError);
         } else {
           shiftedCount++;
         }
+        
+        // Calculate subsequent payment dates based on the payment frequency
+        for (let i = 1; i < scheduleEntries.length; i++) {
+          const newDueDate = new Date(newStartDate);
+          newDueDate.setDate(newDueDate.getDate() + (i * paymentInterval));
+          
+          const { error: dueDateUpdateError } = await supabase
+            .from('payment_schedule')
+            .update({
+              due_date: newDueDate.toISOString().split('T')[0],
+              status: 'pending', // Reset status to pending
+              payment_request_id: null, // Clear any payment request associations
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', scheduleEntries[i].id);
+            
+          if (dueDateUpdateError) {
+            console.error('Error updating due date:', dueDateUpdateError);
+          } else {
+            shiftedCount++;
+          }
+        }
+        
+        console.log(`Successfully shifted ${shiftedCount} payment schedules`);
       }
       
-      console.log(`Successfully shifted ${shiftedCount} payment schedules`);
-      
-      // Calculate next due date
-      const { data: nextPayment, error: nextPaymentError } = await supabase
-        .from('payment_schedule')
-        .select('due_date')
-        .eq('plan_id', plan.id)
-        .eq('status', 'pending')
-        .order('due_date', { ascending: true })
-        .limit(1)
-        .single();
+      // Update the plan's next_due_date to the new start date
+      const { error: nextDueDateUpdateError } = await supabase
+        .from('plans')
+        .update({
+          next_due_date: formattedDate
+        })
+        .eq('id', plan.id);
         
-      // Update the next due date if found
-      if (!nextPaymentError && nextPayment) {
-        await supabase
-          .from('plans')
-          .update({
-            next_due_date: nextPayment.due_date
-          })
-          .eq('id', plan.id);
-          
-        console.log(`Updated plan next due date to ${nextPayment.due_date}`);
+      if (nextDueDateUpdateError) {
+        console.error('Error updating next due date:', nextDueDateUpdateError);
+      } else {
+        console.log(`Updated plan next due date to ${formattedDate}`);
       }
       
       // Record the reschedule activity
@@ -425,8 +459,7 @@ export class PlanOperationsService {
             plan_name: plan.title || plan.planName,
             previous_date: currentPlan.start_date,
             new_date: formattedDate,
-            days_shifted: diffDays,
-            payments_shifted: shiftedCount,
+            payments_shifted: scheduleEntries?.length || 0,
             payment_requests_cancelled: paymentRequestCount
           }
         });
