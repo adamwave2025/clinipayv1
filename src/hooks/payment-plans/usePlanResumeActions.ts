@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
-import { PlanStatusService } from '@/services/PlanStatusService';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { toast } from 'sonner';
 
