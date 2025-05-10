@@ -1,4 +1,5 @@
 
+
 -- Updated resume_payment_plan function to properly reschedule payments from resume date
 CREATE OR REPLACE FUNCTION public.resume_payment_plan(plan_id uuid, resume_date date)
  RETURNS jsonb
@@ -89,3 +90,4 @@ BEGIN
   RETURN result;
 END;
 $function$;
+
