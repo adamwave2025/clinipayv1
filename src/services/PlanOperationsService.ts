@@ -330,7 +330,7 @@ export class PlanOperationsService {
         payment_status: 'paused'
       };
       
-      // Use explicit typing for the RPC call
+      // Fixed: Correctly specify both types for the RPC call
       const { data: schedulingResult, error: schedulingError } = await supabase
         .rpc<ResumePlanResponse>('resume_payment_plan', params);
       
