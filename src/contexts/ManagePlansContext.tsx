@@ -73,7 +73,7 @@ export interface ManagePlansContextType {
   handleOpenResumeDialog: () => void;
   hasSentPayments: boolean;
   hasOverduePayments: boolean;
-  hasPaidPayments: boolean; // Added missing property
+  hasPaidPayments: boolean; // Required property
   resumeError?: string | null;
   
   // Reschedule plan properties

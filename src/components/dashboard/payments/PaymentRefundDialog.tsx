@@ -19,8 +19,12 @@ import { penceToPounds, poundsToPence } from '@/services/CurrencyService';
 interface PaymentRefundDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onRefund: (amount?: number) => void;
-  paymentId?: string; // Added paymentId prop to match usage
+  
+  // Support multiple naming conventions for the handler function
+  onRefund?: (amount?: number, paymentId?: string) => void;
+  onConfirm?: (amount?: number, paymentId?: string) => void;
+  
+  paymentId?: string; 
   paymentToRefund?: string; // For backward compatibility
   paymentAmount?: number;
   patientName?: string;
@@ -30,7 +34,8 @@ const PaymentRefundDialog = ({
   open,
   onOpenChange,
   onRefund,
-  paymentId, // Accept the new paymentId prop
+  onConfirm,
+  paymentId, 
   paymentToRefund, // Keep the old prop for backward compatibility
   paymentAmount = 0,
   patientName = '',
@@ -46,6 +51,19 @@ const PaymentRefundDialog = ({
   
   const [error, setError] = useState<string>('');
   const { isProcessingRefund } = useDashboardData();
+
+  // Unified handler function
+  const handleConfirm = () => {
+    // Only proceed if there's no error and amount is valid
+    if (!error && refundAmount > 0 && refundAmount <= amountInPounds) {
+      // Use either onRefund or onConfirm, prioritizing onRefund if both are provided
+      const handler = onRefund || onConfirm;
+      if (handler) {
+        // Pass both amount and paymentId (or paymentToRefund as fallback)
+        handler(refundAmount, paymentId || paymentToRefund || undefined);
+      }
+    }
+  };
 
   // Reset amount and error when dialog opens
   React.useEffect(() => {
@@ -101,13 +119,6 @@ const PaymentRefundDialog = ({
     const value = parseFloat(refundInputValue);
     if (!isNaN(value)) {
       setRefundInputValue(value.toFixed(2));
-    }
-  };
-
-  const handleConfirm = () => {
-    // Only proceed if there's no error and amount is valid
-    if (!error && refundAmount > 0 && refundAmount <= amountInPounds) {
-      onRefund(refundAmount);
     }
   };
 

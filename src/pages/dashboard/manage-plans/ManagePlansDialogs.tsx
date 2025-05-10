@@ -45,7 +45,7 @@ export const ManagePlansDialogs = () => {
         onConfirm={handleCancelPlan}
         planName={selectedPlan.title || selectedPlan.planName || ''}
         patientName={selectedPlan.patientName}
-        isLoading={isProcessing}
+        isProcessing={isProcessing}
       />
       
       <PausePlanDialog
@@ -54,7 +54,7 @@ export const ManagePlansDialogs = () => {
         onConfirm={handlePausePlan}
         planName={selectedPlan.title || selectedPlan.planName || ''}
         patientName={selectedPlan.patientName}
-        isLoading={isProcessing}
+        isProcessing={isProcessing}
       />
       
       <ResumePlanDialog
@@ -77,7 +77,7 @@ export const ManagePlansDialogs = () => {
         planName={selectedPlan.title || selectedPlan.planName || ''}
         patientName={selectedPlan.patientName}
         startDate={selectedPlan.startDate}
-        isLoading={isProcessing}
+        isProcessing={isProcessing}
       />
       
       {paymentToRefund && (

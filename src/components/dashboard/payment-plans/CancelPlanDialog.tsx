@@ -18,7 +18,8 @@ interface CancelPlanDialogProps {
   onConfirm: () => void;
   planName: string;
   patientName: string;
-  isLoading?: boolean;  // Changed to match the usage in ManagePlansDialogs
+  isLoading?: boolean;  
+  isProcessing?: boolean;  // Add isProcessing prop
 }
 
 const CancelPlanDialog = ({
@@ -28,7 +29,11 @@ const CancelPlanDialog = ({
   planName,
   patientName,
   isLoading = false,
+  isProcessing = false,  // Add isProcessing prop with default value
 }: CancelPlanDialogProps) => {
+  // Use either isLoading or isProcessing (prioritize isProcessing)
+  const isWorking = isProcessing || isLoading;
+
   const handleConfirm = () => {
     onConfirm();
   };
@@ -47,13 +52,13 @@ const CancelPlanDialog = ({
           </p>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isWorking}>Cancel</AlertDialogCancel>
           <AlertDialogAction 
             onClick={handleConfirm}
             className="bg-red-600 hover:bg-red-700"
-            disabled={isLoading}
+            disabled={isWorking}
           >
-            {isLoading ? (
+            {isWorking ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Processing...

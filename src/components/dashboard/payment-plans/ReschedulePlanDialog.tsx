@@ -30,6 +30,7 @@ interface ReschedulePlanDialogProps {
   planName: string;
   patientName: string;
   isLoading?: boolean;
+  isProcessing?: boolean; // Add isProcessing prop
   hasSentPayments?: boolean;
   hasOverduePayments?: boolean;
   startDate?: string; // Added this prop for compatibility
@@ -42,6 +43,7 @@ const ReschedulePlanDialog = ({
   planName,
   patientName,
   isLoading = false,
+  isProcessing = false, // Add isProcessing with default value
   hasSentPayments = false,
   hasOverduePayments = false,
   startDate, // Accept the startDate prop
@@ -51,6 +53,9 @@ const ReschedulePlanDialog = ({
   initialDate.setHours(0, 0, 0, 0); // Normalize to midnight
   
   const [date, setDate] = useState<Date>(initialDate);
+  
+  // Use either isLoading or isProcessing (prioritize isProcessing)
+  const isWorking = isProcessing || isLoading;
 
   const handleConfirm = () => {
     // Ensure the date is normalized to midnight to avoid timezone issues
@@ -91,7 +96,7 @@ const ReschedulePlanDialog = ({
                     "w-full justify-start text-left font-normal",
                     !date && "text-muted-foreground"
                   )}
-                  disabled={isLoading}
+                  disabled={isWorking}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? format(date, "PPP") : <span>Pick a date</span>}
@@ -143,15 +148,15 @@ const ReschedulePlanDialog = ({
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowDialog(false)} disabled={isLoading}>
+          <Button variant="outline" onClick={() => setShowDialog(false)} disabled={isWorking}>
             Cancel
           </Button>
           <Button 
             onClick={handleConfirm}
             className="btn-gradient"
-            disabled={isLoading}
+            disabled={isWorking}
           >
-            {isLoading ? (
+            {isWorking ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Processing...

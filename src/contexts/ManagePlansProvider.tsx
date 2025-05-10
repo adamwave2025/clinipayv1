@@ -114,6 +114,7 @@ export const ManagePlansProvider: React.FC<{
   const setShowResumeDialog = () => {};
   const hasSentPayments = false;
   const hasOverduePayments = false;
+  const hasPaidPayments = false; // Add this property
   const showRescheduleDialog2 = false;
   const setShowRescheduleDialog2 = () => {};
   const refundDialogOpen = false;
@@ -201,10 +202,12 @@ export const ManagePlansProvider: React.FC<{
         handleReschedulePlan,
         handleOpenRescheduleDialog: () => {},
         hasOverduePayments,
+        hasPaidPayments, // Add this property
         
         // Plan state helpers
         isPlanPaused,
-        isProcessing
+        isProcessing,
+        resumeError: null
       }}
     >
       {children}
