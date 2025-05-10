@@ -1,6 +1,11 @@
+
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { PlanStatusService } from '@/services/PlanStatusService';
+import { isPaymentStatusTransitionValid, getModifiableStatuses } from '@/utils/paymentStatusUtils';
+import { CompleteResumePlanResponse } from '@/types/supabaseRpcTypes';
 
 /**
  * Consolidated service for plan operations like pausing, resuming, cancelling
@@ -35,13 +40,16 @@ export class PlanOperationsService {
         throw new Error(`Failed to resume plan: ${error.message}`);
       }
       
-      if (!data || !data.success) {
-        const errorMessage = data?.error || 'Unknown error resuming plan';
-        console.error('Resume plan operation failed:', data);
+      // Type assertion to ensure we can access properties safely
+      const result = data as CompleteResumePlanResponse;
+      
+      if (!result || !result.success) {
+        const errorMessage = result?.error || 'Unknown error resuming plan';
+        console.error('Resume plan operation failed:', result);
         throw new Error(errorMessage);
       }
       
-      console.log('Plan resumed successfully:', data);
+      console.log('Plan resumed successfully:', result);
       return true;
     } catch (error) {
       console.error('Error in resumePlan:', error);
@@ -517,7 +525,7 @@ export class PlanOperationsService {
       
       // If this is part of a payment plan, record the activity
       if (scheduleData?.plan_id) {
-        await recordPaymentPlanActivity({
+        await this.recordPaymentPlanActivity({
           planId: scheduleData.plan_id,
           actionType: 'payment_refunded',
           details: {
@@ -533,6 +541,53 @@ export class PlanOperationsService {
     } catch (error) {
       console.error('Error recording payment refund:', error);
       return { success: false, error };
+    }
+  }
+  
+  /**
+   * Record activity for a payment plan
+   * @param params Parameters for recording activity
+   * @returns Promise indicating success or failure
+   */
+  private static async recordPaymentPlanActivity(params: {
+    planId: string;
+    actionType: string;
+    details: Record<string, any>;
+  }): Promise<boolean> {
+    try {
+      // Get plan information to fill in required fields
+      const { data: planData, error: planError } = await supabase
+        .from('plans')
+        .select('payment_link_id, patient_id, clinic_id')
+        .eq('id', params.planId)
+        .single();
+      
+      if (planError) {
+        console.error('Error fetching plan data for activity log:', planError);
+        return false;
+      }
+      
+      // Insert activity record
+      const { error: activityError } = await supabase
+        .from('payment_activity')
+        .insert({
+          plan_id: params.planId,
+          payment_link_id: planData.payment_link_id,
+          patient_id: planData.patient_id,
+          clinic_id: planData.clinic_id,
+          action_type: params.actionType,
+          details: params.details
+        });
+      
+      if (activityError) {
+        console.error('Error recording payment plan activity:', activityError);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error in recordPaymentPlanActivity:', error);
+      return false;
     }
   }
   

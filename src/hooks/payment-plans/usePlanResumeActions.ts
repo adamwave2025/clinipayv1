@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { CompleteResumePlanResponse } from '@/types/supabaseRpcTypes';
 
 export const usePlanResumeActions = (
   selectedPlan: Plan | null,
@@ -139,8 +140,11 @@ export const usePlanResumeActions = (
         throw new Error(`Database function error: ${error.message}`);
       }
       
-      if (!data || !data.success) {
-        const errorMessage = data?.error || 'Unknown error resuming plan';
+      // Type assertion to ensure we can access properties safely
+      const result = data as CompleteResumePlanResponse;
+      
+      if (!result || !result.success) {
+        const errorMessage = result?.error || 'Unknown error resuming plan';
         throw new Error(errorMessage);
       }
       

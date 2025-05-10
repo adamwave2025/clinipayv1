@@ -1,3 +1,4 @@
+
 /**
  * Custom type definitions to extend the auto-generated Supabase types
  * These types allow us to properly call database functions with parameters
