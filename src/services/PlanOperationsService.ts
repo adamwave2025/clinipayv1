@@ -260,6 +260,11 @@ export class PlanOperationsService {
       
       console.log(`Found ${pausedPaymentIds.length} paused payments, ${sentPaymentsCount} with payment requests`);
       
+      if (pausedPaymentIds.length === 0) {
+        console.error('No paused payments found to resume');
+        throw new Error('No paused payments found to resume');
+      }
+      
       // First step: Cancel any active payment requests - CRITICAL: Removed the conditional is('payment_id', null)
       if (paymentRequestIds.length > 0) {
         const { error: requestUpdateError } = await supabase
