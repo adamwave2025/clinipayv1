@@ -106,17 +106,6 @@ const ResumePlanDialog = ({
           </Alert>
         )}
         
-        <Alert variant="default" className="bg-blue-50 border-blue-300 text-blue-800">
-          <Info className="h-4 w-4" />
-          <AlertDescription>
-            {hasPaidPayments ? (
-              "Since payments have been made on this plan, it will resume with either 'active' or 'overdue' status depending on payment due dates."
-            ) : (
-              "No payments have been made on this plan yet. It will resume with 'pending' status until the first payment is received."
-            )}
-          </AlertDescription>
-        </Alert>
-        
         <Alert variant="default" className="bg-green-50 border-green-300 text-green-800">
           <Info className="h-4 w-4" />
           <AlertDescription>
