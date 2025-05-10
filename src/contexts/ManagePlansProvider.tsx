@@ -170,6 +170,17 @@ export const ManagePlansProvider: React.FC<{
     // Actual implementation would go here
   };
   
+  // Create a wrapper function that adapts the signature
+  const handleOpenRescheduleDialog = () => {
+    // If we need an installmentId, we could potentially use the selectedInstallment
+    // This depends on how the component is being used
+    if (selectedInstallment) {
+      handleOpenReschedule(selectedInstallment.id);
+    } else {
+      console.warn("Cannot open reschedule dialog: No installment selected");
+    }
+  };
+  
   const processRefund = async () => {
     console.log("Process refund action called");
     setRefundDialogOpen(false);
@@ -253,8 +264,7 @@ export const ManagePlansProvider: React.FC<{
         showRescheduleDialog,
         setShowRescheduleDialog,
         handleReschedulePlan,
-        // Fix: Change handleOpenRescheduleDialog to handleOpenReschedule
-        handleOpenRescheduleDialog: handleOpenReschedule,
+        handleOpenRescheduleDialog,
         hasOverduePayments,
         hasPaidPayments,
         
