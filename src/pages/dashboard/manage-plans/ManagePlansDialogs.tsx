@@ -33,7 +33,17 @@ export const ManagePlansDialogs = () => {
     resumeError
   } = useManagePlansContext();
 
+  console.log('ManagePlansDialogs rendering with selectedPlan:', selectedPlan?.id);
+  console.log('Dialog states:', {
+    showCancelDialog,
+    showPauseDialog,
+    showResumeDialog,
+    showRescheduleDialog,
+    refundDialogOpen
+  });
+
   if (!selectedPlan) {
+    console.log('No selectedPlan, returning null from ManagePlansDialogs');
     return null;
   }
 
@@ -44,8 +54,9 @@ export const ManagePlansDialogs = () => {
         setShowDialog={setShowCancelDialog}
         onConfirm={handleCancelPlan}
         planName={selectedPlan.title || selectedPlan.planName || ''}
-        patientName={selectedPlan.patientName}
+        patientName={selectedPlan.patientName || ''}
         isProcessing={isProcessing}
+        isLoading={false}
       />
       
       <PausePlanDialog
@@ -53,8 +64,9 @@ export const ManagePlansDialogs = () => {
         setShowDialog={setShowPauseDialog}
         onConfirm={handlePausePlan}
         planName={selectedPlan.title || selectedPlan.planName || ''}
-        patientName={selectedPlan.patientName}
+        patientName={selectedPlan.patientName || ''}
         isProcessing={isProcessing}
+        isLoading={false}
         hasSentPayments={hasSentPayments}
       />
       
@@ -63,7 +75,7 @@ export const ManagePlansDialogs = () => {
         setShowDialog={setShowResumeDialog}
         onConfirm={handleResumePlan}
         planName={selectedPlan.title || selectedPlan.planName || ''}
-        patientName={selectedPlan.patientName}
+        patientName={selectedPlan.patientName || ''}
         isProcessing={isProcessing}
         hasSentPayments={hasSentPayments}
         hasOverduePayments={hasOverduePayments}
@@ -76,9 +88,10 @@ export const ManagePlansDialogs = () => {
         setShowDialog={setShowRescheduleDialog}
         onConfirm={handleReschedulePlan}
         planName={selectedPlan.title || selectedPlan.planName || ''}
-        patientName={selectedPlan.patientName}
+        patientName={selectedPlan.patientName || ''}
         startDate={selectedPlan.startDate}
         isProcessing={isProcessing}
+        isLoading={false}
         hasSentPayments={hasSentPayments}
         hasOverduePayments={hasOverduePayments}
       />
@@ -89,6 +102,7 @@ export const ManagePlansDialogs = () => {
           onOpenChange={setRefundDialogOpen}
           paymentId={paymentToRefund}
           onRefund={processRefund}
+          onConfirm={processRefund}
         />
       )}
     </>

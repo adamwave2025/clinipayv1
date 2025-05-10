@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { PlanInstallment, formatPlanInstallments, groupPaymentSchedulesByPlan } from '@/utils/paymentPlanUtils';
@@ -15,7 +15,8 @@ export const usePlanDataFetcher = () => {
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
 
   // Fetch payment plans from the payment_schedule table
-  const fetchPaymentPlans = async (userId: string): Promise<Plan[]> => {
+  const fetchPaymentPlans = useCallback(async (userId: string): Promise<Plan[]> => {
+    console.log('Fetching payment plans for user:', userId);
     setIsLoading(true);
     try {
       // First, try to fetch plans from the plans table
@@ -34,6 +35,7 @@ export const usePlanDataFetcher = () => {
         });
         
         setPlans(formattedPlans);
+        setIsLoading(false);
         return formattedPlans;
       }
       
@@ -96,22 +98,27 @@ export const usePlanDataFetcher = () => {
       console.log('Plans from legacy method:', formattedPlans);
       
       setPlans(formattedPlans);
+      setIsLoading(false);
       return formattedPlans;
     } catch (error) {
       console.error('Error in fetchPaymentPlans:', error);
-      return [];
-    } finally {
       setIsLoading(false);
+      return [];
     }
-  };
+  }, []);
 
-  const fetchPlanInstallmentsData = async (planId: string) => {
+  const fetchPlanInstallmentsData = useCallback(async (planId: string) => {
+    console.log('Fetching installments for plan:', planId);
     try {
       // Fetch installments directly using the plan_id from payment_schedule
       const rawInstallments = await fetchPlanInstallments(planId);
       
+      console.log('Raw installments fetched:', rawInstallments?.length || 0);
+      
       // Format installments for display
       const formattedInstallments = formatPlanInstallments(rawInstallments);
+      
+      console.log('Formatted installments:', formattedInstallments.length);
       
       setInstallments(formattedInstallments);
       
@@ -124,26 +131,31 @@ export const usePlanDataFetcher = () => {
       toast.error('Failed to load payment details');
       return [];
     }
-  };
+  }, []);
 
-  const fetchPlanActivitiesData = async (planId: string) => {
+  const fetchPlanActivitiesData = useCallback(async (planId: string) => {
+    console.log('Fetching activities for plan:', planId);
     setIsLoadingActivities(true);
     try {
       // Fetch activities for this plan
       const rawActivities = await fetchPlanActivities(planId);
       
+      console.log('Raw activities fetched:', rawActivities?.length || 0);
+      
       // Format activities for display
       const formattedActivities = formatPlanActivities(rawActivities);
       
+      console.log('Formatted activities:', formattedActivities.length);
+      
       setActivities(formattedActivities);
+      setIsLoadingActivities(false);
       return formattedActivities;
     } catch (error) {
       console.error('Error fetching plan activities:', error);
-      return [];
-    } finally {
       setIsLoadingActivities(false);
+      return [];
     }
-  };
+  }, []);
 
   return {
     plans,

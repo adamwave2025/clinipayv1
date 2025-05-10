@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plan } from '@/utils/planTypes';
 import { usePlanDataFetcher } from './payment-plans/usePlanDataFetcher';
@@ -86,9 +86,24 @@ export const useManagePlans = (): ManagePlansContextType => {
   const pauseActions = usePlanPauseActions(selectedPlan, setShowPlanDetails);
   const resumeActions = usePlanResumeActions(selectedPlan, setShowPlanDetails);
   const rescheduleActions = usePlanRescheduleActions(selectedPlan, setShowPlanDetails);
+  
+  // Add the hasPaidPayments state explicitly
+  const [hasPaidPayments, setHasPaidPayments] = useState(false);
+  
+  // Update the hasPaidPayments state when installments change
+  useEffect(() => {
+    if (installments.length > 0) {
+      const hasPaid = installments.some(installment => installment.status === 'paid');
+      setHasPaidPayments(hasPaid);
+    }
+  }, [installments]);
 
   // Apply filters to get the filtered plans
   const plans = useMemo(() => {
+    console.log('Filtering plans. All plans:', allPlans.length);
+    console.log('Status filter:', statusFilter);
+    console.log('Search query:', searchQuery);
+    
     let filtered = [...allPlans];
     
     // First apply status filter if not 'all'
@@ -106,17 +121,20 @@ export const useManagePlans = (): ManagePlansContextType => {
       });
     }
     
+    console.log('Filtered plans:', filtered.length);
     return filtered;
   }, [allPlans, statusFilter, searchQuery]);
 
   // Fetch payment plans on mount
   useEffect(() => {
     if (user) {
+      console.log('Fetching payment plans for user:', user.id);
       fetchPaymentPlans(user.id);
     }
-  }, [user]);
+  }, [user, fetchPaymentPlans]);
 
   const handleViewPlanDetails = async (plan: Plan) => {
+    console.log('useManagePlans.handleViewPlanDetails called with plan:', plan.id);
     return viewPlanDetails(plan, fetchPlanInstallmentsData);
   };
 
@@ -193,6 +211,9 @@ export const useManagePlans = (): ManagePlansContextType => {
     
     // Add resumeError from resumeActions
     resumeError: resumeActions.resumeError,
+    
+    // Add hasPaidPayments explicitly
+    hasPaidPayments,
     
     // Plan state helpers
     isPlanPaused,

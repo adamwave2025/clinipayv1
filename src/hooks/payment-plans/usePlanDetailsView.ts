@@ -12,16 +12,35 @@ export const usePlanDetailsView = () => {
     plan: Plan, 
     fetchInstallments: (planId: string) => Promise<any[]>
   ) => {
+    console.log('handleViewPlanDetails called with plan:', plan.id, plan.title || plan.planName);
+    
+    // Set the selected plan immediately
     setSelectedPlan(plan);
     
     // Fetch the installments for this plan
-    await fetchInstallments(plan.id);
+    if (plan && plan.id) {
+      console.log('Fetching installments for plan:', plan.id);
+      try {
+        await fetchInstallments(plan.id);
+        console.log('Installments fetched successfully');
+      } catch (err) {
+        console.error('Error fetching installments:', err);
+      }
+    }
     
-    // Show the plan details dialog
+    // Explicitly log when we're setting showPlanDetails to true
+    console.log('Setting showPlanDetails to true');
     setShowPlanDetails(true);
+    
+    // Verify that state was set correctly after a short delay
+    setTimeout(() => {
+      console.log('State check - selectedPlan:', selectedPlan?.id);
+      console.log('State check - showPlanDetails:', showPlanDetails);
+    }, 100);
   };
   
   const handleBackToPlans = () => {
+    console.log('handleBackToPlans called');
     setShowPlanDetails(false);
     setShowPaymentDetails(false);
     setSelectedPlan(null);

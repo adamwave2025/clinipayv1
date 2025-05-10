@@ -1,35 +1,35 @@
 
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import React, { useState } from 'react';
+import { AlertCircle, Loader2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Loader2, AlertCircle, Info, XCircle } from "lucide-react";
+import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Alert,
-  AlertDescription,
-} from '@/components/ui/alert';
 
 interface ResumePlanDialogProps {
   showDialog: boolean;
   setShowDialog: (show: boolean) => void;
-  onConfirm: (resumeDate: Date) => void;
+  onConfirm: (resumeDate?: Date) => void;
   planName: string;
   patientName: string;
   isProcessing?: boolean;
+  isLoading?: boolean;
   hasSentPayments?: boolean;
   hasOverduePayments?: boolean;
   hasPaidPayments?: boolean;
@@ -43,25 +43,31 @@ const ResumePlanDialog = ({
   planName,
   patientName,
   isProcessing = false,
+  isLoading = false,
   hasSentPayments = false,
   hasOverduePayments = false,
   hasPaidPayments = false,
   resumeError = null,
 }: ResumePlanDialogProps) => {
-  // Initialize with current date but set hours to midnight
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const [date, setDate] = useState<Date>(today);
-  const [dateSelectionConfirmed, setDateSelectionConfirmed] = useState(false);
+  // Use either isLoading or isProcessing (prioritize isProcessing)
+  const isWorking = isProcessing || isLoading;
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [resumeDate, setResumeDate] = useState<Date>(new Date());
 
   const handleConfirm = () => {
-    // Ensure the date is normalized to midnight to avoid timezone issues
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-    console.log('Confirming resume with normalized date:', normalizedDate.toISOString());
-    setDateSelectionConfirmed(true);
-    onConfirm(normalizedDate);
+    onConfirm(showDatePicker ? resumeDate : undefined);
   };
+
+  console.log('ResumePlanDialog props:', {
+    showDialog,
+    planName,
+    patientName,
+    isWorking,
+    hasSentPayments,
+    hasOverduePayments,
+    hasPaidPayments,
+    resumeError
+  });
 
   // Disable dates in the past
   const disablePastDates = (date: Date) => {
@@ -69,136 +75,115 @@ const ResumePlanDialog = ({
     today.setHours(0, 0, 0, 0);
     return date < today;
   };
-  
-  // Reset state when dialog opens/closes
-  useEffect(() => {
-    if (showDialog) {
-      // Set today's date when dialog opens
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      setDate(today);
-    } else {
-      setDateSelectionConfirmed(false);
-    }
-  }, [showDialog]);
 
   return (
-    <Dialog open={showDialog} onOpenChange={setShowDialog}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Resume Payment Plan</DialogTitle>
-          <DialogDescription>
-            Select a date to resume the <span className="font-semibold">{planName}</span> payment plan for{' '}
-            <span className="font-semibold">{patientName}</span>.
-          </DialogDescription>
-        </DialogHeader>
-        
-        {resumeError && (
-          <Alert variant="destructive" className="bg-red-50 border-red-400 text-red-800">
-            <XCircle className="h-4 w-4" />
-            <AlertDescription>
-              Error: {resumeError}
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {hasSentPayments && (
-          <Alert variant="default" className="bg-amber-50 border-amber-300 text-amber-800">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              This plan contains payments that were already sent to the patient but not yet paid.
-              These will be reset when you resume the plan and will need to be sent again.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {hasOverduePayments && (
-          <Alert variant="default" className="bg-red-50 border-red-300 text-red-800">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              This plan has payments with due dates in the past. Upon resuming, 
-              these payments will be marked as overdue if any payments have been made.
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        <Alert variant="default" className="bg-green-50 border-green-300 text-green-800">
-          <Info className="h-4 w-4" />
-          <AlertDescription>
-            The date you select will be used to reschedule the next pending payment.
-            All future payments will be adjusted accordingly.
-          </AlertDescription>
-        </Alert>
-        
-        <div className="py-4">
-          <div className="space-y-2">
-            <label htmlFor="resumeDate" className="text-sm font-medium">
-              Resume Date
+    <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Resume Payment Plan</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to resume the <span className="font-semibold">{planName}</span> payment plan for{' '}
+            <span className="font-semibold">{patientName}</span>?
+          </AlertDialogDescription>
+          <p className="text-sm text-muted-foreground mt-2">
+            This will activate all upcoming payments according to the original schedule.
+          </p>
+          
+          {resumeError && (
+            <Alert className="mt-4 bg-red-50 border-red-200">
+              <AlertCircle className="h-4 w-4 text-red-500" />
+              <AlertDescription className="text-xs text-red-700">
+                {resumeError}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {hasSentPayments && (
+            <Alert className="mt-4 bg-amber-50 border-amber-200">
+              <AlertCircle className="h-4 w-4 text-amber-500" />
+              <AlertDescription className="text-xs text-amber-700">
+                This plan has payment requests that have already been sent to the patient.
+                Resuming will reactivate those requests.
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {hasOverduePayments && (
+            <Alert className="mt-4 bg-amber-50 border-amber-200">
+              <AlertCircle className="h-4 w-4 text-amber-500" />
+              <AlertDescription className="text-xs text-amber-700">
+                This plan has overdue payments. Resuming will keep them marked as overdue.
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {hasPaidPayments && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-xs text-blue-700">
+                <strong>Note:</strong> This plan has payment(s) that have already been made. 
+                Those payments will remain recorded.
+              </p>
+            </div>
+          )}
+          
+          <div className="mt-4">
+            <label className="flex items-center space-x-2">
+              <input 
+                type="checkbox" 
+                checked={showDatePicker} 
+                onChange={() => setShowDatePicker(!showDatePicker)}
+                className="form-checkbox h-4 w-4 text-blue-600"
+              />
+              <span className="text-sm">Schedule a future resume date</span>
             </label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                  disabled={isProcessing || dateSelectionConfirmed}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 max-h-[300px] overflow-y-auto" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={(newDate) => {
-                    if (newDate) {
-                      // Ensure the time is set to midnight
-                      const normalizedDate = new Date(newDate);
-                      normalizedDate.setHours(0, 0, 0, 0);
-                      console.log('Selected date:', normalizedDate.toISOString());
-                      setDate(normalizedDate);
-                    }
-                  }}
-                  disabled={disablePastDates}
-                  initialFocus
-                  className="pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
-            <p className="text-xs text-muted-foreground mt-1">
-              All future payments will be rescheduled based on this date.
-            </p>
+            
+            {showDatePicker && (
+              <div className="mt-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !resumeDate && "text-muted-foreground"
+                      )}
+                    >
+                      {resumeDate ? format(resumeDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={resumeDate}
+                      onSelect={(date) => date && setResumeDate(date)}
+                      disabled={disablePastDates}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
           </div>
-        </div>
-        
-        <DialogFooter>
-          <Button 
-            variant="outline" 
-            onClick={() => setShowDialog(false)} 
-            disabled={isProcessing || dateSelectionConfirmed}
-          >
-            Cancel
-          </Button>
-          <Button 
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isWorking}>Cancel</AlertDialogCancel>
+          <AlertDialogAction 
             onClick={handleConfirm}
             className="bg-green-600 hover:bg-green-700"
-            disabled={isProcessing || dateSelectionConfirmed}
+            disabled={isWorking}
           >
-            {isProcessing || dateSelectionConfirmed ? (
+            {isWorking ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {dateSelectionConfirmed ? 'Resuming Plan...' : 'Processing...'}
+                Processing...
               </>
             ) : (
               'Resume Plan'
             )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 

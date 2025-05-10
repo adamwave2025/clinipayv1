@@ -37,7 +37,7 @@ export const ManagePlansProvider: React.FC<{
     showPlanDetails, 
     setShowPlanDetails,
     isPlanPaused,
-    handleViewPlanDetails,
+    handleViewPlanDetails: viewPlanDetailsHook,
     handleBackToPlans
   } = usePlanDetailsView();
 
@@ -95,69 +95,92 @@ export const ManagePlansProvider: React.FC<{
     }
   }, [user]);
   
-  // Function to handle viewing plan details
-  const handleViewPlanDetailsWrapper = async (plan: Plan) => {
-    console.log("Viewing plan details for:", plan.id, plan.title || plan.planName);
-    await handleViewPlanDetails(plan, fetchPlanInstallmentsData);
+  // Function to handle viewing plan details - key function that needs fixing
+  const handleViewPlanDetails = async (plan: Plan) => {
+    console.log("ManagePlansProvider: Viewing plan details for:", plan.id, plan.title || plan.planName);
+    await viewPlanDetailsHook(plan, fetchPlanInstallmentsData);
+    console.log("After viewPlanDetailsHook, showPlanDetails:", showPlanDetails, "selectedPlan:", selectedPlan?.id);
   };
   
-  // Add debugging to check if plan clicking works
+  // For debugging
   useEffect(() => {
-    console.log("Plan details state changed:", { 
+    console.log("ManagePlansProvider: Plan details state changed:", { 
       showPlanDetails, 
       selectedPlan: selectedPlan?.id 
     });
   }, [showPlanDetails, selectedPlan]);
   
-  // Set up properties for plan actions
-  // Since we're not focusing on plan-level actions yet, create minimal implementations
-  const showCancelDialog = false;
-  const setShowCancelDialog = () => {};
-  const showPauseDialog = false;
-  const setShowPauseDialog = () => {};
-  const showResumeDialog = false;
-  const setShowResumeDialog = () => {};
-  const hasSentPayments = false;
-  const hasOverduePayments = false;
-  const hasPaidPayments = false; 
-  const refundDialogOpen = false;
-  const setRefundDialogOpen = () => {};
-  const paymentToRefund = null;
-  const resumeError = null;
+  // Set up properties for plan action dialogs
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showPauseDialog, setShowPauseDialog] = useState(false);
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [hasSentPayments, setHasSentPayments] = useState(false);
+  const [hasOverduePayments, setHasOverduePayments] = useState(false);
+  const [hasPaidPayments, setHasPaidPayments] = useState(false); 
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
+  const [resumeError, setResumeError] = useState<string | null>(null);
   
-  // Dummy action handlers for safety
-  const handleCancelPlan = async () => {
-    console.log("Cancel plan action not implemented yet");
-  };
-  const handlePausePlan = async () => {
-    console.log("Pause plan action not implemented yet");
-  };
-  const handleResumePlan = async () => {
-    console.log("Resume plan action not implemented yet");
-  };
-  const handleReschedulePlan = async () => {
-    console.log("Reschedule plan action not implemented yet");
-  };
-  const processRefund = async () => {
-    console.log("Process refund action not implemented yet");
-  };
-  const openRefundDialog = () => {
-    console.log("Open refund dialog action not implemented yet");
-  };
-  const handleSendReminder = async () => {
-    console.log("Send reminder action not implemented yet");
-  };
+  // Open dialog handlers
   const handleOpenCancelDialog = () => {
-    console.log("Open cancel dialog action not implemented yet");
+    console.log("Opening cancel dialog");
+    setShowCancelDialog(true);
   };
+  
   const handleOpenPauseDialog = () => {
-    console.log("Open pause dialog action not implemented yet");
+    console.log("Opening pause dialog");
+    setShowPauseDialog(true);
   };
+  
   const handleOpenResumeDialog = () => {
-    console.log("Open resume dialog action not implemented yet");
+    console.log("Opening resume dialog");
+    setShowResumeDialog(true);
   };
+  
   const handleOpenRescheduleDialog = () => {
-    console.log("Open reschedule dialog action not implemented yet");
+    console.log("Opening reschedule dialog");
+    setShowRescheduleDialog(true);
+  };
+
+  const openRefundDialog = () => {
+    console.log("Opening refund dialog");
+    setRefundDialogOpen(true);
+  };
+  
+  // Action handlers
+  const handleCancelPlan = async () => {
+    console.log("Cancel plan action called");
+    setShowCancelDialog(false);
+    // Actual implementation would go here
+  };
+  
+  const handlePausePlan = async () => {
+    console.log("Pause plan action called");
+    setShowPauseDialog(false);
+    // Actual implementation would go here
+  };
+  
+  const handleResumePlan = async () => {
+    console.log("Resume plan action called");
+    setShowResumeDialog(false);
+    // Actual implementation would go here
+  };
+  
+  const handleReschedulePlan = async () => {
+    console.log("Reschedule plan action called");
+    setShowRescheduleDialog(false);
+    // Actual implementation would go here
+  };
+  
+  const processRefund = async () => {
+    console.log("Process refund action called");
+    setRefundDialogOpen(false);
+    // Actual implementation would go here
+  };
+  
+  const handleSendReminder = async () => {
+    console.log("Send reminder action called");
+    // Actual implementation would go here
   };
 
   return (
@@ -193,7 +216,7 @@ export const ManagePlansProvider: React.FC<{
         setIsViewMode,
         
         // Action handlers
-        handleViewPlanDetails: handleViewPlanDetailsWrapper,
+        handleViewPlanDetails,
         handleCreatePlanClick,
         handleViewPlansClick,
         handleSendReminder,

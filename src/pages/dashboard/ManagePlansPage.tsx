@@ -74,14 +74,17 @@ const ManagePlansPageContent: React.FC = () => {
   }, []);
   
   const handleCreatePlanClick = () => {
+    console.log("ManagePlansPage: handleCreatePlanClick");
     setCreateSheetOpen(true);
   };
 
   const handleViewTemplatesClick = () => {
+    console.log("ManagePlansPage: handleViewTemplatesClick");
     setIsTemplateView(true);
   };
   
   const handleBackToPlans = () => {
+    console.log("ManagePlansPage: handleBackToPlans");
     setIsTemplateView(false);
   };
 
@@ -100,10 +103,11 @@ const ManagePlansPageContent: React.FC = () => {
           refreshTrigger={templateRefreshTrigger}
         />
       ) : (
-        <ManagePlansContent />
+        <>
+          <ManagePlansContent />
+          <ManagePlansDialogs />
+        </>
       )}
-      
-      <ManagePlansDialogs />
       
       <CreatePlanSheet
         open={createSheetOpen}
@@ -116,6 +120,8 @@ const ManagePlansPageContent: React.FC = () => {
 };
 
 const ManagePlansPage: React.FC = () => {
+  console.log("Rendering ManagePlansPage");
+  
   return (
     <DashboardLayout userType="clinic">
       <DashboardDataProvider>
