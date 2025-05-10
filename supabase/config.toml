@@ -82,6 +82,9 @@ port = 54328
 [functions.resume-plan-debug]
 verify_jwt = true
 
+[functions.payment-intent-webhooks]
+verify_jwt = false
+
 [extensions]
 # Get notified when properties of json/jsonb values change.
 notify_on_property_change = true
