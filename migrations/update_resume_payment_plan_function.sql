@@ -16,6 +16,7 @@ DECLARE
   i INTEGER := 0;
   payment_ids UUID[];
   payment_dates DATE[];
+  debug_info JSONB;
 BEGIN
   -- Get plan details to determine payment frequency
   SELECT payment_frequency INTO plan_record
@@ -34,23 +35,28 @@ BEGIN
     ELSE payment_interval := '1 month'::INTERVAL; -- Default to monthly if unknown
   END CASE;
   
-  -- Find the first pending payment date (before any changes)
-  SELECT MIN(due_date) INTO first_pending_date
+  -- Get all pending payments (which should include all previously paused payments)
+  SELECT ARRAY_AGG(id ORDER BY due_date), ARRAY_AGG(due_date ORDER BY due_date)
+  INTO payment_ids, payment_dates
   FROM payment_schedule
-  WHERE payment_schedule.plan_id = plan_id AND status = 'pending';
+  WHERE payment_schedule.plan_id = plan_id AND status = 'pending'
+  ORDER BY due_date;
   
   -- If there are no pending payments, nothing to reschedule
-  IF first_pending_date IS NULL THEN
-    RETURN jsonb_build_object('message', 'No pending payments to reschedule');
+  IF payment_ids IS NULL OR ARRAY_LENGTH(payment_ids, 1) IS NULL THEN
+    RETURN jsonb_build_object(
+      'message', 'No pending payments to reschedule',
+      'warning', 'Check that paused payments were properly set to pending status first'
+    );
   END IF;
   
-  -- Calculate how many days to shift the schedule
-  days_paused := resume_date - first_pending_date;
-  
-  -- Get all pending payments ordered by due date
-  SELECT ARRAY_AGG(id ORDER BY due_date) INTO payment_ids
-  FROM payment_schedule
-  WHERE payment_schedule.plan_id = plan_id AND status = 'pending';
+  -- Log for debugging what we're working with
+  debug_info := jsonb_build_object(
+    'payment_count', ARRAY_LENGTH(payment_ids, 1),
+    'first_date', payment_dates[1],
+    'resume_date', resume_date,
+    'payment_ids', payment_ids
+  );
   
   -- Set the first payment to the resume date exactly
   UPDATE payment_schedule
@@ -69,11 +75,15 @@ BEGIN
   SET next_due_date = resume_date
   WHERE plans.id = plan_id;
   
+  -- Calculate days shifted for reporting
+  days_paused := resume_date - payment_dates[1];
+  
   result := jsonb_build_object(
     'success', true,
     'days_shifted', days_paused,
     'resume_date', resume_date,
-    'payments_rescheduled', ARRAY_LENGTH(payment_ids, 1)
+    'payments_rescheduled', ARRAY_LENGTH(payment_ids, 1),
+    'debug', debug_info
   );
   
   RETURN result;

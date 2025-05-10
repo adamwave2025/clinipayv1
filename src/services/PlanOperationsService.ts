@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -218,9 +219,12 @@ export class PlanOperationsService {
       
       // Count payments with payment requests that need to be reset
       let sentPaymentsCount = 0;
+      const pausedPaymentIds = [];
       const paymentRequestIds = [];
       
       for (const schedule of pausedSchedules || []) {
+        pausedPaymentIds.push(schedule.id);
+        
         if (schedule.payment_request_id) {
           sentPaymentsCount++;
           paymentRequestIds.push(schedule.payment_request_id);
@@ -243,7 +247,7 @@ export class PlanOperationsService {
         }
       }
       
-      // IMPORTANT CHANGE: First update previously paused payment schedules to pending status
+      // CRITICAL CHANGE: First update previously paused payment schedules to pending status
       // This ensures they are ready to be rescheduled by the database function
       const { error: scheduleStatusUpdateError } = await supabase
         .from('payment_schedule')
@@ -255,7 +259,27 @@ export class PlanOperationsService {
         .eq('plan_id', plan.id)
         .eq('status', 'paused');
         
-      if (scheduleStatusUpdateError) throw scheduleStatusUpdateError;
+      if (scheduleStatusUpdateError) {
+        console.error('Error updating payment schedule statuses:', scheduleStatusUpdateError);
+        throw scheduleStatusUpdateError;
+      }
+      
+      // Verify payments are now in pending status before proceeding
+      const { count: pendingCount, error: pendingCountError } = await supabase
+        .from('payment_schedule')
+        .select('*', { count: 'exact', head: true })
+        .eq('plan_id', plan.id)
+        .eq('status', 'pending');
+        
+      if (pendingCountError) {
+        console.error('Error verifying pending payments:', pendingCountError);
+      } else {
+        console.log(`Verified ${pendingCount} payments now in pending status`);
+        
+        if (pendingCount === 0) {
+          console.warn('No pending payments found after status update - this may cause issues with the rescheduling');
+        }
+      }
       
       // Format date as YYYY-MM-DD for the database function call
       const formattedDate = effectiveResumeDate.toISOString().split('T')[0]; 
@@ -286,6 +310,19 @@ export class PlanOperationsService {
         console.log('Rescheduling result:', schedulingResult);
       }
 
+      // Verify that the payments have been rescheduled
+      const { data: updatedPayments, error: updatedPaymentsError } = await supabase
+        .from('payment_schedule')
+        .select('id, due_date, status')
+        .eq('plan_id', plan.id)
+        .order('due_date', { ascending: true });
+        
+      if (updatedPaymentsError) {
+        console.error('Error fetching updated payments:', updatedPaymentsError);
+      } else {
+        console.log('Updated payment schedule:', updatedPayments);
+      }
+      
       // Add an activity log entry with detailed information
       await supabase
         .from('payment_activity')
