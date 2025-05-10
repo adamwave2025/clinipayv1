@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -252,7 +253,8 @@ export const ManagePlansProvider: React.FC<{
         showRescheduleDialog,
         setShowRescheduleDialog,
         handleReschedulePlan,
-        handleOpenRescheduleDialog,
+        // Fix: Change handleOpenRescheduleDialog to handleOpenReschedule
+        handleOpenRescheduleDialog: handleOpenReschedule,
         hasOverduePayments,
         hasPaidPayments,
         
