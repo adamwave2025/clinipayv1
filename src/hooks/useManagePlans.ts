@@ -89,9 +89,9 @@ export const useManagePlans = (): ManagePlansContextType => {
   
   // Use specialized action hooks with refresh capability
   const cancelActions = usePlanCancelActions(selectedPlan, setShowPlanDetails);
-  const pauseActions = usePlanPauseActions(selectedPlan, setShowPlanDetails, refreshData); // Pass refreshData here
+  const pauseActions = usePlanPauseActions(selectedPlan, setShowPlanDetails, refreshData);
   const resumeActions = usePlanResumeActions(selectedPlan, setShowPlanDetails, refreshData);
-  const rescheduleActions = usePlanRescheduleActions(selectedPlan, setShowPlanDetails);
+  const rescheduleActions = usePlanRescheduleActions(selectedPlan, setShowPlanDetails, refreshData);
   
   // Add the hasPaidPayments state explicitly
   const [hasPaidPayments, setHasPaidPayments] = useState(false);

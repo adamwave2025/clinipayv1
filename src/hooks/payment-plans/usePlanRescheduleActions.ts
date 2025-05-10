@@ -7,7 +7,8 @@ import { toast } from 'sonner';
 
 export const usePlanRescheduleActions = (
   selectedPlan: Plan | null,
-  setShowPlanDetails: (show: boolean) => void
+  setShowPlanDetails: (show: boolean) => void,
+  refreshData?: () => Promise<void> // Add optional refreshData parameter
 ) => {
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [hasSentPayments, setHasSentPayments] = useState(false);
@@ -67,6 +68,12 @@ export const usePlanRescheduleActions = (
       
       if (success) {
         toast.success('Payment plan rescheduled successfully');
+        
+        // Call refreshData if provided to update the UI immediately
+        if (refreshData) {
+          await refreshData();
+        }
+        
         setShowRescheduleDialog(false);
         setShowPlanDetails(false); // Close the plan details modal
       } else {
