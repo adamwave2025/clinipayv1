@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Payment, PaymentLink } from '@/types/payment';
 import { toast } from 'sonner';
@@ -142,18 +141,37 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
           : `Partial refund of ${formatCurrency(refundAmount)} processed successfully`
       );
       
+      // Stagger dialog closures to prevent UI freezing
+      // First close the refund dialog
+      setRefundDialogOpen(false);
+      
+      // Wait a small amount of time before closing the detail dialog
+      // This gives the UI time to process the first dialog closure
+      setTimeout(() => {
+        setDetailDialogOpen(false);
+        // Then clear the payment to refund state
+        setTimeout(() => {
+          setPaymentToRefund(null);
+          setIsProcessingRefund(false);
+        }, 50);
+      }, 100);
+      
     } catch (error: any) {
       // Always dismiss the loading toast
       toast.dismiss(loadingToastId);
       
       console.error('Error refunding payment:', error);
       toast.error(`Failed to refund payment: ${error.message}`);
-    } finally {
-      // Always clean up state, regardless of success or failure
-      setIsProcessingRefund(false);
-      setRefundDialogOpen(false);
-      setDetailDialogOpen(false);
-      setPaymentToRefund(null);
+      
+      // Still need to reset state on error, but do it in a staggered way
+      setTimeout(() => {
+        setIsProcessingRefund(false);
+        setRefundDialogOpen(false);
+        setTimeout(() => {
+          setDetailDialogOpen(false);
+          setPaymentToRefund(null);
+        }, 50);
+      }, 100);
     }
   };
 
