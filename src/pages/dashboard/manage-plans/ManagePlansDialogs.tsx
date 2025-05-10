@@ -55,6 +55,7 @@ export const ManagePlansDialogs = () => {
         planName={selectedPlan.title || selectedPlan.planName || ''}
         patientName={selectedPlan.patientName}
         isProcessing={isProcessing}
+        hasSentPayments={hasSentPayments}
       />
       
       <ResumePlanDialog
@@ -78,6 +79,8 @@ export const ManagePlansDialogs = () => {
         patientName={selectedPlan.patientName}
         startDate={selectedPlan.startDate}
         isProcessing={isProcessing}
+        hasSentPayments={hasSentPayments}
+        hasOverduePayments={hasOverduePayments}
       />
       
       {paymentToRefund && (

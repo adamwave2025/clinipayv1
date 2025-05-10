@@ -20,7 +20,7 @@ interface PausePlanDialogProps {
   planName: string;
   patientName: string;
   isProcessing?: boolean;
-  isLoading?: boolean;  // Add isLoading prop
+  isLoading?: boolean;
   hasSentPayments?: boolean;
 }
 
@@ -31,7 +31,7 @@ const PausePlanDialog = ({
   planName,
   patientName,
   isProcessing = false,
-  isLoading = false,  // Add isLoading with default value
+  isLoading = false,
   hasSentPayments = false,
 }: PausePlanDialogProps) => {
   // Use either isLoading or isProcessing (prioritize isProcessing)

@@ -19,7 +19,7 @@ interface CancelPlanDialogProps {
   planName: string;
   patientName: string;
   isLoading?: boolean;  
-  isProcessing?: boolean;  // Add isProcessing prop
+  isProcessing?: boolean;
 }
 
 const CancelPlanDialog = ({
@@ -29,7 +29,7 @@ const CancelPlanDialog = ({
   planName,
   patientName,
   isLoading = false,
-  isProcessing = false,  // Add isProcessing prop with default value
+  isProcessing = false,
 }: CancelPlanDialogProps) => {
   // Use either isLoading or isProcessing (prioritize isProcessing)
   const isWorking = isProcessing || isLoading;

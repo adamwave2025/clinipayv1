@@ -97,15 +97,20 @@ export const ManagePlansProvider: React.FC<{
   
   // Function to handle viewing plan details
   const handleViewPlanDetailsWrapper = async (plan: Plan) => {
+    console.log("Viewing plan details for:", plan.id, plan.title || plan.planName);
     await handleViewPlanDetails(plan, fetchPlanInstallmentsData);
   };
   
-  // Dummy functions for safety
-  const dummyPlanAction = async () => {
-    console.log("This action is not implemented yet");
-  };
+  // Add debugging to check if plan clicking works
+  useEffect(() => {
+    console.log("Plan details state changed:", { 
+      showPlanDetails, 
+      selectedPlan: selectedPlan?.id 
+    });
+  }, [showPlanDetails, selectedPlan]);
   
-  // Since we're not focusing on plan-level actions yet, set all to dummyPlanAction
+  // Set up properties for plan actions
+  // Since we're not focusing on plan-level actions yet, create minimal implementations
   const showCancelDialog = false;
   const setShowCancelDialog = () => {};
   const showPauseDialog = false;
@@ -114,19 +119,46 @@ export const ManagePlansProvider: React.FC<{
   const setShowResumeDialog = () => {};
   const hasSentPayments = false;
   const hasOverduePayments = false;
-  const hasPaidPayments = false; // Add this property
-  const showRescheduleDialog2 = false;
-  const setShowRescheduleDialog2 = () => {};
+  const hasPaidPayments = false; 
   const refundDialogOpen = false;
   const setRefundDialogOpen = () => {};
   const paymentToRefund = null;
-  const handleCancelPlan = dummyPlanAction;
-  const handlePausePlan = dummyPlanAction;
-  const handleResumePlan = async () => {};
-  const handleReschedulePlan = async () => {};
-  const processRefund = async () => {};
-  const openRefundDialog = () => {};
-  const handleSendReminder = async () => {};
+  const resumeError = null;
+  
+  // Dummy action handlers for safety
+  const handleCancelPlan = async () => {
+    console.log("Cancel plan action not implemented yet");
+  };
+  const handlePausePlan = async () => {
+    console.log("Pause plan action not implemented yet");
+  };
+  const handleResumePlan = async () => {
+    console.log("Resume plan action not implemented yet");
+  };
+  const handleReschedulePlan = async () => {
+    console.log("Reschedule plan action not implemented yet");
+  };
+  const processRefund = async () => {
+    console.log("Process refund action not implemented yet");
+  };
+  const openRefundDialog = () => {
+    console.log("Open refund dialog action not implemented yet");
+  };
+  const handleSendReminder = async () => {
+    console.log("Send reminder action not implemented yet");
+  };
+  const handleOpenCancelDialog = () => {
+    console.log("Open cancel dialog action not implemented yet");
+  };
+  const handleOpenPauseDialog = () => {
+    console.log("Open pause dialog action not implemented yet");
+  };
+  const handleOpenResumeDialog = () => {
+    console.log("Open resume dialog action not implemented yet");
+  };
+  const handleOpenRescheduleDialog = () => {
+    console.log("Open reschedule dialog action not implemented yet");
+  };
 
   return (
     <ManagePlansContext.Provider
@@ -184,30 +216,30 @@ export const ManagePlansProvider: React.FC<{
         showCancelDialog,
         setShowCancelDialog,
         handleCancelPlan,
-        handleOpenCancelDialog: () => {},
+        handleOpenCancelDialog,
         
         showPauseDialog,
         setShowPauseDialog,
         handlePausePlan,
-        handleOpenPauseDialog: () => {},
+        handleOpenPauseDialog,
         
         showResumeDialog,
         setShowResumeDialog,
         handleResumePlan,
-        handleOpenResumeDialog: () => {},
+        handleOpenResumeDialog,
         hasSentPayments,
         
         showRescheduleDialog,
         setShowRescheduleDialog,
         handleReschedulePlan,
-        handleOpenRescheduleDialog: () => {},
+        handleOpenRescheduleDialog,
         hasOverduePayments,
-        hasPaidPayments, // Add this property
+        hasPaidPayments,
         
         // Plan state helpers
         isPlanPaused,
         isProcessing,
-        resumeError: null
+        resumeError
       }}
     >
       {children}

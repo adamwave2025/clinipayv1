@@ -30,10 +30,10 @@ interface ReschedulePlanDialogProps {
   planName: string;
   patientName: string;
   isLoading?: boolean;
-  isProcessing?: boolean; // Add isProcessing prop
+  isProcessing?: boolean;
   hasSentPayments?: boolean;
   hasOverduePayments?: boolean;
-  startDate?: string; // Added this prop for compatibility
+  startDate?: string;
 }
 
 const ReschedulePlanDialog = ({
@@ -43,10 +43,10 @@ const ReschedulePlanDialog = ({
   planName,
   patientName,
   isLoading = false,
-  isProcessing = false, // Add isProcessing with default value
+  isProcessing = false,
   hasSentPayments = false,
   hasOverduePayments = false,
-  startDate, // Accept the startDate prop
+  startDate,
 }: ReschedulePlanDialogProps) => {
   // Initialize with current date or parse the startDate if provided
   const initialDate = startDate ? new Date(startDate) : new Date();
