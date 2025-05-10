@@ -46,8 +46,11 @@ const PaymentRefundDialog = ({
   }, [open, amountInPounds]);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value);
-    setRefundAmount(value);
+    const inputValue = e.target.value;
+    const value = parseFloat(inputValue);
+    
+    // Always update displayed value even if invalid
+    setRefundAmount(isNaN(value) ? 0 : value);
     
     // Validate amount
     if (isNaN(value) || value <= 0) {
@@ -95,11 +98,10 @@ const PaymentRefundDialog = ({
               </Label>
               <Input
                 id="refund-amount"
-                type="number"
-                step="0.01"
-                min="0.01"
-                max={amountInPounds}
-                value={refundAmount.toFixed(2)}
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*[.]?[0-9]{0,2}"
+                value={isNaN(refundAmount) ? '' : refundAmount.toFixed(2)}
                 onChange={handleAmountChange}
                 className={error ? "border-red-300 focus-visible:ring-red-500" : ""}
                 disabled={isProcessingRefund}
