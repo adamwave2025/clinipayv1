@@ -12,9 +12,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, formatUserInputCurrency } from '@/utils/formatters';
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider';
-import { penceToPounds } from '@/services/CurrencyService';
+import { penceToPounds, poundsToPence } from '@/services/CurrencyService';
 
 interface PaymentRefundDialogProps {
   open: boolean;
@@ -33,13 +33,20 @@ const PaymentRefundDialog = ({
 }: PaymentRefundDialogProps) => {
   // Convert amount from pence to pounds for display and input
   const amountInPounds = penceToPounds(paymentAmount);
+  
+  // Use a string state for the displayed input value
+  const [refundInputValue, setRefundInputValue] = useState<string>(amountInPounds.toFixed(2));
+  
+  // Use a separate state for the actual numeric value
   const [refundAmount, setRefundAmount] = useState<number>(amountInPounds);
+  
   const [error, setError] = useState<string>('');
   const { isProcessingRefund } = useDashboardData();
 
   // Reset amount and error when dialog opens
   React.useEffect(() => {
     if (open) {
+      setRefundInputValue(amountInPounds.toFixed(2));
       setRefundAmount(amountInPounds);
       setError('');
     }
@@ -47,18 +54,49 @@ const PaymentRefundDialog = ({
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
-    const value = parseFloat(inputValue);
     
-    // Always update displayed value even if invalid
-    setRefundAmount(isNaN(value) ? 0 : value);
+    // Allow empty input or valid decimal input
+    if (inputValue === '' || /^[0-9]*\.?[0-9]*$/.test(inputValue)) {
+      // Always update the displayed input value
+      setRefundInputValue(inputValue);
+      
+      // Only update numeric value and validate if input is not empty
+      if (inputValue !== '') {
+        const value = parseFloat(inputValue);
+        
+        // Only update numeric state if it's a valid number
+        if (!isNaN(value)) {
+          setRefundAmount(value);
+          
+          // Validate amount
+          if (value <= 0) {
+            setError('Please enter a valid amount greater than 0');
+          } else if (value > amountInPounds) {
+            setError(`Refund amount cannot exceed the payment amount (${formatCurrency(paymentAmount)})`);
+          } else {
+            setError('');
+          }
+        } else {
+          setError('Please enter a valid number');
+        }
+      } else {
+        // Input is empty, set appropriate error
+        setError('Please enter a refund amount');
+      }
+    }
+  };
+
+  // Handle input blur to format the displayed value
+  const handleBlur = () => {
+    // If input is empty or invalid, don't try to format
+    if (refundInputValue === '' || isNaN(parseFloat(refundInputValue))) {
+      return;
+    }
     
-    // Validate amount
-    if (isNaN(value) || value <= 0) {
-      setError('Please enter a valid amount greater than 0');
-    } else if (value > amountInPounds) {
-      setError(`Refund amount cannot exceed the payment amount (${formatCurrency(amountInPounds * 100)})`);
-    } else {
-      setError('');
+    // Format value to always show 2 decimal places when user leaves the field
+    const value = parseFloat(refundInputValue);
+    if (!isNaN(value)) {
+      setRefundInputValue(value.toFixed(2));
     }
   };
 
@@ -100,9 +138,9 @@ const PaymentRefundDialog = ({
                 id="refund-amount"
                 type="text"
                 inputMode="decimal"
-                pattern="[0-9]*[.]?[0-9]{0,2}"
-                value={isNaN(refundAmount) ? '' : refundAmount.toFixed(2)}
+                value={refundInputValue}
                 onChange={handleAmountChange}
+                onBlur={handleBlur}
                 className={error ? "border-red-300 focus-visible:ring-red-500" : ""}
                 disabled={isProcessingRefund}
               />
@@ -124,7 +162,7 @@ const PaymentRefundDialog = ({
           <AlertDialogAction 
             onClick={handleConfirm} 
             className="bg-red-500 hover:bg-red-600"
-            disabled={!!error || refundAmount <= 0 || isProcessingRefund}
+            disabled={!!error || refundAmount <= 0 || isProcessingRefund || refundInputValue === ''}
           >
             {isProcessingRefund ? 'Processing...' : (isFullRefund ? 'Refund Full Amount' : 'Refund Partial Amount')}
           </AlertDialogAction>
