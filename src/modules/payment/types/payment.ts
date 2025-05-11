@@ -1,4 +1,3 @@
-
 export interface Payment {
   id: string;
   amount: number;
@@ -11,7 +10,8 @@ export interface Payment {
   netAmount: number;
   paymentMethod: string;
   paymentReference?: string;
-  stripePaymentId?: string; 
+  stripePaymentId?: string;
+  manualPayment?: boolean; // Added new field for manual payments
 }
 
 export enum PaymentStatus {

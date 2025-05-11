@@ -1,8 +1,8 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { recordPaymentPlanActivity } from '@/services/PaymentScheduleService';
+import { PlanPaymentService } from '@/services/plan-operations/PlanPaymentService';
 
 export function useInstallmentActions(
   planId: string,
@@ -15,38 +15,14 @@ export function useInstallmentActions(
   const handleMarkAsPaid = async (installmentId: string) => {
     setIsProcessing(true);
     try {
-      // 1. Get the installment details
-      const { data: installment, error: fetchError } = await supabase
-        .from('payment_schedule')
-        .select('*')
-        .eq('id', installmentId)
-        .single();
+      // Use the new PlanPaymentService to record a manual payment
+      const result = await PlanPaymentService.recordManualPayment(installmentId);
       
-      if (fetchError) throw fetchError;
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to record manual payment');
+      }
       
-      // 2. Update the payment_schedule status to 'paid'
-      const { error: updateError } = await supabase
-        .from('payment_schedule')
-        .update({
-          status: 'paid',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', installmentId);
-      
-      if (updateError) throw updateError;
-      
-      // 3. Record the activity
-      await recordPaymentPlanActivity({
-        planId: planId,
-        actionType: 'payment_marked_paid',
-        details: {
-          installmentId,
-          paymentNumber: installment.payment_number,
-          amount: installment.amount
-        }
-      });
-      
-      // 4. Refresh the installments list
+      // 4. Refresh the installments list to reflect changes
       await refreshInstallments();
       
       toast.success('Payment marked as paid successfully');
@@ -153,6 +129,6 @@ export function useInstallmentActions(
     handleMarkAsPaid,
     handleOpenReschedule,
     handleReschedulePayment,
-    handleTakePayment // Export the new function
+    handleTakePayment
   };
 }

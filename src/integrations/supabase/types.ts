@@ -450,6 +450,7 @@ export type Database = {
           amount_paid: number | null
           clinic_id: string | null
           id: string
+          manual_payment: boolean | null
           net_amount: number | null
           paid_at: string | null
           patient_email: string | null
@@ -471,6 +472,7 @@ export type Database = {
           amount_paid?: number | null
           clinic_id?: string | null
           id?: string
+          manual_payment?: boolean | null
           net_amount?: number | null
           paid_at?: string | null
           patient_email?: string | null
@@ -492,6 +494,7 @@ export type Database = {
           amount_paid?: number | null
           clinic_id?: string | null
           id?: string
+          manual_payment?: boolean | null
           net_amount?: number | null
           paid_at?: string | null
           patient_email?: string | null

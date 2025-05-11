@@ -1,4 +1,3 @@
-
 // If we need to add or modify types, let's create a file for this
 import { PaymentLinkData } from './paymentLink';
 
@@ -8,19 +7,20 @@ export interface Payment {
   patientEmail?: string;
   patientPhone?: string;
   amount: number;
-  platformFee?: number; // Added platform fee property
-  netAmount?: number; // Added net amount property
+  platformFee?: number;
+  netAmount?: number;
   date: string;
   status: 'paid' | 'refunded' | 'sent' | 'partially_refunded';
   type: 'deposit' | 'treatment' | 'consultation' | 'payment_plan' | 'other';
-  paymentUrl?: string; // URL for testing payment links
-  refundedAmount?: number; // Amount that was refunded (for partial refunds)
-  reference?: string; // Payment reference (PAY-XXXX-YYYY)
-  linkTitle?: string; // Title of the payment link
-  message?: string; // Custom message sent with the payment request
-  description?: string; // Description from the payment link
-  isCustomAmount?: boolean; // Flag to indicate if it was a custom amount request
-  paymentLinkId?: string; // ID of the payment link used (if any)
+  paymentUrl?: string;
+  refundedAmount?: number;
+  reference?: string;
+  linkTitle?: string;
+  message?: string;
+  description?: string;
+  isCustomAmount?: boolean;
+  paymentLinkId?: string;
+  manualPayment?: boolean;
 }
 
 export interface PaymentLink {

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -113,6 +112,87 @@ export class PlanPaymentService {
       return result;
     } catch (error) {
       console.error('Error sending payment reminder:', error);
+      return { success: false, error };
+    }
+  }
+  
+  /**
+   * Record a manual payment for a payment plan installment
+   * @param installmentId The installment ID to mark as paid
+   * @returns Object indicating success or failure with the payment ID
+   */
+  static async recordManualPayment(installmentId: string): Promise<{ success: boolean, paymentId?: string, error?: any }> {
+    try {
+      // 1. Get the installment details with related info
+      const { data: installment, error: fetchError } = await supabase
+        .from('payment_schedule')
+        .select(`
+          *,
+          patients:patient_id (*),
+          payment_links:payment_link_id (*)
+        `)
+        .eq('id', installmentId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      if (!installment) {
+        return { success: false, error: 'Installment not found' };
+      }
+      
+      // 2. Generate a payment reference for the manual payment
+      const paymentRef = `MAN-${Date.now().toString().substring(6)}`;
+      
+      // 3. Create a payment record in the payments table
+      const { data: paymentData, error: insertError } = await supabase
+        .from('payments')
+        .insert({
+          clinic_id: installment.clinic_id,
+          patient_id: installment.patient_id,
+          patient_name: installment.patients?.name || 'Unknown Patient',
+          patient_email: installment.patients?.email,
+          patient_phone: installment.patients?.phone,
+          amount_paid: installment.amount,
+          net_amount: installment.amount, // For manual payments, net = gross
+          payment_link_id: installment.payment_link_id,
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          payment_ref: paymentRef,
+          manual_payment: true
+        })
+        .select('id')
+        .single();
+      
+      if (insertError) throw insertError;
+      
+      // 4. Update the payment schedule with the payment_id reference
+      const { error: updateError } = await supabase
+        .from('payment_schedule')
+        .update({
+          status: 'paid',
+          payment_request_id: paymentData.id, // Link the installment to the payment
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', installmentId);
+      
+      if (updateError) throw updateError;
+      
+      // 5. Record the activity
+      await this.recordPaymentPlanActivity({
+        planId: installment.plan_id,
+        actionType: 'manual_payment_recorded',
+        details: {
+          installmentId,
+          paymentNumber: installment.payment_number,
+          amount: installment.amount,
+          paymentId: paymentData.id,
+          paymentRef: paymentRef
+        }
+      });
+      
+      return { success: true, paymentId: paymentData.id };
+    } catch (error) {
+      console.error('Error recording manual payment:', error);
       return { success: false, error };
     }
   }
