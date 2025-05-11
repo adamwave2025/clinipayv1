@@ -97,6 +97,26 @@ export const ManagePlansDialogs = () => {
                                selectedInstallment.amount && 
                                showTakePaymentDialog;
 
+  // This will hold any error handling JSX for missing installment data
+  // FIXED: Use a proper conditional render approach instead of React.Fragment
+  const renderMissingInstallmentHandler = () => {
+    if (showTakePaymentDialog && !canShowPaymentDialog) {
+      // Log the error
+      console.error("Cannot show payment dialog: Invalid installment data", selectedInstallment);
+      
+      // Show toast
+      toast.error("Cannot show payment dialog: Invalid installment data");
+      
+      // Close the dialog
+      setShowTakePaymentDialog(false);
+      
+      // Return null since we're in a function
+      return null;
+    }
+    
+    return null;
+  };
+
   return (
     <>
       <CancelPlanDialog
@@ -171,7 +191,7 @@ export const ManagePlansDialogs = () => {
       />
 
       {/* FIXED: Enhanced Take Payment dialog with comprehensive validation */}
-      {canShowPaymentDialog ? (
+      {canShowPaymentDialog && (
         <TakePaymentDialog
           open={showTakePaymentDialog}
           onOpenChange={(open) => {
@@ -187,17 +207,10 @@ export const ManagePlansDialogs = () => {
           amount={selectedInstallment.amount}
           onPaymentProcessed={onPaymentUpdated}
         />
-      ) : (
-        showTakePaymentDialog && (
-          // If showTakePaymentDialog is true but we don't have valid installment data,
-          // log an error and auto-close the dialog to prevent further errors
-          <React.Fragment>
-            {console.error("Cannot show payment dialog: Invalid installment data", selectedInstallment)}
-            {toast.error("Cannot show payment dialog: Invalid installment data")}
-            {setShowTakePaymentDialog(false)}
-          </React.Fragment>
-        )
       )}
+      
+      {/* Handle missing installment data with useEffect instead of conditional rendering */}
+      {renderMissingInstallmentHandler()}
       
       {paymentToRefund && (
         <PaymentRefundDialog
