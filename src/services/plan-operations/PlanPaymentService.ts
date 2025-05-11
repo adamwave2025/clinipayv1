@@ -8,18 +8,17 @@ export class PlanPaymentService {
   /**
    * Record a manual payment for a plan installment
    * @param installmentId The ID of the installment being paid
-   * @param amount The payment amount
-   * @param paymentDate The date the payment was made
+   * @param amount The payment amount (optional, defaults to installment amount)
+   * @param paymentDate The date the payment was made (optional, defaults to today)
    * @returns Object indicating success or failure
    */
   static async recordManualPayment(
     installmentId: string,
-    amount: number,
-    paymentDate: string
+    amount?: number,
+    paymentDate?: string
   ): Promise<{ success: boolean; error?: any }> {
     try {
       console.log('Recording manual payment for installment:', installmentId);
-      console.log('Payment details:', { amount, paymentDate });
       
       // Get the installment data first to find the plan and related information
       const { data: installmentData, error: installmentError } = await supabase
@@ -29,6 +28,7 @@ export class PlanPaymentService {
           plan_id,
           payment_number,
           total_payments,
+          amount,
           clinic_id,
           patient_id,
           payment_link_id
@@ -40,6 +40,14 @@ export class PlanPaymentService {
         console.error('Error fetching installment data:', installmentError);
         return { success: false, error: installmentError || new Error('Installment not found') };
       }
+      
+      // If amount wasn't provided, use the installment amount
+      const paymentAmount = amount || installmentData.amount;
+      
+      // If payment date wasn't provided, use today's date
+      const actualPaymentDate = paymentDate || new Date().toISOString();
+      
+      console.log('Payment details:', { paymentAmount, actualPaymentDate });
       
       // Get the plan data to get clinic information
       const { data: planData, error: planError } = await supabase
@@ -96,14 +104,14 @@ export class PlanPaymentService {
         patient_id: planData.patient_id,
         payment_link_id: installmentData.payment_link_id,
         payment_schedule_id: installmentId, // Direct link to payment_schedule
-        amount_paid: amount,
+        amount_paid: paymentAmount,
         patient_name: patientData?.name || 'Unknown',
         patient_email: patientData?.email || null,
         patient_phone: patientData?.phone || null,
         payment_ref: paymentRef,
         manual_payment: true,
         status: 'paid',
-        paid_at: paymentDate
+        paid_at: actualPaymentDate
       };
       
       console.log('Creating payment record:', paymentData);
@@ -130,8 +138,8 @@ export class PlanPaymentService {
         clinic_id: planData.clinic_id,
         details: {
           payment_reference: paymentRef,
-          amount: amount,
-          payment_date: paymentDate,
+          amount: paymentAmount,
+          payment_date: actualPaymentDate,
           payment_number: installmentData.payment_number,
           total_payments: installmentData.total_payments,
           payment_id: paymentId,
@@ -154,6 +162,85 @@ export class PlanPaymentService {
       return { success: true };
     } catch (error) {
       console.error('Error in recordManualPayment:', error);
+      return { success: false, error };
+    }
+  }
+  
+  /**
+   * Reschedule a payment to a new date
+   * @param installmentId The ID of the installment to reschedule
+   * @param newDate The new payment date
+   * @returns Object indicating success or failure
+   */
+  static async reschedulePayment(
+    installmentId: string,
+    newDate: Date
+  ): Promise<{ success: boolean; error?: any }> {
+    try {
+      console.log(`Rescheduling payment ${installmentId} to ${newDate}`);
+      
+      // Update the payment_schedule record with new date
+      const { error: updateError } = await supabase
+        .from('payment_schedule')
+        .update({ 
+          due_date: newDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', installmentId);
+      
+      if (updateError) {
+        console.error('Error updating payment due date:', updateError);
+        return { success: false, error: updateError };
+      }
+      
+      // Get the plan_id to update the plan next_due_date if needed
+      const { data: scheduleData, error: scheduleError } = await supabase
+        .from('payment_schedule')
+        .select('plan_id, payment_number')
+        .eq('id', installmentId)
+        .single();
+        
+      if (scheduleError || !scheduleData) {
+        console.error('Error fetching payment schedule data:', scheduleError);
+        return { success: false, error: scheduleError || new Error('Schedule not found') };
+      }
+      
+      // Create an activity record for the rescheduled payment
+      const activityData = {
+        action_type: 'payment_rescheduled',
+        plan_id: scheduleData.plan_id,
+        details: {
+          installment_id: installmentId,
+          new_date: newDate.toISOString().split('T')[0],
+          payment_number: scheduleData.payment_number
+        }
+      };
+      
+      // Get more plan data for the activity record
+      const { data: planData, error: planError } = await supabase
+        .from('plans')
+        .select('payment_link_id, patient_id, clinic_id')
+        .eq('id', scheduleData.plan_id)
+        .single();
+        
+      if (!planError && planData) {
+        activityData.payment_link_id = planData.payment_link_id;
+        activityData.patient_id = planData.patient_id;
+        activityData.clinic_id = planData.clinic_id;
+      }
+      
+      const { error: activityError } = await supabase
+        .from('payment_activity')
+        .insert(activityData);
+      
+      if (activityError) {
+        console.error('Error recording reschedule activity:', activityError);
+        // Continue despite activity error
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error in reschedulePayment:', error);
       return { success: false, error };
     }
   }
@@ -270,7 +357,7 @@ export class PlanPaymentService {
       
       if (!paymentData) {
         console.warn('Payment record not found:', paymentId);
-        toast.warn('Payment not found');
+        toast.error('Payment not found');
         return { success: false, error: 'Payment not found' };
       }
       
@@ -446,7 +533,7 @@ export class PlanPaymentService {
       
       if (!installmentData) {
         console.warn('Installment not found:', installmentId);
-        toast.warn('Installment not found');
+        toast.error('Installment not found');
         return { success: false, error: 'Installment not found' };
       }
       
@@ -465,7 +552,7 @@ export class PlanPaymentService {
       
       if (!patientData) {
         console.warn('Patient not found:', installmentData.patient_id);
-        toast.warn('Patient not found');
+        toast.error('Patient not found');
         return { success: false, error: 'Patient not found' };
       }
       
@@ -484,7 +571,7 @@ export class PlanPaymentService {
       
       if (!planData) {
         console.warn('Plan not found:', installmentData.plan_id);
-        toast.warn('Plan not found');
+        toast.error('Plan not found');
         return { success: false, error: 'Plan not found' };
       }
       
