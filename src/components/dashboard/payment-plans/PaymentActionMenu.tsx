@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
 
 interface PaymentActionMenuProps {
   paymentId: string;
@@ -23,11 +24,17 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
   onReschedule,
   onTakePayment
 }) => {
-  // Add logging for debugging
+  // Enhanced logging for debugging
   const handleTakePayment = () => {
     console.log("PaymentActionMenu: Take payment clicked for ID:", paymentId);
+    toast.info(`Take Payment action triggered for payment ${paymentId}`);
+    
     if (onTakePayment) {
+      console.log("PaymentActionMenu: Calling onTakePayment handler");
       onTakePayment(paymentId);
+    } else {
+      console.error("PaymentActionMenu: onTakePayment is not defined!");
+      toast.error("Payment handler is not defined");
     }
   };
 
@@ -42,7 +49,11 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
       <DropdownMenuContent align="end">
         {onTakePayment && (
           <DropdownMenuItem 
-            onClick={handleTakePayment}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleTakePayment();
+            }}
             className="cursor-pointer"
           >
             <CreditCard className="mr-2 h-4 w-4" />
@@ -53,8 +64,11 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
         {onTakePayment && <DropdownMenuSeparator />}
         
         <DropdownMenuItem 
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             console.log("PaymentActionMenu: Mark as paid clicked for ID:", paymentId);
+            toast.info(`Mark as Paid action triggered for payment ${paymentId}`);
             onMarkAsPaid(paymentId);
           }}
           className="cursor-pointer"
@@ -66,8 +80,11 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
         <DropdownMenuSeparator />
         
         <DropdownMenuItem 
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             console.log("PaymentActionMenu: Reschedule clicked for ID:", paymentId);
+            toast.info(`Reschedule action triggered for payment ${paymentId}`);
             onReschedule(paymentId);
           }}
           className="cursor-pointer"

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
@@ -9,6 +10,7 @@ import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 import TakePaymentDialog from '@/components/dashboard/payment-plans/TakePaymentDialog';
+import { toast } from '@/hooks/use-toast';
 
 export const ManagePlansDialogs = () => {
   const {
@@ -70,6 +72,11 @@ export const ManagePlansDialogs = () => {
   // Debug selected installment when take payment dialog should show
   if (showTakePaymentDialog) {
     console.log('TakePaymentDialog should show with selectedInstallment:', selectedInstallment);
+    toast.info("Attempting to show Take Payment dialog");
+    
+    if (!selectedInstallment) {
+      toast.error("Cannot show payment dialog: Missing installment data");
+    }
   }
 
   if (!selectedPlan) {
@@ -150,11 +157,17 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* Add Take Payment dialog here */}
+      {/* Add Take Payment dialog here with additional checks */}
       {selectedInstallment && (
         <TakePaymentDialog
           open={showTakePaymentDialog}
-          onOpenChange={setShowTakePaymentDialog}
+          onOpenChange={(open) => {
+            console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
+            if (!open) {
+              toast.info("Closing payment dialog");
+            }
+            setShowTakePaymentDialog(open);
+          }}
           paymentId={selectedInstallment.id}
           patientName={selectedPlan.patientName || ''}
           patientEmail={selectedPlan.patientEmail || ''}

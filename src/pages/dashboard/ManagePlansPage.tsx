@@ -6,8 +6,7 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import { 
   ManagePlansProvider, 
-  ManagePlansContent, 
-  ManagePlansDialogs 
+  ManagePlansContent
 } from './manage-plans';
 import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
 import { PaymentLink } from '@/types/payment';
@@ -17,6 +16,8 @@ import PlanTemplatesView from '@/components/dashboard/payment-plans/PlanTemplate
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { useSearchParams } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
+import { Toaster } from "@/components/ui/sonner"; // Add toaster here
 
 const ManagePlansHeader: React.FC<{
   isTemplateView: boolean;
@@ -102,16 +103,19 @@ const ManagePlansPageContent: React.FC = () => {
   
   const handleCreatePlanClick = () => {
     console.log("ManagePlansPage: handleCreatePlanClick");
+    toast.info("Opening Create Plan form");
     setCreateSheetOpen(true);
   };
 
   const handleViewTemplatesClick = () => {
     console.log("ManagePlansPage: handleViewTemplatesClick");
+    toast.info("Switching to Templates view");
     setIsTemplateView(true);
   };
   
   const handleBackToPlans = () => {
     console.log("ManagePlansPage: handleBackToPlans");
+    toast.info("Returning to Patient Plans view");
     setIsTemplateView(false);
   };
 
@@ -132,7 +136,6 @@ const ManagePlansPageContent: React.FC = () => {
       ) : (
         <>
           <ManagePlansContent />
-          <ManagePlansDialogs />
           <PaymentDetailsDialogWrapper />
         </>
       )}
@@ -143,6 +146,9 @@ const ManagePlansPageContent: React.FC = () => {
         createPaymentLink={createPaymentLink}
         onPlanCreated={refreshTemplates}
       />
+      
+      {/* Include Toaster component for toast notifications */}
+      <Toaster />
     </>
   );
 };
@@ -150,6 +156,11 @@ const ManagePlansPageContent: React.FC = () => {
 // Render a ManagePlansProvider that wraps the content and passes setIsTemplateView
 const ManagePlansPage: React.FC = () => {
   console.log("Rendering ManagePlansPage");
+  
+  useEffect(() => {
+    // Log when the page mounts
+    toast.info("Payment Plans page loaded");
+  }, []);
   
   return (
     <DashboardLayout userType="clinic">

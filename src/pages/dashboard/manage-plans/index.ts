@@ -1,4 +1,10 @@
 
-export { default as ManagePlansContent } from './ManagePlansContent';
-export { default as ManagePlansDialogs } from './ManagePlansDialogs';
-export { ManagePlansProvider } from './ManagePlansProvider';
+import ManagePlansContent from './ManagePlansContent';
+import ManagePlansProvider from './ManagePlansProvider';
+import ManagePlansDialogs from './ManagePlansDialogs';
+
+export {
+  ManagePlansContent,
+  ManagePlansProvider,
+  ManagePlansDialogs
+};

@@ -12,6 +12,7 @@ import { formatCurrency, formatDate } from '@/utils/formatters';
 import StatusBadge from '@/components/common/StatusBadge';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import PaymentActionMenu from './PaymentActionMenu';
+import { toast } from '@/hooks/use-toast';
 
 interface PlanPaymentsListProps {
   installments: PlanInstallment[];
@@ -47,7 +48,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
     return 'upcoming';
   };
 
-  // For debugging - log the installments to see their structure
+  // Enhanced debugging - log the installments to see their structure
   console.log("PlanPaymentsList rendering with installments:", 
     installments?.map(i => ({
       id: i.id, 
@@ -63,16 +64,26 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
   // Create wrapper functions to log when actions are triggered
   const handleMarkAsPaid = (paymentId: string) => {
     console.log("PlanPaymentsList: Mark as paid clicked for payment:", paymentId);
+    toast.info(`Initiating Mark as Paid workflow for payment ${paymentId}`);
     onMarkAsPaid(paymentId);
   };
 
   const handleReschedule = (paymentId: string) => {
     console.log("PlanPaymentsList: Reschedule clicked for payment:", paymentId);
+    toast.info(`Initiating Reschedule workflow for payment ${paymentId}`);
     onReschedule(paymentId);
   };
 
   const handleTakePayment = onTakePayment ? (paymentId: string, installment: PlanInstallment) => {
     console.log("PlanPaymentsList: Take payment clicked for payment:", paymentId, installment);
+    
+    if (!installment.amount) {
+      toast.error(`Missing amount data for payment ${paymentId}`);
+      console.error("Missing amount data for installment:", installment);
+      return;
+    }
+    
+    toast.info(`Initiating Take Payment workflow for ${formatCurrency(installment.amount)}`);
     onTakePayment(paymentId, installment);
   } : undefined;
 
@@ -110,7 +121,8 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
                 status,
                 paidDate: installment.paidDate,
                 manualPayment: installment.manualPayment || false,
-                paymentId: installment.paymentId
+                amount: installment.amount,
+                paymentId: installment.id
               });
               
               return (

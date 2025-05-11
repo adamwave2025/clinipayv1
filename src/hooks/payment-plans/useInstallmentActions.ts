@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { usePaymentRescheduleActions } from './usePaymentRescheduleActions';
 
@@ -17,32 +17,51 @@ export const useInstallmentActions = (
   const rescheduleActions = usePaymentRescheduleActions(planId, onPaymentUpdated);
 
   const handleMarkAsPaid = (paymentId: string) => {
-    console.log("Opening mark as paid dialog for", paymentId);
+    console.log("[useInstallmentActions] Opening mark as paid dialog for", paymentId);
+    toast.info(`Opening Mark as Paid dialog for payment ${paymentId}`);
+    
     // Find the selected installment
     setSelectedInstallment({ id: paymentId });
     setShowMarkAsPaidDialog(true);
   };
   
   const handleOpenReschedule = (paymentId: string) => {
-    console.log("useInstallmentActions: Opening reschedule dialog for payment", paymentId);
+    console.log("[useInstallmentActions] Opening reschedule dialog for payment", paymentId);
+    toast.info(`Opening Reschedule dialog for payment ${paymentId}`);
+    
     rescheduleActions.handleOpenRescheduleDialog(paymentId);
-    console.log("useInstallmentActions: After calling handleOpenRescheduleDialog");
+    console.log("[useInstallmentActions] After calling handleOpenRescheduleDialog");
   };
   
   const handleTakePayment = (paymentId: string, installmentDetails?: any) => {
-    console.log("Take payment clicked for", paymentId, "with details:", installmentDetails);
+    console.log("[useInstallmentActions] Take payment clicked for", paymentId, "with details:", installmentDetails);
+    
+    if (!installmentDetails || !installmentDetails.amount) {
+      console.error("[useInstallmentActions] Missing installment details or amount:", installmentDetails);
+      toast.error("Cannot process payment: Missing payment details");
+      return;
+    }
+    
+    toast.info(`Opening payment dialog for ${formatCurrency(installmentDetails.amount)}`);
     
     // Store the selected installment with all details we need
     const installmentData = installmentDetails || { id: paymentId };
-    console.log("Setting selectedInstallment to:", installmentData);
+    console.log("[useInstallmentActions] Setting selectedInstallment to:", installmentData);
     
     setSelectedInstallment(installmentData);
+    
+    console.log("[useInstallmentActions] Setting showTakePaymentDialog to true");
     setShowTakePaymentDialog(true);
     
-    console.log("After setting showTakePaymentDialog to true, current state:", {
-      selectedInstallment: installmentData,
-      showTakePaymentDialog: true
-    });
+    // Use setTimeout to check if state was updated correctly
+    setTimeout(() => {
+      console.log("[useInstallmentActions] State after update:", { 
+        selectedInstallment: installmentData,
+        showTakePaymentDialog: true,
+        actualSelectedInstallment: selectedInstallment,
+        actualShowTakePaymentDialog: showTakePaymentDialog 
+      });
+    }, 100);
   };
   
   const confirmMarkAsPaid = async () => {
@@ -68,6 +87,14 @@ export const useInstallmentActions = (
     } finally {
       setIsProcessing(false);
     }
+  };
+  
+  // Helper function to format currency (copied from formatter utils for consistency)
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('en-GB', { 
+      style: 'currency', 
+      currency: 'GBP' 
+    }).format(amount);
   };
   
   return {
