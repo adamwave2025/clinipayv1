@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   Table, 
@@ -16,12 +17,14 @@ interface PlanPaymentsListProps {
   installments: PlanInstallment[];
   onMarkAsPaid: (paymentId: string) => void;
   onReschedule: (paymentId: string) => void;
+  onTakePayment?: (paymentId: string) => void;
 }
 
 const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
   installments,
   onMarkAsPaid,
-  onReschedule
+  onReschedule,
+  onTakePayment
 }) => {
   const determineStatus = (installment: PlanInstallment): 'paid' | 'upcoming' | 'overdue' => {
     if (installment.status === 'paid') {
@@ -83,6 +86,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
                         paymentId={installment.id}
                         onMarkAsPaid={onMarkAsPaid}
                         onReschedule={onReschedule}
+                        onTakePayment={onTakePayment}
                       />
                     )}
                   </TableCell>

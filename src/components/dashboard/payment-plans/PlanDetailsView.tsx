@@ -15,6 +15,7 @@ interface PlanDetailsViewProps {
   activities: PlanActivity[];
   onMarkAsPaid: (paymentId: string) => void;
   onReschedule: (paymentId: string) => void;
+  onTakePayment?: (paymentId: string) => void;
   isLoading: boolean;
 }
 
@@ -24,6 +25,7 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
   activities,
   onMarkAsPaid,
   onReschedule,
+  onTakePayment,
   isLoading
 }) => {
   // Extract patient name directly from patientName property
@@ -140,6 +142,7 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
               installments={installments}
               onMarkAsPaid={onMarkAsPaid}
               onReschedule={onReschedule}
+              onTakePayment={onTakePayment}
             />
           )}
         </CardContent>

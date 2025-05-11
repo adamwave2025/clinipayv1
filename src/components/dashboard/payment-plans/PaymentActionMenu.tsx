@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { MoreVertical, CheckCircle, CalendarIcon } from 'lucide-react';
+import { MoreVertical, CheckCircle, CalendarIcon, CreditCard } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,12 +14,14 @@ interface PaymentActionMenuProps {
   paymentId: string;
   onMarkAsPaid: (id: string) => void;
   onReschedule: (id: string) => void;
+  onTakePayment?: (id: string) => void;
 }
 
 const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({ 
   paymentId, 
   onMarkAsPaid, 
-  onReschedule 
+  onReschedule,
+  onTakePayment = () => {} // Default empty handler
 }) => {
   return (
     <DropdownMenu>
@@ -30,6 +32,14 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem 
+          onClick={() => onTakePayment(paymentId)}
+          className="cursor-pointer"
+        >
+          <CreditCard className="mr-2 h-4 w-4" />
+          <span>Take Payment</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem 
           onClick={() => onMarkAsPaid(paymentId)}
           className="cursor-pointer"
