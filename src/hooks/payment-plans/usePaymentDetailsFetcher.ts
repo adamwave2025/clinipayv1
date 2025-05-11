@@ -14,9 +14,11 @@ export const usePaymentDetailsFetcher = () => {
     
     try {
       console.log('Installation in fetchPaymentDetails:', installment);
+      console.log('Payment ID:', installment.paymentId);
+      console.log('Payment Request ID:', installment.paymentRequestId);
       
       // Check if we have a direct payment ID (could happen with manual payments)
-      if (installment.paymentId && !installment.paymentRequestId) {
+      if (installment.paymentId) {
         console.log('Fetching payment details directly for payment ID:', installment.paymentId);
         
         // Fetch payment details directly using payment ID

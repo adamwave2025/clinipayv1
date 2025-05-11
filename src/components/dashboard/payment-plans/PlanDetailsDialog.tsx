@@ -66,6 +66,15 @@ const PlanDetailsDialog = ({
   const isDisabled = selectedPlan.status === 'completed' || selectedPlan.status === 'cancelled';
   const isPaused = isPlanPaused(selectedPlan);
 
+  // Function to handle row click and navigate to payment details
+  const handleRowClick = (installment: PlanInstallment, e: React.MouseEvent) => {
+    // Only trigger click for paid installments and don't navigate when clicking action buttons
+    if (installment.status === 'paid' && !e.defaultPrevented) {
+      console.log("Row clicked for installment:", installment.id);
+      onViewPaymentDetails(installment);
+    }
+  };
+
   return (
     <Sheet open={showPlanDetails} onOpenChange={setShowPlanDetails}>
       <SheetContent className="w-full sm:max-w-lg md:max-w-2xl overflow-y-auto">
@@ -147,12 +156,7 @@ const PlanDetailsDialog = ({
                     {installments.map((installment) => (
                       <TableRow 
                         key={installment.id}
-                        onClick={(e) => {
-                          // Only trigger click for paid installments and don't navigate when clicking action buttons
-                          if (installment.status === 'paid' && !e.defaultPrevented) {
-                            onViewPaymentDetails(installment);
-                          }
-                        }}
+                        onClick={(e) => handleRowClick(installment, e)}
                         className={installment.status === 'paid' ? 
                           "cursor-pointer hover:bg-muted transition-colors" : ""}
                       >
@@ -161,7 +165,8 @@ const PlanDetailsDialog = ({
                         <TableCell>
                           <StatusBadge 
                             status={installment.status as StatusType} 
-                            originalStatus={installment.originalStatus as string | undefined} 
+                            originalStatus={installment.originalStatus as string | undefined}
+                            manualPayment={installment.manualPayment}
                           />
                         </TableCell>
                         <TableCell>
