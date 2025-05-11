@@ -1,5 +1,5 @@
 
-import { toast as sonnerToast, ToastT, useToaster } from "sonner";
+import { toast as sonnerToast, Toaster, Toast } from "sonner";
 
 type ToastProps = {
   title?: string;
@@ -8,9 +8,12 @@ type ToastProps = {
 };
 
 // Create a custom useToast hook that provides the toast functionality
+// Since sonner doesn't export useToaster, we'll create a minimal implementation
 export const useToast = () => {
-  const { toasts } = useToaster();
-  return { toasts };
+  // Return an empty toasts array since we're using the direct toast function
+  return { 
+    toasts: [] as Toast[] 
+  };
 };
 
 export const toast = {

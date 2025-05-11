@@ -16,7 +16,7 @@ import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { Toaster } from "sonner"; // Update to use sonner directly
+import { Toaster } from "@/components/ui/sonner";
 
 const ManagePlansHeader: React.FC<{
   isTemplateView: boolean;
@@ -146,8 +146,8 @@ const ManagePlansPageContent: React.FC = () => {
         onPlanCreated={refreshTemplates}
       />
       
-      {/* Use Toaster directly from sonner */}
-      <Toaster richColors />
+      {/* Use the Toaster component from our UI components */}
+      <Toaster />
     </>
   );
 };
