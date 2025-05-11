@@ -216,8 +216,8 @@ export class PlanPaymentService {
               // Remove the id property as it's not in the expected type
               reference: paymentRef, // Use payment_ref instead of id
               amount: installment.amount / 100, // Convert to decimal currency
-              message: `Manual payment for installment #${installment.payment_number}`,
-              manual_payment: true
+              message: `Manual payment for installment #${installment.payment_number}`
+              // Remove the manual_payment property as it's not in the expected type
             },
             plan: {
               id: installment.plan_id,
