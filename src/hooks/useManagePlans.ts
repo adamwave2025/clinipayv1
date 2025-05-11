@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plan } from '@/utils/planTypes';
@@ -73,7 +72,11 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleMarkAsPaid,
     handleOpenReschedule,
     handleReschedulePayment,
-    handleTakePayment // Include the new function from the hook
+    handleTakePayment,
+    showMarkAsPaidDialog,
+    setShowMarkAsPaidDialog,
+    confirmMarkAsPaid,
+    selectedInstallment
   } = useInstallmentActions(
     selectedPlan?.id || '',
     async () => {
@@ -214,7 +217,12 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleMarkAsPaid,
     handleOpenReschedule,
     handleReschedulePayment,
-    handleTakePayment, // Include the new function in the returned object
+    handleTakePayment,
+    
+    // Add mark as paid dialog state and handlers
+    showMarkAsPaidDialog,
+    setShowMarkAsPaidDialog,
+    confirmMarkAsPaid,
     
     // Refund properties
     refundDialogOpen,

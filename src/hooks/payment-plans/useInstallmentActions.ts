@@ -20,14 +20,36 @@ export const useInstallmentActions = (
   const handleMarkAsPaid = async (installmentId: string) => {
     try {
       // Find the installment data to display in the confirmation dialog
-      const { data: installment } = await supabase
-        .from('payment_plan_installments')
+      // Use payment_schedule table instead of payment_plan_installments
+      const { data: installment, error } = await supabase
+        .from('payment_schedule')
         .select('*')
         .eq('id', installmentId)
         .single();
         
+      if (error) {
+        console.error('Error fetching installment details:', error);
+        toast.error('Could not find payment details');
+        return;
+      }
+        
       if (installment) {
-        setSelectedInstallment(installment as PlanInstallment);
+        // Convert to PlanInstallment type
+        const planInstallment: PlanInstallment = {
+          id: installment.id,
+          dueDate: installment.due_date,
+          amount: installment.amount,
+          status: installment.status,
+          paidDate: null,
+          paymentNumber: installment.payment_number,
+          totalPayments: installment.total_payments,
+          paymentRequestId: installment.payment_request_id,
+          originalStatus: installment.status,
+          plan_id: installment.plan_id,
+          manualPayment: false
+        };
+        
+        setSelectedInstallment(planInstallment);
         setSelectedInstallmentId(installmentId);
         setShowMarkAsPaidDialog(true);
       } else {
