@@ -99,7 +99,7 @@ export const useManagePlans = (): ManagePlansContextType => {
   const {
     showRescheduleDialog: showReschedulePaymentDialog,
     setShowRescheduleDialog: setShowReschedulePaymentDialog,
-    handleReschedulePayment: handleRescheduleIndividualPayment,
+    handleReschedulePayment: handleIndividualPaymentReschedule,
   } = usePaymentRescheduleActions(selectedPlan?.id || '', refreshInstallments);
   
   // Use specialized action hooks
@@ -157,7 +157,6 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleCreatePlanClick,
     handleViewPlansClick,
     handleSendReminder,
-    handleViewPaymentDetails,
     handleBackToPlans,
     
     // Installment action handlers
@@ -181,7 +180,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     // Payment rescheduling dialog properties
     showReschedulePaymentDialog,
     setShowReschedulePaymentDialog,
-    handleRescheduleIndividualPayment,
+    handleReschedulePayment: handleIndividualPaymentReschedule,
     
     // Include all plan action properties
     ...cancelActions,
