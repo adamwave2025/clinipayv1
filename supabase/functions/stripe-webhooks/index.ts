@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -338,8 +337,9 @@ serve(async (req) => {
                           newStatus = 'completed';
                         } 
                         // If some installments are paid but not all, mark as active (unless it's already overdue or paused)
-                        else if (paidInstallments > 0 && newStatus === 'pending') {
+                        else if (paidInstallments > 0 && (newStatus === 'pending' || newStatus === 'overdue')) {
                           newStatus = 'active';
+                          console.log('Setting plan status to active after payment');
                         }
                         
                         // Find the next due date from remaining unpaid installments
@@ -360,6 +360,9 @@ serve(async (req) => {
                           
                           if (unpaidEntry) {
                             nextDueDate = unpaidEntry.due_date;
+                            console.log(`Found next due date: ${nextDueDate} for plan ${scheduleData.plan_id}`);
+                          } else {
+                            console.log(`No more unpaid entries found for plan ${scheduleData.plan_id}`);
                           }
                           
                           // Check for overdue status on remaining entries
@@ -376,6 +379,16 @@ serve(async (req) => {
                           if (hasOverduePayments && newStatus !== 'paused' && newStatus !== 'cancelled') {
                             newStatus = 'overdue';
                           }
+                          
+                          console.log({
+                            action: 'updating_plan_record',
+                            plan_id: scheduleData.plan_id,
+                            paid_installments: paidInstallments,
+                            progress: progress,
+                            next_due_date: nextDueDate,
+                            status: newStatus,
+                            has_overdue_payments: hasOverduePayments
+                          });
                           
                           // Update the plan with new values
                           const { error: planUpdateError } = await supabase
