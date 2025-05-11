@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -9,7 +8,7 @@ import { PlanOperationsService } from '@/services/PlanOperationsService';
  * Hook for managing payment plan actions like pause, resume, cancel, etc.
  * @deprecated This hook is being consolidated with useSharedPlanManagement to avoid duplication
  */
-export const usePlanActions = (refreshPlans: () => Promise<Plan[]>) => {
+export const usePlanActions = (refreshPlans: (userId?: string) => Promise<Plan[]>) => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   /**

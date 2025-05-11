@@ -39,7 +39,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     setStatusFilter
   } = usePlanFiltering(allPlans);
   
-  // Use action handlers
+  // Use action handlers with properly typed function params
   const {
     selectedPlan,
     showPlanDetails,
@@ -181,6 +181,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     // Payment rescheduling dialog properties
     showReschedulePaymentDialog,
     setShowReschedulePaymentDialog,
+    handleReschedulePayment: handleRescheduleIndividualPayment,
     
     // Include all plan action properties
     ...cancelActions,

@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
@@ -72,7 +71,7 @@ export const usePlanDataFetcher = () => {
     }
   }, []);
 
-  const fetchPlanInstallmentsData = useCallback(async (planId: string) => {
+  const fetchPlanInstallmentsData = useCallback(async (planId: string): Promise<PlanInstallment[]> => {
     console.log('Fetching installments for plan:', planId);
     setInstallments([]);  // Clear previous installments to avoid stale data
     

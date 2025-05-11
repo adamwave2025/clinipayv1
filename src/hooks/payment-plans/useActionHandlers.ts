@@ -6,7 +6,7 @@ import { usePlanDetailsView } from './usePlanDetailsView';
 /**
  * Hook for handling various plan actions
  */
-export const useActionHandlers = (fetchPaymentPlans: (userId: string) => Promise<Plan[]>, fetchPlanInstallmentsData: (planId: string) => Promise<void>) => {
+export const useActionHandlers = (fetchPaymentPlans: (userId: string) => Promise<Plan[]>, fetchPlanInstallmentsData: (planId: string) => Promise<any[]>) => {
   // Use plan details view hook
   const { 
     selectedPlan, 
@@ -18,11 +18,20 @@ export const useActionHandlers = (fetchPaymentPlans: (userId: string) => Promise
     handleBackToPlans
   } = usePlanDetailsView();
   
-  // Pass fetchPaymentPlans directly as it returns Promise<Plan[]>
+  // Create a wrapper for fetchPaymentPlans to match the expected signature
+  const wrappedFetchPlans = async (userId?: string) => {
+    if (!userId) {
+      console.error('No userId provided to wrappedFetchPlans');
+      return [];
+    }
+    return fetchPaymentPlans(userId);
+  };
+  
+  // Pass the wrapped function to usePlanActions
   const { 
     isProcessing,
     handleSendReminder: sendReminder
-  } = usePlanActions(fetchPaymentPlans);
+  } = usePlanActions(wrappedFetchPlans);
 
   const handleViewPlanDetails = async (plan: Plan) => {
     console.log('useActionHandlers.handleViewPlanDetails called with plan:', plan.id);
