@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -10,6 +11,7 @@ import { usePlanDetailsView } from '@/hooks/payment-plans/usePlanDetailsView';
 import { useInstallmentActions } from '@/hooks/payment-plans/useInstallmentActions';
 import { useInstallmentHandler } from '@/hooks/payment-plans/useInstallmentHandler';
 import { usePlanResumeActions } from '@/hooks/payment-plans/usePlanResumeActions';
+import { usePlanRescheduleActions } from '@/hooks/payment-plans/usePlanRescheduleActions';
 
 export const ManagePlansProvider: React.FC<{
   children: React.ReactNode;
@@ -29,6 +31,9 @@ export const ManagePlansProvider: React.FC<{
     fetchPaymentPlans, 
     fetchPlanInstallmentsData 
   } = usePlanDataFetcher();
+  
+  // Add state for template view
+  const [isTemplateView, setIsTemplateView] = useState(false);
   
   // Create a refresh function for use after operations
   const refreshData = async () => {
@@ -77,6 +82,14 @@ export const ManagePlansProvider: React.FC<{
       }
     }
   );
+  
+  // Use the plan reschedule hook with the setIsTemplateView function
+  const rescheduleActions = usePlanRescheduleActions(
+    selectedPlan, 
+    setShowPlanDetails, 
+    refreshData,
+    setIsTemplateView  // Pass setIsTemplateView to the hook
+  );
 
   // Apply filters to get the filtered plans
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -116,9 +129,10 @@ export const ManagePlansProvider: React.FC<{
   useEffect(() => {
     console.log("ManagePlansProvider: Plan details state changed:", { 
       showPlanDetails, 
-      selectedPlan: selectedPlan?.id 
+      selectedPlan: selectedPlan?.id,
+      isTemplateView
     });
-  }, [showPlanDetails, selectedPlan]);
+  }, [showPlanDetails, selectedPlan, isTemplateView]);
   
   // Set up properties for plan action dialogs
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -158,41 +172,37 @@ export const ManagePlansProvider: React.FC<{
   const handleCancelPlan = async () => {
     console.log("Cancel plan action called");
     setShowCancelDialog(false);
-    // Actual implementation would go here
+    // Always reset to patient plans view after operations
+    setIsTemplateView(false);
   };
   
   const handlePausePlan = async () => {
     console.log("Pause plan action called");
     setShowPauseDialog(false);
-    // Actual implementation would go here
+    // Always reset to patient plans view after operations
+    setIsTemplateView(false);
   };
   
-  const handleReschedulePlan = async () => {
-    console.log("Reschedule plan action called");
-    setShowRescheduleDialog(false);
-    // Actual implementation would go here
+  // Create a handler that returns to patient plans view after reschedule
+  const handleReschedulePlan = async (newStartDate: Date) => {
+    await rescheduleActions.handleReschedulePlan(newStartDate);
+    // The reschedule hook will now handle setIsTemplateView
   };
   
   // Create a wrapper function that adapts the signature
   const handleOpenRescheduleDialog = () => {
-    // If we need an installmentId, we could potentially use the selectedInstallment
-    // This depends on how the component is being used
-    if (selectedInstallment) {
-      handleOpenReschedule(selectedInstallment.id);
-    } else {
-      console.warn("Cannot open reschedule dialog: No installment selected");
-    }
+    rescheduleActions.handleOpenRescheduleDialog();
   };
   
   const processRefund = async () => {
     console.log("Process refund action called");
     setRefundDialogOpen(false);
-    // Actual implementation would go here
+    // Always reset to patient plans view after operations
+    setIsTemplateView(false);
   };
   
   const handleSendReminder = async () => {
     console.log("Send reminder action called");
-    // Actual implementation would go here
   };
 
   return (
@@ -270,8 +280,9 @@ export const ManagePlansProvider: React.FC<{
         handleOpenResumeDialog,
         hasSentPayments,
         
-        showRescheduleDialog,
-        setShowRescheduleDialog,
+        // Use reschedule actions from the hook
+        showRescheduleDialog: rescheduleActions.showRescheduleDialog,
+        setShowRescheduleDialog: rescheduleActions.setShowRescheduleDialog,
         handleReschedulePlan,
         handleOpenRescheduleDialog,
         hasOverduePayments,
@@ -279,7 +290,7 @@ export const ManagePlansProvider: React.FC<{
         
         // Plan state helpers
         isPlanPaused,
-        isProcessing,
+        isProcessing: isProcessing || rescheduleActions.isProcessing,
         resumeError
       }}
     >

@@ -8,7 +8,8 @@ import { toast } from 'sonner';
 export const usePlanRescheduleActions = (
   selectedPlan: Plan | null,
   setShowPlanDetails: (show: boolean) => void,
-  refreshData?: () => Promise<void> // Add optional refreshData parameter
+  refreshData?: () => Promise<void>, // Add optional refreshData parameter
+  setIsTemplateView?: (isTemplate: boolean) => void // Add optional setIsTemplateView parameter
 ) => {
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [hasSentPayments, setHasSentPayments] = useState(false);
@@ -74,8 +75,15 @@ export const usePlanRescheduleActions = (
           await refreshData();
         }
         
+        // Ensure we close the dialog and return to patient plans view
         setShowRescheduleDialog(false);
         setShowPlanDetails(false); // Close the plan details modal
+        
+        // Explicitly set view back to patient plans (not templates)
+        if (setIsTemplateView) {
+          console.log("Resetting view to patient plans after successful reschedule");
+          setIsTemplateView(false);
+        }
       } else {
         toast.error('Failed to reschedule payment plan');
       }

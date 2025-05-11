@@ -147,6 +147,7 @@ const ManagePlansPageContent: React.FC = () => {
   );
 };
 
+// Render a ManagePlansProvider that wraps the content and passes setIsTemplateView
 const ManagePlansPage: React.FC = () => {
   console.log("Rendering ManagePlansPage");
   
