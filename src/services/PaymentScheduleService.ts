@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -107,12 +108,22 @@ export const fetchPlanInstallments = async (planId: string) => {
       data.forEach(item => {
         // Log detailed payment information for debugging
         console.log(`Installment ${item.id} (status: ${item.status}):`);
-        if (item.payments && item.payments.length > 0) {
-          console.log(`  Direct payment found: paid_at=${item.payments[0]?.paid_at}, manual=${item.payments[0]?.manual_payment}`);
+        if (item.payments && Array.isArray(item.payments) && item.payments.length > 0) {
+          const payment = item.payments[0];
+          if (payment && typeof payment === 'object') {
+            console.log(`  Direct payment found: paid_at=${payment.paid_at}, manual=${payment.manual_payment}`);
+          }
         }
         if (item.payment_requests && item.payment_requests.payments) {
           console.log(`  Payment request data:`, item.payment_requests);
-          console.log(`  Payment via request: ${JSON.stringify(item.payment_requests.payments)}`);
+          
+          // Properly handle the payments object or array
+          const payments = item.payment_requests.payments;
+          if (Array.isArray(payments) && payments.length > 0) {
+            console.log(`  Payment via request (array): ${JSON.stringify(payments[0])}`);
+          } else if (typeof payments === 'object') {
+            console.log(`  Payment via request (object): ${JSON.stringify(payments)}`);
+          }
         }
       });
     }

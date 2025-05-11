@@ -39,25 +39,30 @@ export const formatPlanInstallments = (scheduleData: any[]): PlanInstallment[] =
       
       // First check direct payments
       if (item.payments && Array.isArray(item.payments) && item.payments.length > 0) {
-        console.log(`Direct payment found for ${item.id}:`, item.payments[0]);
-        paymentInfo = item.payments[0];
-        paymentDate = paymentInfo.paid_at;
-        isManualPayment = paymentInfo.manual_payment;
+        const payment = item.payments[0];
+        if (payment && typeof payment === 'object') {
+          console.log(`Direct payment found for ${item.id}:`, payment);
+          paymentInfo = payment;
+          paymentDate = payment.paid_at;
+          isManualPayment = !!payment.manual_payment;
+        }
       }
       // Then check payment requests -> payments
       else if (item.payment_requests && item.payment_requests.payments) {
         console.log(`Payment request payment found for ${item.id}:`, item.payment_requests.payments);
         
+        let payment = null;
         // Handle both array and object forms
-        if (Array.isArray(item.payment_requests.payments)) {
-          paymentInfo = item.payment_requests.payments[0];
-        } else {
-          paymentInfo = item.payment_requests.payments;
+        if (Array.isArray(item.payment_requests.payments) && item.payment_requests.payments.length > 0) {
+          payment = item.payment_requests.payments[0];
+        } else if (typeof item.payment_requests.payments === 'object') {
+          payment = item.payment_requests.payments;
         }
         
-        if (paymentInfo) {
-          paymentDate = item.payment_requests.paid_at || paymentInfo.paid_at;
-          isManualPayment = paymentInfo.manual_payment;
+        if (payment && typeof payment === 'object') {
+          paymentInfo = payment;
+          paymentDate = item.payment_requests.paid_at || payment.paid_at;
+          isManualPayment = !!payment.manual_payment;
         }
       }
       // Fallback to payment request info if available

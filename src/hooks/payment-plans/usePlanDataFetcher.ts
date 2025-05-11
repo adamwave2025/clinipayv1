@@ -97,12 +97,28 @@ export const usePlanDataFetcher = () => {
       // Use the PlanDataService to fetch installments directly
       const formattedInstallments = await PlanDataService.fetchPlanInstallments(plan);
       
-      console.log('Formatted installments:', formattedInstallments.length);
+      console.log('Formatted installments:', formattedInstallments);
       
-      if (formattedInstallments.length === 0) {
+      if (!formattedInstallments || formattedInstallments.length === 0) {
         console.warn('No installments returned for plan', planId);
-        toast.warning('No installments found for this plan');
+        
+        // Check if we have any raw data before formatting
+        const { data: rawData } = await supabase
+          .from('payment_schedule')
+          .select('*')
+          .eq('plan_id', planId);
+          
+        console.log('Raw payment schedule data:', rawData);
+        
+        if (!rawData || rawData.length === 0) {
+          toast.warning('No installments found for this plan');
+        } else {
+          // We have raw data but formatting failed
+          toast.error('Error formatting payment installments');
+          console.error('Formatting issue - Raw data exists but formatted data is empty');
+        }
       } else {
+        console.log('Setting installments:', formattedInstallments);
         setInstallments(formattedInstallments);
       }
       
