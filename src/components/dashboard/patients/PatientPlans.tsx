@@ -6,7 +6,7 @@ import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import StatusBadge from '@/components/common/StatusBadge';
-import { isPlanPaused } from '@/utils/planStatusUtils';
+import { isPlanPaused } from '@/utils/plan-status-utils';
 
 interface PatientPlansProps {
   patientId: string;
