@@ -73,7 +73,7 @@ export function useSendLinkPageState() {
     setIsProcessing(true);
     
     // Only show loading toast for regular payment links, not for payment plans
-    let loadingToast: string | undefined;
+    let loadingToast: string | number | undefined;
     if (!isPaymentPlan) {
       loadingToast = toast.loading('Processing payment request...');
     }
