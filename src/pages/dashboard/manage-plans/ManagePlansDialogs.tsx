@@ -57,6 +57,7 @@ export const ManagePlansDialogs = () => {
     onPaymentUpdated
   } = useManagePlansContext();
 
+  // Detailed debugging to track state and data flow
   console.log('ManagePlansDialogs rendering with selectedPlan:', selectedPlan?.id);
   console.log('Dialog states:', {
     showCancelDialog,
@@ -68,6 +69,8 @@ export const ManagePlansDialogs = () => {
     showTakePaymentDialog,
     refundDialogOpen
   });
+  
+  console.log('Selected installment data:', selectedInstallment);
   
   // Enhanced debug for selected installment when take payment dialog should show
   useEffect(() => {
@@ -83,6 +86,7 @@ export const ManagePlansDialogs = () => {
     }
   }, [showTakePaymentDialog, selectedInstallment, setShowTakePaymentDialog]);
 
+  // Early return if no plan is selected
   if (!selectedPlan) {
     console.log('No selectedPlan, returning null from ManagePlansDialogs');
     return null;
@@ -92,13 +96,16 @@ export const ManagePlansDialogs = () => {
   const patientName = selectedPlan.patientName || '';
   const patientEmail = selectedPlan.patientEmail || ''; 
 
-  // Validate installment data before rendering TakePaymentDialog
-  const canShowPaymentDialog = selectedInstallment && 
-                               selectedInstallment.amount && 
-                               showTakePaymentDialog;
-
-  // This will hold any error handling JSX for missing installment data
-  // FIXED: Use a proper conditional render approach instead of React.Fragment
+  // IMPROVED: More comprehensive validation for installment data
+  const canShowPaymentDialog = Boolean(
+    selectedInstallment && 
+    typeof selectedInstallment === 'object' &&
+    selectedInstallment.id &&
+    selectedInstallment.amount &&
+    showTakePaymentDialog
+  );
+  
+  // Error handling function that returns null instead of void
   const renderMissingInstallmentHandler = () => {
     if (showTakePaymentDialog && !canShowPaymentDialog) {
       // Log the error
@@ -190,9 +197,10 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* FIXED: Enhanced Take Payment dialog with comprehensive validation */}
+      {/* IMPROVED: More robust conditional rendering for TakePaymentDialog */}
       {canShowPaymentDialog && (
         <TakePaymentDialog
+          key={`payment-dialog-${selectedInstallment?.id}`} // Force re-render on installment change
           open={showTakePaymentDialog}
           onOpenChange={(open) => {
             console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
@@ -201,15 +209,15 @@ export const ManagePlansDialogs = () => {
             }
             setShowTakePaymentDialog(open);
           }}
-          paymentId={selectedInstallment.id}
+          paymentId={selectedInstallment?.id}
           patientName={patientName}
           patientEmail={patientEmail}
-          amount={selectedInstallment.amount}
+          amount={selectedInstallment?.amount}
           onPaymentProcessed={onPaymentUpdated}
         />
       )}
       
-      {/* Handle missing installment data with useEffect instead of conditional rendering */}
+      {/* Handle missing installment data with our helper function */}
       {renderMissingInstallmentHandler()}
       
       {paymentToRefund && (

@@ -54,6 +54,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
       id: i.id, 
       status: i.status, 
       paymentNumber: i.paymentNumber,
+      totalPayments: i.totalPayments,
       paidDate: i.paidDate,
       amount: i.amount,
       dueDate: i.dueDate,
@@ -74,18 +75,32 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
     onReschedule(paymentId);
   };
 
-  // FIXED: Updated handler to directly pass through to parent without wrapping
+  // IMPROVED: Better validation and error handling for take payment action
   const handleTakePayment = onTakePayment ? (paymentId: string, installment: PlanInstallment) => {
-    console.log("PlanPaymentsList: Take payment clicked for payment:", paymentId, installment);
+    console.log("PlanPaymentsList: Take payment clicked for payment:", paymentId);
+    console.log("PlanPaymentsList: Full installment data:", JSON.stringify(installment, null, 2));
     
-    if (!installment.amount) {
-      toast.error(`Missing amount data for payment ${paymentId}`);
+    if (!installment || !installment.amount) {
+      toast.error(`Missing payment data for payment ${paymentId}`);
       console.error("Missing amount data for installment:", installment);
       return;
     }
     
-    toast.info(`Initiating Take Payment workflow for ${formatCurrency(installment.amount)}`);
-    onTakePayment(paymentId, installment);
+    // Ensure we pass ALL necessary data to the parent component
+    const completeInstallment: PlanInstallment = {
+      ...installment,
+      id: paymentId, // Ensure ID is set and matches
+      amount: installment.amount,
+      paymentNumber: installment.paymentNumber,
+      totalPayments: installment.totalPayments,
+      status: installment.status,
+      dueDate: installment.dueDate,
+      // Include any other fields that might be needed
+    };
+    
+    toast.info(`Initiating Take Payment workflow for ${formatCurrency(completeInstallment.amount)}`);
+    console.log("PlanPaymentsList: Passing complete installment to parent:", completeInstallment);
+    onTakePayment(paymentId, completeInstallment);
   } : undefined;
 
   return (

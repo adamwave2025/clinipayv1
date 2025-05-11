@@ -27,15 +27,21 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
   onReschedule,
   onTakePayment
 }) => {
-  // FIXED: Enhanced handling with better logging and validation
+  // IMPROVED: Enhanced data validation and better debug logging
   const handleTakePayment = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
     console.log("PaymentActionMenu: Take payment clicked for ID:", paymentId);
-    console.log("PaymentActionMenu: Full installment data:", installment);
+    console.log("PaymentActionMenu: Full installment data:", JSON.stringify(installment, null, 2));
     
-    if (!installment || !installment.amount) {
+    if (!installment || typeof installment !== 'object') {
+      toast.error(`Cannot process payment: Missing installment data`);
+      console.error("PaymentActionMenu: Invalid installment object:", installment);
+      return;
+    }
+    
+    if (!installment.amount) {
       toast.error(`Cannot process payment: Missing amount data`);
       console.error("PaymentActionMenu: Missing amount in installment:", installment);
       return;
@@ -47,9 +53,22 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
       return;
     }
     
-    // Call the handler with both required parameters
+    // Ensure we have a complete installment object by creating a safety copy
+    const safeInstallment: PlanInstallment = {
+      ...installment,
+      id: paymentId, // Ensure ID is set
+      // Set fallback values for any potentially missing properties
+      amount: installment.amount,
+      paymentNumber: installment.paymentNumber || 1,
+      totalPayments: installment.totalPayments || 1,
+      dueDate: installment.dueDate || new Date().toISOString(),
+      status: installment.status || 'pending'
+    };
+    
+    // Call the handler with both required parameters and the enhanced installment data
     toast.info(`Take Payment action triggered for payment ${paymentId}`);
-    onTakePayment(paymentId, installment);
+    console.log("PaymentActionMenu: Passing complete installment data:", safeInstallment);
+    onTakePayment(paymentId, safeInstallment);
   };
 
   return (

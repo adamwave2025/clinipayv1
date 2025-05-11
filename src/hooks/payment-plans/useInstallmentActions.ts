@@ -43,18 +43,32 @@ export const useInstallmentActions = (
       return;
     }
     
-    toast.info(`Opening payment dialog for ${formatCurrency(installmentDetails.amount)}`);
+    // FIXED: First update the selectedInstallment state
+    console.log("[useInstallmentActions] Setting selectedInstallment with complete data:", installmentDetails);
     
-    // FIXED: Update both states synchronously without setTimeout
-    console.log("[useInstallmentActions] Setting selectedInstallment to:", installmentDetails);
-    setSelectedInstallment(installmentDetails);
-    setShowTakePaymentDialog(true);
+    // Ensure we have a complete installment object with all necessary data
+    const completeInstallment = {
+      ...installmentDetails,
+      id: paymentId,
+      // Make sure these fields are defined if they're used in the dialog
+      amount: installmentDetails.amount,
+      paymentNumber: installmentDetails.paymentNumber || 1,
+      totalPayments: installmentDetails.totalPayments || 1,
+      dueDate: installmentDetails.dueDate || new Date().toISOString(),
+    };
     
-    // Debug log to confirm state after update
-    console.log("[useInstallmentActions] States set:", {
-      showTakePaymentDialog: true, 
-      selectedInstallment: installmentDetails
-    });
+    // Important: Set the state first, THEN show the dialog
+    setSelectedInstallment(completeInstallment);
+    
+    // Add a small delay before showing the dialog to ensure state is updated
+    // This is a safer approach than what we had before
+    setTimeout(() => {
+      toast.info(`Opening payment dialog for ${formatCurrency(completeInstallment.amount)}`);
+      setShowTakePaymentDialog(true);
+      
+      // Debug log to confirm state after update
+      console.log("[useInstallmentActions] Dialog opened with installment:", completeInstallment);
+    }, 50);
   };
   
   const confirmMarkAsPaid = async () => {
