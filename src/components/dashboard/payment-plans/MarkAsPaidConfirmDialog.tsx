@@ -76,7 +76,7 @@ const MarkAsPaidConfirmDialog: React.FC<MarkAsPaidConfirmDialogProps> = ({
           <Button 
             onClick={handleConfirm}
             disabled={isLoading}
-            className="relative"
+            className="btn-gradient relative"
           >
             {isLoading ? (
               <>
