@@ -539,7 +539,6 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
-          has_overdue_payments: boolean
           id: string
           installment_amount: number
           next_due_date: string | null
@@ -560,7 +559,6 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
-          has_overdue_payments?: boolean
           id?: string
           installment_amount: number
           next_due_date?: string | null
@@ -581,7 +579,6 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
-          has_overdue_payments?: boolean
           id?: string
           installment_amount?: number
           next_due_date?: string | null

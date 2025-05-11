@@ -298,7 +298,7 @@ export class PlanStatusService {
           Old status: ${planData.status},
           New status: ${newStatus}`);
         
-        // Update the plan without the has_overdue_payments field
+        // Update the plan status
         const { error: updateError } = await supabase
           .from('plans')
           .update({

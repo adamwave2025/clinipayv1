@@ -221,7 +221,7 @@ export const useSharedPlanManagement = () => {
         // Get updated plan details
         const { data: updatedPlan, error } = await supabase
           .from('plans')
-          .select('start_date, next_due_date, has_overdue_payments')
+          .select('start_date, next_due_date')
           .eq('id', selectedPlan.id)
           .single();
         
@@ -232,7 +232,6 @@ export const useSharedPlanManagement = () => {
           setSelectedPlan({
             ...selectedPlan,
             status: status || selectedPlan.status,
-            hasOverduePayments: updatedPlan.has_overdue_payments,
             startDate: updatedPlan.start_date,
             nextDueDate: updatedPlan.next_due_date
           });
