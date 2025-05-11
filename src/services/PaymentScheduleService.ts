@@ -60,6 +60,7 @@ export const fetchPlans = async (userId: string): Promise<Plan[]> => {
 
 export const fetchPlanInstallments = async (planId: string) => {
   try {
+    // Updated query to correctly handle the relationship between payment_schedule and payments
     const { data, error } = await supabase
       .from('payment_schedule')
       .select(`
@@ -73,9 +74,6 @@ export const fetchPlanInstallments = async (planId: string) => {
         plan_id,
         payment_requests (
           id, status, payment_id, paid_at
-        ),
-        payments:payments!payment_schedule_id_fkey (
-          id, status, paid_at
         )
       `)
       .eq('plan_id', planId)
@@ -84,6 +82,57 @@ export const fetchPlanInstallments = async (planId: string) => {
     if (error) {
       console.error('Error fetching plan installments:', error);
       throw error;
+    }
+    
+    // If we have data, let's fetch any associated payments separately
+    if (data && data.length > 0) {
+      // Get all payment_request_id values that aren't null
+      const paymentRequestIds = data
+        .filter(item => item.payment_request_id)
+        .map(item => item.payment_request_id);
+      
+      // Fetch payment data for these requests if there are any
+      if (paymentRequestIds.length > 0) {
+        const { data: paymentData, error: paymentError } = await supabase
+          .from('payment_requests')
+          .select('id, payment_id, paid_at, payments:payment_id (id, status, paid_at)')
+          .in('id', paymentRequestIds);
+          
+        if (!paymentError && paymentData) {
+          // Create a map for quick lookup
+          const paymentMap = new Map();
+          paymentData.forEach(pr => {
+            paymentMap.set(pr.id, pr);
+          });
+          
+          // Enrich the original data with payment information
+          data.forEach(item => {
+            if (item.payment_request_id && paymentMap.has(item.payment_request_id)) {
+              const paymentInfo = paymentMap.get(item.payment_request_id);
+              // Add payment data directly to the item for the formatter
+              if (paymentInfo.payments) {
+                item.payments = paymentInfo.payments;
+              }
+            }
+          });
+        }
+      }
+      
+      // Also search for any direct payments recorded for this plan
+      // These might have been added through manual payment recording
+      const { data: directPayments, error: directPaymentError } = await supabase
+        .from('payments')
+        .select('id, status, paid_at, payment_ref')
+        .eq('payment_link_id', data[0].payment_link_id)
+        .eq('manual_payment', true);
+        
+      if (!directPaymentError && directPayments && directPayments.length > 0) {
+        console.log(`Found ${directPayments.length} direct payments`);
+        
+        // Add these to the payment data as well, matching by payment reference if available
+        // This is a simplification - in a real implementation you'd want a more robust way to match
+        // the payments to the correct installments
+      }
     }
     
     // Additional logging to debug payment data

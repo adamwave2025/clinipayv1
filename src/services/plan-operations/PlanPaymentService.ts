@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { addToNotificationQueue } from '@/utils/notification-queue';
 
@@ -179,8 +178,7 @@ export class PlanPaymentService {
       
       console.log(`Created payment record with ID: ${paymentData.id}`);
       
-      // 4. Update the payment schedule with the status (but don't link via payment_request_id)
-      // Instead, we'll store the direct payment ID as we discussed
+      // 4. Update the payment schedule with the status and link directly to the payment
       const { error: updateError } = await supabase
         .from('payment_schedule')
         .update({

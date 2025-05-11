@@ -24,12 +24,25 @@ export interface PlanInstallment {
 export const formatPlanInstallments = (installments: any[]): PlanInstallment[] => {
   return installments.map(installment => {
     // First check if we have a payment_request with a paid date
-    // Then check if we have a direct payment with a paid date
-    // This ensures we handle both payment paths
-    const paidDate = 
-      installment.payment_requests?.paid_at || 
-      installment.payments?.paid_at || 
-      null;
+    // This is the primary way to get the paid date for an installment
+    let paidDate = null;
+    let paymentId = null;
+    
+    // Check payment_requests path first
+    if (installment.payment_requests?.paid_at) {
+      paidDate = installment.payment_requests.paid_at;
+      
+      // If payment_requests has a payment_id, use that
+      if (installment.payment_requests.payment_id) {
+        paymentId = installment.payment_requests.payment_id;
+      }
+    }
+    
+    // Check direct payments path second
+    if (!paidDate && installment.payments?.paid_at) {
+      paidDate = installment.payments.paid_at;
+      paymentId = installment.payments.id;
+    }
       
     return {
       id: installment.id,
@@ -40,7 +53,7 @@ export const formatPlanInstallments = (installments: any[]): PlanInstallment[] =
       paymentNumber: installment.payment_number,
       totalPayments: installment.total_payments,
       paymentRequestId: installment.payment_request_id,
-      paymentId: installment.payment_id, // Include direct payment ID if available
+      paymentId: paymentId,
       originalStatus: installment.original_status || installment.status
     };
   });
