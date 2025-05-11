@@ -1,3 +1,4 @@
+
 import { Payment, PaymentLink } from '@/types/payment';
 import { formatDate } from '@/utils/formatters';
 
@@ -37,8 +38,12 @@ export function usePaymentFormatter() {
         paymentLinkId = payment.payment_links.id;
       }
       
+      // Calculate net amount if not provided
+      const netAmount = payment.net_amount || (payment.amount_paid - (payment.platform_fee || 0));
+      
       return {
         id: payment.id,
+        clinicId: payment.clinic_id || '', // Add the required clinicId property
         patientName: payment.patient_name || 'Unknown Patient',
         patientEmail: payment.patient_email,
         patientPhone: payment.patient_phone || undefined,
@@ -46,14 +51,19 @@ export function usePaymentFormatter() {
         platformFee: payment.platform_fee || 0, // Raw amount in pence/cents - do NOT divide by 100
         date: formatDate(paidDate),
         status: payment.status as any || 'paid',
+        netAmount: netAmount, // Add the required netAmount property
+        paymentMethod: payment.payment_method || 'card', // Add the required paymentMethod property
         type: paymentType,
         linkTitle,
         description,
         paymentLinkId,
         reference: payment.payment_ref || undefined,
+        paymentReference: payment.payment_ref || undefined,
+        manualPayment: payment.manual_payment || false,
         // Include refundedAmount for both partially_refunded and refunded statuses
         ...(payment.status === 'partially_refunded' && { refundedAmount: payment.refund_amount || 0 }),
-        ...(payment.status === 'refunded' && { refundedAmount: payment.refund_amount || 0 })
+        ...(payment.status === 'refunded' && { refundedAmount: payment.refund_amount || 0 }),
+        stripePaymentId: payment.stripe_payment_id
       };
     });
   };
@@ -118,19 +128,25 @@ export function usePaymentFormatter() {
 
       return {
         id: request.id,
+        clinicId: request.clinic_id || '', // Add the required clinicId property
         patientName: request.patient_name || 'Unknown Patient',
         patientEmail: request.patient_email,
         patientPhone: request.patient_phone || undefined,
         amount, // Raw amount in pence/cents - do NOT divide by 100
         date: formatDate(sentDate),
         status: 'sent' as Payment['status'],  // Fix the type error by specifying the exact status
+        netAmount: amount, // For requests, net amount is the same as amount
+        paymentMethod: 'link', // Add the required paymentMethod property for requests
         type: paymentType,
         linkTitle,
         description,
         message: request.message,
         paymentUrl,
         isCustomAmount,
-        paymentLinkId
+        paymentLinkId,
+        paymentReference: request.id, // Use request ID as reference
+        reference: request.id, // Use request ID as reference
+        manualPayment: false // Requests are never manual payments
       };
     });
     
