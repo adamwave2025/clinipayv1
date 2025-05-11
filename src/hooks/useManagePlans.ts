@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plan } from '@/utils/planTypes';
@@ -76,7 +77,8 @@ export const useManagePlans = (): ManagePlansContextType => {
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
-    selectedInstallment
+    // Remove the duplicate declaration of selectedInstallment here
+    // as it's already declared in useInstallmentHandler above
   } = useInstallmentActions(
     selectedPlan?.id || '',
     async () => {
