@@ -1,3 +1,4 @@
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { generatePaymentReference } from "./utils.ts";
@@ -139,23 +140,47 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
     
     // If this payment is for a payment request, get the associated payment_link_id
     let associatedPaymentLinkId = paymentLinkId;
+    let payment_schedule_id = null; // Initialize payment_schedule_id variable
     
     if (requestId) {
       console.log(`Payment is for request ID: ${requestId}, checking for associated payment link...`);
       
-      const { data: requestData, error: requestError } = await supabaseClient
-        .from("payment_requests")
-        .select("payment_link_id")
-        .eq("id", requestId)
+      // First check if this payment request is associated with a payment schedule entry
+      const { data: scheduleData, error: scheduleError } = await supabaseClient
+        .from("payment_schedule")
+        .select("id, payment_link_id")
+        .eq("payment_request_id", requestId)
         .maybeSingle();
         
-      if (requestError) {
-        console.error("Error fetching payment request data:", requestError);
-      } else if (requestData && requestData.payment_link_id) {
-        associatedPaymentLinkId = requestData.payment_link_id;
-        console.log(`Found associated payment link ID: ${associatedPaymentLinkId} from payment request`);
+      if (scheduleError) {
+        console.error("Error fetching payment schedule data:", scheduleError);
+      } else if (scheduleData) {
+        // If we found a payment schedule entry, store its ID to link directly to the payment
+        console.log(`Found payment schedule entry ${scheduleData.id} for payment request ${requestId}`);
+        payment_schedule_id = scheduleData.id;
+        
+        if (scheduleData.payment_link_id) {
+          associatedPaymentLinkId = scheduleData.payment_link_id;
+          console.log(`Using payment_link_id ${associatedPaymentLinkId} from payment schedule`);
+        }
       } else {
-        console.log("No payment link ID found in payment request");
+        // Fall back to checking the payment request table
+        console.log("No payment schedule found, checking payment request table for link ID");
+        
+        const { data: requestData, error: requestError } = await supabaseClient
+          .from("payment_requests")
+          .select("payment_link_id")
+          .eq("id", requestId)
+          .maybeSingle();
+          
+        if (requestError) {
+          console.error("Error fetching payment request data:", requestError);
+        } else if (requestData && requestData.payment_link_id) {
+          associatedPaymentLinkId = requestData.payment_link_id;
+          console.log(`Found associated payment link ID: ${associatedPaymentLinkId} from payment request`);
+        } else {
+          console.log("No payment link ID found in payment request");
+        }
       }
     }
     
@@ -173,7 +198,8 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
       stripe_payment_id: paymentIntent.id,
       stripe_fee: stripeFeeInCents, // Store as integer (cents)
       net_amount: netAmountInCents, // Store net amount as integer (cents)
-      platform_fee: platformFeeInCents, // Store platform fee as integer (cents)
+      platform_fee: platformFeeInCents, // Store platform fee as integer (cents),
+      payment_schedule_id: payment_schedule_id // Add the payment schedule ID if available
     };
 
     console.log("Inserting payment record:", JSON.stringify(paymentData));

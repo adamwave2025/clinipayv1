@@ -54,7 +54,7 @@ export class PlanDataService {
         let paidDate = null;
         
         try {
-          // First check for direct payment links
+          // IMPROVED: First check for direct payment links using payment_schedule_id
           const { data: directPaymentData } = await supabase
             .from('payments')
             .select('id, manual_payment, paid_at, status')
@@ -62,32 +62,37 @@ export class PlanDataService {
             .maybeSingle();
             
           if (directPaymentData) {
-            // We found a payment directly linked to this schedule item
+            // We found a payment directly linked to this schedule item via payment_schedule_id
+            console.log(`Found payment directly linked to schedule item ${item.id} using payment_schedule_id`);
             paymentData = directPaymentData;
             manualPayment = !!directPaymentData.manual_payment;
             paidDate = directPaymentData.paid_at;
-          } else if (item.payment_request_id) {
-            // Fall back to legacy path via payment_request if no direct link found
-            const { data: requestData } = await supabase
-              .from('payment_requests')
-              .select('id, payment_id, paid_at, status')
-              .eq('id', item.payment_request_id)
-              .maybeSingle();
-              
-            if (requestData && requestData.payment_id) {
-              const { data: paymentInfo } = await supabase
-                .from('payments')
-                .select('id, manual_payment, paid_at, status')
-                .eq('id', requestData.payment_id)
+          } else {
+            // Fall back to checking via payment_request_id if no direct link found
+            // This fallback helps with historical data before payment_schedule_id was added
+            if (item.payment_request_id) {
+              console.log(`No direct payment link found for schedule ${item.id}, checking via payment_request`);
+              const { data: requestData } = await supabase
+                .from('payment_requests')
+                .select('id, payment_id, paid_at, status')
+                .eq('id', item.payment_request_id)
                 .maybeSingle();
                 
-              if (paymentInfo) {
-                paymentData = paymentInfo;
-                manualPayment = !!paymentInfo.manual_payment;
-                paidDate = paymentInfo.paid_at;
-              } else if (requestData.paid_at) {
-                // Fallback to request data if available
-                paidDate = requestData.paid_at;
+              if (requestData && requestData.payment_id) {
+                const { data: paymentInfo } = await supabase
+                  .from('payments')
+                  .select('id, manual_payment, paid_at, status')
+                  .eq('id', requestData.payment_id)
+                  .maybeSingle();
+                  
+                if (paymentInfo) {
+                  paymentData = paymentInfo;
+                  manualPayment = !!paymentInfo.manual_payment;
+                  paidDate = paymentInfo.paid_at;
+                } else if (requestData.paid_at) {
+                  // Fallback to request data if available
+                  paidDate = requestData.paid_at;
+                }
               }
             }
           }
