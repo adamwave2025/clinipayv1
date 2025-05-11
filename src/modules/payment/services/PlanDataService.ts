@@ -15,7 +15,7 @@ export class PlanDataService {
    */
   static async fetchPlanInstallments(plan: Plan): Promise<PlanInstallment[]> {
     try {
-      // Get all payment schedules for this plan
+      // Get all payment schedules for this plan with direct join to payments table
       const { data, error } = await supabase
         .from('payment_schedule')
         .select(`
@@ -28,13 +28,21 @@ export class PlanDataService {
           payment_request_id,
           plan_id,
           payment_requests (
-            id, status, payment_id, paid_at
+            id, status, payment_id, paid_at,
+            payments:payment_id (
+              id, status, paid_at, manual_payment
+            )
+          ),
+          payments (
+            id, status, paid_at, manual_payment
           )
         `)
         .eq('plan_id', plan.id)
         .order('payment_number', { ascending: true });
         
       if (error) throw error;
+      
+      console.log('Raw installment data with payments:', data);
       
       // Use type assertion to handle potential type mismatch
       return formatPlanInstallments(data || []);

@@ -1,4 +1,3 @@
-
 import { format } from 'date-fns';
 
 // Define the PlanInstallment interface
@@ -12,8 +11,8 @@ export interface PlanInstallment {
   totalPayments: number;
   paymentRequestId?: string;
   originalStatus?: string;
-  paymentId?: string; // Add direct payment ID field
-  manualPayment?: boolean; // Add manualPayment property
+  paymentId?: string;
+  manualPayment?: boolean;
 }
 
 /**
@@ -26,38 +25,36 @@ export const formatPlanInstallments = (installments: any[]): PlanInstallment[] =
   console.log('Formatting installments, raw data:', installments);
   
   return installments.map(installment => {
-    // Only set paidDate if the installment status is actually 'paid'
+    // Default values
     let paidDate = null;
     let paymentId = null;
-    let manualPayment = false; // Initialize manualPayment flag
+    let manualPayment = false;
     
-    // Only proceed with getting the paid date if the status is 'paid'
-    if (installment.status === 'paid') {
-      // First check for direct payments linked to payment_schedule
-      if (installment.payments && installment.payments.length > 0) {
-        console.log('Found direct payments for installment:', installment.id, installment.payments);
-        paidDate = installment.payments[0].paid_at;
-        paymentId = installment.payments[0].id;
-        manualPayment = installment.payments[0].manual_payment || false;
+    // Check for direct payments first (simplest path)
+    if (installment.payments && installment.payments.length > 0) {
+      console.log(`Installment ${installment.id}: Found direct payment`, installment.payments[0]);
+      paidDate = installment.payments[0].paid_at;
+      paymentId = installment.payments[0].id;
+      manualPayment = installment.payments[0].manual_payment || false;
+    }
+    // Check payment_requests path if no direct payments found
+    else if (installment.payment_requests) {
+      // If there's a payment linked to the payment request
+      if (installment.payment_requests.payments) {
+        console.log(`Installment ${installment.id}: Found payment via request`, installment.payment_requests.payments);
+        paidDate = installment.payment_requests.payments.paid_at;
+        paymentId = installment.payment_requests.payments.id;
+        manualPayment = installment.payment_requests.payments.manual_payment || false;
       }
-      
-      // Check payment_requests path if no direct payments found
-      else if (installment.payment_requests) {
-        // If payment record exists within payment_requests
-        if (installment.payment_requests.payments) {
-          console.log('Found payment via payment_request for installment:', installment.id);
-          paidDate = installment.payment_requests.paid_at || installment.payment_requests.payments.paid_at;
-          paymentId = installment.payment_requests.payment_id || installment.payment_requests.payments.id;
-          manualPayment = installment.payment_requests.payments.manual_payment || false;
-        } else if (installment.payment_requests.payment_id) {
-          // If we just have a payment ID reference but no nested payment data
-          console.log('Found payment_id reference in payment_request:', installment.payment_requests.payment_id);
-          paidDate = installment.payment_requests.paid_at;
-          paymentId = installment.payment_requests.payment_id;
-        }
+      // If we have paid_at directly on the payment request
+      else if (installment.payment_requests.paid_at) {
+        console.log(`Installment ${installment.id}: Found paid_at on request`, installment.payment_requests.paid_at);
+        paidDate = installment.payment_requests.paid_at;
+        paymentId = installment.payment_requests.payment_id;
       }
     }
 
+    // Log what we're returning for each installment
     console.log(`Installment ${installment.id} formatted:`, {
       status: installment.status,
       paymentId,
@@ -77,7 +74,7 @@ export const formatPlanInstallments = (installments: any[]): PlanInstallment[] =
       totalPayments: installment.total_payments,
       paymentRequestId: installment.payment_request_id,
       paymentId: paymentId,
-      manualPayment: manualPayment, // Add the manualPayment flag to the returned object
+      manualPayment: manualPayment,
       originalStatus: installment.original_status || installment.status
     };
   });

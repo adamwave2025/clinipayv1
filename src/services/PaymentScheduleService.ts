@@ -72,7 +72,7 @@ export const fetchPlanInstallments = async (planId: string) => {
       throw planError;
     }
     
-    // Now fetch the payment schedule entries with their payment requests
+    // Now fetch the payment schedule entries with their payment requests AND directly join with payments
     const { data, error } = await supabase
       .from('payment_schedule')
       .select(`
@@ -85,7 +85,13 @@ export const fetchPlanInstallments = async (planId: string) => {
         payment_request_id,
         plan_id,
         payment_requests (
-          id, status, payment_id, paid_at
+          id, status, payment_id, paid_at,
+          payments:payment_id (
+            id, status, paid_at, manual_payment
+          )
+        ),
+        payments (
+          id, status, paid_at, manual_payment
         )
       `)
       .eq('plan_id', planId)
@@ -96,66 +102,16 @@ export const fetchPlanInstallments = async (planId: string) => {
       throw error;
     }
     
-    // If we have data, let's fetch any associated payments separately
-    if (data && data.length > 0) {
-      // Get all payment_request_id values that aren't null
-      const paymentRequestIds = data
-        .filter(item => item.payment_request_id)
-        .map(item => item.payment_request_id);
-      
-      // Fetch payment data for these requests if there are any
-      if (paymentRequestIds.length > 0) {
-        const { data: paymentData, error: paymentError } = await supabase
-          .from('payment_requests')
-          .select('id, payment_id, paid_at, payments:payment_id (id, status, paid_at)')
-          .in('id', paymentRequestIds);
-          
-        if (!paymentError && paymentData) {
-          // Create a map for quick lookup
-          const paymentMap = new Map();
-          paymentData.forEach(pr => {
-            paymentMap.set(pr.id, pr);
-          });
-          
-          // Enrich the original data with payment information
-          data.forEach(item => {
-            if (item.payment_request_id && paymentMap.has(item.payment_request_id)) {
-              const paymentInfo = paymentMap.get(item.payment_request_id);
-              // Add payment data as a custom property
-              (item as any).paymentInfo = paymentInfo;
-            }
-          });
-        }
-      }
-      
-      // Also search for any direct payments recorded for this plan
-      // These might have been added through manual payment recording
-      const { data: directPayments, error: directPaymentError } = await supabase
-        .from('payments')
-        .select('id, status, paid_at, payment_ref')
-        .eq('payment_link_id', planData.payment_link_id)
-        .eq('manual_payment', true);
-        
-      if (!directPaymentError && directPayments && directPayments.length > 0) {
-        console.log(`Found ${directPayments.length} direct payments`);
-        
-        // Store direct payments separately to be used by the formatter
-        for (const item of data) {
-          (item as any).directPayments = directPayments;
-        }
-      }
-    }
-    
-    // Additional logging to debug payment data
     console.log(`Fetched ${data?.length || 0} installments for plan ${planId}`);
     if (data && data.length > 0) {
       data.forEach(item => {
-        const paymentInfo = (item as any).paymentInfo;
-        if (paymentInfo) {
-          console.log(`Installment ${item.id} has payment request data:`, paymentInfo);
+        // Log detailed payment information for debugging
+        console.log(`Installment ${item.id} (status: ${item.status}):`);
+        if (item.payments && item.payments.length > 0) {
+          console.log(`  Direct payment found: paid_at=${item.payments[0].paid_at}, manual=${item.payments[0].manual_payment}`);
         }
-        if (item.payment_requests) {
-          console.log(`Installment ${item.id} has payment request data:`, item.payment_requests);
+        if (item.payment_requests && item.payment_requests.payments) {
+          console.log(`  Payment via request: paid_at=${item.payment_requests.paid_at}, payment_id=${item.payment_requests.payment_id}`);
         }
       });
     }
