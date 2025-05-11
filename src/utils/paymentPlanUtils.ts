@@ -1,3 +1,4 @@
+
 import { format } from 'date-fns';
 
 // Define the PlanInstallment interface
@@ -13,6 +14,7 @@ export interface PlanInstallment {
   originalStatus?: string;
   paymentId?: string;
   manualPayment?: boolean;
+  plan_id?: string; // Add this property to match what's coming from the database
 }
 
 /**
@@ -39,7 +41,7 @@ export const formatPlanInstallments = (scheduleData: any[]): PlanInstallment[] =
       // Create the installment object with default values
       const installment: PlanInstallment = {
         id: item.id,
-        planId: item.plan_id,
+        // Remove the planId property assignment since it doesn't exist in the interface
         paymentNumber: item.payment_number,
         totalPayments: item.total_payments,
         amount: item.amount,
@@ -48,7 +50,8 @@ export const formatPlanInstallments = (scheduleData: any[]): PlanInstallment[] =
         paidDate: item.paidDate || null, // Use the paidDate we added in the service
         paymentRequestId: item.payment_request_id,
         originalStatus: item.status,
-        manualPayment: !!item.manualPayment // Use the manualPayment flag we added
+        manualPayment: !!item.manualPayment, // Use the manualPayment flag we added
+        plan_id: item.plan_id // Map the plan_id correctly
       };
       
       // If payment exists, add its ID

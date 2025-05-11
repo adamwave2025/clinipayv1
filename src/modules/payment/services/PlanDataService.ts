@@ -67,7 +67,7 @@ export class PlanDataService {
               status
             `)
             .eq('id', item.payment_request_id)
-            .single();
+            .maybeSingle();
             
           if (requestData && requestData.payment_id) {
             // If payment request has a payment, get the payment details
@@ -75,7 +75,7 @@ export class PlanDataService {
               .from('payments')
               .select('id, manual_payment, paid_at, status')
               .eq('id', requestData.payment_id)
-              .single();
+              .maybeSingle();
               
             if (paymentInfo) {
               paymentData = paymentInfo;
