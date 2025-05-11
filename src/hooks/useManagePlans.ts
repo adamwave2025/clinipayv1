@@ -159,6 +159,9 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleSendReminder,
     handleBackToPlans,
     
+    // Include handleViewPaymentDetails which was missing
+    handleViewPaymentDetails,
+    
     // Installment action handlers
     handleMarkAsPaid,
     handleOpenReschedule,
@@ -180,6 +183,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     // Payment rescheduling dialog properties
     showReschedulePaymentDialog,
     setShowReschedulePaymentDialog,
+    // Rename to match the context type definition and avoid duplicates
     handleReschedulePayment: handleIndividualPaymentReschedule,
     
     // Include all plan action properties
