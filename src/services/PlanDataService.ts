@@ -15,9 +15,10 @@ export class PlanDataService {
    */
   static async fetchPlanInstallments(plan: Plan): Promise<PlanInstallment[]> {
     try {
-      // Get all payment schedules for this plan with extended query to include 
-      // both payment_requests and direct payments information
-      const { data, error } = await supabase
+      console.log('PlanDataService: Fetching installments for plan:', plan.id);
+      
+      // First, just fetch the basic schedule data without any nested selects
+      const { data: scheduleData, error: scheduleError } = await supabase
         .from('payment_schedule')
         .select(`
           id, 
@@ -27,26 +28,81 @@ export class PlanDataService {
           amount,
           status,
           payment_request_id,
-          plan_id,
-          payment_requests (
-            id, status, payment_id, paid_at,
-            payments (
-              id, manual_payment, paid_at, status
-            )
-          ),
-          payments!payment_schedule_payment_id_fkey (
-            id, manual_payment, paid_at, status
-          )
+          plan_id
         `)
         .eq('plan_id', plan.id)
         .order('payment_number', { ascending: true });
         
-      if (error) throw error;
+      if (scheduleError) {
+        console.error('Database error fetching installments:', scheduleError);
+        throw scheduleError;
+      }
       
-      console.log('Raw installment data with payments:', data);
+      // If we have no schedule data, return empty array
+      if (!scheduleData || scheduleData.length === 0) {
+        console.warn(`No installments found for plan ${plan.id}`);
+        return [];
+      }
       
-      // Use type assertion to handle potential type mismatch
-      return formatPlanInstallments(data || []);
+      console.log(`Retrieved ${scheduleData.length} installments from database`);
+      
+      // Now enhance the data with payment information separately
+      const enhancedInstallments = await Promise.all(scheduleData.map(async (item) => {
+        // Initialize default values
+        let paymentData = null;
+        let manualPayment = false;
+        let paidDate = null;
+        
+        try {
+          // If there's a payment request, check for payment information
+          if (item.payment_request_id) {
+            const { data: requestData } = await supabase
+              .from('payment_requests')
+              .select('id, payment_id, paid_at, status')
+              .eq('id', item.payment_request_id)
+              .maybeSingle();
+              
+            if (requestData && requestData.payment_id) {
+              const { data: paymentInfo } = await supabase
+                .from('payments')
+                .select('id, manual_payment, paid_at, status')
+                .eq('id', requestData.payment_id)
+                .maybeSingle();
+                
+              if (paymentInfo) {
+                paymentData = paymentInfo;
+                manualPayment = !!paymentInfo.manual_payment;
+                paidDate = paymentInfo.paid_at;
+              } else if (requestData.paid_at) {
+                // Fallback to request data if available
+                paidDate = requestData.paid_at;
+              }
+            }
+          }
+          
+          // Also check for direct payments linked to this schedule
+          // This is removed to simplify the code as it was causing issues
+          // Direct payment relationship can be handled elsewhere if needed
+        } catch (err) {
+          console.error(`Error enriching installment ${item.id}:`, err);
+        }
+        
+        // Return the enhanced item
+        return {
+          ...item,
+          payment: paymentData,
+          manualPayment: manualPayment,
+          paidDate: paidDate
+        };
+      }));
+      
+      console.log('Enhanced installments with payment data:', enhancedInstallments);
+      
+      // Format the installments using our utility function
+      const formattedInstallments = formatPlanInstallments(enhancedInstallments);
+      console.log('PlanDataService: Formatted installments:', formattedInstallments.length);
+      
+      return formattedInstallments;
       
     } catch (err) {
       console.error('Error fetching plan installments:', err);

@@ -17,9 +17,7 @@ export class PlanDataService {
     try {
       console.log('PlanDataService: Fetching installments for plan:', plan.id);
       
-      // Get all payment schedules for this plan with a cleaner query structure
-      // Important: Don't use nested selection with payments (*) as the relationship
-      // might not be properly defined in the database
+      // First, just fetch the basic schedule data without any nested selects
       const { data: scheduleData, error: scheduleError } = await supabase
         .from('payment_schedule')
         .select(`
@@ -48,63 +46,48 @@ export class PlanDataService {
       
       console.log(`Retrieved ${scheduleData.length} installments from database`);
       
-      // Now fetch payment information separately and then join it with the schedules
-      // This approach avoids potential database relationship issues
+      // Now enhance the data with payment information separately
       const enhancedInstallments = await Promise.all(scheduleData.map(async (item) => {
-        // For each schedule item, check if there's an associated payment request
+        // Initialize default values
         let paymentData = null;
         let manualPayment = false;
         let paidDate = null;
         
-        if (item.payment_request_id) {
-          // If there's a payment request, check if it has an associated payment
-          const { data: requestData } = await supabase
-            .from('payment_requests')
-            .select(`
-              id,
-              payment_id,
-              paid_at,
-              status
-            `)
-            .eq('id', item.payment_request_id)
-            .maybeSingle();
-            
-          if (requestData && requestData.payment_id) {
-            // If payment request has a payment, get the payment details
-            const { data: paymentInfo } = await supabase
-              .from('payments')
-              .select('id, manual_payment, paid_at, status')
-              .eq('id', requestData.payment_id)
+        try {
+          // If there's a payment request, check for payment information
+          if (item.payment_request_id) {
+            const { data: requestData } = await supabase
+              .from('payment_requests')
+              .select('id, payment_id, paid_at, status')
+              .eq('id', item.payment_request_id)
               .maybeSingle();
               
-            if (paymentInfo) {
-              paymentData = paymentInfo;
-              manualPayment = !!paymentInfo.manual_payment;
-              paidDate = paymentInfo.paid_at;
-            } else if (requestData.paid_at) {
-              // If request has paid_at but no payment details, use request data
-              paidDate = requestData.paid_at;
+            if (requestData && requestData.payment_id) {
+              const { data: paymentInfo } = await supabase
+                .from('payments')
+                .select('id, manual_payment, paid_at, status')
+                .eq('id', requestData.payment_id)
+                .maybeSingle();
+                
+              if (paymentInfo) {
+                paymentData = paymentInfo;
+                manualPayment = !!paymentInfo.manual_payment;
+                paidDate = paymentInfo.paid_at;
+              } else if (requestData.paid_at) {
+                // Fallback to request data if available
+                paidDate = requestData.paid_at;
+              }
             }
           }
+          
+          // Also check for direct payments linked to this schedule
+          // This is removed to simplify the code as it was causing issues
+          // Direct payment relationship can be handled elsewhere if needed
+        } catch (err) {
+          console.error(`Error enriching installment ${item.id}:`, err);
         }
         
-        // We might also have direct payment links (not through a request)
-        // Check for direct payments linked to this schedule
-        if (!paymentData) {
-          const { data: directPayments } = await supabase
-            .from('payments')
-            .select('id, manual_payment, paid_at, status')
-            .eq('payment_schedule_payment_id', item.id)
-            .maybeSingle();
-            
-          if (directPayments) {
-            paymentData = directPayments;
-            manualPayment = !!directPayments.manual_payment;
-            paidDate = directPayments.paid_at;
-          }
-        }
-        
-        // Return the enhanced schedule item
+        // Return the enhanced item
         return {
           ...item,
           payment: paymentData,
@@ -115,7 +98,7 @@ export class PlanDataService {
       
       console.log('Enhanced installments with payment data:', enhancedInstallments);
       
-      // Format the installments
+      // Format the installments using our utility function
       const formattedInstallments = formatPlanInstallments(enhancedInstallments);
       console.log('PlanDataService: Formatted installments:', formattedInstallments.length);
       
