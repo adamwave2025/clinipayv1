@@ -54,7 +54,7 @@ const PaymentTableRow = ({ payment, onClick }: PaymentTableRowProps) => {
         {payment.date}
       </td>
       <td className="py-4 px-3">
-        <StatusBadge status={payment.status} />
+        <StatusBadge status={payment.status} manualPayment={payment.manualPayment} />
       </td>
     </tr>
   );

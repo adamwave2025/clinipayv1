@@ -33,7 +33,7 @@ const PatientDetailsSection = ({ payment }: PatientDetailsSectionProps) => {
       </div>
       <div className="col-span-1">
         <h4 className="text-sm font-medium text-gray-500">Status</h4>
-        <StatusBadge status={payment.status} className="mt-1" />
+        <StatusBadge status={payment.status} className="mt-1" manualPayment={payment.manualPayment} />
       </div>
     </div>
   );
