@@ -29,7 +29,7 @@ export class PlanDataService {
           plan_id,
           payment_requests (
             id, status, payment_id, paid_at,
-            payments:payment_id (
+            payments (
               id, status, paid_at, manual_payment
             )
           ),
