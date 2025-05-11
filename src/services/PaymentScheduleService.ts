@@ -74,6 +74,7 @@ export const fetchPlanInstallments = async (planId: string) => {
     }
     
     // Now fetch the payment schedule entries with their payment requests AND directly join with payments
+    // Note: Fix the TypeScript error by ensuring we work with objects not strings in the nested selection
     const { data, error } = await supabase
       .from('payment_schedule')
       .select(`
@@ -87,11 +88,11 @@ export const fetchPlanInstallments = async (planId: string) => {
         plan_id,
         payment_requests (
           id, status, payment_id, paid_at,
-          payments (
+          payments:payment_id (
             id, status, paid_at, manual_payment
           )
         ),
-        payments (
+        payments!payment_schedule_payment_id_fkey (
           id, status, paid_at, manual_payment
         )
       `)
@@ -109,10 +110,11 @@ export const fetchPlanInstallments = async (planId: string) => {
         // Log detailed payment information for debugging
         console.log(`Installment ${item.id} (status: ${item.status}):`);
         if (item.payments && item.payments.length > 0) {
-          console.log(`  Direct payment found: paid_at=${item.payments[0].paid_at}, manual=${item.payments[0].manual_payment}`);
+          console.log(`  Direct payment found: paid_at=${item.payments[0]?.paid_at}, manual=${item.payments[0]?.manual_payment}`);
         }
         if (item.payment_requests && item.payment_requests.payments) {
-          console.log(`  Payment via request: paid_at=${item.payment_requests.paid_at}, payment_id=${item.payment_requests.payment_id}`);
+          console.log(`  Payment request data:`, item.payment_requests);
+          console.log(`  Payment via request: ${JSON.stringify(item.payment_requests.payments)}`);
         }
       });
     }

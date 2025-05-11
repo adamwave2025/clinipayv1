@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
@@ -110,6 +109,8 @@ export const usePlanDataFetcher = () => {
 
   const fetchPlanInstallmentsData = useCallback(async (planId: string) => {
     console.log('Fetching installments for plan:', planId);
+    setInstallments([]);  // Clear previous installments to avoid stale data
+    
     try {
       // Get the full plan object first
       const { data: planData, error: planError } = await supabase
@@ -126,13 +127,19 @@ export const usePlanDataFetcher = () => {
       
       // Format the plan object using the helper function
       const plan = formatPlanFromDb(planData);
+      console.log('Fetched and formatted plan object:', plan.id, plan.title);
       
       // Use the PlanDataService to fetch installments directly
       const formattedInstallments = await PlanDataService.fetchPlanInstallments(plan);
       
       console.log('Formatted installments:', formattedInstallments.length);
       
-      setInstallments(formattedInstallments);
+      if (formattedInstallments.length === 0) {
+        console.warn('No installments returned for plan', planId);
+        toast.warning('No installments found for this plan');
+      } else {
+        setInstallments(formattedInstallments);
+      }
       
       // Also fetch activities for this plan
       await fetchPlanActivitiesData(planId);

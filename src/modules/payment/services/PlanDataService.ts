@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { formatPlanInstallments, PlanInstallment } from '@/utils/paymentPlanUtils';
@@ -14,7 +15,10 @@ export class PlanDataService {
    */
   static async fetchPlanInstallments(plan: Plan): Promise<PlanInstallment[]> {
     try {
-      // Get all payment schedules for this plan with direct join to payments table
+      console.log('PlanDataService: Fetching installments for plan:', plan.id);
+      
+      // Get all payment schedules for this plan with extended query to include 
+      // both payment_requests and direct payments information
       const { data, error } = await supabase
         .from('payment_schedule')
         .select(`
@@ -28,22 +32,43 @@ export class PlanDataService {
           plan_id,
           payment_requests (
             id, status, payment_id, paid_at,
-            payments (
+            payments:payment_id (
               id, status, paid_at, manual_payment
             )
           ),
-          payments (
+          payments!payment_schedule_payment_id_fkey (
             id, status, paid_at, manual_payment
           )
         `)
         .eq('plan_id', plan.id)
         .order('payment_number', { ascending: true });
         
-      if (error) throw error;
+      if (error) {
+        console.error('Database error fetching installments:', error);
+        throw error;
+      }
       
       console.log('Raw installment data with payments:', data);
       
-      return formatPlanInstallments(data || []);
+      // Add detailed logging to understand the data structure
+      if (data && data.length > 0) {
+        console.log(`First installment sample:`, JSON.stringify(data[0], null, 2));
+        
+        // Check payment_requests nesting
+        if (data[0].payment_requests) {
+          console.log(`payment_requests sample:`, JSON.stringify(data[0].payment_requests, null, 2));
+        }
+        
+        // Check direct payments nesting
+        if (data[0].payments) {
+          console.log(`direct payments sample:`, JSON.stringify(data[0].payments, null, 2));
+        }
+      }
+      
+      const formattedInstallments = formatPlanInstallments(data || []);
+      console.log('PlanDataService: Formatted installments:', formattedInstallments.length);
+      
+      return formattedInstallments;
       
     } catch (err) {
       console.error('Error fetching plan installments:', err);

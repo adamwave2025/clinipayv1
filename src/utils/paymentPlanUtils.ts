@@ -16,68 +16,87 @@ export interface PlanInstallment {
 }
 
 /**
- * Format installments from the database into frontend format
- * 
- * @param installments Raw installment data from the database
- * @returns Formatted installments for frontend use
+ * Format payment schedule data from the database for frontend display
  */
-export const formatPlanInstallments = (installments: any[]): PlanInstallment[] => {
-  console.log('Formatting installments, raw data:', installments);
+export const formatPlanInstallments = (scheduleData: any[]): PlanInstallment[] => {
+  console.log('formatPlanInstallments called with:', scheduleData?.length || 0, 'items');
   
-  return installments.map(installment => {
-    // Default values
-    let paidDate = null;
-    let paymentId = null;
-    let manualPayment = false;
-    
-    // Check for direct payments first (simplest path)
-    if (installment.payments && installment.payments.length > 0) {
-      console.log(`Installment ${installment.id}: Found direct payment`, installment.payments[0]);
-      paidDate = installment.payments[0].paid_at;
-      paymentId = installment.payments[0].id;
-      manualPayment = installment.payments[0].manual_payment || false;
-    }
-    // Check payment_requests path if no direct payments found
-    else if (installment.payment_requests) {
-      // If there's a payment linked to the payment request
-      if (installment.payment_requests.payments) {
-        console.log(`Installment ${installment.id}: Found payment via request`, installment.payment_requests.payments);
-        paidDate = installment.payment_requests.payments.paid_at;
-        paymentId = installment.payment_requests.payments.id;
-        manualPayment = installment.payment_requests.payments.manual_payment || false;
+  if (!Array.isArray(scheduleData)) {
+    console.error('Invalid data passed to formatPlanInstallments:', scheduleData);
+    return [];
+  }
+  
+  try {
+    const installments = scheduleData.map(item => {
+      console.log(`Processing installment ${item.id}:`, item.status);
+      
+      // Check the shape of the payment data
+      let paymentInfo = null;
+      let isPaid = item.status === 'paid';
+      let paymentDate = null;
+      let isManualPayment = false;
+      
+      // First check direct payments
+      if (item.payments && Array.isArray(item.payments) && item.payments.length > 0) {
+        console.log(`Direct payment found for ${item.id}:`, item.payments[0]);
+        paymentInfo = item.payments[0];
+        paymentDate = paymentInfo.paid_at;
+        isManualPayment = paymentInfo.manual_payment;
       }
-      // If we have paid_at directly on the payment request
-      else if (installment.payment_requests.paid_at) {
-        console.log(`Installment ${installment.id}: Found paid_at on request`, installment.payment_requests.paid_at);
-        paidDate = installment.payment_requests.paid_at;
-        paymentId = installment.payment_requests.payment_id;
+      // Then check payment requests -> payments
+      else if (item.payment_requests && item.payment_requests.payments) {
+        console.log(`Payment request payment found for ${item.id}:`, item.payment_requests.payments);
+        
+        // Handle both array and object forms
+        if (Array.isArray(item.payment_requests.payments)) {
+          paymentInfo = item.payment_requests.payments[0];
+        } else {
+          paymentInfo = item.payment_requests.payments;
+        }
+        
+        if (paymentInfo) {
+          paymentDate = item.payment_requests.paid_at || paymentInfo.paid_at;
+          isManualPayment = paymentInfo.manual_payment;
+        }
       }
-    }
-
-    // Log what we're returning for each installment
-    console.log(`Installment ${installment.id} formatted:`, {
-      status: installment.status,
-      paymentId,
-      manualPayment,
-      paidDate,
-      hasDirectPayments: installment.payments?.length > 0,
-      hasPaymentRequests: !!installment.payment_requests
+      // Fallback to payment request info if available
+      else if (item.payment_requests && item.payment_requests.paid_at) {
+        console.log(`Payment request info found for ${item.id}:`, item.payment_requests);
+        paymentDate = item.payment_requests.paid_at;
+      }
+      
+      // Format the payment date if available
+      let formattedPaymentDate = null;
+      if (paymentDate) {
+        try {
+          formattedPaymentDate = new Date(paymentDate).toISOString();
+        } catch (e) {
+          console.error(`Error formatting payment date ${paymentDate}:`, e);
+        }
+      }
+      
+      return {
+        id: item.id,
+        planId: item.plan_id,
+        paymentNumber: item.payment_number,
+        totalPayments: item.total_payments,
+        amount: item.amount,
+        dueDate: item.due_date,
+        status: item.status,
+        isPaid,
+        paymentRequestId: item.payment_request_id,
+        paymentId: paymentInfo?.id || (item.payment_requests?.payment_id),
+        paidAt: formattedPaymentDate,
+        isManualPayment,
+      };
     });
     
-    return {
-      id: installment.id,
-      dueDate: installment.due_date,
-      amount: installment.amount,
-      status: installment.status,
-      paidDate: paidDate,
-      paymentNumber: installment.payment_number,
-      totalPayments: installment.total_payments,
-      paymentRequestId: installment.payment_request_id,
-      paymentId: paymentId,
-      manualPayment: manualPayment,
-      originalStatus: installment.original_status || installment.status
-    };
-  });
+    console.log(`Formatted ${installments.length} installments`);
+    return installments;
+  } catch (error) {
+    console.error('Error formatting plan installments:', error);
+    return [];
+  }
 };
 
 /**
