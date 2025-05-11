@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Loader2, AlertCircle } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
@@ -18,10 +18,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Alert,
-  AlertDescription,
-} from '@/components/ui/alert';
 
 interface ReschedulePlanDialogProps {
   showDialog: boolean;
@@ -44,8 +40,6 @@ const ReschedulePlanDialog = ({
   patientName,
   isLoading = false,
   isProcessing = false,
-  hasSentPayments = false,
-  hasOverduePayments = false,
   startDate,
 }: ReschedulePlanDialogProps) => {
   // Initialize with current date or parse the startDate if provided
@@ -124,26 +118,6 @@ const ReschedulePlanDialog = ({
             <p className="text-xs text-muted-foreground mt-1">
               All future payments will be rescheduled based on this date.
             </p>
-            
-            {hasSentPayments && (
-              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <p className="text-xs text-amber-700">
-                  <strong>Note:</strong> This plan has payment requests that have been sent to the patient. 
-                  Rescheduling will cancel those requests and reset them to pending status. 
-                  You'll need to send them again after rescheduling.
-                </p>
-              </div>
-            )}
-
-            {hasOverduePayments && (
-              <Alert className="mt-4 bg-red-50 border-red-200">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-xs text-red-700">
-                  <strong>Warning:</strong> This plan has overdue payments. 
-                  Rescheduling will reset the overdue status and give the patient more time to pay.
-                </AlertDescription>
-              </Alert>
-            )}
           </div>
         </div>
         
