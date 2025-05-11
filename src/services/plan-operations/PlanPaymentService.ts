@@ -262,6 +262,8 @@ export class PlanPaymentService {
    */
   static async updatePlanAfterPayment(planId: string): Promise<void> {
     try {
+      console.log(`PlanPaymentService: Updating plan metrics and status after payment for plan ${planId}`);
+      
       // Get the plan data
       const { data: planData, error: planError } = await supabase
         .from('plans')
@@ -289,6 +291,8 @@ export class PlanPaymentService {
       const paidInstallments = paidCount?.length || 0;
       const totalInstallments = planData.total_installments;
       
+      console.log(`Plan ${planId} has ${paidInstallments}/${totalInstallments} paid installments`);
+      
       // Calculate new progress percentage
       const progress = Math.min(Math.floor((paidInstallments / totalInstallments) * 100), 100);
       
@@ -297,6 +301,7 @@ export class PlanPaymentService {
       
       if (paidInstallments >= totalInstallments) {
         newStatus = 'completed';
+        console.log(`All installments paid for plan ${planId}, marking as completed`);
       } else if (newStatus !== 'paused' && newStatus !== 'cancelled') {
         // If not paused or cancelled and some payments made, mark as active
         newStatus = 'active';
@@ -331,7 +336,20 @@ export class PlanPaymentService {
         throw updateError;
       }
       
-      console.log(`Plan ${planId} updated: ${paidInstallments}/${totalInstallments} payments, status: ${newStatus}`);
+      console.log(`Plan ${planId} updated: ${paidInstallments}/${totalInstallments} payments, progress: ${progress}%, status: ${newStatus}, next due date: ${nextDueDate}`);
+      
+      // Verify the update worked by fetching the plan data again
+      const { data: verifyPlan, error: verifyError } = await supabase
+        .from('plans')
+        .select('paid_installments, progress, status, next_due_date')
+        .eq('id', planId)
+        .single();
+        
+      if (verifyError) {
+        console.error('Error verifying plan update:', verifyError);
+      } else {
+        console.log('Verified plan update:', verifyPlan);
+      }
     } catch (error) {
       console.error('Error in updatePlanAfterPayment:', error);
       // Don't throw, just log the error

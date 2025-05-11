@@ -21,7 +21,21 @@ export const useInstallmentActions = (
       
       if (result.success) {
         toast.success('Payment marked as paid successfully');
+        
+        // Explicitly ensure the plan data is refreshed
+        console.log('Refreshing plan data after manual payment');
         await onRefresh();
+        
+        // Force a refresh of the plan status as well
+        if (planId) {
+          console.log('Updating plan progress and status for plan:', planId);
+          await PlanPaymentService.updatePlanAfterPayment(planId);
+          
+          // Call onRefresh again to ensure UI is updated with latest data
+          setTimeout(async () => {
+            await onRefresh();
+          }, 300); // Small delay to ensure DB operations complete
+        }
       } else {
         toast.error(`Failed to mark payment as paid: ${result.error}`);
       }
