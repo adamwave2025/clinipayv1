@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -99,6 +98,12 @@ export class PlanPaymentService {
       // Generate a payment reference
       const paymentRef = `MAN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       
+      // Calculate net amount (same as amount for manual payments, no fees)
+      const netAmount = paymentAmount;
+      
+      // Format dates properly for database storage
+      const formattedPaidAt = new Date(actualPaymentDate).toISOString();
+      
       // Create a manual payment record with payment_schedule_id directly linked
       const paymentData = {
         clinic_id: planData.clinic_id,
@@ -106,13 +111,14 @@ export class PlanPaymentService {
         payment_link_id: installmentData.payment_link_id,
         payment_schedule_id: installmentId, // Direct link to payment_schedule
         amount_paid: paymentAmount,
+        net_amount: netAmount, // Explicitly set net_amount
         patient_name: patientData?.name || 'Unknown',
         patient_email: patientData?.email || null,
         patient_phone: patientData?.phone || null,
         payment_ref: paymentRef,
         manual_payment: true,
         status: 'paid',
-        paid_at: actualPaymentDate
+        paid_at: formattedPaidAt
       };
       
       console.log('Creating payment record:', paymentData);
@@ -129,6 +135,20 @@ export class PlanPaymentService {
       
       const paymentId = paymentResult[0].id;
       console.log('Payment record created:', paymentId);
+      
+      // Verify the payment was correctly saved with all fields
+      const { data: verifyPayment, error: verifyError } = await supabase
+        .from('payments')
+        .select('id, amount_paid, paid_at, net_amount')
+        .eq('id', paymentId)
+        .single();
+        
+      if (verifyError || !verifyPayment) {
+        console.error('Error verifying payment record:', verifyError);
+        // Continue despite verification error
+      } else {
+        console.log('Verified payment record:', verifyPayment);
+      }
       
       // Create an activity record for the payment
       const activityData = {
