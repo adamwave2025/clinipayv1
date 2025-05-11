@@ -1,72 +1,87 @@
 
-import { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useMemo } from 'react';
 import { Plan } from '@/utils/planTypes';
-import { usePlanDataFetcher } from './payment-plans/usePlanDataFetcher';
-import { usePlanActions } from './payment-plans/usePlanActions';
-import { usePlanDetailsView } from './payment-plans/usePlanDetailsView';
+import { ManagePlansContextType } from '@/contexts/ManagePlansContext';
+import { usePlanCore } from './payment-plans/usePlanCore';
+import { usePlanFiltering } from './payment-plans/usePlanFiltering';
+import { useActionHandlers } from './payment-plans/useActionHandlers';
+import { useDialogHandlers } from './payment-plans/useDialogHandlers';
+import { useInstallmentHandler } from './payment-plans/useInstallmentHandler';
+import { useInstallmentActions } from './payment-plans/useInstallmentActions';
 import { usePlanCancelActions } from './payment-plans/usePlanCancelActions';
 import { usePlanPauseActions } from './payment-plans/usePlanPauseActions';
 import { usePlanResumeActions } from './payment-plans/usePlanResumeActions';
 import { usePlanRescheduleActions } from './payment-plans/usePlanRescheduleActions';
-import { ManagePlansContextType } from '@/contexts/ManagePlansContext';
-import { useSearchFilterState } from './payment-plans/useSearchFilterState';
-import { useRefundState } from './payment-plans/useRefundState';
-import { useViewModeState } from './payment-plans/useViewModeState';
-import { useEnhancedNavigation } from './payment-plans/useEnhancedNavigation';
-import { useInstallmentHandler } from './payment-plans/useInstallmentHandler';
-import { useInstallmentActions } from './payment-plans/useInstallmentActions';
 import { usePaymentRescheduleActions } from './payment-plans/usePaymentRescheduleActions';
 
 export const useManagePlans = (): ManagePlansContextType => {
-  const { user } = useAuth();
-  
-  // Use all the smaller hooks
-  const { searchQuery, setSearchQuery, statusFilter, setStatusFilter } = useSearchFilterState();
-  const { isViewMode, setIsViewMode, handleCreatePlanClick, handleViewPlansClick } = useEnhancedNavigation();
-  const { 
-    refundDialogOpen, setRefundDialogOpen, paymentToRefund,
-    openRefundDialog, processRefund 
-  } = useRefundState();
-  
-  const { 
-    plans: allPlans, 
-    installments, 
-    activities,
-    isLoading, 
-    isLoadingActivities,
-    fetchPaymentPlans, 
-    fetchPlanInstallmentsData 
-  } = usePlanDataFetcher();
-  
+  // Use the core plan management hook
   const {
-    selectedInstallment,
-    setSelectedInstallment,
+    allPlans,
+    installments,
+    activities,
+    isLoading,
+    isLoadingActivities,
+    fetchPaymentPlans,
+    fetchPlanInstallmentsData,
+    hasOverduePayments,
+    hasPaidPayments,
+    refreshData,
+    user
+  } = usePlanCore();
+  
+  // Use the filtering hook
+  const {
+    plans,
+    searchQuery,
+    setSearchQuery,
+    statusFilter,
+    setStatusFilter
+  } = usePlanFiltering(allPlans);
+  
+  // Use action handlers
+  const {
+    selectedPlan,
+    showPlanDetails,
+    setShowPlanDetails,
+    isProcessing: isProcessingActions,
+    isPlanPaused,
+    handleViewPlanDetails,
+    handleSendReminder,
+    handleBackToPlans
+  } = useActionHandlers(fetchPaymentPlans, fetchPlanInstallmentsData);
+  
+  // Use dialog handlers
+  const {
+    isViewMode,
+    setIsViewMode,
+    handleCreatePlanClick,
+    handleViewPlansClick,
+    refundDialogOpen,
+    setRefundDialogOpen,
+    paymentToRefund,
+    openRefundDialog,
+    processRefund
+  } = useDialogHandlers();
+  
+  // Use installment handlers
+  const {
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
+    selectedInstallment,
+    setSelectedInstallment,
     handleViewPaymentDetails
   } = useInstallmentHandler();
   
-  // Create a refresh function for use after operations
-  const refreshData = async () => {
-    if (user) {
-      await fetchPaymentPlans(user.id);
+  // Create a refresh function for installments
+  const refreshInstallments = async () => {
+    if (selectedPlan) {
+      await fetchPlanInstallmentsData(selectedPlan.id);
     }
   };
   
-  // Use plan details view hook
-  const { 
-    selectedPlan, 
-    setSelectedPlan,
-    showPlanDetails, 
-    setShowPlanDetails,
-    isPlanPaused,
-    handleViewPlanDetails: viewPlanDetails,
-    handleBackToPlans
-  } = usePlanDetailsView();
-  
-  // Use installment actions hook
+  // Use installment actions
   const {
     isProcessing: isProcessingInstallment,
     showRescheduleDialog,
@@ -77,121 +92,29 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleTakePayment,
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
-    confirmMarkAsPaid,
-    // Remove the duplicate declaration of selectedInstallment here
-    // as it's already declared in useInstallmentHandler above
-  } = useInstallmentActions(
-    selectedPlan?.id || '',
-    async () => {
-      if (selectedPlan) {
-        await fetchPlanInstallmentsData(selectedPlan.id);
-      }
-    }
-  );
+    confirmMarkAsPaid
+  } = useInstallmentActions(selectedPlan?.id || '', refreshInstallments);
   
-  // Use payment reschedule actions hook for individual payment rescheduling
+  // Use payment reschedule actions for individual payments
   const {
     showRescheduleDialog: showReschedulePaymentDialog,
     setShowRescheduleDialog: setShowReschedulePaymentDialog,
     handleReschedulePayment: handleRescheduleIndividualPayment,
-  } = usePaymentRescheduleActions(
-    selectedPlan?.id || '',
-    async () => {
-      if (selectedPlan) {
-        await fetchPlanInstallmentsData(selectedPlan.id);
-      }
-    }
-  );
+  } = usePaymentRescheduleActions(selectedPlan?.id || '', refreshInstallments);
   
-  // Pass fetchPaymentPlans directly as it returns Promise<Plan[]>
-  const { 
-    isProcessing,
-    handleSendReminder: sendReminder
-  } = usePlanActions(() => fetchPaymentPlans(user?.id || ''));
-  
-  // Use specialized action hooks with refresh capability
+  // Use specialized action hooks
   const cancelActions = usePlanCancelActions(selectedPlan, setShowPlanDetails);
   const pauseActions = usePlanPauseActions(selectedPlan, setShowPlanDetails, refreshData);
   const resumeActions = usePlanResumeActions(selectedPlan, setShowPlanDetails, refreshData);
   const rescheduleActions = usePlanRescheduleActions(selectedPlan, setShowPlanDetails, refreshData);
   
-  // Add the hasPaidPayments state explicitly
-  const [hasPaidPayments, setHasPaidPayments] = useState(false);
-  
-  // Add a flag to track if there are overdue payments
-  const [hasOverduePayments, setHasOverduePayments] = useState(false);
-  
-  // Update the hasPaidPayments and hasOverduePayments state when installments change
-  useEffect(() => {
-    if (installments.length > 0) {
-      const hasPaid = installments.some(installment => installment.status === 'paid');
-      setHasPaidPayments(hasPaid);
-      
-      const hasOverdue = installments.some(installment => {
-        if (installment.status === 'overdue') return true;
-        if (installment.status === 'paid' || installment.status === 'cancelled' || installment.status === 'paused') {
-          return false;
-        }
-        const now = new Date();
-        const dueDate = new Date(installment.dueDate);
-        return dueDate < now;
-      });
-      setHasOverduePayments(hasOverdue);
-    }
-  }, [installments]);
-
-  // Apply filters to get the filtered plans
-  const plans = useMemo(() => {
-    console.log('Filtering plans. All plans:', allPlans.length);
-    console.log('Status filter:', statusFilter);
-    console.log('Search query:', searchQuery);
-    
-    let filtered = [...allPlans];
-    
-    // First apply status filter if not 'all'
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(plan => plan.status === statusFilter);
-    }
-    
-    // Then apply search query if present
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(plan => {
-        // Use patientName directly instead of checking nested properties
-        const patientName = plan.patientName || '';
-        return patientName.toLowerCase().includes(query);
-      });
-    }
-    
-    console.log('Filtered plans:', filtered.length);
-    return filtered;
-  }, [allPlans, statusFilter, searchQuery]);
-
-  // Fetch payment plans on mount
-  useEffect(() => {
-    if (user) {
-      console.log('Fetching payment plans for user:', user.id);
-      fetchPaymentPlans(user.id);
-    }
-  }, [user, fetchPaymentPlans]);
-
-  const handleViewPlanDetails = async (plan: Plan) => {
-    console.log('useManagePlans.handleViewPlanDetails called with plan:', plan.id);
-    return viewPlanDetails(plan, fetchPlanInstallmentsData);
-  };
-
-  // Create a wrapper for sendReminder that adapts the return type
-  const handleSendReminder = async (installmentId: string): Promise<void> => {
-    await sendReminder(installmentId);
-    // Void return type, so no return statement needed
-  };
-
   // Override the refund functionality to handle the payment details view
   const enhancedOpenRefundDialog = () => {
     openRefundDialog(paymentData);
     // We'll close the payment details modal after refund in processRefund
   };
 
+  // Log dialog states for debugging
   console.log('useManagePlans - Dialog states:', {
     showMarkAsPaidDialog,
     selectedInstallment,
@@ -237,13 +160,13 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleViewPaymentDetails,
     handleBackToPlans,
     
-    // Add installment action handlers
+    // Installment action handlers
     handleMarkAsPaid,
     handleOpenReschedule,
     handleReschedulePayment,
     handleTakePayment,
     
-    // Add mark as paid dialog state and handlers
+    // Mark as paid dialog state and handlers
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
@@ -255,7 +178,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     openRefundDialog: enhancedOpenRefundDialog,
     processRefund,
     
-    // Add payment rescheduling dialog properties
+    // Payment rescheduling dialog properties
     showReschedulePaymentDialog,
     setShowReschedulePaymentDialog,
     
@@ -265,17 +188,15 @@ export const useManagePlans = (): ManagePlansContextType => {
     ...resumeActions,
     ...rescheduleActions,
     
-    // Explicitly add hasOverduePayments calculated from installments
+    // Add hasOverduePayments and hasPaidPayments
     hasOverduePayments,
+    hasPaidPayments,
     
     // Add resumeError from resumeActions
     resumeError: resumeActions.resumeError,
     
-    // Add hasPaidPayments explicitly
-    hasPaidPayments,
-    
     // Plan state helpers
     isPlanPaused,
-    isProcessing: isProcessing || isProcessingInstallment
+    isProcessing: isProcessingActions || isProcessingInstallment
   };
 };
