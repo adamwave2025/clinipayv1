@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,20 +16,25 @@ export function useInstallmentActions(
   const handleMarkAsPaid = async (installmentId: string) => {
     setIsProcessing(true);
     try {
+      console.log(`Marking installment ${installmentId} as paid for plan ${planId}`);
+      
       // Use the new PlanPaymentService to record a manual payment
       const result = await PlanPaymentService.recordManualPayment(installmentId);
       
       if (!result.success) {
+        console.error('Error details:', result.error);
         throw new Error(result.error || 'Failed to record manual payment');
       }
       
-      // 4. Refresh the installments list to reflect changes
+      console.log(`Payment successfully recorded with ID: ${result.paymentId}`);
+      
+      // Refresh the installments list to reflect changes
       await refreshInstallments();
       
       toast.success('Payment marked as paid successfully');
     } catch (error) {
       console.error('Error marking payment as paid:', error);
-      toast.error('Failed to mark payment as paid');
+      toast.error(`Failed to mark payment as paid: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsProcessing(false);
     }

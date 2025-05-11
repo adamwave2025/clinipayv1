@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -74,13 +73,30 @@ export const fetchPlanInstallments = async (planId: string) => {
         plan_id,
         payment_requests (
           id, status, payment_id, paid_at
+        ),
+        payments:payments!payment_schedule_id_fkey (
+          id, status, paid_at
         )
       `)
       .eq('plan_id', planId)
       .order('payment_number', { ascending: true });
     
     if (error) {
+      console.error('Error fetching plan installments:', error);
       throw error;
+    }
+    
+    // Additional logging to debug payment data
+    console.log(`Fetched ${data?.length || 0} installments for plan ${planId}`);
+    if (data && data.length > 0) {
+      data.forEach(item => {
+        if (item.payments) {
+          console.log(`Installment ${item.id} has direct payment data:`, item.payments);
+        }
+        if (item.payment_requests) {
+          console.log(`Installment ${item.id} has payment request data:`, item.payment_requests);
+        }
+      });
     }
     
     return data || [];

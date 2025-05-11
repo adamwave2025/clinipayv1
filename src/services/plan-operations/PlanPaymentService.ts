@@ -1,4 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
+import { addToNotificationQueue } from '@/utils/notification-queue';
 
 /**
  * Service for handling plan payment operations such as refunds and reminders
@@ -123,6 +125,8 @@ export class PlanPaymentService {
    */
   static async recordManualPayment(installmentId: string): Promise<{ success: boolean, paymentId?: string, error?: any }> {
     try {
+      console.log(`Starting recordManualPayment for installment: ${installmentId}`);
+      
       // 1. Get the installment details with related info
       const { data: installment, error: fetchError } = await supabase
         .from('payment_schedule')
@@ -134,11 +138,16 @@ export class PlanPaymentService {
         .eq('id', installmentId)
         .single();
       
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Error fetching installment details:', fetchError);
+        throw fetchError;
+      }
       
       if (!installment) {
         return { success: false, error: 'Installment not found' };
       }
+      
+      console.log(`Found installment data:`, installment);
       
       // 2. Generate a payment reference for the manual payment
       const paymentRef = `MAN-${Date.now().toString().substring(6)}`;
@@ -163,19 +172,27 @@ export class PlanPaymentService {
         .select('id')
         .single();
       
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Error creating payment record:', insertError);
+        throw insertError;
+      }
       
-      // 4. Update the payment schedule with the payment_id reference
+      console.log(`Created payment record with ID: ${paymentData.id}`);
+      
+      // 4. Update the payment schedule with the status (but don't link via payment_request_id)
+      // Instead, we'll store the direct payment ID as we discussed
       const { error: updateError } = await supabase
         .from('payment_schedule')
         .update({
           status: 'paid',
-          payment_request_id: paymentData.id, // Link the installment to the payment
           updated_at: new Date().toISOString()
         })
         .eq('id', installmentId);
       
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Error updating payment schedule:', updateError);
+        throw updateError;
+      }
       
       // 5. Record the activity
       await this.recordPaymentPlanActivity({
@@ -190,10 +207,38 @@ export class PlanPaymentService {
         }
       });
       
+      // 6. Add to notification queue to send confirmation
+      try {
+        await addToNotificationQueue(
+          'payment_confirmation',
+          {
+            payment: {
+              id: paymentData.id,
+              amount: installment.amount / 100, // Convert to decimal currency
+              patient_name: installment.patients?.name || 'Patient',
+              payment_ref: paymentRef,
+              manual_payment: true
+            },
+            plan: {
+              id: installment.plan_id,
+              payment_number: installment.payment_number,
+              total_payments: installment.total_payments
+            }
+          },
+          'patient',
+          installment.clinic_id,
+          paymentData.id
+        );
+        console.log(`Payment confirmation notification queued for payment ${paymentData.id}`);
+      } catch (notifyError) {
+        console.error('Error queuing notification (non-fatal):', notifyError);
+        // Continue processing - notification error shouldn't fail the payment
+      }
+      
       return { success: true, paymentId: paymentData.id };
     } catch (error) {
       console.error('Error recording manual payment:', error);
-      return { success: false, error };
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   }
   

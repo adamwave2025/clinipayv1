@@ -12,6 +12,7 @@ export interface PlanInstallment {
   totalPayments: number;
   paymentRequestId?: string;
   originalStatus?: string;
+  paymentId?: string; // Add direct payment ID field
 }
 
 /**
@@ -21,17 +22,28 @@ export interface PlanInstallment {
  * @returns Formatted installments for frontend use
  */
 export const formatPlanInstallments = (installments: any[]): PlanInstallment[] => {
-  return installments.map(installment => ({
-    id: installment.id,
-    dueDate: installment.due_date,
-    amount: installment.amount,
-    status: installment.status,
-    paidDate: installment.payment_requests?.paid_at || null,
-    paymentNumber: installment.payment_number,
-    totalPayments: installment.total_payments,
-    paymentRequestId: installment.payment_request_id,
-    originalStatus: installment.original_status || installment.status
-  }));
+  return installments.map(installment => {
+    // First check if we have a payment_request with a paid date
+    // Then check if we have a direct payment with a paid date
+    // This ensures we handle both payment paths
+    const paidDate = 
+      installment.payment_requests?.paid_at || 
+      installment.payments?.paid_at || 
+      null;
+      
+    return {
+      id: installment.id,
+      dueDate: installment.due_date,
+      amount: installment.amount,
+      status: installment.status,
+      paidDate: paidDate,
+      paymentNumber: installment.payment_number,
+      totalPayments: installment.total_payments,
+      paymentRequestId: installment.payment_request_id,
+      paymentId: installment.payment_id, // Include direct payment ID if available
+      originalStatus: installment.original_status || installment.status
+    };
+  });
 };
 
 /**
