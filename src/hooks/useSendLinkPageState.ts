@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { PaymentLink } from '@/types/payment';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
@@ -71,7 +72,11 @@ export function useSendLinkPageState() {
     
     setIsProcessing(true);
     
-    const loadingToast = toast.loading('Processing payment request...');
+    // Only show loading toast for regular payment links, not for payment plans
+    let loadingToast: string | undefined;
+    if (!isPaymentPlan) {
+      loadingToast = toast.loading('Processing payment request...');
+    }
     
     try {
       console.log('Starting payment link sending process...');
@@ -93,7 +98,7 @@ export function useSendLinkPageState() {
 
       if (!patientId) {
         console.error('Failed to create or get patient');
-        toast.dismiss(loadingToast);
+        if (loadingToast) toast.dismiss(loadingToast);
         toast.error('Could not create or find patient record');
         setIsProcessing(false);
         return;
@@ -106,14 +111,11 @@ export function useSendLinkPageState() {
         // For payment plans, get the selected plan details
         const selectedLink = [...regularLinks, ...paymentPlans].find(link => link.id === formData.selectedLink);
         if (!selectedLink) {
-          toast.dismiss(loadingToast);
+          // We don't need to dismiss the loading toast here since we don't show it for payment plans
           toast.error('Selected payment plan not found');
           setIsProcessing(false);
           return;
         }
-        
-        // Dismiss the loading toast before scheduling the plan
-        toast.dismiss(loadingToast);
         
         // Schedule the plan with the verified patient ID
         const result = await handleSchedulePaymentPlan(patientId, formData, selectedLink);
@@ -146,7 +148,7 @@ export function useSendLinkPageState() {
           
         const linkTitle = selectedLink ? selectedLink.title : 'Custom payment';
         
-        toast.dismiss(loadingToast); // Dismiss the generic loading toast
+        if (loadingToast) toast.dismiss(loadingToast); // Dismiss the loading toast only if it was created
         
         if (result.success) {
           toast.success(`Payment request sent to ${formData.patientName}`, {
@@ -158,11 +160,11 @@ export function useSendLinkPageState() {
       }
     } catch (error: any) {
       console.error('Error in handleSendPaymentLink:', error);
-      toast.dismiss(loadingToast);
+      if (loadingToast) toast.dismiss(loadingToast);
       toast.error(`Failed to process request: ${error.message}`);
     } finally {
       setIsProcessing(false);
-      if (toast.dismiss) toast.dismiss(loadingToast);
+      if (loadingToast) toast.dismiss(loadingToast);
     }
   };
 
