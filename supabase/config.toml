@@ -79,9 +79,6 @@ url = ""
 # Port to use for Function API URL.
 port = 54328
 
-[functions.resume-plan-debug]
-verify_jwt = true
-
 [functions.payment-intent-webhooks]
 verify_jwt = false
 
