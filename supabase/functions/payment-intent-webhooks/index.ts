@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { corsHeaders } from "./utils.ts";
-import { handlePaymentIntentSucceeded, handlePaymentIntentFailed } from "./handlers.ts";
+import { handlePaymentIntentSucceeded, handlePaymentIntentFailed } from "./paymentHandlers.ts";
 import { handleRefundUpdated } from "./refundHandlers.ts";
 
 serve(async (req) => {
