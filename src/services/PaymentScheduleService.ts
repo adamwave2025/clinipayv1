@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -86,7 +87,7 @@ export const fetchPlanInstallments = async (planId: string) => {
         plan_id,
         payment_requests (
           id, status, payment_id, paid_at,
-          payments(
+          payments (
             id, status, paid_at, manual_payment
           )
         ),

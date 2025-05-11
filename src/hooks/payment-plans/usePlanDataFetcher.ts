@@ -6,6 +6,7 @@ import { PlanInstallment, formatPlanInstallments, groupPaymentSchedulesByPlan } 
 import { fetchPlans, fetchPlanInstallments, fetchPlanActivities } from '@/services/PaymentScheduleService';
 import { formatPlanActivities } from '@/utils/planActivityUtils';
 import { toast } from 'sonner';
+import { PlanDataService } from '@/modules/payment/services/PlanDataService';
 
 export const usePlanDataFetcher = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -110,13 +111,24 @@ export const usePlanDataFetcher = () => {
   const fetchPlanInstallmentsData = useCallback(async (planId: string) => {
     console.log('Fetching installments for plan:', planId);
     try {
-      // Fetch installments directly using the plan_id from payment_schedule
-      const rawInstallments = await fetchPlanInstallments(planId);
+      // Get the full plan object first
+      const { data: planData, error: planError } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('id', planId)
+        .single();
       
-      console.log('Raw installments fetched:', rawInstallments?.length || 0);
+      if (planError) {
+        console.error('Error fetching plan data:', planError);
+        toast.error('Failed to load plan details');
+        return [];
+      }
       
-      // Format installments for display
-      const formattedInstallments = formatPlanInstallments(rawInstallments);
+      // Format the plan object using the helper function
+      const plan = formatPlanFromDb(planData);
+      
+      // Use the PlanDataService to fetch installments directly
+      const formattedInstallments = await PlanDataService.fetchPlanInstallments(plan);
       
       console.log('Formatted installments:', formattedInstallments.length);
       

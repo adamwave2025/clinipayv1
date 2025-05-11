@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { formatPlanInstallments, PlanInstallment } from '@/utils/paymentPlanUtils';
@@ -44,7 +43,6 @@ export class PlanDataService {
       
       console.log('Raw installment data with payments:', data);
       
-      // Use type assertion to handle potential type mismatch
       return formatPlanInstallments(data || []);
       
     } catch (err) {
