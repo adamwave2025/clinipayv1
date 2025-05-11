@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { formatPlanInstallments, PlanInstallment } from '@/utils/paymentPlanUtils';
@@ -17,8 +16,7 @@ export class PlanDataService {
     try {
       console.log('PlanDataService: Fetching installments for plan:', plan.id);
       
-      // Get all payment schedules for this plan with extended query to include 
-      // both payment_requests and direct payments information
+      // Get all payment schedules for this plan with a cleaner query structure
       const { data, error } = await supabase
         .from('payment_schedule')
         .select(`
@@ -32,13 +30,9 @@ export class PlanDataService {
           plan_id,
           payment_requests (
             id, status, payment_id, paid_at,
-            payments (
-              id, status, paid_at, manual_payment
-            )
+            payments (*)
           ),
-          payments (
-            id, status, paid_at, manual_payment
-          )
+          payments (*)
         `)
         .eq('plan_id', plan.id)
         .order('payment_number', { ascending: true });
@@ -48,21 +42,11 @@ export class PlanDataService {
         throw error;
       }
       
-      console.log('Raw installment data with payments:', data);
+      console.log('Raw installment data with payments:', data?.length || 0, 'items');
       
       // Add detailed logging to understand the data structure
       if (data && data.length > 0) {
         console.log(`First installment sample:`, JSON.stringify(data[0], null, 2));
-        
-        // Check payment_requests nesting
-        if (data[0].payment_requests) {
-          console.log(`payment_requests sample:`, JSON.stringify(data[0].payment_requests, null, 2));
-        }
-        
-        // Check direct payments nesting
-        if (data[0].payments) {
-          console.log(`direct payments sample:`, JSON.stringify(data[0].payments, null, 2));
-        }
       } else {
         console.warn(`No installments found for plan ${plan.id}`);
       }

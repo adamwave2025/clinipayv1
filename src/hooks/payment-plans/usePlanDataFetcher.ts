@@ -97,7 +97,7 @@ export const usePlanDataFetcher = () => {
       // Use the PlanDataService to fetch installments directly
       const formattedInstallments = await PlanDataService.fetchPlanInstallments(plan);
       
-      console.log('Formatted installments:', formattedInstallments);
+      console.log('Formatted installments from PlanDataService:', formattedInstallments.length, formattedInstallments);
       
       if (!formattedInstallments || formattedInstallments.length === 0) {
         console.warn('No installments returned for plan', planId);

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -73,7 +72,7 @@ export const fetchPlanInstallments = async (planId: string) => {
       throw planError;
     }
     
-    // Now fetch the payment schedule entries with their payment requests AND directly join with payments
+    // Now fetch the payment schedule entries with a cleaner join structure
     const { data, error } = await supabase
       .from('payment_schedule')
       .select(`
@@ -87,13 +86,9 @@ export const fetchPlanInstallments = async (planId: string) => {
         plan_id,
         payment_requests (
           id, status, payment_id, paid_at,
-          payments (
-            id, status, paid_at, manual_payment
-          )
+          payments (*)
         ),
-        payments (
-          id, status, paid_at, manual_payment
-        )
+        payments (*)
       `)
       .eq('plan_id', planId)
       .order('payment_number', { ascending: true });
@@ -104,28 +99,10 @@ export const fetchPlanInstallments = async (planId: string) => {
     }
     
     console.log(`Fetched ${data?.length || 0} installments for plan ${planId}`);
+    
+    // Log each payment's structure for debugging
     if (data && data.length > 0) {
-      data.forEach(item => {
-        // Log detailed payment information for debugging
-        console.log(`Installment ${item.id} (status: ${item.status}):`);
-        if (item.payments && Array.isArray(item.payments) && item.payments.length > 0) {
-          const payment = item.payments[0];
-          if (payment && typeof payment === 'object') {
-            console.log(`  Direct payment found: paid_at=${payment.paid_at}, manual=${payment.manual_payment}`);
-          }
-        }
-        if (item.payment_requests && item.payment_requests.payments) {
-          console.log(`  Payment request data:`, item.payment_requests);
-          
-          // Properly handle the payments object or array
-          const payments = item.payment_requests.payments;
-          if (Array.isArray(payments) && payments.length > 0) {
-            console.log(`  Payment via request (array): ${JSON.stringify(payments[0])}`);
-          } else if (typeof payments === 'object') {
-            console.log(`  Payment via request (object): ${JSON.stringify(payments)}`);
-          }
-        }
-      });
+      console.log('Sample payment schedule structure:', JSON.stringify(data[0], null, 2));
     }
     
     return data || [];

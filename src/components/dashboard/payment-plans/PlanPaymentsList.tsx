@@ -73,11 +73,12 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
             installments.map((installment) => {
               const status = determineStatus(installment);
               
-              // Debug log to check each installment's manual payment status
+              // Debug log to check each installment's payment information
               console.log(`Installment ${installment.id} status:`, {
-                status, 
+                status,
+                paidDate: installment.paidDate,
                 manualPayment: installment.manualPayment || false,
-                paidDate: installment.paidDate
+                paymentId: installment.paymentId
               });
               
               return (
