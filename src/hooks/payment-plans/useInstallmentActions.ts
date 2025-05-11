@@ -11,6 +11,7 @@ export const useInstallmentActions = (
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedInstallment, setSelectedInstallment] = useState<any | null>(null);
   const [showMarkAsPaidDialog, setShowMarkAsPaidDialog] = useState(false);
+  const [showTakePaymentDialog, setShowTakePaymentDialog] = useState(false);
   
   // Use the payment reschedule actions hook with proper destructuring
   const rescheduleActions = usePaymentRescheduleActions(planId, onPaymentUpdated);
@@ -28,10 +29,11 @@ export const useInstallmentActions = (
     console.log("useInstallmentActions: After calling handleOpenRescheduleDialog");
   };
   
-  const handleTakePayment = (paymentId: string) => {
+  const handleTakePayment = (paymentId: string, installmentDetails?: any) => {
     console.log("Take payment clicked for", paymentId);
-    // This will be implemented in another task
-    toast.info("Take payment functionality coming soon");
+    // Store the selected installment with all details we need
+    setSelectedInstallment(installmentDetails || { id: paymentId });
+    setShowTakePaymentDialog(true);
   };
   
   const confirmMarkAsPaid = async () => {
@@ -68,6 +70,9 @@ export const useInstallmentActions = (
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
     selectedInstallment,
+    // Take payment dialog state
+    showTakePaymentDialog,
+    setShowTakePaymentDialog,
     // Expose the reschedule actions directly for clarity
     rescheduleDialog: rescheduleActions.showRescheduleDialog,
     setRescheduleDialog: rescheduleActions.setShowRescheduleDialog,

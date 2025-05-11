@@ -47,12 +47,17 @@ export interface ManagePlansContextType {
   handleMarkAsPaid: (paymentId: string) => void;
   handleOpenReschedule: (paymentId: string) => void;
   handleReschedulePayment: (date: Date) => void;
-  handleTakePayment: (paymentId: string) => void;
+  handleTakePayment: (paymentId: string, installmentDetails?: any) => void;
   
   // Mark as paid confirmation dialog
   showMarkAsPaidDialog: boolean;
   setShowMarkAsPaidDialog: (show: boolean) => void;
   confirmMarkAsPaid: () => Promise<void>;
+  
+  // Take payment dialog
+  showTakePaymentDialog: boolean;
+  setShowTakePaymentDialog: (show: boolean) => void;
+  onPaymentUpdated: () => Promise<void>;
   
   // Refund properties
   refundDialogOpen: boolean;

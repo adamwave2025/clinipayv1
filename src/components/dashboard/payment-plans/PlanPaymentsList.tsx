@@ -17,7 +17,7 @@ interface PlanPaymentsListProps {
   installments: PlanInstallment[];
   onMarkAsPaid: (paymentId: string) => void;
   onReschedule: (paymentId: string) => void;
-  onTakePayment?: (paymentId: string) => void;
+  onTakePayment?: (paymentId: string, installmentDetails: PlanInstallment) => void;
 }
 
 const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
@@ -69,9 +69,9 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
     onReschedule(paymentId);
   };
 
-  const handleTakePayment = onTakePayment ? (paymentId: string) => {
-    console.log("PlanPaymentsList: Take payment clicked for payment:", paymentId);
-    onTakePayment(paymentId);
+  const handleTakePayment = onTakePayment ? (paymentId: string, installment: PlanInstallment) => {
+    console.log("PlanPaymentsList: Take payment clicked for payment:", paymentId, installment);
+    onTakePayment(paymentId, installment);
   } : undefined;
 
   return (
@@ -130,7 +130,8 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
                         paymentId={installment.id}
                         onMarkAsPaid={handleMarkAsPaid}
                         onReschedule={handleReschedule}
-                        onTakePayment={handleTakePayment}
+                        onTakePayment={handleTakePayment ? 
+                          () => handleTakePayment(installment.id, installment) : undefined}
                       />
                     )}
                   </TableCell>

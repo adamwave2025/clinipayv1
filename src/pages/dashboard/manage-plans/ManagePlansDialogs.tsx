@@ -9,6 +9,7 @@ import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDi
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
+import TakePaymentDialog from '@/components/dashboard/payment-plans/TakePaymentDialog';
 
 export const ManagePlansDialogs = () => {
   const {
@@ -47,7 +48,12 @@ export const ManagePlansDialogs = () => {
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
-    selectedInstallment
+    selectedInstallment,
+    
+    // Add the take payment dialog props
+    showTakePaymentDialog,
+    setShowTakePaymentDialog,
+    onPaymentUpdated
   } = useManagePlansContext();
 
   console.log('ManagePlansDialogs rendering with selectedPlan:', selectedPlan?.id);
@@ -58,6 +64,7 @@ export const ManagePlansDialogs = () => {
     showReschedulePlanDialog,
     showReschedulePaymentDialog,
     showMarkAsPaidDialog,
+    showTakePaymentDialog,
     refundDialogOpen
   });
 
@@ -138,6 +145,19 @@ export const ManagePlansDialogs = () => {
         isLoading={isProcessing}
         installment={selectedInstallment}
       />
+
+      {/* Add Take Payment dialog here */}
+      {selectedInstallment && (
+        <TakePaymentDialog
+          open={showTakePaymentDialog}
+          onOpenChange={setShowTakePaymentDialog}
+          paymentId={selectedInstallment.id}
+          patientName={selectedPlan.patientName || ''}
+          patientEmail={selectedPlan.patientEmail || ''}
+          amount={selectedInstallment.amount || 0}
+          onPaymentProcessed={onPaymentUpdated}
+        />
+      )}
       
       {paymentToRefund && (
         <PaymentRefundDialog
