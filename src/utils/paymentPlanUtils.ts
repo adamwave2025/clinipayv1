@@ -13,6 +13,7 @@ export interface PlanInstallment {
   paymentRequestId?: string;
   originalStatus?: string;
   paymentId?: string; // Add direct payment ID field
+  manualPayment?: boolean; // Add manualPayment property
 }
 
 /**
@@ -26,6 +27,7 @@ export const formatPlanInstallments = (installments: any[]): PlanInstallment[] =
     // Only set paidDate if the installment status is actually 'paid'
     let paidDate = null;
     let paymentId = null;
+    let manualPayment = false; // Initialize manualPayment flag
     
     // Only proceed with getting the paid date if the status is 'paid'
     if (installment.status === 'paid') {
@@ -50,6 +52,10 @@ export const formatPlanInstallments = (installments: any[]): PlanInstallment[] =
         // If there's payment data from payments table via paymentInfo
         if (installment.paymentInfo.payments) {
           paymentId = installment.paymentInfo.payments.id;
+          // Check if this is a manual payment
+          if (installment.paymentInfo.payments.manual_payment) {
+            manualPayment = true;
+          }
         }
       }
       
@@ -60,6 +66,10 @@ export const formatPlanInstallments = (installments: any[]): PlanInstallment[] =
         // For now, we'll try to use the first direct payment we find
         paidDate = installment.directPayments[0].paid_at;
         paymentId = installment.directPayments[0].id;
+        // Check if this is a manual payment
+        if (installment.directPayments[0].manual_payment) {
+          manualPayment = true;
+        }
       }
     }
       
@@ -73,6 +83,7 @@ export const formatPlanInstallments = (installments: any[]): PlanInstallment[] =
       totalPayments: installment.total_payments,
       paymentRequestId: installment.payment_request_id,
       paymentId: paymentId,
+      manualPayment: manualPayment, // Add the manualPayment flag to the returned object
       originalStatus: installment.original_status || installment.status
     };
   });
