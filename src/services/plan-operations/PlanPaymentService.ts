@@ -213,10 +213,10 @@ export class PlanPaymentService {
           'payment_confirmation',
           {
             payment: {
-              id: paymentData.id,
+              // Remove the id property as it's not in the expected type
+              reference: paymentRef, // Use payment_ref instead of id
               amount: installment.amount / 100, // Convert to decimal currency
-              patient_name: installment.patients?.name || 'Patient',
-              payment_ref: paymentRef,
+              message: `Manual payment for installment #${installment.payment_number}`,
               manual_payment: true
             },
             plan: {
