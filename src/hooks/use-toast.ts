@@ -1,5 +1,5 @@
 
-import { toast as sonnerToast, Toaster, Toast } from "sonner";
+import { toast as sonnerToast, Toaster } from "sonner";
 
 type ToastProps = {
   title?: string;
@@ -12,7 +12,7 @@ type ToastProps = {
 export const useToast = () => {
   // Return an empty toasts array since we're using the direct toast function
   return { 
-    toasts: [] as Toast[] 
+    toasts: [] as any[] 
   };
 };
 
