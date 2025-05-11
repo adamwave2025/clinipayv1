@@ -54,6 +54,8 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
       status: i.status, 
       paymentNumber: i.paymentNumber,
       paidDate: i.paidDate,
+      amount: i.amount,
+      dueDate: i.dueDate,
       manualPayment: i.manualPayment
     }))
   );

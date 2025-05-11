@@ -30,10 +30,19 @@ export const useInstallmentActions = (
   };
   
   const handleTakePayment = (paymentId: string, installmentDetails?: any) => {
-    console.log("Take payment clicked for", paymentId);
+    console.log("Take payment clicked for", paymentId, "with details:", installmentDetails);
+    
     // Store the selected installment with all details we need
-    setSelectedInstallment(installmentDetails || { id: paymentId });
+    const installmentData = installmentDetails || { id: paymentId };
+    console.log("Setting selectedInstallment to:", installmentData);
+    
+    setSelectedInstallment(installmentData);
     setShowTakePaymentDialog(true);
+    
+    console.log("After setting showTakePaymentDialog to true, current state:", {
+      selectedInstallment: installmentData,
+      showTakePaymentDialog: true
+    });
   };
   
   const confirmMarkAsPaid = async () => {

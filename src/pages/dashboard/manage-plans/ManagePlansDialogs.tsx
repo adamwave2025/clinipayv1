@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
@@ -67,6 +66,11 @@ export const ManagePlansDialogs = () => {
     showTakePaymentDialog,
     refundDialogOpen
   });
+  
+  // Debug selected installment when take payment dialog should show
+  if (showTakePaymentDialog) {
+    console.log('TakePaymentDialog should show with selectedInstallment:', selectedInstallment);
+  }
 
   if (!selectedPlan) {
     console.log('No selectedPlan, returning null from ManagePlansDialogs');

@@ -4,6 +4,7 @@ import PaymentPlanFilters from '@/components/dashboard/payment-plans/PaymentPlan
 import ActivePlansTable from '@/components/dashboard/payment-plans/ActivePlansTable';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import PlanDetailsDialog from '@/components/dashboard/payment-plans/PlanDetailsDialog';
+import ManagePlansDialogs from './ManagePlansDialogs';
 
 const ManagePlansContent: React.FC = () => {
   const {
@@ -82,6 +83,9 @@ const ManagePlansContent: React.FC = () => {
         onReschedule={handleOpenReschedule}
         onTakePayment={handleTakePayment}
       />
+      
+      {/* Include the ManagePlansDialogs component here */}
+      <ManagePlansDialogs />
     </div>
   );
 };

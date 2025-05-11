@@ -21,8 +21,16 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
   paymentId, 
   onMarkAsPaid, 
   onReschedule,
-  onTakePayment = () => {} // Default empty handler
+  onTakePayment
 }) => {
+  // Add logging for debugging
+  const handleTakePayment = () => {
+    console.log("PaymentActionMenu: Take payment clicked for ID:", paymentId);
+    if (onTakePayment) {
+      onTakePayment(paymentId);
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -32,24 +40,36 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        {onTakePayment && (
+          <DropdownMenuItem 
+            onClick={handleTakePayment}
+            className="cursor-pointer"
+          >
+            <CreditCard className="mr-2 h-4 w-4" />
+            <span>Take Payment</span>
+          </DropdownMenuItem>
+        )}
+        
+        {onTakePayment && <DropdownMenuSeparator />}
+        
         <DropdownMenuItem 
-          onClick={() => onTakePayment(paymentId)}
-          className="cursor-pointer"
-        >
-          <CreditCard className="mr-2 h-4 w-4" />
-          <span>Take Payment</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem 
-          onClick={() => onMarkAsPaid(paymentId)}
+          onClick={() => {
+            console.log("PaymentActionMenu: Mark as paid clicked for ID:", paymentId);
+            onMarkAsPaid(paymentId);
+          }}
           className="cursor-pointer"
         >
           <CheckCircle className="mr-2 h-4 w-4" />
           <span>Mark as Paid</span>
         </DropdownMenuItem>
+        
         <DropdownMenuSeparator />
+        
         <DropdownMenuItem 
-          onClick={() => onReschedule(paymentId)}
+          onClick={() => {
+            console.log("PaymentActionMenu: Reschedule clicked for ID:", paymentId);
+            onReschedule(paymentId);
+          }}
           className="cursor-pointer"
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
