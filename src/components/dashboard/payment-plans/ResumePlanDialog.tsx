@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { AlertCircle, Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +21,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/spinner';
 
 interface ResumePlanDialogProps {
   showDialog: boolean;
@@ -35,7 +36,8 @@ interface ResumePlanDialogProps {
   resumeError?: string | null;
 }
 
-const ResumePlanDialog = ({
+// Use React.memo to prevent unnecessary re-renders when props don't change
+const ResumePlanDialog = React.memo(({
   showDialog,
   setShowDialog,
   onConfirm,
@@ -51,8 +53,11 @@ const ResumePlanDialog = ({
   const [resumeDate, setResumeDate] = useState<Date>(tomorrow);
   const [dateSelected, setDateSelected] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [isCalendarLoading, setIsCalendarLoading] = useState(false);
 
-  const validateDate = (date: Date) => {
+  // Memoize validation function to prevent unnecessary recalculations
+  const validateDate = useCallback((date: Date) => {
     const errors = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -63,9 +68,10 @@ const ResumePlanDialog = ({
     
     setValidationErrors(errors);
     return errors.length === 0;
-  };
+  }, []);
 
-  const handleConfirm = () => {
+  // Memoize handleConfirm for better performance
+  const handleConfirm = useCallback(() => {
     if (!dateSelected) {
       setDateSelected(true);
       return;
@@ -74,14 +80,14 @@ const ResumePlanDialog = ({
     if (validateDate(resumeDate)) {
       onConfirm(resumeDate);
     }
-  };
+  }, [dateSelected, validateDate, resumeDate, onConfirm]);
 
-  // Disable dates in the past
-  const disablePastDates = (date: Date) => {
+  // Memoize disablePastDates function
+  const disablePastDates = useCallback((date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return date < today;
-  };
+  }, []);
   
   // Clear validation errors when dialog is opened or closed
   React.useEffect(() => {
@@ -95,9 +101,33 @@ const ResumePlanDialog = ({
     }
   }, [showDialog]);
 
+  // Handle calendar opening with a loading state
+  const handleCalendarOpen = useCallback(() => {
+    setIsCalendarLoading(true);
+    setCalendarOpen(true);
+    // Short timeout to ensure UI remains responsive during state change
+    setTimeout(() => setIsCalendarLoading(false), 50);
+  }, []);
+
+  // Memoize formatted resume date to prevent unnecessary formatting
+  const formattedResumeDate = useMemo(() => {
+    return resumeDate ? format(resumeDate, "PPP") : "";
+  }, [resumeDate]);
+
+  // Handle date selection with optimized state updates
+  const handleDateSelect = useCallback((date: Date | undefined) => {
+    if (date) {
+      setResumeDate(date);
+      setDateSelected(true);
+      validateDate(date);
+      // Close calendar after selection to reduce rendering burden
+      setTimeout(() => setCalendarOpen(false), 100);
+    }
+  }, [validateDate]);
+
   return (
     <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
-      <AlertDialogContent>
+      <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
           <AlertDialogTitle>Resume Payment Plan</AlertDialogTitle>
           <AlertDialogDescription>
@@ -127,7 +157,7 @@ const ResumePlanDialog = ({
           <div className="mt-6">
             <div className="space-y-2">
               <p className="text-sm font-medium">Select a resume date:</p>
-              <Popover>
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -135,24 +165,32 @@ const ResumePlanDialog = ({
                       "w-full justify-start text-left font-normal",
                       !dateSelected && "border-red-300"
                     )}
+                    onClick={handleCalendarOpen}
+                    disabled={isProcessing}
                   >
-                    {resumeDate ? format(resumeDate, "PPP") : <span>Select a date</span>}
+                    {isCalendarLoading ? (
+                      <LoadingSpinner size="sm" className="mr-2" />
+                    ) : (
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                    )}
+                    {formattedResumeDate || <span>Select a date</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={resumeDate}
-                    onSelect={(date) => {
-                      if (date) {
-                        setResumeDate(date);
-                        setDateSelected(true);
-                        validateDate(date);
-                      }
-                    }}
-                    disabled={disablePastDates}
-                    initialFocus
-                  />
+                  {isCalendarLoading ? (
+                    <div className="p-4 flex justify-center">
+                      <LoadingSpinner size="md" />
+                    </div>
+                  ) : (
+                    <Calendar
+                      mode="single"
+                      selected={resumeDate}
+                      onSelect={handleDateSelect}
+                      disabled={disablePastDates}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  )}
                 </PopoverContent>
               </Popover>
               {!dateSelected && (
@@ -181,6 +219,9 @@ const ResumePlanDialog = ({
       </AlertDialogContent>
     </AlertDialog>
   );
-};
+});
+
+// Add display name to help with debugging
+ResumePlanDialog.displayName = 'ResumePlanDialog';
 
 export default ResumePlanDialog;
