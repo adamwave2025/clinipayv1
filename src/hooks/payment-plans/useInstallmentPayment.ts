@@ -77,6 +77,7 @@ export function useInstallmentPayment(
       const paymentLinkData = {
         id: paymentData.plans.payment_link_id,
         amount: amount, // Use the amount provided from the payment schedule
+        status: 'active', // Add the required status property
         clinic: {
           id: clinicData.id,
           name: clinicData.clinic_name,

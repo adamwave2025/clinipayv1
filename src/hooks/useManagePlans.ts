@@ -81,6 +81,12 @@ export const useManagePlans = (): ManagePlansContextType => {
     }
   };
   
+  // Create the onPaymentUpdated function that will be used after payment processing
+  const onPaymentUpdated = async () => {
+    console.log("Payment updated, refreshing installments data");
+    await refreshInstallments();
+  };
+  
   // Use installment actions with all needed props
   const {
     isProcessing: isProcessingInstallment,
@@ -90,6 +96,8 @@ export const useManagePlans = (): ManagePlansContextType => {
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
+    showTakePaymentDialog, // Include these properties from the hook
+    setShowTakePaymentDialog,
     rescheduleDialog: installmentRescheduleDialog,
     setRescheduleDialog: setInstallmentRescheduleDialog,
     handleReschedulePayment: installmentReschedulePayment
@@ -110,6 +118,7 @@ export const useManagePlans = (): ManagePlansContextType => {
   // Log dialog states for debugging
   console.log('useManagePlans - Dialog states:', {
     showMarkAsPaidDialog,
+    showTakePaymentDialog,
     selectedInstallment,
     installmentRescheduleDialog,
     showRescheduleDialog: rescheduleActions.showRescheduleDialog
@@ -164,6 +173,11 @@ export const useManagePlans = (): ManagePlansContextType => {
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
+    
+    // Take payment dialog state and handlers
+    showTakePaymentDialog,
+    setShowTakePaymentDialog,
+    onPaymentUpdated,  // Add this missing property
     
     // Refund properties
     refundDialogOpen,

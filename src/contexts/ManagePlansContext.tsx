@@ -54,7 +54,7 @@ export interface ManagePlansContextType {
   setShowMarkAsPaidDialog: (show: boolean) => void;
   confirmMarkAsPaid: () => Promise<void>;
   
-  // Take payment dialog
+  // Take payment dialog - Add the missing properties
   showTakePaymentDialog: boolean;
   setShowTakePaymentDialog: (show: boolean) => void;
   onPaymentUpdated: () => Promise<void>;

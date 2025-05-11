@@ -1,8 +1,10 @@
+
 export interface Plan {
   id: string;
   clinicId: string;
   patientId: string;
   patientName?: string;
+  patientEmail?: string; // Add patientEmail property
   paymentLinkId: string;
   title: string;
   description?: string;
@@ -38,6 +40,7 @@ export const formatPlanFromDb = (planData: any): Plan => {
     clinicId: planData.clinic_id,
     patientId: planData.patient_id,
     patientName: planData.patients?.name || '',
+    patientEmail: planData.patients?.email || '', // Add patientEmail mapping
     paymentLinkId: planData.payment_link_id,
     title: planData.title || planData.payment_links?.title || 'Payment Plan',
     description: planData.description,

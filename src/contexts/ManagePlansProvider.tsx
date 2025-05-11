@@ -70,6 +70,12 @@ export const ManagePlansProvider: React.FC<{
     }
   };
   
+  // Define onPaymentUpdated function for the take payment dialog
+  const onPaymentUpdated = async () => {
+    console.log("Payment updated, refreshing installments data");
+    await refreshInstallments();
+  };
+  
   // Use installment actions hook with the refreshInstallments function
   const {
     isProcessing: isProcessingInstallment,
@@ -78,7 +84,9 @@ export const ManagePlansProvider: React.FC<{
     handleMarkAsPaid,
     handleOpenReschedule,
     handleTakePayment,
-    confirmMarkAsPaid
+    confirmMarkAsPaid,
+    showTakePaymentDialog,
+    setShowTakePaymentDialog
   } = useInstallmentActions(
     selectedPlan?.id || '',
     refreshInstallments
@@ -267,6 +275,11 @@ export const ManagePlansProvider: React.FC<{
         showMarkAsPaidDialog,
         setShowMarkAsPaidDialog,
         confirmMarkAsPaid,
+        
+        // Add Take Payment dialog properties
+        showTakePaymentDialog,
+        setShowTakePaymentDialog,
+        onPaymentUpdated,
         
         // Refund properties
         refundDialogOpen,
