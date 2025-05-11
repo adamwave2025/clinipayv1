@@ -69,13 +69,21 @@ export const ManagePlansDialogs = () => {
     refundDialogOpen
   });
   
-  // Debug selected installment when take payment dialog should show
+  // Enhanced debug for selected installment when take payment dialog should show
   if (showTakePaymentDialog) {
     console.log('TakePaymentDialog should show with selectedInstallment:', selectedInstallment);
-    toast.info("Attempting to show Take Payment dialog");
     
     if (!selectedInstallment) {
+      console.error('Missing selectedInstallment data in ManagePlansDialogs');
       toast.error("Cannot show payment dialog: Missing installment data");
+      return null;
+    }
+    
+    // Validate installment has required data
+    if (!selectedInstallment.amount) {
+      console.error('Missing amount in selectedInstallment:', selectedInstallment);
+      toast.error("Cannot process payment: Installment amount is missing");
+      return null;
     }
   }
 
@@ -84,6 +92,10 @@ export const ManagePlansDialogs = () => {
     return null;
   }
 
+  // Prepare patient information from the selected plan
+  const patientName = selectedPlan.patientName || '';
+  const patientEmail = selectedPlan.patientEmail || ''; 
+
   return (
     <>
       <CancelPlanDialog
@@ -91,7 +103,7 @@ export const ManagePlansDialogs = () => {
         setShowDialog={setShowCancelDialog}
         onConfirm={handleCancelPlan}
         planName={selectedPlan.title || selectedPlan.planName || ''}
-        patientName={selectedPlan.patientName || ''}
+        patientName={patientName}
         isProcessing={isProcessing}
         isLoading={false}
       />
@@ -101,7 +113,7 @@ export const ManagePlansDialogs = () => {
         setShowDialog={setShowPauseDialog}
         onConfirm={handlePausePlan}
         planName={selectedPlan.title || selectedPlan.planName || ''}
-        patientName={selectedPlan.patientName || ''}
+        patientName={patientName}
         isProcessing={isProcessing}
         isLoading={false}
         hasSentPayments={hasSentPayments}
@@ -112,7 +124,7 @@ export const ManagePlansDialogs = () => {
         setShowDialog={setShowResumeDialog}
         onConfirm={handleResumePlan}
         planName={selectedPlan.title || selectedPlan.planName || ''}
-        patientName={selectedPlan.patientName || ''}
+        patientName={patientName}
         isProcessing={isProcessing}
         hasSentPayments={hasSentPayments}
         hasOverduePayments={hasOverduePayments}
@@ -126,7 +138,7 @@ export const ManagePlansDialogs = () => {
         setShowDialog={setShowReschedulePlanDialog}
         onConfirm={handleReschedulePlan}
         planName={selectedPlan.title || selectedPlan.planName || ''}
-        patientName={selectedPlan.patientName || ''}
+        patientName={patientName}
         startDate={selectedPlan.startDate}
         isProcessing={isProcessing}
         isLoading={false}
@@ -157,8 +169,8 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* Add Take Payment dialog here with additional checks */}
-      {selectedInstallment && (
+      {/* Enhanced Take Payment dialog with additional validation */}
+      {selectedInstallment && selectedInstallment.amount && showTakePaymentDialog && (
         <TakePaymentDialog
           open={showTakePaymentDialog}
           onOpenChange={(open) => {
@@ -169,9 +181,9 @@ export const ManagePlansDialogs = () => {
             setShowTakePaymentDialog(open);
           }}
           paymentId={selectedInstallment.id}
-          patientName={selectedPlan.patientName || ''}
-          patientEmail={selectedPlan.patientEmail || ''}
-          amount={selectedInstallment.amount || 0}
+          patientName={patientName}
+          patientEmail={patientEmail}
+          amount={selectedInstallment.amount}
           onPaymentProcessed={onPaymentUpdated}
         />
       )}

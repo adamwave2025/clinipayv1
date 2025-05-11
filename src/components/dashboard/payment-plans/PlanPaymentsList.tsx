@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Table, 
@@ -142,6 +141,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
                     {status !== 'paid' && (
                       <PaymentActionMenu
                         paymentId={installment.id}
+                        installment={installment}
                         onMarkAsPaid={handleMarkAsPaid}
                         onReschedule={handleReschedule}
                         onTakePayment={handleTakePayment ? 

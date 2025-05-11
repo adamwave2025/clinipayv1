@@ -3,13 +3,14 @@ import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { usePaymentRescheduleActions } from './usePaymentRescheduleActions';
+import { PlanInstallment } from '@/utils/paymentPlanUtils';
 
 export const useInstallmentActions = (
   planId: string,
   onPaymentUpdated: () => Promise<void>
 ) => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedInstallment, setSelectedInstallment] = useState<any | null>(null);
+  const [selectedInstallment, setSelectedInstallment] = useState<PlanInstallment | null>(null);
   const [showMarkAsPaidDialog, setShowMarkAsPaidDialog] = useState(false);
   const [showTakePaymentDialog, setShowTakePaymentDialog] = useState(false);
   
@@ -21,7 +22,7 @@ export const useInstallmentActions = (
     toast.info(`Opening Mark as Paid dialog for payment ${paymentId}`);
     
     // Find the selected installment
-    setSelectedInstallment({ id: paymentId });
+    setSelectedInstallment({ id: paymentId } as PlanInstallment);
     setShowMarkAsPaidDialog(true);
   };
   
@@ -33,35 +34,29 @@ export const useInstallmentActions = (
     console.log("[useInstallmentActions] After calling handleOpenRescheduleDialog");
   };
   
-  const handleTakePayment = (paymentId: string, installmentDetails?: any) => {
+  const handleTakePayment = (paymentId: string, installmentDetails?: PlanInstallment) => {
     console.log("[useInstallmentActions] Take payment clicked for", paymentId, "with details:", installmentDetails);
     
     if (!installmentDetails || !installmentDetails.amount) {
       console.error("[useInstallmentActions] Missing installment details or amount:", installmentDetails);
-      toast.error("Cannot process payment: Missing payment details");
+      toast.error("Cannot take payment: Missing payment details");
       return;
     }
     
     toast.info(`Opening payment dialog for ${formatCurrency(installmentDetails.amount)}`);
     
-    // Store the selected installment with all details we need
-    const installmentData = installmentDetails || { id: paymentId };
-    console.log("[useInstallmentActions] Setting selectedInstallment to:", installmentData);
+    // Store the full installment details
+    setSelectedInstallment(installmentDetails);
+    console.log("[useInstallmentActions] Setting selectedInstallment to:", installmentDetails);
     
-    setSelectedInstallment(installmentData);
-    
-    console.log("[useInstallmentActions] Setting showTakePaymentDialog to true");
-    setShowTakePaymentDialog(true);
-    
-    // Use setTimeout to check if state was updated correctly
+    // Wait a tick to ensure state is updated before showing dialog
     setTimeout(() => {
-      console.log("[useInstallmentActions] State after update:", { 
-        selectedInstallment: installmentData,
+      setShowTakePaymentDialog(true);
+      console.log("[useInstallmentActions] Dialog state updated:", {
         showTakePaymentDialog: true,
-        actualSelectedInstallment: selectedInstallment,
-        actualShowTakePaymentDialog: showTakePaymentDialog 
+        selectedInstallment: installmentDetails
       });
-    }, 100);
+    }, 0);
   };
   
   const confirmMarkAsPaid = async () => {

@@ -10,28 +10,38 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import { PlanInstallment } from '@/utils/paymentPlanUtils';
 
 interface PaymentActionMenuProps {
   paymentId: string;
+  installment: PlanInstallment;
   onMarkAsPaid: (id: string) => void;
   onReschedule: (id: string) => void;
-  onTakePayment?: (id: string) => void;
+  onTakePayment?: (id: string, installmentDetails: PlanInstallment) => void;
 }
 
 const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({ 
   paymentId, 
+  installment,
   onMarkAsPaid, 
   onReschedule,
   onTakePayment
 }) => {
   // Enhanced logging for debugging
   const handleTakePayment = () => {
-    console.log("PaymentActionMenu: Take payment clicked for ID:", paymentId);
-    toast.info(`Take Payment action triggered for payment ${paymentId}`);
+    console.log("PaymentActionMenu: Take payment clicked for ID:", paymentId, "with installment:", installment);
+    
+    if (!installment.amount) {
+      toast.error(`Missing amount data for payment ${paymentId}`);
+      console.error("PaymentActionMenu: Missing amount in installment:", installment);
+      return;
+    }
+    
+    toast.info(`Take Payment action triggered for payment ${paymentId} (${installment.amount})`);
     
     if (onTakePayment) {
-      console.log("PaymentActionMenu: Calling onTakePayment handler");
-      onTakePayment(paymentId);
+      console.log("PaymentActionMenu: Calling onTakePayment handler with full installment");
+      onTakePayment(paymentId, installment);
     } else {
       console.error("PaymentActionMenu: onTakePayment is not defined!");
       toast.error("Payment handler is not defined");
