@@ -1,4 +1,3 @@
-
 import { format } from 'date-fns';
 
 // Define the PlanInstallment interface
@@ -23,6 +22,8 @@ export interface PlanInstallment {
  * @returns Formatted installments for frontend use
  */
 export const formatPlanInstallments = (installments: any[]): PlanInstallment[] => {
+  console.log('Formatting installments, raw data:', installments);
+  
   return installments.map(installment => {
     // Only set paidDate if the installment status is actually 'paid'
     let paidDate = null;
@@ -31,48 +32,38 @@ export const formatPlanInstallments = (installments: any[]): PlanInstallment[] =
     
     // Only proceed with getting the paid date if the status is 'paid'
     if (installment.status === 'paid') {
-      // Check payment_requests path first
-      if (installment.payment_requests?.paid_at) {
-        paidDate = installment.payment_requests.paid_at;
-        
-        // If payment_requests has a payment_id, use that
-        if (installment.payment_requests.payment_id) {
-          paymentId = installment.payment_requests.payment_id;
-        }
+      // First check for direct payments linked to payment_schedule
+      if (installment.payments && installment.payments.length > 0) {
+        console.log('Found direct payments for installment:', installment.id, installment.payments);
+        paidDate = installment.payments[0].paid_at;
+        paymentId = installment.payments[0].id;
+        manualPayment = installment.payments[0].manual_payment || false;
       }
       
-      // Check paymentInfo path (from our modified query)
-      if (!paidDate && installment.paymentInfo?.paid_at) {
-        paidDate = installment.paymentInfo.paid_at;
+      // Check payment_requests path if no direct payments found
+      else if (installment.payment_requests?.paid_at) {
+        paidDate = installment.payment_requests.paid_at;
         
-        if (installment.paymentInfo.payment_id) {
-          paymentId = installment.paymentInfo.payment_id;
-        }
-        
-        // If there's payment data from payments table via paymentInfo
-        if (installment.paymentInfo.payments) {
-          paymentId = installment.paymentInfo.payments.id;
-          // Check if this is a manual payment
-          if (installment.paymentInfo.payments.manual_payment) {
-            manualPayment = true;
+        // If payment_requests has a payment_id, check that payment for manual_payment flag
+        if (installment.payment_requests.payment_id) {
+          paymentId = installment.payment_requests.payment_id;
+          
+          // If payment record exists within payment_requests, check for manual_payment flag
+          if (installment.payment_requests.payments) {
+            manualPayment = installment.payment_requests.payments.manual_payment || false;
           }
         }
       }
-      
-      // Check direct payments from the modified query
-      if (!paidDate && installment.directPayments && installment.directPayments.length > 0) {
-        // For direct payments, we might need additional logic to match the specific installment
-        // This is a simplification - in a production setting, more robust matching might be needed
-        // For now, we'll try to use the first direct payment we find
-        paidDate = installment.directPayments[0].paid_at;
-        paymentId = installment.directPayments[0].id;
-        // Check if this is a manual payment
-        if (installment.directPayments[0].manual_payment) {
-          manualPayment = true;
-        }
-      }
     }
-      
+
+    console.log(`Installment ${installment.id} formatted:`, {
+      status: installment.status,
+      paymentId,
+      manualPayment,
+      hasDirectPayments: installment.payments?.length > 0,
+      hasPaymentRequests: !!installment.payment_requests
+    });
+    
     return {
       id: installment.id,
       dueDate: installment.due_date,

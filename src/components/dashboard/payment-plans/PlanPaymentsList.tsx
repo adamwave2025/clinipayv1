@@ -47,6 +47,9 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
     return 'upcoming';
   };
 
+  // For debugging - log the installments to see if manualPayment flag is present
+  console.log("PlanPaymentsList rendering with installments:", installments);
+
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -70,6 +73,12 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
             installments.map((installment) => {
               const status = determineStatus(installment);
               
+              // Debug log to check each installment's manual payment status
+              console.log(`Installment ${installment.id} status:`, {
+                status, 
+                manualPayment: installment.manualPayment || false
+              });
+              
               return (
                 <TableRow key={installment.id}>
                   <TableCell>
@@ -79,7 +88,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
                   <TableCell>{formatCurrency(installment.amount)}</TableCell>
                   <TableCell>
                     <StatusBadge 
-                      status={status} 
+                      status={status}
                       manualPayment={installment.manualPayment} 
                     />
                   </TableCell>
