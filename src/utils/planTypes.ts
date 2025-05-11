@@ -26,6 +26,7 @@ export interface Plan {
     name?: string;
     email?: string;
   };
+  manualPayment?: boolean; // Add the missing manualPayment property
 }
 
 /**
@@ -57,6 +58,9 @@ export const formatPlanFromDb = (planData: any): Plan => {
     amount: planData.total_amount || planData.payment_links?.plan_total_amount || 0,
     
     // Keep patients reference for backward compatibility
-    patients: planData.patients
+    patients: planData.patients,
+    
+    // Add manualPayment property
+    manualPayment: planData.manual_payment || false
   };
 };
