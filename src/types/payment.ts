@@ -6,13 +6,26 @@ export interface Payment {
   date: string;
   patientName: string;
   patientEmail?: string;
+  patientPhone?: string;
   status: string;
   refundAmount?: number;
+  refundedAmount?: number; // Add this as an alias for refundAmount for backward compatibility
   netAmount: number;
   paymentMethod: string;
   paymentReference?: string;
+  reference?: string; // Add this as an alias for paymentReference for backward compatibility
   stripePaymentId?: string;
-  manualPayment?: boolean; // Added new field for manual payments
+  manualPayment?: boolean;
+  
+  // Adding the missing fields used throughout the application
+  type?: 'deposit' | 'treatment' | 'consultation' | 'payment_plan' | 'other';
+  linkTitle?: string;
+  description?: string;
+  isCustomAmount?: boolean;
+  paymentUrl?: string;
+  message?: string;
+  paymentLinkId?: string;
+  platformFee?: number;
 }
 
 export enum PaymentStatus {
@@ -38,3 +51,10 @@ export interface PaymentLink {
   planTotalAmount?: number;
 }
 
+// Add PaymentStats interface that was referenced but not defined
+export interface PaymentStats {
+  totalReceivedToday: number;
+  totalPendingToday: number;
+  totalReceivedMonth: number;
+  totalRefundedMonth: number;
+}

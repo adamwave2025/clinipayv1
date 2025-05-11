@@ -4,11 +4,11 @@ import React from 'react';
 export type StatusType = 'paid' | 'refunded' | 'partially_refunded' | 'sent' | 'connected' | 'pending' | 'not_connected' | 'upcoming' | 'overdue' | 'paused' | 'cancelled' | 'active' | 'completed';
 
 interface StatusBadgeProps {
-  status: StatusType;
+  status: StatusType | string;
   className?: string;
   isReadOnly?: boolean;
   originalStatus?: string;
-  manualPayment?: boolean; // Add new prop to indicate manual payment
+  manualPayment?: boolean;
 }
 
 const StatusBadge = ({ 
@@ -16,7 +16,7 @@ const StatusBadge = ({
   className = '',
   isReadOnly = false,
   originalStatus,
-  manualPayment = false // Default to false
+  manualPayment = false
 }: StatusBadgeProps) => {
   const getStatusStyles = () => {
     // Special case for payments that were sent and then paused
