@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -196,7 +197,7 @@ export class PlanPaymentService {
       // Get the plan_id to update the plan next_due_date if needed
       const { data: scheduleData, error: scheduleError } = await supabase
         .from('payment_schedule')
-        .select('plan_id, payment_number')
+        .select('plan_id, payment_number, payment_link_id, clinic_id, patient_id')
         .eq('id', installmentId)
         .single();
         
@@ -209,25 +210,15 @@ export class PlanPaymentService {
       const activityData = {
         action_type: 'payment_rescheduled',
         plan_id: scheduleData.plan_id,
+        payment_link_id: scheduleData.payment_link_id,
+        patient_id: scheduleData.patient_id,
+        clinic_id: scheduleData.clinic_id,
         details: {
           installment_id: installmentId,
           new_date: newDate.toISOString().split('T')[0],
           payment_number: scheduleData.payment_number
         }
       };
-      
-      // Get more plan data for the activity record
-      const { data: planData, error: planError } = await supabase
-        .from('plans')
-        .select('payment_link_id, patient_id, clinic_id')
-        .eq('id', scheduleData.plan_id)
-        .single();
-        
-      if (!planError && planData) {
-        activityData.payment_link_id = planData.payment_link_id;
-        activityData.patient_id = planData.patient_id;
-        activityData.clinic_id = planData.clinic_id;
-      }
       
       const { error: activityError } = await supabase
         .from('payment_activity')
@@ -356,7 +347,7 @@ export class PlanPaymentService {
       }
       
       if (!paymentData) {
-        console.warn('Payment record not found:', paymentId);
+        console.error('Payment record not found:', paymentId);
         toast.error('Payment not found');
         return { success: false, error: 'Payment not found' };
       }
@@ -532,7 +523,7 @@ export class PlanPaymentService {
       }
       
       if (!installmentData) {
-        console.warn('Installment not found:', installmentId);
+        console.error('Installment not found:', installmentId);
         toast.error('Installment not found');
         return { success: false, error: 'Installment not found' };
       }
@@ -551,7 +542,7 @@ export class PlanPaymentService {
       }
       
       if (!patientData) {
-        console.warn('Patient not found:', installmentData.patient_id);
+        console.error('Patient not found:', installmentData.patient_id);
         toast.error('Patient not found');
         return { success: false, error: 'Patient not found' };
       }
@@ -570,7 +561,7 @@ export class PlanPaymentService {
       }
       
       if (!planData) {
-        console.warn('Plan not found:', installmentData.plan_id);
+        console.error('Plan not found:', installmentData.plan_id);
         toast.error('Plan not found');
         return { success: false, error: 'Plan not found' };
       }

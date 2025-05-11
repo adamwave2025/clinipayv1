@@ -16,7 +16,8 @@ export const useInstallmentActions = (
     setIsProcessing(true);
     try {
       // Use the PlanPaymentService to record a manual payment
-      const result = await PlanPaymentService.recordManualPayment(installmentId);
+      // Pass proper arguments (installmentId, undefined for default amount, undefined for default date)
+      const result = await PlanPaymentService.recordManualPayment(installmentId, undefined, undefined);
       
       if (result.success) {
         toast.success('Payment marked as paid successfully');
@@ -45,7 +46,7 @@ export const useInstallmentActions = (
 
     setIsProcessing(true);
     try {
-      // Use the new PlanPaymentService.reschedulePayment function
+      // Use the PlanPaymentService.reschedulePayment function
       const result = await PlanPaymentService.reschedulePayment(selectedInstallmentId, newDate);
       
       if (result.success) {
