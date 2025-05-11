@@ -6,6 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 import PlanDetailsView from '@/components/dashboard/payment-plans/PlanDetailsView';
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
+import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
 
 const PlanDetails = () => {
   const {
@@ -16,13 +17,17 @@ const PlanDetails = () => {
     handleBackToPlans,
     handleMarkAsPaid,
     handleOpenReschedule,
-    handleTakePayment, // Add this new handler
+    handleTakePayment,
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
     showRescheduleDialog,
     setShowRescheduleDialog,
     handleReschedulePayment,
+    showMarkAsPaidDialog,
+    setShowMarkAsPaidDialog,
+    confirmMarkAsPaid,
+    selectedInstallment,
     isProcessing
   } = useManagePlansContext();
   
@@ -51,7 +56,7 @@ const PlanDetails = () => {
         activities={activities}
         onMarkAsPaid={handleMarkAsPaid}
         onReschedule={handleOpenReschedule}
-        onTakePayment={handleTakePayment} // Pass the new handler
+        onTakePayment={handleTakePayment}
         isLoading={isLoadingActivities}
       />
       
@@ -69,6 +74,14 @@ const PlanDetails = () => {
         onOpenChange={setShowRescheduleDialog}
         onConfirm={handleReschedulePayment}
         isLoading={isProcessing}
+      />
+      
+      <MarkAsPaidConfirmDialog
+        open={showMarkAsPaidDialog}
+        onOpenChange={setShowMarkAsPaidDialog}
+        onConfirm={confirmMarkAsPaid}
+        isLoading={isProcessing}
+        installment={selectedInstallment}
       />
     </div>
   );

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -66,7 +65,10 @@ export const ManagePlansProvider: React.FC<{
     handleMarkAsPaid,
     handleOpenReschedule,
     handleReschedulePayment,
-    handleTakePayment // Include the new function from the hook
+    handleTakePayment,
+    showMarkAsPaidDialog,
+    setShowMarkAsPaidDialog,
+    confirmMarkAsPaid
   } = useInstallmentActions(
     selectedPlan?.id || '',
     async () => {
@@ -237,7 +239,12 @@ export const ManagePlansProvider: React.FC<{
         handleMarkAsPaid,
         handleOpenReschedule,
         handleReschedulePayment,
-        handleTakePayment, // Include the new function in the context value
+        handleTakePayment,
+        
+        // Add Mark as Paid confirmation dialog properties
+        showMarkAsPaidDialog,
+        setShowMarkAsPaidDialog,
+        confirmMarkAsPaid,
         
         // Refund properties
         refundDialogOpen,

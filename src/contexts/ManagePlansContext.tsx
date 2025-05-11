@@ -3,6 +3,7 @@ import React, { createContext, useContext } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { Payment } from '@/types/payment';
 import { PlanActivity } from '@/utils/planActivityUtils';
+import { PlanInstallment } from '@/utils/paymentPlanUtils';
 
 export interface ManagePlansContextType {
   // Search and filter state
@@ -46,7 +47,12 @@ export interface ManagePlansContextType {
   handleMarkAsPaid: (paymentId: string) => void;
   handleOpenReschedule: (paymentId: string) => void;
   handleReschedulePayment: (date: Date) => void;
-  handleTakePayment: (paymentId: string) => void; // Add the new handler method
+  handleTakePayment: (paymentId: string) => void;
+  
+  // Mark as paid confirmation dialog
+  showMarkAsPaidDialog: boolean;
+  setShowMarkAsPaidDialog: (show: boolean) => void;
+  confirmMarkAsPaid: () => Promise<void>;
   
   // Refund properties
   refundDialogOpen: boolean;
