@@ -47,7 +47,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
     return 'upcoming';
   };
 
-  // For debugging - log the installments to see if manualPayment flag is present
+  // For debugging - log the installments to see their structure
   console.log("PlanPaymentsList rendering with installments:", installments);
 
   return (

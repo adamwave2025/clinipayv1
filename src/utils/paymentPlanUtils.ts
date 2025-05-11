@@ -1,3 +1,4 @@
+
 import { format } from 'date-fns';
 
 // Define the PlanInstallment interface
@@ -83,11 +84,10 @@ export const formatPlanInstallments = (scheduleData: any[]): PlanInstallment[] =
         amount: item.amount,
         dueDate: item.due_date,
         status: item.status,
-        isPaid,
+        paidDate: formattedPaymentDate, // Ensure we set this field to match the interface
         paymentRequestId: item.payment_request_id,
         paymentId: paymentInfo?.id || (item.payment_requests?.payment_id),
-        paidAt: formattedPaymentDate,
-        isManualPayment,
+        manualPayment: isManualPayment,
       };
     });
     

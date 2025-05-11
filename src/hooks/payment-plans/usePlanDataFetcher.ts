@@ -1,8 +1,8 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
-import { PlanInstallment, formatPlanInstallments, groupPaymentSchedulesByPlan } from '@/utils/paymentPlanUtils';
-import { fetchPlans, fetchPlanInstallments, fetchPlanActivities } from '@/services/PaymentScheduleService';
+import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { formatPlanActivities } from '@/utils/planActivityUtils';
 import { toast } from 'sonner';
 import { PlanDataService } from '@/modules/payment/services/PlanDataService';
@@ -20,28 +20,6 @@ export const usePlanDataFetcher = () => {
     setIsLoading(true);
     try {
       // First, try to fetch plans from the plans table
-      const plansFromTable = await fetchPlans(userId);
-      
-      console.log('Plans fetched directly from plans table:', plansFromTable);
-      
-      if (plansFromTable.length > 0) {
-        // Use plans from the plans table if available
-        const formattedPlans = plansFromTable.map(plan => {
-          // Make sure patientName is available in the plan object
-          if (!plan.patientName && plan.patients?.name) {
-            plan.patientName = plan.patients.name;
-          }
-          return plan;
-        });
-        
-        setPlans(formattedPlans);
-        setIsLoading(false);
-        return formattedPlans;
-      }
-      
-      console.log('No plans found in plans table, falling back to legacy method');
-      
-      // Fall back to legacy method if no plans in plans table
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('clinic_id')
@@ -49,53 +27,39 @@ export const usePlanDataFetcher = () => {
         .single();
         
       if (userError) {
-        console.error('Error fetching user data:', userError);
-        setIsLoading(false);
-        return [];
+        throw userError;
       }
 
       const clinicId = userData.clinic_id;
       
-      // Get all payment schedules for this clinic
-      const { data: scheduleData, error: scheduleError } = await supabase
-        .from('payment_schedule')
+      const { data, error } = await supabase
+        .from('plans')
         .select(`
-          id, clinic_id, patient_id, payment_link_id, plan_id,
-          payment_request_id, amount, payment_frequency,
-          due_date, status, payment_number, total_payments,
-          created_at, updated_at,
-          payment_requests (
-            id, status, payment_id, paid_at
-          ),
+          *,
           patients (
-            id, name, email, phone
-          ),
-          payment_links (
-            id, title, amount, plan_total_amount
+            id, name, email
           )
         `)
         .eq('clinic_id', clinicId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false });
       
-      if (scheduleError) {
-        console.error('Error fetching payment schedules:', scheduleError);
-        setIsLoading(false);
-        return [];
+      if (error) {
+        throw error;
       }
       
-      // Use groupPaymentSchedulesByPlan to transform the data
-      const planMap = groupPaymentSchedulesByPlan(scheduleData as any);
-      const planList = Array.from(planMap.values()) as Plan[];
+      console.log('Raw plans data from DB:', data);
       
-      // Make sure each plan has patientName set correctly
-      const formattedPlans = planList.map(plan => {
-        if (plan.patients && plan.patients.name) {
-          plan.patientName = plan.patients.name;
+      // Format the plans using the helper function
+      const formattedPlans = data.map(plan => {
+        const formatted = formatPlanFromDb(plan);
+        // Ensure patientName is set correctly
+        if (!formatted.patientName && formatted.patients?.name) {
+          formatted.patientName = formatted.patients.name;
         }
-        return plan;
+        return formatted;
       });
       
-      console.log('Plans from legacy method:', formattedPlans);
+      console.log('Formatted plans:', formattedPlans);
       
       setPlans(formattedPlans);
       setIsLoading(false);
@@ -103,6 +67,7 @@ export const usePlanDataFetcher = () => {
     } catch (error) {
       console.error('Error in fetchPaymentPlans:', error);
       setIsLoading(false);
+      toast.error('Failed to load payment plans');
       return [];
     }
   }, []);
@@ -156,13 +121,24 @@ export const usePlanDataFetcher = () => {
     console.log('Fetching activities for plan:', planId);
     setIsLoadingActivities(true);
     try {
-      // Fetch activities for this plan
-      const rawActivities = await fetchPlanActivities(planId);
+      // Get the full plan object first
+      const { data: planData, error: planError } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('id', planId)
+        .single();
       
-      console.log('Raw activities fetched:', rawActivities?.length || 0);
+      if (planError) {
+        console.error('Error fetching plan data:', planError);
+        setIsLoadingActivities(false);
+        return [];
+      }
       
-      // Format activities for display
-      const formattedActivities = formatPlanActivities(rawActivities);
+      // Format the plan object
+      const plan = formatPlanFromDb(planData);
+      
+      // Fetch activities for this plan using PlanDataService
+      const formattedActivities = await PlanDataService.fetchPlanActivities(plan);
       
       console.log('Formatted activities:', formattedActivities.length);
       

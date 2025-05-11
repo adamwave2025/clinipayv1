@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -74,7 +73,6 @@ export const fetchPlanInstallments = async (planId: string) => {
     }
     
     // Now fetch the payment schedule entries with their payment requests AND directly join with payments
-    // Note: Fix the TypeScript error by ensuring we work with objects not strings in the nested selection
     const { data, error } = await supabase
       .from('payment_schedule')
       .select(`
@@ -88,11 +86,11 @@ export const fetchPlanInstallments = async (planId: string) => {
         plan_id,
         payment_requests (
           id, status, payment_id, paid_at,
-          payments:payment_id (
+          payments (
             id, status, paid_at, manual_payment
           )
         ),
-        payments!payment_schedule_payment_id_fkey (
+        payments (
           id, status, paid_at, manual_payment
         )
       `)

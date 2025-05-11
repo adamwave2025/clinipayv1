@@ -32,11 +32,11 @@ export class PlanDataService {
           plan_id,
           payment_requests (
             id, status, payment_id, paid_at,
-            payments:payment_id (
+            payments (
               id, status, paid_at, manual_payment
             )
           ),
-          payments!payment_schedule_payment_id_fkey (
+          payments (
             id, status, paid_at, manual_payment
           )
         `)
@@ -63,6 +63,8 @@ export class PlanDataService {
         if (data[0].payments) {
           console.log(`direct payments sample:`, JSON.stringify(data[0].payments, null, 2));
         }
+      } else {
+        console.warn(`No installments found for plan ${plan.id}`);
       }
       
       const formattedInstallments = formatPlanInstallments(data || []);
