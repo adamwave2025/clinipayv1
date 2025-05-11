@@ -25,22 +25,29 @@ export const ManagePlansDialogs = () => {
     hasSentPayments,
     hasOverduePayments,
     hasPaidPayments,
-    showRescheduleDialog,
-    setShowRescheduleDialog,
+    
+    // Plan rescheduling (entire plan)
+    showRescheduleDialog: showReschedulePlanDialog,
+    setShowRescheduleDialog: setShowReschedulePlanDialog,
     handleReschedulePlan,
+    
+    // Payment rescheduling (individual payment)
+    showReschedulePaymentDialog,
+    setShowReschedulePaymentDialog,
+    handleReschedulePayment,
+    
     isProcessing,
     refundDialogOpen,
     setRefundDialogOpen,
     paymentToRefund,
     processRefund,
     resumeError,
+    
     // Add the mark as paid dialog props
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
-    selectedInstallment,
-    // Add the payment reschedule dialog props
-    handleReschedulePayment
+    selectedInstallment
   } = useManagePlansContext();
 
   console.log('ManagePlansDialogs rendering with selectedPlan:', selectedPlan?.id);
@@ -48,7 +55,8 @@ export const ManagePlansDialogs = () => {
     showCancelDialog,
     showPauseDialog,
     showResumeDialog,
-    showRescheduleDialog,
+    showReschedulePlanDialog,
+    showReschedulePaymentDialog,
     showMarkAsPaidDialog,
     refundDialogOpen
   });
@@ -94,9 +102,10 @@ export const ManagePlansDialogs = () => {
         resumeError={resumeError}
       />
       
+      {/* Dialog for rescheduling an entire plan */}
       <ReschedulePlanDialog
-        showDialog={showRescheduleDialog}
-        setShowDialog={setShowRescheduleDialog}
+        showDialog={showReschedulePlanDialog}
+        setShowDialog={setShowReschedulePlanDialog}
         onConfirm={handleReschedulePlan}
         planName={selectedPlan.title || selectedPlan.planName || ''}
         patientName={selectedPlan.patientName || ''}
@@ -107,21 +116,21 @@ export const ManagePlansDialogs = () => {
         hasOverduePayments={hasOverduePayments}
       />
       
-      {/* Add Mark as Paid dialog here as a backup */}
+      {/* Dialog for rescheduling an individual payment */}
+      <ReschedulePaymentDialog
+        open={showReschedulePaymentDialog} 
+        onOpenChange={setShowReschedulePaymentDialog}
+        onConfirm={handleReschedulePayment}
+        isLoading={isProcessing}
+      />
+      
+      {/* Add Mark as Paid dialog here */}
       <MarkAsPaidConfirmDialog
         open={showMarkAsPaidDialog}
         onOpenChange={setShowMarkAsPaidDialog}
         onConfirm={confirmMarkAsPaid}
         isLoading={isProcessing}
         installment={selectedInstallment}
-      />
-      
-      {/* Add Reschedule Payment dialog here as a backup */}
-      <ReschedulePaymentDialog
-        open={showRescheduleDialog} 
-        onOpenChange={setShowRescheduleDialog}
-        onConfirm={handleReschedulePayment}
-        isLoading={isProcessing}
       />
       
       {paymentToRefund && (

@@ -12,6 +12,7 @@ import { useInstallmentActions } from '@/hooks/payment-plans/useInstallmentActio
 import { useInstallmentHandler } from '@/hooks/payment-plans/useInstallmentHandler';
 import { usePlanResumeActions } from '@/hooks/payment-plans/usePlanResumeActions';
 import { usePlanRescheduleActions } from '@/hooks/payment-plans/usePlanRescheduleActions';
+import { usePaymentRescheduleActions } from '@/hooks/payment-plans/usePaymentRescheduleActions';
 
 export const ManagePlansProvider: React.FC<{
   children: React.ReactNode;
@@ -62,33 +63,39 @@ export const ManagePlansProvider: React.FC<{
     handleViewPaymentDetails
   } = useInstallmentHandler();
   
-  // Use installment actions hook
+  // Create a refresh function for installment data
+  const refreshInstallments = async () => {
+    if (selectedPlan) {
+      await fetchPlanInstallmentsData(selectedPlan.id);
+    }
+  };
+  
+  // Use installment actions hook with the refreshInstallments function
   const {
-    isProcessing,
-    showRescheduleDialog,
-    setShowRescheduleDialog,
-    handleMarkAsPaid,
-    handleOpenReschedule,
-    handleReschedulePayment,
-    handleTakePayment,
+    isProcessing: isProcessingInstallment,
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
+    handleMarkAsPaid,
+    handleOpenReschedule,
+    handleTakePayment,
     confirmMarkAsPaid
   } = useInstallmentActions(
     selectedPlan?.id || '',
-    async () => {
-      if (selectedPlan) {
-        await fetchPlanInstallmentsData(selectedPlan.id);
-      }
-    }
+    refreshInstallments
   );
   
   // Use the plan reschedule hook with the setIsTemplateView function
-  const rescheduleActions = usePlanRescheduleActions(
+  const planRescheduleActions = usePlanRescheduleActions(
     selectedPlan, 
     setShowPlanDetails, 
     refreshData,
     setIsTemplateView  // Pass setIsTemplateView to the hook
+  );
+  
+  // Use the payment reschedule hook for individual payments
+  const paymentRescheduleActions = usePaymentRescheduleActions(
+    selectedPlan?.id || '',
+    refreshInstallments
   );
 
   // Apply filters to get the filtered plans
@@ -185,13 +192,18 @@ export const ManagePlansProvider: React.FC<{
   
   // Create a handler that returns to patient plans view after reschedule
   const handleReschedulePlan = async (newStartDate: Date) => {
-    await rescheduleActions.handleReschedulePlan(newStartDate);
+    await planRescheduleActions.handleReschedulePlan(newStartDate);
     // The reschedule hook will now handle setIsTemplateView
   };
   
   // Create a wrapper function that adapts the signature
   const handleOpenRescheduleDialog = () => {
-    rescheduleActions.handleOpenRescheduleDialog();
+    planRescheduleActions.handleOpenRescheduleDialog();
+  };
+  
+  // Create handler for payment rescheduling
+  const handleReschedulePayment = async (newDate: Date) => {
+    await paymentRescheduleActions.handleReschedulePayment(newDate);
   };
   
   const processRefund = async () => {
@@ -280,17 +292,22 @@ export const ManagePlansProvider: React.FC<{
         handleOpenResumeDialog,
         hasSentPayments,
         
-        // Use reschedule actions from the hook
-        showRescheduleDialog: rescheduleActions.showRescheduleDialog,
-        setShowRescheduleDialog: rescheduleActions.setShowRescheduleDialog,
+        // Use reschedule actions from the plan reschedule hook
+        showRescheduleDialog: planRescheduleActions.showRescheduleDialog,
+        setShowRescheduleDialog: planRescheduleActions.setShowRescheduleDialog,
         handleReschedulePlan,
         handleOpenRescheduleDialog,
+        
+        // Add payment rescheduling dialog properties
+        showReschedulePaymentDialog: paymentRescheduleActions.showRescheduleDialog,
+        setShowReschedulePaymentDialog: paymentRescheduleActions.setShowRescheduleDialog,
+        
         hasOverduePayments,
         hasPaidPayments,
         
         // Plan state helpers
         isPlanPaused,
-        isProcessing: isProcessing || rescheduleActions.isProcessing,
+        isProcessing: isProcessingInstallment || planRescheduleActions.isProcessing || paymentRescheduleActions.isProcessing,
         resumeError
       }}
     >

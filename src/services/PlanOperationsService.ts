@@ -1,4 +1,3 @@
-
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
 import { PlanPauseService } from './plan-operations/PlanPauseService';
@@ -95,6 +94,28 @@ export class PlanOperationsService {
       console.error('Error in reschedulePlan:', error);
       toast.error(`Failed to reschedule plan: ${error instanceof Error ? error.message : String(error)}`);
       return false;
+    }
+  }
+  
+  /**
+   * Reschedule an individual payment to a new date
+   * @param paymentId The payment ID to reschedule
+   * @param newDate The new date for the payment
+   * @returns Object indicating success or failure
+   */
+  static async reschedulePayment(paymentId: string, newDate: Date): Promise<{ success: boolean, error?: any }> {
+    try {
+      const result = await PlanPaymentService.reschedulePayment(paymentId, newDate);
+      
+      if (!result.success) {
+        toast.error('Failed to reschedule payment');
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error in reschedulePayment:', error);
+      toast.error(`Failed to reschedule payment: ${error instanceof Error ? error.message : String(error)}`);
+      return { success: false, error };
     }
   }
   

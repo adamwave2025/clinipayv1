@@ -83,11 +83,15 @@ export interface ManagePlansContextType {
   hasPaidPayments: boolean; // Required property
   resumeError?: string | null;
   
-  // Reschedule plan properties
+  // Reschedule plan properties (entire plan)
   showRescheduleDialog: boolean;
   setShowRescheduleDialog: (show: boolean) => void;
   handleReschedulePlan: (newStartDate: Date) => Promise<void>;
   handleOpenRescheduleDialog: () => void;
+  
+  // Add properties for payment rescheduling (individual payment)
+  showReschedulePaymentDialog: boolean;
+  setShowReschedulePaymentDialog: (show: boolean) => void;
   
   // Plan state helpers
   isPlanPaused: (plan: Plan | null) => boolean;

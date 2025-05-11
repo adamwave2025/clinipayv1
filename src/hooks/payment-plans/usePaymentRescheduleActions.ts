@@ -1,0 +1,61 @@
+
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { PlanOperationsService } from '@/services/PlanOperationsService';
+import { toast } from 'sonner';
+
+export const usePaymentRescheduleActions = (
+  planId: string,
+  onPaymentRescheduled?: () => Promise<void>
+) => {
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+  
+  const handleOpenRescheduleDialog = (paymentId: string) => {
+    setSelectedPaymentId(paymentId);
+    setShowRescheduleDialog(true);
+  };
+  
+  const handleReschedulePayment = async (newDate: Date) => {
+    if (!selectedPaymentId) {
+      toast.error('No payment selected for rescheduling');
+      return;
+    }
+    
+    setIsProcessing(true);
+    
+    try {
+      // Use the service to reschedule the payment
+      const result = await PlanOperationsService.reschedulePayment(selectedPaymentId, newDate);
+      
+      if (result.success) {
+        toast.success('Payment rescheduled successfully');
+        
+        // Close dialog and refresh data if callback provided
+        setShowRescheduleDialog(false);
+        if (onPaymentRescheduled) {
+          await onPaymentRescheduled();
+        }
+      } else {
+        toast.error('Failed to reschedule payment');
+        console.error('Error rescheduling payment:', result.error);
+      }
+    } catch (error) {
+      console.error('Error in handleReschedulePayment:', error);
+      toast.error('An error occurred while rescheduling the payment');
+    } finally {
+      setIsProcessing(false);
+      setSelectedPaymentId(null);
+    }
+  };
+
+  return {
+    showRescheduleDialog,
+    setShowRescheduleDialog,
+    isProcessing,
+    selectedPaymentId,
+    handleOpenRescheduleDialog,
+    handleReschedulePayment
+  };
+};

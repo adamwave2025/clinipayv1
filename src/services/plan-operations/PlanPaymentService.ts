@@ -200,11 +200,63 @@ export class PlanPaymentService {
     try {
       console.log(`Rescheduling payment ${installmentId} to ${newDate}`);
       
-      // Update the payment_schedule record with new date
+      // First, get the payment_schedule record to check status and get plan_id
+      const { data: scheduleData, error: scheduleError } = await supabase
+        .from('payment_schedule')
+        .select('id, plan_id, payment_number, payment_link_id, clinic_id, patient_id, payment_request_id, status')
+        .eq('id', installmentId)
+        .single();
+        
+      if (scheduleError || !scheduleData) {
+        console.error('Error fetching payment schedule data:', scheduleError);
+        return { success: false, error: scheduleError || new Error('Schedule not found') };
+      }
+      
+      // Check if there's an associated payment request that needs to be cancelled
+      if (scheduleData.payment_request_id) {
+        console.log(`Found payment request ${scheduleData.payment_request_id} - need to cancel it`);
+        
+        // Get the payment request status to check if it's already been processed
+        const { data: requestData, error: requestError } = await supabase
+          .from('payment_requests')
+          .select('status')
+          .eq('id', scheduleData.payment_request_id)
+          .single();
+          
+        if (requestError) {
+          console.error('Error fetching payment request data:', requestError);
+          return { success: false, error: requestError };
+        }
+        
+        // If the payment request is still pending, mark it as cancelled
+        if (requestData && ['pending', 'sent'].includes(requestData.status)) {
+          console.log(`Cancelling payment request ${scheduleData.payment_request_id}`);
+          
+          const { error: cancelError } = await supabase
+            .from('payment_requests')
+            .update({ 
+              status: 'cancelled',
+            })
+            .eq('id', scheduleData.payment_request_id);
+          
+          if (cancelError) {
+            console.error('Error cancelling payment request:', cancelError);
+            return { success: false, error: cancelError };
+          }
+          
+          console.log(`Payment request ${scheduleData.payment_request_id} cancelled successfully`);
+        } else {
+          console.log(`Payment request ${scheduleData.payment_request_id} is already ${requestData?.status} - cannot cancel`);
+        }
+      }
+      
+      // Now update the payment_schedule record with new date
       const { error: updateError } = await supabase
         .from('payment_schedule')
         .update({ 
           due_date: newDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+          status: 'pending', // Reset status to pending when rescheduled
+          payment_request_id: null, // Clear the payment request association
           updated_at: new Date().toISOString()
         })
         .eq('id', installmentId);
@@ -212,18 +264,6 @@ export class PlanPaymentService {
       if (updateError) {
         console.error('Error updating payment due date:', updateError);
         return { success: false, error: updateError };
-      }
-      
-      // Get the plan_id to update the plan next_due_date if needed
-      const { data: scheduleData, error: scheduleError } = await supabase
-        .from('payment_schedule')
-        .select('plan_id, payment_number, payment_link_id, clinic_id, patient_id')
-        .eq('id', installmentId)
-        .single();
-        
-      if (scheduleError || !scheduleData) {
-        console.error('Error fetching payment schedule data:', scheduleError);
-        return { success: false, error: scheduleError || new Error('Schedule not found') };
       }
       
       // Create an activity record for the rescheduled payment
@@ -249,10 +289,53 @@ export class PlanPaymentService {
         // Continue despite activity error
       }
       
+      // Check if this affects the next_due_date of the plan
+      if (scheduleData.plan_id) {
+        await this.updatePlanNextDueDate(scheduleData.plan_id);
+      }
+      
       return { success: true };
     } catch (error) {
       console.error('Error in reschedulePayment:', error);
       return { success: false, error };
+    }
+  }
+  
+  /**
+   * Update a plan's next_due_date based on the next pending payment
+   * @param planId The ID of the plan to update
+   */
+  static async updatePlanNextDueDate(planId: string): Promise<void> {
+    try {
+      // Find the earliest due date from pending payments
+      const { data: nextSchedule, error: nextError } = await supabase
+        .from('payment_schedule')
+        .select('due_date')
+        .eq('plan_id', planId)
+        .in('status', ['pending'])
+        .order('due_date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      
+      if (nextError) {
+        console.error('Error finding next payment date:', nextError);
+        return;
+      }
+      
+      // Update the plan with the new next_due_date
+      const { error: updateError } = await supabase
+        .from('plans')
+        .update({
+          next_due_date: nextSchedule?.due_date || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', planId);
+      
+      if (updateError) {
+        console.error('Error updating plan next_due_date:', updateError);
+      }
+    } catch (error) {
+      console.error('Error in updatePlanNextDueDate:', error);
     }
   }
   
