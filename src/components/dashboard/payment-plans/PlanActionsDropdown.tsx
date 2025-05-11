@@ -16,7 +16,7 @@ interface PlanActionsDropdownProps {
   onReschedulePlan: () => void;
   isPaused: boolean;
   isDisabled: boolean;
-  isLoading?: boolean; // Add loading prop
+  isLoading?: boolean;
 }
 
 const PlanActionsDropdown = ({
@@ -26,7 +26,7 @@ const PlanActionsDropdown = ({
   onReschedulePlan,
   isPaused,
   isDisabled,
-  isLoading = false, // Default to false
+  isLoading = false,
 }: PlanActionsDropdownProps) => {
   return (
     <DropdownMenu>
@@ -51,7 +51,10 @@ const PlanActionsDropdown = ({
             Resume Plan
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem onClick={onReschedulePlan} disabled={isDisabled || isLoading}>
+        <DropdownMenuItem 
+          onClick={onReschedulePlan} 
+          disabled={isDisabled || isLoading || isPaused}
+        >
           {isLoading ? (
             <span className="flex items-center">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
