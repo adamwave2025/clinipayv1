@@ -450,8 +450,8 @@ export function usePaymentPlanScheduler() {
 
       // No success toast here - we'll let the parent component handle that
       
-      // Redirect to payment plans page
-      navigate('/dashboard/payment-plans');
+      // Redirect to payment plans page with view=active parameter
+      navigate('/dashboard/payment-plans?view=active');
 
       return { success: true };
     } catch (error: any) {

@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+
+import React, { useState, useCallback, useEffect } from 'react';
 import { PlusCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -15,6 +16,7 @@ import CreatePlanSheet from '@/components/dashboard/payment-plans/CreatePlanShee
 import PlanTemplatesView from '@/components/dashboard/payment-plans/PlanTemplatesView';
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
+import { useSearchParams } from 'react-router-dom';
 
 const ManagePlansHeader: React.FC<{
   isTemplateView: boolean;
@@ -74,12 +76,23 @@ const PaymentDetailsDialogWrapper = () => {
 };
 
 const ManagePlansPageContent: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const viewParam = searchParams.get('view');
+  
   const [isTemplateView, setIsTemplateView] = useState(false);
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
   const { createPaymentLink } = usePaymentLinks();
   
   // Add a function to refresh the templates view
   const [templateRefreshTrigger, setTemplateRefreshTrigger] = useState(0);
+  
+  // Check URL parameters on component mount
+  useEffect(() => {
+    // Set isTemplateView to false if view=active is in the URL
+    if (viewParam === 'active') {
+      setIsTemplateView(false);
+    }
+  }, [viewParam]);
   
   // Create a callback function to trigger template refresh
   const refreshTemplates = useCallback(() => {
