@@ -70,7 +70,7 @@ const InstallmentPaymentDialog = ({
             ]}
           />
 
-          {/* Add PaymentActionsSection for refund functionality - now passes manualPayment prop */}
+          {/* Add PaymentActionsSection for refund functionality */}
           <PaymentActionsSection
             status={paymentData.status}
             onRefund={onRefund}

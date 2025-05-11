@@ -111,7 +111,10 @@ const PatientPlans: React.FC<PatientPlansProps> = ({ patientId, onViewPlanDetail
                     </div>
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={plan.status as any} />
+                    <StatusBadge 
+                      status={plan.status as any} 
+                      manualPayment={plan.manualPayment}
+                    />
                   </TableCell>
                   <TableCell>
                     {plan.nextDueDate ? formatDate(plan.nextDueDate) : 

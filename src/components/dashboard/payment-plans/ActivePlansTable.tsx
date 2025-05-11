@@ -144,7 +144,10 @@ const ActivePlansTable = ({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={plan.status} />
+                      <StatusBadge 
+                        status={plan.status} 
+                        manualPayment={plan.manualPayment} 
+                      />
                     </TableCell>
                     <TableCell>
                       {formatDate(plan.nextDueDate)}

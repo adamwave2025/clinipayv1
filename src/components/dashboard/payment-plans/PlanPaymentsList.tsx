@@ -78,7 +78,10 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
                   <TableCell>{formatDate(installment.dueDate)}</TableCell>
                   <TableCell>{formatCurrency(installment.amount)}</TableCell>
                   <TableCell>
-                    <StatusBadge status={status} />
+                    <StatusBadge 
+                      status={status} 
+                      manualPayment={installment.manualPayment} 
+                    />
                   </TableCell>
                   <TableCell className="text-right">
                     {status !== 'paid' && (
