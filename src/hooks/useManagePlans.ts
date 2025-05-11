@@ -181,7 +181,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     // Payment rescheduling dialog properties
     showReschedulePaymentDialog,
     setShowReschedulePaymentDialog,
-    handleReschedulePayment: handleRescheduleIndividualPayment,
+    handleRescheduleIndividualPayment,
     
     // Include all plan action properties
     ...cancelActions,
