@@ -4,6 +4,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { useAuthState } from '@/hooks/useAuthState';
 import { useAuthActions } from '@/hooks/useAuthActions';
 import { useAuthTrigger } from '@/hooks/useAuthTrigger';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   session: Session | null;
@@ -12,6 +13,11 @@ interface AuthContextType {
   signUp: (email: string, password: string, clinicName: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  authTriggerStatus: {
+    isSetupComplete: boolean;
+    setupError: string | null;
+    retries: number;
+  };
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,7 +27,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { signUp, signIn, signOut } = useAuthActions();
   
   // Setup auth trigger - this ensures our handle_new_user function is properly setup
-  useAuthTrigger();
+  const authTriggerStatus = useAuthTrigger();
+  
+  // Show a warning toast if we hit max retries
+  React.useEffect(() => {
+    if (authTriggerStatus.retries > 0 && authTriggerStatus.setupError) {
+      console.warn('Auth trigger setup issues detected:', authTriggerStatus.setupError);
+    }
+  }, [authTriggerStatus.retries, authTriggerStatus.setupError]);
 
   return (
     <AuthContext.Provider
@@ -32,6 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signUp,
         signIn,
         signOut,
+        authTriggerStatus,
       }}
     >
       {children}

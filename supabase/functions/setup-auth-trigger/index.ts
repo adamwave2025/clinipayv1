@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.47.0";
 
@@ -7,13 +8,17 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
+    console.log("CORS preflight request received");
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log("Setup auth trigger function called");
+    console.log("Setup auth trigger function called - starting execution");
     
+    // Initialize Supabase admin client
+    console.log("Initializing Supabase admin client");
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -25,6 +30,8 @@ serve(async (req) => {
       }
     );
 
+    // Test database connection by querying system_settings table
+    console.log("Testing database connection...");
     const { error: sqlFunctionError } = await supabaseAdmin
       .from('system_settings')
       .select('*')
@@ -34,6 +41,7 @@ serve(async (req) => {
       console.error("Error connecting to database:", sqlFunctionError);
       
       try {
+        console.log("Attempting to create execute_sql function directly via SQL endpoint...");
         const sqlEndpoint = `${Deno.env.get("SUPABASE_URL")}/rest/v1/rpc/execute_sql`;
         
         const createFunctionResponse = await fetch(sqlEndpoint, {
@@ -67,12 +75,16 @@ serve(async (req) => {
         if (!createFunctionResponse.ok) {
           const errorData = await createFunctionResponse.json();
           console.error("Failed to create execute_sql function:", errorData);
+          throw new Error(`Failed to create execute_sql function: ${JSON.stringify(errorData)}`);
         } else {
           console.log("Successfully created execute_sql function via direct query");
         }
       } catch (directError) {
         console.error("Failed to create execute_sql function via direct query:", directError);
+        throw new Error(`Failed to create execute_sql function: ${directError.message}`);
       }
+    } else {
+      console.log("Database connection successful");
     }
 
     console.log("Verifying handle_new_user function and trigger");
@@ -82,6 +94,7 @@ serve(async (req) => {
     try {
       const sqlEndpoint = `${Deno.env.get("SUPABASE_URL")}/rest/v1/rpc/execute_sql`;
       
+      console.log("Sending SQL to create/update handle_new_user function and trigger");
       const updateResponse = await fetch(sqlEndpoint, {
         method: 'POST',
         headers: {
@@ -162,7 +175,9 @@ serve(async (req) => {
       throw new Error("Failed to update auth trigger: " + updateError.message);
     }
     
+    // Store the webhook URL in system_settings table for future use
     const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/handle-new-signup`;
+    console.log("Storing webhook URL in system_settings:", webhookUrl);
     
     const { error: settingError } = await supabaseAdmin
       .from('system_settings')
@@ -173,13 +188,17 @@ serve(async (req) => {
     
     if (settingError) {
       console.log("Could not store webhook URL in settings:", settingError.message);
+      // Continue execution as this is not critical
     } else {
-      console.log("Successfully stored webhook URL in system_settings:", webhookUrl);
+      console.log("Successfully stored webhook URL in system_settings");
     }
     
+    console.log("Auth trigger setup completed successfully");
     return new Response(
       JSON.stringify({ 
         message: "Auth settings updated successfully",
+        status: "success",
+        timestamp: new Date().toISOString(),
         webhookUrl: webhookUrl
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
@@ -190,6 +209,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: error.message,
+        status: "error",
+        timestamp: new Date().toISOString(),
         details: "Please check the Edge Function logs for more details"
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }

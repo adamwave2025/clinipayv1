@@ -79,6 +79,9 @@ url = ""
 # Port to use for Function API URL.
 port = 54328
 
+[functions.setup-auth-trigger]
+verify_jwt = false
+
 [functions.payment-intent-webhooks]
 verify_jwt = false
 

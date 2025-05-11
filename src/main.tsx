@@ -4,16 +4,18 @@ import App from './App.tsx'
 import './index.css'
 import { supabase } from '@/integrations/supabase/client';
 import { setupPaymentScheduleCron } from './utils/payment-schedule-cron-setup';
+import { toast } from 'sonner';
 
-// Initialize the auth trigger setup
+// Initialize the auth trigger setup with better error handling
 const setupAuthTrigger = async () => {
   try {
-    console.log('Setting up auth trigger...');
+    console.log('Setting up auth trigger from main.tsx...');
     const response = await supabase.functions.invoke('setup-auth-trigger');
     console.log('Auth trigger setup response:', response);
     
     if (response.error) {
       console.error('Error setting up auth trigger:', response.error);
+      // We don't show errors here as the useAuthTrigger hook will handle retries and notifications
     } else {
       console.log('Auth trigger setup successful');
     }
@@ -51,8 +53,17 @@ const initializePlanStatusCron = async () => {
 };
 
 // Run setup on app initialization but don't block rendering
-setupAuthTrigger();
-initializePaymentScheduleCron();
-initializePlanStatusCron();
+// We use a small timeout to ensure these are not competing for resources during initial load
+setTimeout(() => {
+  setupAuthTrigger();
+}, 100);
+
+setTimeout(() => {
+  initializePaymentScheduleCron();
+}, 300);
+
+setTimeout(() => {
+  initializePlanStatusCron();
+}, 500);
 
 createRoot(document.getElementById("root")!).render(<App />);
