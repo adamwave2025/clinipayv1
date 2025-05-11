@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { addToNotificationQueue } from '@/utils/notification-queue';
 
@@ -212,17 +211,16 @@ export class PlanPaymentService {
         await addToNotificationQueue(
           'payment_confirmation',
           {
+            notification_type: 'payment_success',
+            patient: {
+              name: installment.patients?.name || 'Unknown Patient',
+              email: installment.patients?.email,
+              phone: installment.patients?.phone
+            },
             payment: {
-              // Remove the id property as it's not in the expected type
-              reference: paymentRef, // Use payment_ref instead of id
+              reference: paymentRef,
               amount: installment.amount / 100, // Convert to decimal currency
               message: `Manual payment for installment #${installment.payment_number}`
-              // Remove the manual_payment property as it's not in the expected type
-            },
-            plan: {
-              id: installment.plan_id,
-              payment_number: installment.payment_number,
-              total_payments: installment.total_payments
             }
           },
           'patient',
