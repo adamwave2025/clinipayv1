@@ -234,7 +234,49 @@ export class PlanPaymentService {
         }
       }
       
-      // 7. Record the activity
+      // 7. Update the plan's next_due_date field with the earliest unpaid installment date
+      try {
+        // Find the next unpaid installment for this plan
+        const { data: nextUnpaid, error: nextError } = await supabase
+          .from('payment_schedule')
+          .select('due_date')
+          .eq('plan_id', installment.plan_id)
+          .not('status', 'in', '("paid","cancelled")') // Exclude paid and cancelled installments
+          .order('due_date', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        
+        if (nextError) {
+          console.warn('Error finding next unpaid installment:', nextError);
+        } else {
+          // If we found a next unpaid installment, update the plan's next_due_date
+          if (nextUnpaid) {
+            console.log(`Found next unpaid installment with due date: ${nextUnpaid.due_date}`);
+            const { error: updatePlanError } = await supabase
+              .from('plans')
+              .update({
+                next_due_date: nextUnpaid.due_date,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', installment.plan_id);
+              
+            if (updatePlanError) {
+              console.warn('Error updating plan next_due_date:', updatePlanError);
+            } else {
+              console.log(`Updated plan next_due_date to ${nextUnpaid.due_date}`);
+            }
+          } else {
+            console.log('No more unpaid installments found for this plan');
+            // If there are no more unpaid installments, the plan might be completed
+            // We could potentially update the plan status to 'completed' here
+          }
+        }
+      } catch (nextDueError) {
+        console.error('Error updating next_due_date:', nextDueError);
+        // Non-fatal error, continue processing
+      }
+      
+      // 8. Record the activity
       await this.recordPaymentPlanActivity({
         planId: installment.plan_id,
         actionType: 'manual_payment_recorded',
@@ -248,7 +290,7 @@ export class PlanPaymentService {
         }
       });
       
-      // 8. Add to notification queue to send confirmation
+      // 9. Add to notification queue to send confirmation
       try {
         // Get clinic data for notification
         const { data: clinicData, error: clinicError } = await supabase
@@ -299,6 +341,124 @@ export class PlanPaymentService {
       return { success: true, paymentId: paymentData.id };
     } catch (error) {
       console.error('Error recording manual payment:', error);
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  
+  /**
+   * Reschedule a single payment installment to a new date
+   * @param installmentId The installment ID to reschedule
+   * @param newDueDate The new due date for the installment
+   * @returns Object indicating success or failure
+   */
+  static async reschedulePayment(installmentId: string, newDueDate: Date): Promise<{ success: boolean, error?: any }> {
+    try {
+      console.log(`Starting reschedulePayment for installment: ${installmentId} to date: ${newDueDate}`);
+      
+      // 1. Get the installment details
+      const { data: installment, error: fetchError } = await supabase
+        .from('payment_schedule')
+        .select('*')
+        .eq('id', installmentId)
+        .single();
+      
+      if (fetchError) {
+        console.error('Error fetching installment details:', fetchError);
+        throw fetchError;
+      }
+      
+      if (!installment) {
+        return { success: false, error: 'Installment not found' };
+      }
+      
+      // 2. Check if there's an existing payment request for this installment that needs to be cancelled
+      if (installment.payment_request_id) {
+        console.log(`Found payment_request_id: ${installment.payment_request_id}, cancelling it before reschedule`);
+        
+        const { error: cancelRequestError } = await supabase
+          .from('payment_requests')
+          .update({
+            status: 'cancelled'
+          })
+          .eq('id', installment.payment_request_id);
+          
+        if (cancelRequestError) {
+          console.warn('Error cancelling payment request:', cancelRequestError);
+          // Non-fatal error, continue processing
+        } else {
+          console.log(`Successfully cancelled payment request ${installment.payment_request_id}`);
+        }
+      }
+      
+      // 3. Update the payment schedule with the new due date and reset status to pending
+      const { error: updateError } = await supabase
+        .from('payment_schedule')
+        .update({
+          due_date: newDueDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+          status: 'pending', // Reset the status to pending
+          payment_request_id: null, // Clear the link to the cancelled payment request
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', installmentId);
+      
+      if (updateError) {
+        console.error('Error updating payment schedule:', updateError);
+        throw updateError;
+      }
+      
+      // 4. Update the plan's next_due_date if this is now the next upcoming payment
+      try {
+        // Find the next unpaid installment for this plan
+        const { data: nextUnpaid, error: nextError } = await supabase
+          .from('payment_schedule')
+          .select('due_date, plan_id')
+          .not('status', 'in', '("paid","cancelled")') // Exclude paid and cancelled installments
+          .order('due_date', { ascending: true })
+          .eq('plan_id', installment.plan_id)
+          .limit(1)
+          .maybeSingle();
+        
+        if (nextError) {
+          console.warn('Error finding next unpaid installment:', nextError);
+        } else if (nextUnpaid) {
+          console.log(`Found next unpaid installment with due date: ${nextUnpaid.due_date}`);
+          
+          // Update the plan's next_due_date
+          const { error: updatePlanError } = await supabase
+            .from('plans')
+            .update({
+              next_due_date: nextUnpaid.due_date,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', installment.plan_id);
+            
+          if (updatePlanError) {
+            console.warn('Error updating plan next_due_date:', updatePlanError);
+          } else {
+            console.log(`Updated plan next_due_date to ${nextUnpaid.due_date}`);
+          }
+        }
+      } catch (nextDueError) {
+        console.error('Error updating next_due_date:', nextDueError);
+        // Non-fatal error, continue processing
+      }
+      
+      // 5. Record the activity
+      await this.recordPaymentPlanActivity({
+        planId: installment.plan_id,
+        actionType: 'payment_rescheduled',
+        details: {
+          installmentId,
+          paymentNumber: installment.payment_number,
+          oldDueDate: installment.due_date,
+          newDueDate: newDueDate.toISOString().split('T')[0],
+          cancelledPaymentRequest: !!installment.payment_request_id
+        }
+      });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error rescheduling payment:', error);
       return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   }

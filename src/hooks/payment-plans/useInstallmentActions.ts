@@ -2,13 +2,12 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { recordPaymentPlanActivity } from '@/services/PaymentScheduleService';
 import { PlanPaymentService } from '@/services/plan-operations/PlanPaymentService';
 
-export function useInstallmentActions(
+export const useInstallmentActions = (
   planId: string,
-  refreshInstallments: () => Promise<void>
-) {
+  onRefresh: () => Promise<void>
+) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [selectedInstallmentId, setSelectedInstallmentId] = useState<string | null>(null);
@@ -16,25 +15,18 @@ export function useInstallmentActions(
   const handleMarkAsPaid = async (installmentId: string) => {
     setIsProcessing(true);
     try {
-      console.log(`Marking installment ${installmentId} as paid for plan ${planId}`);
-      
-      // Use the new PlanPaymentService to record a manual payment
+      // Use the PlanPaymentService to record a manual payment
       const result = await PlanPaymentService.recordManualPayment(installmentId);
       
-      if (!result.success) {
-        console.error('Error details:', result.error);
-        throw new Error(result.error || 'Failed to record manual payment');
+      if (result.success) {
+        toast.success('Payment marked as paid successfully');
+        await onRefresh();
+      } else {
+        toast.error(`Failed to mark payment as paid: ${result.error}`);
       }
-      
-      console.log(`Payment successfully recorded with ID: ${result.paymentId}`);
-      
-      // Refresh the installments list to reflect changes
-      await refreshInstallments();
-      
-      toast.success('Payment marked as paid successfully');
     } catch (error) {
       console.error('Error marking payment as paid:', error);
-      toast.error(`Failed to mark payment as paid: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error('Failed to mark payment as paid');
     } finally {
       setIsProcessing(false);
     }
@@ -46,95 +38,48 @@ export function useInstallmentActions(
   };
 
   const handleReschedulePayment = async (newDate: Date) => {
-    if (!selectedInstallmentId) return;
-    
+    if (!selectedInstallmentId) {
+      toast.error('No installment selected for rescheduling');
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      // 1. Get the installment details
-      const { data: installment, error: fetchError } = await supabase
-        .from('payment_schedule')
-        .select('*')
-        .eq('id', selectedInstallmentId)
-        .single();
+      // Use the new PlanPaymentService.reschedulePayment function
+      const result = await PlanPaymentService.reschedulePayment(selectedInstallmentId, newDate);
       
-      if (fetchError) throw fetchError;
-      
-      // 2. Update the payment_schedule with the new due date
-      const { error: updateError } = await supabase
-        .from('payment_schedule')
-        .update({
-          due_date: newDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedInstallmentId);
-      
-      if (updateError) throw updateError;
-      
-      // 3. Record the activity
-      await recordPaymentPlanActivity({
-        planId: planId,
-        actionType: 'payment_rescheduled',
-        details: {
-          installmentId: selectedInstallmentId,
-          paymentNumber: installment.payment_number,
-          originalDate: installment.due_date,
-          newDate: newDate.toISOString().split('T')[0]
-        }
-      });
-      
-      // 4. Refresh the installments list
-      await refreshInstallments();
-      
-      setShowRescheduleDialog(false);
-      setSelectedInstallmentId(null);
-      toast.success('Payment rescheduled successfully');
+      if (result.success) {
+        toast.success('Payment rescheduled successfully');
+        await onRefresh();
+      } else {
+        toast.error(`Failed to reschedule payment: ${result.error}`);
+      }
     } catch (error) {
       console.error('Error rescheduling payment:', error);
       toast.error('Failed to reschedule payment');
     } finally {
       setIsProcessing(false);
+      setShowRescheduleDialog(false);
+      setSelectedInstallmentId(null);
     }
   };
 
-  // Add the handleTakePayment function
+  // Function to handle taking a payment directly
   const handleTakePayment = async (installmentId: string) => {
-    setIsProcessing(true);
-    try {
-      // 1. Get the installment details
-      const { data: installment, error: fetchError } = await supabase
-        .from('payment_schedule')
-        .select('*')
-        .eq('id', installmentId)
-        .single();
-      
-      if (fetchError) throw fetchError;
-      
-      // For now, this is a placeholder function. 
-      // In a real implementation, this would:
-      // 1. Open a payment dialog or navigate to a payment page
-      // 2. Process the payment through a payment gateway
-      // 3. Update the installment status upon successful payment
-      
-      toast.info('Payment feature will be implemented in a future update');
-      console.log('Take payment for installment:', installment);
-      
-      // We're not actually processing a payment yet, just logging
-    } catch (error) {
-      console.error('Error processing payment:', error);
-      toast.error('Failed to process payment');
-    } finally {
-      setIsProcessing(false);
-    }
+    // This would typically open a payment form or redirect to a payment page
+    // For now, we'll just log it
+    console.log(`Taking payment for installment ${installmentId}`);
+    toast.info('Taking payment - feature under development');
   };
 
   return {
     isProcessing,
     showRescheduleDialog,
     setShowRescheduleDialog,
-    selectedInstallmentId,
     handleMarkAsPaid,
     handleOpenReschedule,
     handleReschedulePayment,
-    handleTakePayment
+    handleTakePayment,
+    selectedInstallmentId
   };
-}
+};
