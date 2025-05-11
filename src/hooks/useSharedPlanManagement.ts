@@ -1,11 +1,10 @@
-
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { PlanActivity } from '@/utils/planActivityUtils';
 import { PlanDataService } from '@/services/PlanDataService';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
-import { isPlanPaused, validatePlanStatus } from '@/utils/plan-status-utils';
+import { isPlanPaused } from '@/utils/plan-status-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { PlanStatusService } from '@/services/PlanStatusService';
 
