@@ -1,17 +1,17 @@
+
 import { Plan } from '@/utils/planTypes';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { PlanStatusService } from '@/services/PlanStatusService';
-import { isPaymentStatusTransitionValid, getModifiableStatuses } from '@/utils/paymentStatusUtils';
-import { CompleteResumePlanResponse } from '@/types/supabaseRpcTypes';
-import { sendPaymentReminder } from '@/services/PaymentReminderService';
+import { PlanPauseService } from './plan-operations/PlanPauseService';
+import { PlanResumeService } from './plan-operations/PlanResumeService';
+import { PlanCancelService } from './plan-operations/PlanCancelService';
+import { PlanRescheduleService } from './plan-operations/PlanRescheduleService';
+import { PlanPaymentService } from './plan-operations/PlanPaymentService';
 
 /**
  * Consolidated service for plan operations like pausing, resuming, cancelling
+ * This service acts as a facade to the specialized service classes.
  */
 export class PlanOperationsService {
-  
   /**
    * Resume a paused plan
    * @param plan The plan to resume
@@ -20,39 +20,13 @@ export class PlanOperationsService {
    */
   static async resumePlan(plan: Plan, resumeDate?: Date): Promise<boolean> {
     try {
-      // Default to tomorrow if no date is specified
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      const result = await PlanResumeService.resumePlan(plan, resumeDate);
       
-      const dateToUse = resumeDate || tomorrow;
-      
-      // Use date-fns format to ensure correct date preservation for UK timezone
-      const formattedDate = format(dateToUse, 'yyyy-MM-dd');
-      
-      console.log(`Resuming plan ${plan.id} with date:`, formattedDate);
-      
-      // Call our complete_resume_plan database function
-      const { data, error } = await supabase.rpc('complete_resume_plan', {
-        p_plan_id: plan.id,
-        p_resume_date: formattedDate
-      });
-      
-      if (error) {
-        console.error('Error calling complete_resume_plan:', error);
-        throw new Error(`Failed to resume plan: ${error.message}`);
+      if (!result) {
+        toast.error('Failed to resume plan');
       }
       
-      // First convert data to unknown, then to our expected type to avoid type errors
-      const result = data as unknown as CompleteResumePlanResponse;
-      
-      if (!result || !result.success) {
-        const errorMessage = result?.error || 'Unknown error resuming plan';
-        console.error('Resume plan operation failed:', result);
-        throw new Error(errorMessage);
-      }
-      
-      console.log('Plan resumed successfully:', result);
-      return true;
+      return result;
     } catch (error) {
       console.error('Error in resumePlan:', error);
       toast.error(`Failed to resume plan: ${error instanceof Error ? error.message : String(error)}`);
@@ -67,116 +41,16 @@ export class PlanOperationsService {
    */
   static async pausePlan(plan: Plan): Promise<boolean> {
     try {
-      console.log(`Starting pause operation for plan: ${plan.id} (${plan.title || plan.planName})`);
-    
-      // Get the current plan to ensure it exists
-      const { data: planData, error: planFetchError } = await supabase
-        .from('plans')
-        .select('*')
-        .eq('id', plan.id)
-        .single();
-        
-      if (planFetchError) {
-        console.error('Error fetching plan data:', planFetchError);
-        throw planFetchError;
+      const result = await PlanPauseService.pausePlan(plan);
+      
+      if (!result) {
+        toast.error('Failed to pause plan');
       }
       
-      // Find payment requests that need to be cancelled
-      const { data: scheduleData, error: scheduleError } = await supabase
-        .from('payment_schedule')
-        .select('id, payment_request_id, status')
-        .eq('plan_id', plan.id)
-        .in('status', ['pending', 'sent', 'overdue'])
-        .not('payment_request_id', 'is', null);
-        
-      if (scheduleError) {
-        console.error('Error fetching payment schedules:', scheduleError);
-        throw scheduleError;
-      }
-      
-      console.log(`Found ${scheduleData?.length || 0} payment schedules with request IDs`);
-      
-      // Extract payment request IDs
-      const paymentRequestIds = scheduleData
-        ?.filter(item => item.payment_request_id)
-        .map(item => item.payment_request_id) || [];
-        
-      console.log(`Identified ${paymentRequestIds.length} payment requests to cancel:`, paymentRequestIds);
-      
-      // Cancel payment requests first - CRITICAL CHANGE: Remove the is('payment_id', null) condition
-      if (paymentRequestIds.length > 0) {
-        const { data: updatedRequests, error: requestCancelError } = await supabase
-          .from('payment_requests')
-          .update({
-            status: 'cancelled'
-            // Removed updated_at as it doesn't exist in the table
-          })
-          .in('id', paymentRequestIds)
-          // No condition here for payment_id
-          .select();
-          
-        if (requestCancelError) {
-          console.error('Error cancelling payment requests:', requestCancelError);
-          // No longer just a warning - throw the error to stop the operation
-          throw new Error(`Failed to cancel payment requests: ${requestCancelError.message}`);
-        } else {
-          console.log(`Successfully cancelled ${updatedRequests?.length || 0} payment requests:`, 
-            updatedRequests?.map(r => r.id));
-        }
-      }
-      
-      // After successfully cancelling requests, update payment schedules
-      const { data: updatedSchedules, error: updateScheduleError } = await supabase
-        .from('payment_schedule')
-        .update({
-          status: 'paused',
-          updated_at: new Date().toISOString()
-        })
-        .eq('plan_id', plan.id)
-        .in('status', ['pending', 'scheduled', 'sent', 'overdue'])
-        .select();
-        
-      if (updateScheduleError) {
-        console.error('Error updating payment schedules:', updateScheduleError);
-        throw updateScheduleError;
-      }
-      
-      console.log(`Successfully paused ${updatedSchedules?.length || 0} payment schedules`);
-      
-      // After payment schedules are updated, update the plan status
-      const { error: planUpdateError } = await supabase
-        .from('plans')
-        .update({ 
-          status: 'paused',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', plan.id);
-        
-      if (planUpdateError) {
-        console.error('Error updating plan status:', planUpdateError);
-        throw planUpdateError;
-      }
-      
-      // Record the activity
-      await supabase
-        .from('payment_activity')
-        .insert({
-          payment_link_id: plan.paymentLinkId,
-          patient_id: plan.patientId,
-          clinic_id: plan.clinicId,
-          plan_id: plan.id,
-          action_type: 'plan_paused',
-          details: {
-            paused_at: new Date().toISOString(),
-            payment_requests_cancelled: paymentRequestIds.length
-          }
-        });
-      
-      console.log('Plan paused successfully');
-      return true;
-      
-    } catch (error: any) {
-      console.error('Error pausing payment plan:', error);
+      return result;
+    } catch (error) {
+      console.error('Error in pausePlan:', error);
+      toast.error(`Failed to pause plan: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }
@@ -188,83 +62,16 @@ export class PlanOperationsService {
    */
   static async cancelPlan(plan: Plan): Promise<boolean> {
     try {
-      console.log(`Cancelling plan ${plan.id} (${plan.title || plan.planName})`);
+      const result = await PlanCancelService.cancelPlan(plan);
       
-      // 1. Update the plan status in the plans table
-      const { error: planUpdateError } = await supabase
-        .from('plans')
-        .update({ status: 'cancelled' })
-        .eq('id', plan.id);
-      
-      if (planUpdateError) throw planUpdateError;
-      
-      // 2. Update all pending payment schedules to cancelled
-      // Only update schedules that are in a modifiable state (not paid)
-      const modifiableStatuses = getModifiableStatuses();
-      
-      const { error: scheduleUpdateError } = await supabase
-        .from('payment_schedule')
-        .update({ status: 'cancelled' })
-        .eq('plan_id', plan.id)
-        .in('status', modifiableStatuses);
-        
-      if (scheduleUpdateError) throw scheduleUpdateError;
-      
-      // 3. Also cancel any active payment requests associated with this plan's schedules
-      const { data: paymentRequests, error: requestsError } = await supabase
-        .from('payment_schedule')
-        .select('payment_request_id')
-        .eq('plan_id', plan.id)
-        .not('payment_request_id', 'is', null);
-        
-      if (requestsError) throw requestsError;
-      
-      // Extract the request IDs
-      const requestIds = paymentRequests
-        .map(item => item.payment_request_id)
-        .filter(id => id !== null);
-        
-      // Update payment requests if there are any
-      if (requestIds.length > 0) {
-        const { error: requestUpdateError } = await supabase
-          .from('payment_requests')
-          .update({
-            status: 'cancelled'
-            // Removed updated_at as it doesn't exist in the table
-          })
-          .in('id', requestIds);
-          // CRITICAL: Removed conditional is('payment_id', null) to ensure ALL requests get cancelled
-          
-        if (requestUpdateError) {
-          console.error('Error updating payment requests:', requestUpdateError);
-          // Non-critical error, continue with the operation
-        }
+      if (!result) {
+        toast.error('Failed to cancel plan');
       }
       
-      // 3. Add an activity log entry
-      const { error: activityError } = await supabase
-        .from('payment_activity')
-        .insert({
-          payment_link_id: plan.paymentLinkId,
-          patient_id: plan.patientId,
-          clinic_id: plan.clinicId,
-          plan_id: plan.id, // Make sure to include plan_id for easier activity tracking
-          action_type: 'cancel_plan',
-          details: {
-            plan_name: plan.title || plan.planName,
-            previous_status: plan.status
-          }
-        });
-      
-      if (activityError) {
-        console.error('Error logging cancel activity:', activityError);
-      }
-      
-      console.log('Plan cancelled successfully');
-      return true;
-      
-    } catch (error: any) {
-      console.error('Error cancelling plan:', error);
+      return result;
+    } catch (error) {
+      console.error('Error in cancelPlan:', error);
+      toast.error(`Failed to cancel plan: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }
@@ -277,208 +84,16 @@ export class PlanOperationsService {
    */
   static async reschedulePlan(plan: Plan, newStartDate: Date): Promise<boolean> {
     try {
-      // FIXED: Use date-fns format to ensure correct date preservation for UK timezone
-      // Format date as YYYY-MM-DD using date-fns format which preserves the date regardless of timezone
-      const formattedDate = format(newStartDate, 'yyyy-MM-dd');
-      console.log('Rescheduling plan with formatted date:', formattedDate);
+      const result = await PlanRescheduleService.reschedulePlan(plan, newStartDate);
       
-      // Get the current plan to calculate days difference
-      const { data: currentPlan, error: planError } = await supabase
-        .from('plans')
-        .select('start_date, status')
-        .eq('id', plan.id)
-        .single();
-      
-      if (planError) throw planError;
-      
-      // Check if there are any paid payments for this plan
-      const { count: paidCount, error: paidCountError } = await supabase
-        .from('payment_schedule')
-        .select('id', { count: 'exact', head: false })
-        .eq('plan_id', plan.id)
-        .eq('status', 'paid');
-        
-      if (paidCountError) throw paidCountError;
-      
-      console.log(`Found ${paidCount} paid payments for this plan`);
-      
-      // Track how many payment requests we need to cancel
-      let paymentRequestCount = 0;
-      const paymentRequestIds = [];
-      
-      // Get all modifiable schedule entries
-      const { data: scheduleEntries, error: scheduleError } = await supabase
-        .from('payment_schedule')
-        .select('id, payment_request_id, status, due_date')
-        .eq('plan_id', plan.id)
-        .in('status', getModifiableStatuses())
-        .order('due_date', { ascending: true });
-        
-      if (scheduleError) throw scheduleError;
-      
-      console.log(`Found ${scheduleEntries?.length || 0} modifiable payment schedules`);
-      
-      // Identify payment requests to cancel
-      for (const entry of scheduleEntries || []) {
-        if (entry.payment_request_id) {
-          paymentRequestIds.push(entry.payment_request_id);
-          paymentRequestCount++;
-        }
+      if (!result) {
+        toast.error('Failed to reschedule plan');
       }
       
-      console.log(`Found ${paymentRequestIds.length} payment requests to cancel`);
-      
-      // Cancel active payment requests since dates will change - CRITICAL: removed is('payment_id', null) condition
-      if (paymentRequestIds.length > 0) {
-        const { data: updatedRequests, error: requestUpdateError } = await supabase
-          .from('payment_requests')
-          .update({
-            status: 'cancelled'
-            // Removed updated_at as it doesn't exist in the table
-          })
-          .in('id', paymentRequestIds)
-          .select();
-          
-        if (requestUpdateError) {
-          console.error('Error updating payment requests:', requestUpdateError);
-          throw new Error(`Failed to cancel payment requests: ${requestUpdateError.message}`);
-        } else {
-          console.log(`Successfully cancelled ${updatedRequests?.length || 0} payment requests`);
-        }
-      }
-      
-      // Update the plan's start date
-      const { error: startDateUpdateError } = await supabase
-        .from('plans')
-        .update({ 
-          start_date: formattedDate,
-          status: paidCount > 0 ? 'active' : 'pending', // If payments made, plan is active, otherwise pending
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', plan.id);
-        
-      if (startDateUpdateError) throw startDateUpdateError;
-      
-      // Get payment frequency to calculate new dates
-      const { data: planData, error: planFrequencyError } = await supabase
-        .from('plans')
-        .select('payment_frequency')
-        .eq('id', plan.id)
-        .single();
-        
-      if (planFrequencyError) throw planFrequencyError;
-      
-      const paymentFrequency = planData.payment_frequency;
-      
-      // Calculate payment interval
-      let paymentInterval: number;
-      switch (paymentFrequency) {
-        case 'weekly':
-          paymentInterval = 7; // 7 days
-          break;
-        case 'bi-weekly':
-          paymentInterval = 14; // 14 days
-          break;
-        case 'monthly':
-        default:
-          paymentInterval = 30; // ~1 month
-          break;
-      }
-      
-      // Update modifiable payment schedules using the new date as the starting point
-      // Instead of shifting all dates by the difference, we set the first one to the exact new date
-      // and calculate subsequent dates based on the frequency
-      if (scheduleEntries && scheduleEntries.length > 0) {
-        let shiftedCount = 0;
-        
-        // Set the first modifiable payment to the exact new start date
-        const { error: firstPaymentUpdateError } = await supabase
-          .from('payment_schedule')
-          .update({
-            due_date: formattedDate, // FIXED: Using the formatted date string directly
-            status: 'pending', // Reset status to pending
-            payment_request_id: null, // Clear any payment request associations
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', scheduleEntries[0].id);
-          
-        if (firstPaymentUpdateError) {
-          console.error('Error updating first payment due date:', firstPaymentUpdateError);
-        } else {
-          shiftedCount++;
-        }
-        
-        // Calculate subsequent payment dates based on the payment frequency
-        for (let i = 1; i < scheduleEntries.length; i++) {
-          const newDueDate = new Date(newStartDate);
-          newDueDate.setDate(newDueDate.getDate() + (i * paymentInterval));
-          
-          // FIXED: Use format consistently to convert to string and prevent timezone issues
-          const formattedDueDate = format(newDueDate, 'yyyy-MM-dd');
-          
-          const { error: dueDateUpdateError } = await supabase
-            .from('payment_schedule')
-            .update({
-              due_date: formattedDueDate, // FIXED: Using formatted date string
-              status: 'pending', // Reset status to pending
-              payment_request_id: null, // Clear any payment request associations
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', scheduleEntries[i].id);
-            
-          if (dueDateUpdateError) {
-            console.error('Error updating due date:', dueDateUpdateError);
-          } else {
-            shiftedCount++;
-          }
-        }
-        
-        console.log(`Successfully shifted ${shiftedCount} payment schedules`);
-      }
-      
-      // Update the plan's next_due_date to the new start date
-      const { error: nextDueDateUpdateError } = await supabase
-        .from('plans')
-        .update({
-          next_due_date: formattedDate // FIXED: Using formatted date string
-        })
-        .eq('id', plan.id);
-        
-      if (nextDueDateUpdateError) {
-        console.error('Error updating next due date:', nextDueDateUpdateError);
-      } else {
-        console.log(`Updated plan next due date to ${formattedDate}`);
-      }
-      
-      // Record the reschedule activity
-      const { error: activityError } = await supabase
-        .from('payment_activity')
-        .insert({
-          payment_link_id: plan.paymentLinkId,
-          patient_id: plan.patientId,
-          clinic_id: plan.clinicId,
-          plan_id: plan.id,
-          action_type: 'reschedule_plan',
-          details: {
-            plan_name: plan.title || plan.planName,
-            previous_date: currentPlan.start_date,
-            new_date: formattedDate, // FIXED: Using formatted date string
-            payments_shifted: scheduleEntries?.length || 0,
-            payment_requests_cancelled: paymentRequestCount
-          }
-        });
-      
-      if (activityError) {
-        console.error('Error logging reschedule activity:', activityError);
-      }
-
-      // REMOVED: No longer call updatePlanStatus here - the status is set explicitly above based on payment history
-      // Let the cron job handle overdue detection, we've set active/pending status based on payment history
-      
-      return true;
-      
-    } catch (error: any) {
-      console.error('Error rescheduling plan:', error);
+      return result;
+    } catch (error) {
+      console.error('Error in reschedulePlan:', error);
+      toast.error(`Failed to reschedule plan: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }
@@ -492,164 +107,12 @@ export class PlanOperationsService {
    */
   static async recordPaymentRefund(paymentId: string, amount: number, isFullRefund: boolean): Promise<{ success: boolean, error?: any }> {
     try {
-      // Get the payment details
-      const { data: paymentData, error: paymentError } = await supabase
-        .from('payments')
-        .select('payment_link_id')
-        .eq('id', paymentId)
-        .single();
-        
-      if (paymentError) throw paymentError;
-      
-      // Find the payment schedule entry through payment requests if it exists
-      const { data: requestsData, error: requestsError } = await supabase
-        .from('payment_requests')
-        .select('id')
-        .eq('payment_id', paymentId)
-        .maybeSingle();
-        
-      if (requestsError) {
-        console.warn('Could not fetch payment request:', requestsError);
-      }
-      
-      let scheduleData = null;
-      if (requestsData?.id) {
-        // Look for associated payment schedule
-        const { data: scheduleResult, error: scheduleError } = await supabase
-          .from('payment_schedule')
-          .select('plan_id')
-          .eq('payment_request_id', requestsData.id)
-          .maybeSingle();
-          
-        if (scheduleError) {
-          console.warn('Could not find payment_schedule entry:', scheduleError);
-        } else {
-          scheduleData = scheduleResult;
-        }
-      }
-      
-      // Record the refund in payments table
-      const { error: updatePaymentError } = await supabase
-        .from('payments')
-        .update({
-          status: isFullRefund ? 'refunded' : 'partially_refunded',
-          refund_amount: amount,
-          refunded_at: new Date().toISOString()
-        })
-        .eq('id', paymentId);
-        
-      if (updatePaymentError) {
-        throw updatePaymentError;
-      }
-      
-      // If this payment was part of a payment plan, update the payment_schedule status
-      if (scheduleData?.plan_id && requestsData?.id) {
-        const { error: updateScheduleError } = await supabase
-          .from('payment_schedule')
-          .update({
-            status: isFullRefund ? 'refunded' : 'partially_refunded',
-            updated_at: new Date().toISOString()
-          })
-          .eq('payment_request_id', requestsData.id);
-          
-        if (updateScheduleError) {
-          console.warn('Could not update payment schedule status:', updateScheduleError);
-        }
-      }
-      
-      // If this is part of a payment plan, record the activity
-      if (scheduleData?.plan_id) {
-        await this.recordPaymentPlanActivity({
-          planId: scheduleData.plan_id,
-          actionType: 'payment_refunded',
-          details: {
-            payment_id: paymentId,
-            amount: amount,
-            is_full_refund: isFullRefund,
-            refunded_at: new Date().toISOString()
-          }
-        });
-      }
-      
-      return { success: true };
+      return await PlanPaymentService.recordPaymentRefund(paymentId, amount, isFullRefund);
     } catch (error) {
-      console.error('Error recording payment refund:', error);
+      console.error('Error in recordPaymentRefund:', error);
+      toast.error(`Failed to record refund: ${error instanceof Error ? error.message : String(error)}`);
       return { success: false, error };
     }
-  }
-  
-  /**
-   * Record activity for a payment plan
-   * @param params Parameters for recording activity
-   * @returns Promise indicating success or failure
-   */
-  private static async recordPaymentPlanActivity(params: {
-    planId: string;
-    actionType: string;
-    details: Record<string, any>;
-  }): Promise<boolean> {
-    try {
-      // Get plan information to fill in required fields
-      const { data: planData, error: planError } = await supabase
-        .from('plans')
-        .select('payment_link_id, patient_id, clinic_id')
-        .eq('id', params.planId)
-        .single();
-      
-      if (planError) {
-        console.error('Error fetching plan data for activity log:', planError);
-        return false;
-      }
-      
-      // Insert activity record
-      const { error: activityError } = await supabase
-        .from('payment_activity')
-        .insert({
-          plan_id: params.planId,
-          payment_link_id: planData.payment_link_id,
-          patient_id: planData.patient_id,
-          clinic_id: planData.clinic_id,
-          action_type: params.actionType,
-          details: params.details
-        });
-      
-      if (activityError) {
-        console.error('Error recording payment plan activity:', activityError);
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error in recordPaymentPlanActivity:', error);
-      return false;
-    }
-  }
-  
-  /**
-   * Helper function to calculate new payment dates based on frequency
-   * @private
-   */
-  private static calculateNewPaymentDates(startDate: Date, frequency: string, count: number): string[] {
-    const dates: string[] = [];
-    let currentDate = new Date(startDate);
-    
-    for (let i = 0; i < count; i++) {
-      dates.push(format(currentDate, 'yyyy-MM-dd'));
-      
-      // Calculate next date based on frequency
-      if (frequency === 'weekly') {
-        currentDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
-      } else if (frequency === 'bi-weekly') {
-        currentDate = new Date(currentDate.setDate(currentDate.getDate() + 14));
-      } else if (frequency === 'monthly') {
-        currentDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
-      } else {
-        // Default to monthly if frequency is unknown
-        currentDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
-      }
-    }
-    
-    return dates;
   }
   
   /**
@@ -659,11 +122,10 @@ export class PlanOperationsService {
    */
   static async sendPaymentReminder(installmentId: string): Promise<{ success: boolean, error?: any }> {
     try {
-      // Call the imported sendPaymentReminder function from PaymentReminderService
-      const result = await sendPaymentReminder(installmentId);
-      return result;
+      return await PlanPaymentService.sendPaymentReminder(installmentId);
     } catch (error) {
-      console.error('Error sending payment reminder:', error);
+      console.error('Error in sendPaymentReminder:', error);
+      toast.error(`Failed to send payment reminder: ${error instanceof Error ? error.message : String(error)}`);
       return { success: false, error };
     }
   }
