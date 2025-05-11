@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Table, 
@@ -29,6 +28,12 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
       return 'paid';
     }
     
+    // If status is already overdue, keep it that way
+    if (installment.status === 'overdue') {
+      return 'overdue';
+    }
+    
+    // Otherwise check date
     const now = new Date();
     const dueDate = new Date(installment.dueDate);
     

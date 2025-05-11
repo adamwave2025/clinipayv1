@@ -14,6 +14,8 @@ const corsHeaders = {
  * Check if a plan has overdue payments
  * This function only checks if any payments are past due
  * It doesn't attempt to determine the overall plan status
+ * 
+ * UPDATED: Now also checks for already overdue payments to ensure consistency
  */
 async function checkPlanForOverduePayments(supabase: any, planId: string): Promise<boolean> {
   try {
@@ -21,12 +23,13 @@ async function checkPlanForOverduePayments(supabase: any, planId: string): Promi
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     
+    // CRITICAL FIX: Include 'overdue' status in the check to also find already overdue payments
     // Check if any payment is past its due date and not paid/cancelled/paused
     const { data, error } = await supabase
       .from('payment_schedule')
       .select('id')
       .eq('plan_id', planId)
-      .in('status', ['pending', 'sent'])
+      .in('status', ['pending', 'sent', 'overdue'])
       .lt('due_date', todayStr)
       .limit(1);
       
@@ -101,7 +104,7 @@ serve(async (req) => {
     
     let plansQuery = supabase
       .from('plans')
-      .select('id, title, status, has_overdue_payments, total_installments')
+      .select('id, title, status, total_installments')
       .in('status', ['active', 'pending', 'overdue']); // Only check these statuses
       
     // If a specific planId was provided, filter to just that plan
@@ -156,7 +159,6 @@ serve(async (req) => {
               .from('plans')
               .update({ 
                 status: 'overdue',
-                has_overdue_payments: true,
                 updated_at: new Date().toISOString()
               })
               .eq('id', plan.id);
@@ -214,7 +216,6 @@ serve(async (req) => {
                 .from('plans')
                 .update({ 
                   status: newStatus,
-                  has_overdue_payments: false,
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', plan.id);
@@ -279,22 +280,23 @@ serve(async (req) => {
           console.log(`Updated plan metrics: ${paidInstallments}/${plan.total_installments} payments (${progress}%)`);
         }
         
-        // Always update the has_overdue_payments flag to be accurate
+        // IMPORTANT: Check for actual overdue payments again and ensure status is consistent
         const hasActualOverduePayments = await checkPlanForOverduePayments(supabase, plan.id);
         
-        if (plan.has_overdue_payments !== hasActualOverduePayments) {
-          console.log(`Updating has_overdue_payments flag for plan ${plan.id} to ${hasActualOverduePayments}`);
+        if (hasActualOverduePayments && plan.status !== 'overdue' && 
+            plan.status !== 'paused' && plan.status !== 'cancelled') {
+          console.log(`Plan ${plan.id} has overdue payments but status is ${plan.status}, updating to overdue`);
           
-          const { error: flagUpdateError } = await supabase
+          const { error: statusUpdateError } = await supabase
             .from('plans')
             .update({ 
-              has_overdue_payments: hasActualOverduePayments,
+              status: 'overdue',
               updated_at: new Date().toISOString()
             })
             .eq('id', plan.id);
             
-          if (flagUpdateError) {
-            console.error(`Error updating overdue flag: ${flagUpdateError.message}`);
+          if (statusUpdateError) {
+            console.error(`Error updating plan status: ${statusUpdateError.message}`);
           }
         }
       } catch (planError: any) {

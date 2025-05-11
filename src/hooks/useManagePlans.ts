@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plan } from '@/utils/planTypes';
@@ -96,11 +97,25 @@ export const useManagePlans = (): ManagePlansContextType => {
   // Add the hasPaidPayments state explicitly
   const [hasPaidPayments, setHasPaidPayments] = useState(false);
   
-  // Update the hasPaidPayments state when installments change
+  // Add a flag to track if there are overdue payments
+  const [hasOverduePayments, setHasOverduePayments] = useState(false);
+  
+  // Update the hasPaidPayments and hasOverduePayments state when installments change
   useEffect(() => {
     if (installments.length > 0) {
       const hasPaid = installments.some(installment => installment.status === 'paid');
       setHasPaidPayments(hasPaid);
+      
+      const hasOverdue = installments.some(installment => {
+        if (installment.status === 'overdue') return true;
+        if (installment.status === 'paid' || installment.status === 'cancelled' || installment.status === 'paused') {
+          return false;
+        }
+        const now = new Date();
+        const dueDate = new Date(installment.dueDate);
+        return dueDate < now;
+      });
+      setHasOverduePayments(hasOverdue);
     }
   }, [installments]);
 
@@ -212,8 +227,8 @@ export const useManagePlans = (): ManagePlansContextType => {
     ...resumeActions,
     ...rescheduleActions,
     
-    // Explicitly add hasOverduePayments from rescheduleActions
-    hasOverduePayments: resumeActions.hasOverduePayments,
+    // Explicitly add hasOverduePayments calculated from installments
+    hasOverduePayments,
     
     // Add resumeError from resumeActions
     resumeError: resumeActions.resumeError,

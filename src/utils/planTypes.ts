@@ -16,7 +16,6 @@ export interface Plan {
   paymentFrequency: string;
   startDate: string;
   nextDueDate: string | null;
-  hasOverduePayments: boolean;
   createdAt?: string;
   updatedAt?: string;
   schedule?: any[];
@@ -71,7 +70,6 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
       paymentFrequency: dbPlan.payment_frequency,
       startDate: dbPlan.start_date,
       nextDueDate: dbPlan.next_due_date || null,
-      hasOverduePayments: dbPlan.has_overdue_payments || false,
       createdAt: dbPlan.created_at,
       updatedAt: dbPlan.updated_at,
       // Set backward compatibility fields
@@ -100,7 +98,6 @@ export const formatPlanFromDb = (dbPlan: any): Plan => {
     paymentFrequency: dbPlan.payment_frequency,
     startDate: dbPlan.start_date,
     nextDueDate: dbPlan.next_due_date || null,
-    hasOverduePayments: dbPlan.has_overdue_payments || false,
     createdAt: dbPlan.created_at,
     updatedAt: dbPlan.updated_at,
     // Set backward compatibility fields
