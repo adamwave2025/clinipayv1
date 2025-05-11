@@ -76,25 +76,55 @@ const enrichActivityDetails = (actionType: string, details: any): any => {
   
   // For plan creation, ensure we have all required fields
   if (actionType === 'plan_created') {
-    // Ensure we have plan name
+    // Map the database column names to the UI expected field names
+    
+    // Plan name mapping
     if (!enhancedDetails.planName && enhancedDetails.title) {
       enhancedDetails.planName = enhancedDetails.title;
     }
     
-    // Ensure we have frequency
-    if (!enhancedDetails.frequency && enhancedDetails.paymentFrequency) {
-      enhancedDetails.frequency = enhancedDetails.paymentFrequency;
+    // For total amount, check multiple possible field names
+    if (!enhancedDetails.totalAmount) {
+      if (enhancedDetails.planTotalAmount) {
+        enhancedDetails.totalAmount = enhancedDetails.planTotalAmount;
+      } else if (enhancedDetails.total_amount) {
+        enhancedDetails.totalAmount = enhancedDetails.total_amount;
+      }
     }
     
-    // Ensure we have total amount
-    if (!enhancedDetails.totalAmount && enhancedDetails.planTotalAmount) {
-      enhancedDetails.totalAmount = enhancedDetails.planTotalAmount;
+    // For frequency, check multiple possible field names
+    if (!enhancedDetails.frequency) {
+      if (enhancedDetails.paymentFrequency) {
+        enhancedDetails.frequency = enhancedDetails.paymentFrequency;
+      } else if (enhancedDetails.payment_frequency) {
+        enhancedDetails.frequency = enhancedDetails.payment_frequency;
+      }
     }
     
-    // Ensure we have installment amount
-    if (!enhancedDetails.installmentAmount && enhancedDetails.paymentAmount) {
-      enhancedDetails.installmentAmount = enhancedDetails.paymentAmount;
+    // For installment amount, check multiple possible field names
+    if (!enhancedDetails.installmentAmount) {
+      if (enhancedDetails.paymentAmount) {
+        enhancedDetails.installmentAmount = enhancedDetails.paymentAmount;
+      } else if (enhancedDetails.installment_amount) {
+        enhancedDetails.installmentAmount = enhancedDetails.installment_amount;
+      }
     }
+    
+    // For start date, check multiple possible field names
+    if (!enhancedDetails.startDate) {
+      if (enhancedDetails.start_date) {
+        enhancedDetails.startDate = enhancedDetails.start_date;
+      }
+    }
+    
+    // Log enhanced details for debugging
+    console.log('Enriched plan_created details:', {
+      planName: enhancedDetails.planName,
+      totalAmount: enhancedDetails.totalAmount,
+      frequency: enhancedDetails.frequency,
+      installmentAmount: enhancedDetails.installmentAmount,
+      startDate: enhancedDetails.startDate
+    });
   }
   
   // For payments, ensure reference details are available
@@ -105,18 +135,41 @@ const enrichActivityDetails = (actionType: string, details: any): any => {
     }
     
     // Ensure we have payment number and total
-    if (!enhancedDetails.paymentNumber && enhancedDetails.installmentNumber) {
-      enhancedDetails.paymentNumber = enhancedDetails.installmentNumber;
+    // Check multiple possible field names for payment number
+    if (!enhancedDetails.paymentNumber) {
+      if (enhancedDetails.installmentNumber) {
+        enhancedDetails.paymentNumber = enhancedDetails.installmentNumber;
+      } else if (enhancedDetails.payment_number) {
+        enhancedDetails.paymentNumber = enhancedDetails.payment_number;
+      }
     }
     
-    if (!enhancedDetails.totalPayments && enhancedDetails.totalInstallments) {
-      enhancedDetails.totalPayments = enhancedDetails.totalInstallments;
+    // Check multiple possible field names for total payments
+    if (!enhancedDetails.totalPayments) {
+      if (enhancedDetails.totalInstallments) {
+        enhancedDetails.totalPayments = enhancedDetails.totalInstallments;
+      } else if (enhancedDetails.total_installments) {
+        enhancedDetails.totalPayments = enhancedDetails.total_installments;
+      } else if (enhancedDetails.total_payments) {
+        enhancedDetails.totalPayments = enhancedDetails.total_payments;
+      }
     }
     
     // If we still don't have totalPayments but have planDetails
-    if (!enhancedDetails.totalPayments && enhancedDetails.planDetails?.totalInstallments) {
-      enhancedDetails.totalPayments = enhancedDetails.planDetails.totalInstallments;
+    if (!enhancedDetails.totalPayments && enhancedDetails.planDetails) {
+      if (enhancedDetails.planDetails.totalInstallments) {
+        enhancedDetails.totalPayments = enhancedDetails.planDetails.totalInstallments;
+      } else if (enhancedDetails.planDetails.total_installments) {
+        enhancedDetails.totalPayments = enhancedDetails.planDetails.total_installments;
+      }
     }
+    
+    // Log enhanced payment details for debugging
+    console.log('Enriched payment details:', {
+      reference: enhancedDetails.reference,
+      paymentNumber: enhancedDetails.paymentNumber,
+      totalPayments: enhancedDetails.totalPayments
+    });
   }
   
   // For plan actions, ensure we have plan name
@@ -127,18 +180,33 @@ const enrichActivityDetails = (actionType: string, details: any): any => {
     
     // For resumed plans, ensure we have next payment date
     if (actionType === 'plan_resumed') {
-      if (!enhancedDetails.resumeDate && enhancedDetails.nextDueDate) {
-        enhancedDetails.resumeDate = enhancedDetails.nextDueDate;
+      // Check multiple possible field names for resume date
+      if (!enhancedDetails.resumeDate) {
+        if (enhancedDetails.nextDueDate) {
+          enhancedDetails.resumeDate = enhancedDetails.nextDueDate;
+        } else if (enhancedDetails.next_due_date) {
+          enhancedDetails.resumeDate = enhancedDetails.next_due_date;
+        } else if (enhancedDetails.nextPaymentDate) {
+          enhancedDetails.resumeDate = enhancedDetails.nextPaymentDate;
+        } else if (enhancedDetails.next_payment_date) {
+          enhancedDetails.resumeDate = enhancedDetails.next_payment_date;
+        }
       }
       
-      // Additional failsafe for resume date
-      if (!enhancedDetails.resumeDate && enhancedDetails.nextPaymentDate) {
-        enhancedDetails.resumeDate = enhancedDetails.nextPaymentDate;
+      // Make sure nextDueDate is also set for backwards compatibility
+      if (enhancedDetails.resumeDate && !enhancedDetails.nextDueDate) {
+        enhancedDetails.nextDueDate = enhancedDetails.resumeDate;
       }
+      
+      // Log enhanced resume details for debugging
+      console.log('Enriched plan_resumed details:', {
+        resumeDate: enhancedDetails.resumeDate,
+        nextDueDate: enhancedDetails.nextDueDate
+      });
     }
   }
   
-  console.log(`Enriched details for ${actionType}:`, enhancedDetails);
+  console.log(`Fully enriched details for ${actionType}:`, enhancedDetails);
   return enhancedDetails;
 };
 

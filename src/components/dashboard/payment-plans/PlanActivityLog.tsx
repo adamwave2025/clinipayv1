@@ -65,10 +65,10 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
           <>
             <div className="font-medium">Plan created: {activity.details?.planName || 'Payment Plan'}</div>
             <div className="mt-1 space-y-1 text-sm">
-              <p>Total due: {activity.details?.totalAmount ? formatCurrency(activity.details.totalAmount) : 'N/A'}</p>
-              <p>Frequency: {capitalize(activity.details?.frequency || 'Monthly')}</p>
-              <p>Payment amount: {activity.details?.installmentAmount ? formatCurrency(activity.details.installmentAmount) : 'N/A'}</p>
-              <p>Plan start date: {activity.details?.startDate ? formatDate(activity.details.startDate) : 'N/A'}</p>
+              <p>Total due: {activity.details?.totalAmount ? formatCurrency(activity.details.totalAmount) : 'Not specified'}</p>
+              <p>Frequency: {capitalize(activity.details?.frequency || 'Not specified')}</p>
+              <p>Payment amount: {activity.details?.installmentAmount ? formatCurrency(activity.details.installmentAmount) : 'Not specified'}</p>
+              <p>Plan start date: {activity.details?.startDate ? formatDate(activity.details.startDate) : 'Not specified'}</p>
             </div>
           </>
         );
@@ -77,7 +77,7 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
         return (
           <>
             <div className="font-medium">
-              Payment received for {activity.details?.amount ? formatCurrency(activity.details.amount) : 'N/A'}
+              Payment received for {activity.details?.amount ? formatCurrency(activity.details.amount) : 'Not specified'}
             </div>
             <div className="mt-1 space-y-1 text-sm">
               {activity.details?.paymentNumber && activity.details?.totalPayments ? (
@@ -95,7 +95,7 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
           <>
             <div className="font-medium">Rescheduled plan</div>
             <div className="mt-1 space-y-1 text-sm">
-              <p>Next payment date: {formatDate(activity.details?.newDate || activity.details?.nextDueDate || 'N/A')}</p>
+              <p>Next payment date: {formatDate(activity.details?.newDate || activity.details?.nextDueDate || 'Not specified')}</p>
             </div>
           </>
         );
@@ -126,7 +126,7 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
           <>
             <div className="font-medium">Resumed plan</div>
             <div className="mt-1 space-y-1 text-sm">
-              <p>Next payment date: {formatDate(activity.details?.resumeDate || activity.details?.nextDueDate || 'N/A')}</p>
+              <p>Next payment date: {formatDate(activity.details?.resumeDate || activity.details?.nextDueDate || 'Not specified')}</p>
             </div>
           </>
         );
