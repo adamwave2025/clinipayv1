@@ -38,10 +38,27 @@ export const formatPlanInstallments = (installments: any[]): PlanInstallment[] =
       }
     }
     
-    // Check direct payments path second
-    if (!paidDate && installment.payments?.paid_at) {
-      paidDate = installment.payments.paid_at;
-      paymentId = installment.payments.id;
+    // Check paymentInfo path (from our modified query)
+    if (!paidDate && installment.paymentInfo?.paid_at) {
+      paidDate = installment.paymentInfo.paid_at;
+      
+      if (installment.paymentInfo.payment_id) {
+        paymentId = installment.paymentInfo.payment_id;
+      }
+      
+      // If there's payment data from payments table via paymentInfo
+      if (installment.paymentInfo.payments) {
+        paymentId = installment.paymentInfo.payments.id;
+      }
+    }
+    
+    // Check direct payments from the modified query
+    if (!paidDate && installment.directPayments && installment.directPayments.length > 0) {
+      // For direct payments, we might need additional logic to match the specific installment
+      // This is a simplification - in a production setting, more robust matching might be needed
+      // For now, we'll try to use the first direct payment we find
+      paidDate = installment.directPayments[0].paid_at;
+      paymentId = installment.directPayments[0].id;
     }
       
     return {

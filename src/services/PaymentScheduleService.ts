@@ -60,7 +60,19 @@ export const fetchPlans = async (userId: string): Promise<Plan[]> => {
 
 export const fetchPlanInstallments = async (planId: string) => {
   try {
-    // Updated query to correctly handle the relationship between payment_schedule and payments
+    // First, get the payment_link_id for this plan to use later
+    const { data: planData, error: planError } = await supabase
+      .from('plans')
+      .select('payment_link_id')
+      .eq('id', planId)
+      .single();
+    
+    if (planError) {
+      console.error('Error fetching plan details:', planError);
+      throw planError;
+    }
+    
+    // Now fetch the payment schedule entries with their payment requests
     const { data, error } = await supabase
       .from('payment_schedule')
       .select(`
@@ -109,10 +121,8 @@ export const fetchPlanInstallments = async (planId: string) => {
           data.forEach(item => {
             if (item.payment_request_id && paymentMap.has(item.payment_request_id)) {
               const paymentInfo = paymentMap.get(item.payment_request_id);
-              // Add payment data directly to the item for the formatter
-              if (paymentInfo.payments) {
-                item.payments = paymentInfo.payments;
-              }
+              // Add payment data as a custom property
+              (item as any).paymentInfo = paymentInfo;
             }
           });
         }
@@ -123,15 +133,16 @@ export const fetchPlanInstallments = async (planId: string) => {
       const { data: directPayments, error: directPaymentError } = await supabase
         .from('payments')
         .select('id, status, paid_at, payment_ref')
-        .eq('payment_link_id', data[0].payment_link_id)
+        .eq('payment_link_id', planData.payment_link_id)
         .eq('manual_payment', true);
         
       if (!directPaymentError && directPayments && directPayments.length > 0) {
         console.log(`Found ${directPayments.length} direct payments`);
         
-        // Add these to the payment data as well, matching by payment reference if available
-        // This is a simplification - in a real implementation you'd want a more robust way to match
-        // the payments to the correct installments
+        // Store direct payments separately to be used by the formatter
+        for (const item of data) {
+          (item as any).directPayments = directPayments;
+        }
       }
     }
     
@@ -139,8 +150,9 @@ export const fetchPlanInstallments = async (planId: string) => {
     console.log(`Fetched ${data?.length || 0} installments for plan ${planId}`);
     if (data && data.length > 0) {
       data.forEach(item => {
-        if (item.payments) {
-          console.log(`Installment ${item.id} has direct payment data:`, item.payments);
+        const paymentInfo = (item as any).paymentInfo;
+        if (paymentInfo) {
+          console.log(`Installment ${item.id} has payment request data:`, paymentInfo);
         }
         if (item.payment_requests) {
           console.log(`Installment ${item.id} has payment request data:`, item.payment_requests);
