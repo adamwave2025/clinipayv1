@@ -1,8 +1,16 @@
 
 import React from 'react';
-import { PlanActivity, getActionTypeLabel, capitalize } from '@/utils/planActivityUtils';
-import { formatDate } from '@/utils/formatters';
+import { PlanActivity } from '@/utils/planActivityUtils';
+import { formatDate, formatCurrency, formatDateTime } from '@/utils/formatters';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import {
+  FileText,
+  CreditCard,
+  CalendarClock,
+  X,
+  PauseCircle,
+  PlayCircle
+} from 'lucide-react';
 
 interface ActivityLogProps {
   activities: PlanActivity[];
@@ -10,31 +18,91 @@ interface ActivityLogProps {
 }
 
 const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false }) => {
-  const getActivityIconAndText = (activity: PlanActivity) => {
+  // Function to get icon based on action type
+  const getActivityIcon = (activity: PlanActivity) => {
     switch (activity.actionType) {
       case 'plan_created':
-        return { icon: '📝', text: 'Plan created' };
+        return <FileText className="h-4 w-4 text-purple-500" />;
+      case 'payment_made':
       case 'payment_marked_paid':
-        return { icon: '💰', text: `Payment #${activity.details?.paymentNumber || ''} marked as paid` };
-      case 'payment_rescheduled':
-        return { 
-          icon: '📅', 
-          text: `Payment #${activity.details?.paymentNumber || ''} rescheduled from ${
-            formatDate(activity.details?.originalDate)
-          } to ${
-            formatDate(activity.details?.newDate)
-          }` 
-        };
-      case 'plan_paused':
-        return { icon: '⏸️', text: 'Plan paused' };
-      case 'plan_resumed':
-        return { icon: '▶️', text: 'Plan resumed' };
+        return <CreditCard className="h-4 w-4 text-green-500" />;
       case 'plan_rescheduled':
-        return { icon: '🔄', text: 'Plan rescheduled' };
+      case 'payment_rescheduled':
+        return <CalendarClock className="h-4 w-4 text-amber-500" />;
       case 'plan_cancelled':
-        return { icon: '❌', text: 'Plan cancelled' };
+        return <X className="h-4 w-4 text-red-500" />;
+      case 'plan_paused':
+        return <PauseCircle className="h-4 w-4 text-orange-500" />;
+      case 'plan_resumed':
+        return <PlayCircle className="h-4 w-4 text-green-500" />;
       default:
-        return { icon: '🔔', text: activity.actionType };
+        return <FileText className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  // Function to render the content based on activity type
+  const renderActivityContent = (activity: PlanActivity) => {
+    switch (activity.actionType) {
+      case 'plan_created':
+        return (
+          <>
+            <div className="font-medium">Plan created: {activity.details?.planName || 'Payment Plan'}</div>
+            <div className="mt-1 space-y-1 text-sm">
+              <p>Total due: {formatCurrency(activity.details?.totalAmount || 0)}</p>
+              <p>Frequency: {capitalize(activity.details?.frequency || 'Monthly')}</p>
+              <p>Payment amount: {formatCurrency(activity.details?.installmentAmount || 0)}</p>
+              <p>Plan start date: {formatDate(activity.details?.startDate)}</p>
+            </div>
+          </>
+        );
+      case 'payment_made':
+      case 'payment_marked_paid':
+        return (
+          <>
+            <div className="font-medium">
+              Payment received for {formatCurrency(activity.details?.amount || 0)}
+            </div>
+            <div className="mt-1 space-y-1 text-sm">
+              <p>Payment: {activity.details?.paymentNumber || 1} of {activity.details?.totalPayments || 1}</p>
+              {activity.details?.reference && <p>Reference: {activity.details.reference}</p>}
+            </div>
+          </>
+        );
+      case 'plan_rescheduled':
+      case 'payment_rescheduled':
+        return (
+          <>
+            <div className="font-medium">Rescheduled plan</div>
+            <div className="mt-1 space-y-1 text-sm">
+              <p>Next payment date: {formatDate(activity.details?.newDate || activity.details?.nextDueDate)}</p>
+            </div>
+          </>
+        );
+      case 'plan_cancelled':
+        return (
+          <>
+            <div className="font-medium">Cancelled plan</div>
+          </>
+        );
+      case 'plan_paused':
+        return (
+          <>
+            <div className="font-medium">Paused plan</div>
+          </>
+        );
+      case 'plan_resumed':
+        return (
+          <>
+            <div className="font-medium">Resumed plan</div>
+            <div className="mt-1 space-y-1 text-sm">
+              <p>Next payment date: {formatDate(activity.details?.resumeDate || activity.details?.nextDueDate)}</p>
+            </div>
+          </>
+        );
+      default:
+        return (
+          <div className="font-medium">{activity.actionType.replace(/_/g, ' ')}</div>
+        );
     }
   };
 
@@ -48,31 +116,28 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
 
   return (
     <div className="space-y-4">
-      <h3 className="text-md font-semibold mb-2">Activity Log</h3>
       {activities.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
           No activity recorded yet
         </div>
       ) : (
         <div className="space-y-3">
-          {activities.map((activity) => {
-            const { icon, text } = getActivityIconAndText(activity);
-            
-            return (
-              <div 
-                key={activity.id} 
-                className="flex items-start p-3 border rounded-md bg-background shadow-sm"
-              >
-                <div className="mr-3 text-lg">{icon}</div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{text}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(activity.performedAt)}
-                  </p>
-                </div>
+          {activities.map((activity) => (
+            <div 
+              key={activity.id} 
+              className="flex items-start p-3 border rounded-md bg-background shadow-sm"
+            >
+              <div className="mr-3 text-lg">
+                {getActivityIcon(activity)}
               </div>
-            );
-          })}
+              <div className="flex-1">
+                {renderActivityContent(activity)}
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatDateTime(activity.performedAt, 'en-GB', 'Europe/London')}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

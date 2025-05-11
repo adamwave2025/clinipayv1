@@ -1,4 +1,3 @@
-
 /**
  * Interface for plan activity entries
  */
@@ -14,9 +13,18 @@ export interface PlanActivity {
   details?: {
     installmentId?: string;
     paymentNumber?: number;
+    totalPayments?: number;
     amount?: number;
     originalDate?: string;
     newDate?: string;
+    planName?: string;
+    frequency?: string;
+    totalAmount?: number;
+    installmentAmount?: number;
+    startDate?: string;
+    nextDueDate?: string;
+    resumeDate?: string;
+    reference?: string;
     [key: string]: any;
   };
 }
@@ -37,8 +45,47 @@ export const formatPlanActivities = (activities: any[]): PlanActivity[] => {
     actionType: activity.action_type,
     performedAt: activity.performed_at,
     performedByUserId: activity.performed_by_user_id,
-    details: activity.details || {}
+    details: enrichActivityDetails(activity.action_type, activity.details || {})
   }));
+};
+
+/**
+ * Enhance activity details with additional useful information based on activity type
+ */
+const enrichActivityDetails = (actionType: string, details: any): any => {
+  // Clone the details to avoid modifying the original
+  const enhancedDetails = { ...details };
+  
+  // For payments, ensure reference details are available
+  if (actionType === 'payment_made' || actionType === 'payment_marked_paid') {
+    // Format reference if it's not already formatted
+    if (enhancedDetails.paymentRef && !enhancedDetails.reference) {
+      enhancedDetails.reference = enhancedDetails.paymentRef;
+    }
+    
+    // Ensure we have payment number and total
+    if (!enhancedDetails.paymentNumber && enhancedDetails.installmentNumber) {
+      enhancedDetails.paymentNumber = enhancedDetails.installmentNumber;
+    }
+    
+    if (!enhancedDetails.totalPayments && enhancedDetails.totalInstallments) {
+      enhancedDetails.totalPayments = enhancedDetails.totalInstallments;
+    }
+  }
+  
+  // For plan actions, ensure we have plan name
+  if (actionType.startsWith('plan_')) {
+    if (!enhancedDetails.planName && enhancedDetails.title) {
+      enhancedDetails.planName = enhancedDetails.title;
+    }
+    
+    // For resumed plans, ensure we have next payment date
+    if (actionType === 'plan_resumed' && !enhancedDetails.resumeDate && enhancedDetails.nextDueDate) {
+      enhancedDetails.resumeDate = enhancedDetails.nextDueDate;
+    }
+  }
+  
+  return enhancedDetails;
 };
 
 /**
@@ -50,6 +97,8 @@ export const getActionTypeLabel = (actionType: string): string => {
       return 'Plan created';
     case 'payment_marked_paid':
       return 'Payment marked as paid';
+    case 'payment_made':
+      return 'Payment received';
     case 'payment_rescheduled':
       return 'Payment rescheduled';
     case 'plan_paused':
