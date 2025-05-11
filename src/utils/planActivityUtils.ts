@@ -1,3 +1,4 @@
+
 /**
  * Interface for plan activity entries
  */
@@ -25,6 +26,7 @@ export interface PlanActivity {
     nextDueDate?: string;
     resumeDate?: string;
     reference?: string;
+    reason?: string;
     [key: string]: any;
   };
 }
@@ -36,17 +38,31 @@ export interface PlanActivity {
  * @returns Formatted activities for frontend use
  */
 export const formatPlanActivities = (activities: any[]): PlanActivity[] => {
-  return activities.map(activity => ({
-    id: activity.id,
-    planId: activity.plan_id,
-    clinicId: activity.clinic_id,
-    patientId: activity.patient_id,
-    paymentLinkId: activity.payment_link_id,
-    actionType: activity.action_type,
-    performedAt: activity.performed_at,
-    performedByUserId: activity.performed_by_user_id,
-    details: enrichActivityDetails(activity.action_type, activity.details || {})
-  }));
+  if (!Array.isArray(activities)) {
+    console.error('formatPlanActivities received invalid input:', activities);
+    return [];
+  }
+
+  console.log('Raw activities before formatting:', activities);
+  
+  const formattedActivities = activities.map(activity => {
+    const formatted = {
+      id: activity.id,
+      planId: activity.plan_id,
+      clinicId: activity.clinic_id,
+      patientId: activity.patient_id,
+      paymentLinkId: activity.payment_link_id,
+      actionType: activity.action_type,
+      performedAt: activity.performed_at,
+      performedByUserId: activity.performed_by_user_id,
+      details: enrichActivityDetails(activity.action_type, activity.details || {})
+    };
+    
+    console.log(`Formatted activity ${activity.id} (${activity.action_type}):`, formatted);
+    return formatted;
+  });
+  
+  return formattedActivities;
 };
 
 /**
@@ -55,6 +71,31 @@ export const formatPlanActivities = (activities: any[]): PlanActivity[] => {
 const enrichActivityDetails = (actionType: string, details: any): any => {
   // Clone the details to avoid modifying the original
   const enhancedDetails = { ...details };
+  
+  console.log(`Enriching details for ${actionType}:`, enhancedDetails);
+  
+  // For plan creation, ensure we have all required fields
+  if (actionType === 'plan_created') {
+    // Ensure we have plan name
+    if (!enhancedDetails.planName && enhancedDetails.title) {
+      enhancedDetails.planName = enhancedDetails.title;
+    }
+    
+    // Ensure we have frequency
+    if (!enhancedDetails.frequency && enhancedDetails.paymentFrequency) {
+      enhancedDetails.frequency = enhancedDetails.paymentFrequency;
+    }
+    
+    // Ensure we have total amount
+    if (!enhancedDetails.totalAmount && enhancedDetails.planTotalAmount) {
+      enhancedDetails.totalAmount = enhancedDetails.planTotalAmount;
+    }
+    
+    // Ensure we have installment amount
+    if (!enhancedDetails.installmentAmount && enhancedDetails.paymentAmount) {
+      enhancedDetails.installmentAmount = enhancedDetails.paymentAmount;
+    }
+  }
   
   // For payments, ensure reference details are available
   if (actionType === 'payment_made' || actionType === 'payment_marked_paid') {
@@ -71,6 +112,11 @@ const enrichActivityDetails = (actionType: string, details: any): any => {
     if (!enhancedDetails.totalPayments && enhancedDetails.totalInstallments) {
       enhancedDetails.totalPayments = enhancedDetails.totalInstallments;
     }
+    
+    // If we still don't have totalPayments but have planDetails
+    if (!enhancedDetails.totalPayments && enhancedDetails.planDetails?.totalInstallments) {
+      enhancedDetails.totalPayments = enhancedDetails.planDetails.totalInstallments;
+    }
   }
   
   // For plan actions, ensure we have plan name
@@ -80,11 +126,19 @@ const enrichActivityDetails = (actionType: string, details: any): any => {
     }
     
     // For resumed plans, ensure we have next payment date
-    if (actionType === 'plan_resumed' && !enhancedDetails.resumeDate && enhancedDetails.nextDueDate) {
-      enhancedDetails.resumeDate = enhancedDetails.nextDueDate;
+    if (actionType === 'plan_resumed') {
+      if (!enhancedDetails.resumeDate && enhancedDetails.nextDueDate) {
+        enhancedDetails.resumeDate = enhancedDetails.nextDueDate;
+      }
+      
+      // Additional failsafe for resume date
+      if (!enhancedDetails.resumeDate && enhancedDetails.nextPaymentDate) {
+        enhancedDetails.resumeDate = enhancedDetails.nextPaymentDate;
+      }
     }
   }
   
+  console.log(`Enriched details for ${actionType}:`, enhancedDetails);
   return enhancedDetails;
 };
 

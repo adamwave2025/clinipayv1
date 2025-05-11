@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useEffect } from 'react';
 import { PlanActivity, capitalize } from '@/utils/planActivityUtils';
 import { formatDate, formatCurrency, formatDateTime } from '@/utils/formatters';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -17,6 +18,20 @@ interface ActivityLogProps {
 }
 
 const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false }) => {
+  // Add useEffect to debug the activity data
+  useEffect(() => {
+    console.log('ActivityLog - Received activities:', activities);
+    if (activities?.length > 0) {
+      // Log details of each activity to help debug
+      activities.forEach(activity => {
+        console.log(`Activity ${activity.id} (${activity.actionType}):`, {
+          details: activity.details,
+          timestamp: activity.performedAt
+        });
+      });
+    }
+  }, [activities]);
+  
   // Function to get icon based on action type
   const getActivityIcon = (activity: PlanActivity) => {
     switch (activity.actionType) {
@@ -41,16 +56,21 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
 
   // Function to render the content based on activity type
   const renderActivityContent = (activity: PlanActivity) => {
+    // Debug logging to trace data issues
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`Rendering activity (${activity.actionType}):`, activity.details);
+    }
+    
     switch (activity.actionType) {
       case 'plan_created':
         return (
           <>
             <div className="font-medium">Plan created: {activity.details?.planName || 'Payment Plan'}</div>
             <div className="mt-1 space-y-1 text-sm">
-              <p>Total due: {formatCurrency(activity.details?.totalAmount || 0)}</p>
+              <p>Total due: {activity.details?.totalAmount ? formatCurrency(activity.details.totalAmount) : 'N/A'}</p>
               <p>Frequency: {capitalize(activity.details?.frequency || 'Monthly')}</p>
-              <p>Payment amount: {formatCurrency(activity.details?.installmentAmount || 0)}</p>
-              <p>Plan start date: {formatDate(activity.details?.startDate)}</p>
+              <p>Payment amount: {activity.details?.installmentAmount ? formatCurrency(activity.details.installmentAmount) : 'N/A'}</p>
+              <p>Plan start date: {activity.details?.startDate ? formatDate(activity.details.startDate) : 'N/A'}</p>
             </div>
           </>
         );
@@ -59,10 +79,14 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
         return (
           <>
             <div className="font-medium">
-              Payment received for {formatCurrency(activity.details?.amount || 0)}
+              Payment received for {activity.details?.amount ? formatCurrency(activity.details.amount) : 'N/A'}
             </div>
             <div className="mt-1 space-y-1 text-sm">
-              <p>Payment: {activity.details?.paymentNumber || 1} of {activity.details?.totalPayments || 1}</p>
+              {activity.details?.paymentNumber && activity.details?.totalPayments ? (
+                <p>Payment: {activity.details.paymentNumber} of {activity.details.totalPayments}</p>
+              ) : (
+                <p>Payment processed</p>
+              )}
               {activity.details?.reference && <p>Reference: {activity.details.reference}</p>}
             </div>
           </>
@@ -73,7 +97,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
           <>
             <div className="font-medium">Rescheduled plan</div>
             <div className="mt-1 space-y-1 text-sm">
-              <p>Next payment date: {formatDate(activity.details?.newDate || activity.details?.nextDueDate)}</p>
+              <p>Next payment date: {formatDate(activity.details?.newDate || activity.details?.nextDueDate || 'N/A')}</p>
             </div>
           </>
         );
@@ -81,12 +105,22 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
         return (
           <>
             <div className="font-medium">Cancelled plan</div>
+            {activity.details?.reason && (
+              <div className="mt-1 space-y-1 text-sm">
+                <p>Reason: {activity.details.reason}</p>
+              </div>
+            )}
           </>
         );
       case 'plan_paused':
         return (
           <>
             <div className="font-medium">Paused plan</div>
+            {activity.details?.reason && (
+              <div className="mt-1 space-y-1 text-sm">
+                <p>Reason: {activity.details.reason}</p>
+              </div>
+            )}
           </>
         );
       case 'plan_resumed':
@@ -94,7 +128,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
           <>
             <div className="font-medium">Resumed plan</div>
             <div className="mt-1 space-y-1 text-sm">
-              <p>Next payment date: {formatDate(activity.details?.resumeDate || activity.details?.nextDueDate)}</p>
+              <p>Next payment date: {formatDate(activity.details?.resumeDate || activity.details?.nextDueDate || 'N/A')}</p>
             </div>
           </>
         );
