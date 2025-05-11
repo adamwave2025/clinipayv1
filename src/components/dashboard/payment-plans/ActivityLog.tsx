@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { PlanActivity } from '@/utils/planActivityUtils';
+import { PlanActivity, capitalize } from '@/utils/planActivityUtils';
 import { formatDate, formatCurrency, formatDateTime } from '@/utils/formatters';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import {
