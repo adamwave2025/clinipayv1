@@ -165,7 +165,6 @@ export const useManagePlans = (): ManagePlansContextType => {
     // Installment action handlers
     handleMarkAsPaid,
     handleOpenReschedule,
-    handleReschedulePayment,
     handleTakePayment,
     
     // Mark as paid dialog state and handlers
@@ -183,14 +182,19 @@ export const useManagePlans = (): ManagePlansContextType => {
     // Payment rescheduling dialog properties
     showReschedulePaymentDialog,
     setShowReschedulePaymentDialog,
-    // Rename to match the context type definition and avoid duplicates
     handleReschedulePayment: handleIndividualPaymentReschedule,
     
-    // Include all plan action properties
+    // Include all plan action properties but avoid using handleReschedulePayment again
     ...cancelActions,
     ...pauseActions,
     ...resumeActions,
-    ...rescheduleActions,
+    // Make sure we're not including any properties that would conflict with what we've already defined
+    ...{
+      showRescheduleDialog: rescheduleActions.showRescheduleDialog,
+      setShowRescheduleDialog: rescheduleActions.setShowRescheduleDialog,
+      handleReschedulePlan: rescheduleActions.handleReschedulePlan,
+      handleOpenRescheduleDialog: rescheduleActions.handleOpenRescheduleDialog
+    },
     
     // Add hasOverduePayments and hasPaidPayments
     hasOverduePayments,
