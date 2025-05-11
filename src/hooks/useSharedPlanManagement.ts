@@ -1,12 +1,10 @@
-import { useState } from 'react';
+
 import { Plan } from '@/utils/planTypes';
-import { PlanInstallment } from '@/utils/paymentPlanUtils';
-import { PlanActivity } from '@/utils/planActivityUtils';
-import { PlanDataService } from '@/services/PlanDataService';
-import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { isPlanPaused } from '@/utils/plan-status-utils';
-import { supabase } from '@/integrations/supabase/client';
-import { PlanStatusService } from '@/services/PlanStatusService';
+import { usePlanDetailsState } from './plan-management/usePlanDetailsState';
+import { usePlanOperations } from './plan-management/usePlanOperations';
+import { usePlanDataFetching } from './plan-management/usePlanDataFetching';
+import { useDialogControls } from './plan-management/useDialogControls';
 
 /**
  * Shared hook to manage payment plan operations across different parts of the application.
@@ -14,238 +12,72 @@ import { PlanStatusService } from '@/services/PlanStatusService';
  * and the patient details area.
  */
 export const useSharedPlanManagement = () => {
-  // Plan and related data state
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-  const [planInstallments, setPlanInstallments] = useState<PlanInstallment[]>([]);
-  const [planActivities, setPlanActivities] = useState<PlanActivity[]>([]);
-  const [isLoadingInstallments, setIsLoadingInstallments] = useState(false);
-  const [isLoadingActivities, setIsLoadingActivities] = useState(false);
+  // Use our state management hook to get all state variables and setters
+  const planState = usePlanDetailsState();
   
-  // UI state
-  const [showPlanDetails, setShowPlanDetails] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const {
+    selectedPlan,
+    setSelectedPlan,
+    planInstallments,
+    setPlanInstallments,
+    planActivities,
+    setPlanActivities,
+    isLoadingInstallments,
+    setIsLoadingInstallments,
+    isLoadingActivities,
+    setIsLoadingActivities,
+    showPlanDetails,
+    setShowPlanDetails,
+    isProcessing,
+    setIsProcessing,
+    showCancelDialog,
+    setShowCancelDialog,
+    showPauseDialog,
+    setShowPauseDialog,
+    showResumeDialog,
+    setShowResumeDialog,
+    showRescheduleDialog,
+    setShowRescheduleDialog,
+    hasSentPayments,
+    setHasSentPayments
+  } = planState;
 
-  // Dialog states
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const [showPauseDialog, setShowPauseDialog] = useState(false);
-  const [showResumeDialog, setShowResumeDialog] = useState(false);
-  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  // Use our data fetching hook
+  const dataFetching = usePlanDataFetching(
+    setSelectedPlan,
+    setPlanInstallments,
+    setPlanActivities,
+    setIsLoadingInstallments,
+    setIsLoadingActivities,
+    setShowPlanDetails,
+    selectedPlan
+  );
 
-  // State to track sent payments during resume operations
-  const [hasSentPayments, setHasSentPayments] = useState(false);
+  const {
+    handleViewPlanDetails,
+    fetchPlanDetails,
+    refreshPlanDetails
+  } = dataFetching;
 
-  /**
-   * View plan details and fetch related data
-   */
-  const handleViewPlanDetails = async (plan: Plan) => {
-    setSelectedPlan(plan);
-    await fetchPlanDetails(plan);
-    setShowPlanDetails(true);
-  };
-  
-  /**
-   * Fetch both installments and activities for a plan
-   */
-  const fetchPlanDetails = async (plan: Plan) => {
-    setIsLoadingInstallments(true);
-    setIsLoadingActivities(true);
-    
-    try {
-      const { installments, activities } = await PlanDataService.fetchPlanDetails(plan);
-      setPlanInstallments(installments);
-      setPlanActivities(activities);
-    } catch (err) {
-      console.error('Error fetching plan details:', err);
-    } finally {
-      setIsLoadingInstallments(false);
-      setIsLoadingActivities(false);
-    }
-  };
+  // Use our plan operations hook
+  const planOperations = usePlanOperations(
+    selectedPlan,
+    setSelectedPlan,
+    setIsProcessing,
+    setHasSentPayments,
+    setShowPlanDetails,
+    refreshPlanDetails
+  );
 
-  /**
-   * Refresh plan details after modifications
-   */
-  const refreshPlanDetails = async () => {
-    if (selectedPlan) {
-      await fetchPlanDetails(selectedPlan);
-    }
-  };
-
-  // Dialog opening handlers
-  const handleOpenCancelDialog = () => {
-    setShowCancelDialog(true);
-    setShowPlanDetails(false);
-  };
-  
-  const handleOpenPauseDialog = () => {
-    setShowPauseDialog(true);
-    setShowPlanDetails(false);
-  };
-  
-  const handleOpenResumeDialog = async () => {
-    // Check if there are any paused payments that were previously in 'sent' status
-    if (selectedPlan) {
-      const { data: sentPayments } = await supabase
-        .from('payment_schedule')
-        .select('id')
-        .eq('plan_id', selectedPlan.id)
-        .eq('status', 'paused')
-        .not('payment_request_id', 'is', null);
-      
-      const hasSentPayments = sentPayments && sentPayments.length > 0;
-      
-      // Store this information in state to use in the dialog
-      setHasSentPayments(hasSentPayments);
-    }
-    
-    setShowResumeDialog(true);
-  };
-  
-  const handleOpenRescheduleDialog = () => {
-    setShowRescheduleDialog(true);
-    setShowPlanDetails(false);
-  };
-
-  /**
-   * Cancel the current plan
-   */
-  const handleCancelPlan = async () => {
-    if (!selectedPlan) return;
-    
-    setIsProcessing(true);
-    
-    try {
-      // Use the consolidated PlanOperationsService
-      const success = await PlanOperationsService.cancelPlan(selectedPlan);
-      
-      if (success && selectedPlan) {
-        // Get the updated status from the service
-        const { status } = await PlanStatusService.refreshPlanStatus(selectedPlan.id);
-        
-        // Update local state to reflect the change
-        setSelectedPlan({
-          ...selectedPlan,
-          status: status || 'cancelled'
-        });
-      }
-    } catch (error) {
-      console.error('Error in handleCancelPlan:', error);
-    } finally {
-      setIsProcessing(false);
-      setShowCancelDialog(false);
-    }
-  };
-  
-  /**
-   * Pause the current plan
-   */
-  const handlePausePlan = async () => {
-    if (!selectedPlan) return;
-    
-    setIsProcessing(true);
-    
-    try {
-      // Use the consolidated PlanOperationsService
-      const success = await PlanOperationsService.pausePlan(selectedPlan);
-      
-      if (success && selectedPlan) {
-        // Get the updated status from the service
-        const { status } = await PlanStatusService.refreshPlanStatus(selectedPlan.id);
-        
-        // Update local state to reflect the change
-        setSelectedPlan({
-          ...selectedPlan,
-          status: status || 'paused'
-        });
-      }
-    } catch (error) {
-      console.error('Error in handlePausePlan:', error);
-    } finally {
-      setIsProcessing(false);
-      setShowPauseDialog(false);
-    }
-  };
-  
-  /**
-   * Resume the current plan
-   */
-  const handleResumePlan = async (resumeDate?: Date) => {
-    if (!selectedPlan) return;
-    
-    setIsProcessing(true);
-    
-    try {
-      // Use the consolidated PlanOperationsService
-      const success = await PlanOperationsService.resumePlan(selectedPlan, resumeDate);
-      
-      if (success && selectedPlan) {
-        // After successful resume, fetch the updated plan data to get correct status
-        const { status } = await PlanStatusService.refreshPlanStatus(selectedPlan.id);
-        
-        // Update local state to reflect the change
-        setSelectedPlan({
-          ...selectedPlan,
-          status: status || 'pending'
-        });
-        
-        // Refresh the installments to show updated statuses
-        await refreshPlanDetails();
-      }
-    } catch (error) {
-      console.error('Error resuming plan:', error);
-    } finally {
-      setIsProcessing(false);
-      setShowResumeDialog(false);
-    }
-  };
-  
-  /**
-   * Reschedule the current plan
-   */
-  const handleReschedulePlan = async (newStartDate: Date) => {
-    if (!selectedPlan) return;
-    
-    setIsProcessing(true);
-    
-    try {
-      console.log('Rescheduling plan with new start date:', newStartDate);
-      
-      // Use the consolidated PlanOperationsService
-      const success = await PlanOperationsService.reschedulePlan(selectedPlan, newStartDate);
-      
-      if (success) {
-        // After successful reschedule, fetch the updated plan data to get correct status
-        const { status } = await PlanStatusService.refreshPlanStatus(selectedPlan.id);
-        
-        // Get updated plan details
-        const { data: updatedPlan, error } = await supabase
-          .from('plans')
-          .select('start_date, next_due_date')
-          .eq('id', selectedPlan.id)
-          .single();
-        
-        if (error) {
-          console.error('Error fetching updated plan:', error);
-        } else if (updatedPlan) {
-          // Update local state with the latest plan data from the server
-          setSelectedPlan({
-            ...selectedPlan,
-            status: status || selectedPlan.status,
-            startDate: updatedPlan.start_date,
-            nextDueDate: updatedPlan.next_due_date
-          });
-        }
-        
-        // Refresh the installments to show updated statuses
-        await refreshPlanDetails();
-      }
-    } catch (error) {
-      console.error('Error rescheduling plan:', error);
-    } finally {
-      setIsProcessing(false);
-      setShowRescheduleDialog(false);
-    }
-  };
+  // Use our dialog controls hook
+  const dialogControls = useDialogControls(
+    setShowPlanDetails,
+    setShowCancelDialog,
+    setShowPauseDialog,
+    setShowResumeDialog,
+    setShowRescheduleDialog,
+    planOperations.handleOpenResumeDialog
+  );
 
   return {
     // Plan and related data
@@ -274,16 +106,16 @@ export const useSharedPlanManagement = () => {
     refreshPlanDetails,
     
     // Dialog opening handlers
-    handleOpenCancelDialog,
-    handleOpenPauseDialog,
-    handleOpenResumeDialog,
-    handleOpenRescheduleDialog,
+    handleOpenCancelDialog: dialogControls.handleOpenCancelDialog,
+    handleOpenPauseDialog: dialogControls.handleOpenPauseDialog,
+    handleOpenResumeDialog: dialogControls.handleOpenResumeDialog,
+    handleOpenRescheduleDialog: dialogControls.handleOpenRescheduleDialog,
     
     // Plan operation handlers
-    handleCancelPlan,
-    handlePausePlan,
-    handleResumePlan,
-    handleReschedulePlan,
+    handleCancelPlan: planOperations.handleCancelPlan,
+    handlePausePlan: planOperations.handlePausePlan,
+    handleResumePlan: planOperations.handleResumePlan,
+    handleReschedulePlan: planOperations.handleReschedulePlan,
     
     // Status helpers
     isPlanPaused,
