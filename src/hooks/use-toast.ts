@@ -1,10 +1,16 @@
 
-import { toast as sonnerToast } from "sonner";
+import { toast as sonnerToast, ToastT, useToaster } from "sonner";
 
 type ToastProps = {
   title?: string;
   description?: string;
   variant?: "default" | "destructive";
+};
+
+// Create a custom useToast hook that provides the toast functionality
+export const useToast = () => {
+  const { toasts } = useToaster();
+  return { toasts };
 };
 
 export const toast = {
@@ -37,5 +43,3 @@ export const toast = {
     });
   }
 };
-
-export { useToast } from "sonner";

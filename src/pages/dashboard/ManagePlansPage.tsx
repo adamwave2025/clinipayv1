@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { PlusCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,7 @@ import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { Toaster } from "@/components/ui/sonner"; // Add toaster here
+import { Toaster } from "sonner"; // Update to use sonner directly
 
 const ManagePlansHeader: React.FC<{
   isTemplateView: boolean;
@@ -147,8 +146,8 @@ const ManagePlansPageContent: React.FC = () => {
         onPlanCreated={refreshTemplates}
       />
       
-      {/* Include Toaster component for toast notifications */}
-      <Toaster />
+      {/* Use Toaster directly from sonner */}
+      <Toaster richColors />
     </>
   );
 };
