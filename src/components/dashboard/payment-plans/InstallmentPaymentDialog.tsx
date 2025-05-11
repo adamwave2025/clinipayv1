@@ -54,7 +54,7 @@ const InstallmentPaymentDialog = ({
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-medium">{paymentData.linkTitle || 'Payment'}</h3>
             <StatusBadge 
-              status={paymentData.status} 
+              status={paymentData.status as any} 
               manualPayment={paymentData.manualPayment} 
             />
           </div>

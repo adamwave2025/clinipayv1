@@ -24,6 +24,11 @@ const StatusBadge = ({
       return 'bg-amber-50 border-amber-300 text-amber-800';
     }
     
+    // Special style for manual payments
+    if (status === 'paid' && manualPayment) {
+      return 'bg-purple-50 text-purple-700 border-purple-200';
+    }
+    
     switch (status) {
       case 'paid':
       case 'connected':
@@ -53,7 +58,7 @@ const StatusBadge = ({
   const getDisplayText = () => {
     // Special case for manual payments
     if (status === 'paid' && manualPayment) {
-      return 'M.Paid';
+      return 'Manual Payment';
     }
     
     // Display special text for sent payments that were paused

@@ -45,6 +45,8 @@ const PaymentDetailDialog = ({
     }
   };
 
+  console.log('Payment in PaymentDetailDialog:', payment);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl md:max-w-2xl">
@@ -88,7 +90,7 @@ const PaymentDetailDialog = ({
             totalAmount={payment.amount}
           />
           
-          {/* Refund action button - now passes manualPayment prop */}
+          {/* Refund action button with explicit manualPayment prop */}
           <PaymentActionsSection 
             status={payment.status}
             onRefund={handleRefund}

@@ -13,9 +13,17 @@ const PaymentActionsSection = ({
   onRefund,
   manualPayment = false // Default to false
 }: PaymentActionsSectionProps) => {
-  // Hide refund button for manual payments
-  if (status !== 'paid' || !onRefund || manualPayment) return null;
+  // Always hide refund button for manual payments or if status isn't paid or no handler
+  if (status !== 'paid' || !onRefund || manualPayment === true) {
+    console.log('Hiding refund button:', { 
+      status, 
+      hasOnRefund: !!onRefund, 
+      manualPayment
+    });
+    return null;
+  }
   
+  console.log('Displaying refund button');
   return (
     <div className="flex justify-end mt-4">
       <Button 

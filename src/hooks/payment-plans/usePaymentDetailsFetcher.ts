@@ -13,6 +13,8 @@ export const usePaymentDetailsFetcher = () => {
     setIsLoading(true);
     
     try {
+      console.log('Installation in fetchPaymentDetails:', installment);
+      
       // Check if we have a direct payment ID (could happen with manual payments)
       if (installment.paymentId && !installment.paymentRequestId) {
         console.log('Fetching payment details directly for payment ID:', installment.paymentId);
@@ -27,6 +29,7 @@ export const usePaymentDetailsFetcher = () => {
         if (paymentError) {
           console.error('Error fetching payment:', paymentError);
           toast.error('Failed to load payment details');
+          setIsLoading(false);
           return null;
         }
         
@@ -53,6 +56,7 @@ export const usePaymentDetailsFetcher = () => {
         
         console.log('Formatted direct payment info:', paymentInfo);
         setPaymentData(paymentInfo);
+        setIsLoading(false);
         return paymentInfo;
       }
       
@@ -60,6 +64,7 @@ export const usePaymentDetailsFetcher = () => {
       if (!installment.paymentRequestId && !installment.paymentId) {
         console.log('No payment request ID or payment ID found for this installment');
         toast.error('No payment information available');
+        setIsLoading(false);
         return null;
       }
       
@@ -81,6 +86,7 @@ export const usePaymentDetailsFetcher = () => {
       if (requestError) {
         console.error('Error fetching payment request:', requestError);
         toast.error('Failed to load payment details');
+        setIsLoading(false);
         return null;
       }
       
@@ -90,12 +96,12 @@ export const usePaymentDetailsFetcher = () => {
       const paymentInfo = requestData.payments ? {
         id: requestData.payments.id,
         status: requestData.payments.status,
-        amount: requestData.payments.amount_paid, // Map amount_paid to amount
-        date: formatDateTime(requestData.payments.paid_at, 'en-GB', 'Europe/London'), // Format with UK locale and timezone
+        amount: requestData.payments.amount_paid,
+        date: formatDateTime(requestData.payments.paid_at, 'en-GB', 'Europe/London'),
         reference: requestData.payments.payment_ref,
         stripePaymentId: requestData.payments.stripe_payment_id,
         refundedAmount: requestData.payments.refund_amount,
-        refundedAt: requestData.payments.refunded_at ? formatDateTime(requestData.payments.refunded_at, 'en-GB', 'Europe/London') : null, // Format with UK locale and timezone
+        refundedAt: requestData.payments.refunded_at ? formatDateTime(requestData.payments.refunded_at, 'en-GB', 'Europe/London') : null,
         patientName: requestData.patient_name,
         patientEmail: requestData.patient_email,
         patientPhone: requestData.patient_phone,
@@ -107,14 +113,14 @@ export const usePaymentDetailsFetcher = () => {
       
       console.log('Formatted payment info:', paymentInfo);
       setPaymentData(paymentInfo);
+      setIsLoading(false);
       return paymentInfo;
       
     } catch (error) {
       console.error('Error in fetchPaymentDetails:', error);
       toast.error('Failed to load payment details');
-      return null;
-    } finally {
       setIsLoading(false);
+      return null;
     }
   };
   
