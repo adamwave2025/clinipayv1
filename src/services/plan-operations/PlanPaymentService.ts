@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { addToNotificationQueue } from '@/utils/notification-queue';
 
@@ -208,10 +209,25 @@ export class PlanPaymentService {
       
       // 6. Add to notification queue to send confirmation
       try {
+        // Get clinic data for notification
+        const { data: clinicData, error: clinicError } = await supabase
+          .from('clinics')
+          .select('clinic_name, email, phone, address_line_1, address_line_2')
+          .eq('id', installment.clinic_id)
+          .single();
+          
+        if (clinicError) {
+          console.warn('Could not fetch clinic data for notification:', clinicError);
+        }
+
         await addToNotificationQueue(
           'payment_confirmation',
           {
             notification_type: 'payment_success',
+            notification_method: {
+              email: !!installment.patients?.email,
+              sms: !!installment.patients?.phone
+            },
             patient: {
               name: installment.patients?.name || 'Unknown Patient',
               email: installment.patients?.email,
@@ -221,6 +237,12 @@ export class PlanPaymentService {
               reference: paymentRef,
               amount: installment.amount / 100, // Convert to decimal currency
               message: `Manual payment for installment #${installment.payment_number}`
+            },
+            clinic: {
+              name: clinicData?.clinic_name || 'Your Clinic',
+              email: clinicData?.email,
+              phone: clinicData?.phone,
+              address: [clinicData?.address_line_1, clinicData?.address_line_2].filter(Boolean).join(', ')
             }
           },
           'patient',
