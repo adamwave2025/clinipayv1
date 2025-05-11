@@ -155,6 +155,37 @@ export class PlanStatusService {
   }
   
   /**
+   * Checks if a plan has overdue payments
+   * This function uses the same logic as the update-plan-statuses edge function
+   * to ensure consistency across all code paths
+   */
+  static async checkPlanForOverduePayments(planId: string): Promise<boolean> {
+    try {
+      // Get current date in YYYY-MM-DD format for overdue check
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      
+      // Check if any payment is past its due date and not paid/cancelled/paused
+      const { data, error } = await supabase
+        .from('payment_schedule')
+        .select('id')
+        .eq('plan_id', planId)
+        .in('status', ['pending', 'sent'])
+        .lt('due_date', todayStr)
+        .limit(1);
+        
+      if (error) throw error;
+      
+      const hasOverdue = data && data.length > 0;
+      console.log(`PlanStatusService.checkPlanForOverduePayments: Plan ${planId} has ${hasOverdue ? '' : 'no '}overdue payments`);
+      return hasOverdue;
+    } catch (error) {
+      console.error(`Error checking for overdue payments in plan ${planId}:`, error);
+      return false;
+    }
+  }
+  
+  /**
    * Trigger the status update manually for a specific plan
    * This calls the update-plan-statuses edge function for a single plan
    * Note: This will now ONLY update the overdue status, not other statuses
@@ -217,6 +248,78 @@ export class PlanStatusService {
     } catch (error) {
       console.error('Error calculating plan status:', error);
       return 'pending';
+    }
+  }
+  
+  /**
+   * Updates the overdue status of a plan by checking for overdue payments
+   * This method can be used to ensure consistency with the update-plan-statuses function
+   */
+  static async updatePlanOverdueStatus(planId: string): Promise<{
+    success: boolean;
+    status?: Plan['status'];
+    hasOverduePayments?: boolean;
+    error?: any;
+  }> {
+    try {
+      // First, get the current plan data
+      const { data: planData, error: planError } = await supabase
+        .from('plans')
+        .select('status, has_overdue_payments')
+        .eq('id', planId)
+        .single();
+        
+      if (planError) throw planError;
+      
+      // Check for overdue payments using the same logic as update-plan-statuses
+      const hasOverduePayments = await this.checkPlanForOverduePayments(planId);
+      
+      // Only update the plan if the overdue status has changed
+      if (planData.has_overdue_payments !== hasOverduePayments || 
+         (hasOverduePayments && planData.status !== 'overdue' && 
+          planData.status !== 'paused' && planData.status !== 'cancelled')) {
+        
+        // Determine the new status
+        let newStatus = planData.status;
+        
+        // If plan has overdue payments, it should be marked as overdue (unless paused/cancelled)
+        if (hasOverduePayments && planData.status !== 'paused' && planData.status !== 'cancelled') {
+          newStatus = 'overdue';
+        }
+        
+        console.log(`PlanStatusService.updatePlanOverdueStatus: Updating plan ${planId} - 
+          Old status: ${planData.status},
+          New status: ${newStatus},
+          Has overdue: ${hasOverduePayments}`);
+        
+        // Update the plan
+        const { error: updateError } = await supabase
+          .from('plans')
+          .update({
+            status: newStatus,
+            has_overdue_payments: hasOverduePayments,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', planId);
+          
+        if (updateError) throw updateError;
+        
+        return {
+          success: true,
+          status: newStatus,
+          hasOverduePayments
+        };
+      }
+      
+      // Nothing changed, return current values
+      return {
+        success: true,
+        status: planData.status,
+        hasOverduePayments
+      };
+    } catch (error) {
+      console.error('Error updating plan overdue status:', error);
+      return { success: false, error };
     }
   }
 }

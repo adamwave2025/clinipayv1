@@ -33,7 +33,9 @@ async function checkPlanForOverduePayments(supabase: any, planId: string): Promi
     if (error) throw error;
     
     // Return true if we found any overdue payments
-    return data && data.length > 0;
+    const hasOverdue = data && data.length > 0;
+    console.log(`update-plan-statuses: Plan ${planId} has ${hasOverdue ? '' : 'no '}overdue payments`);
+    return hasOverdue;
   } catch (error) {
     console.error(`Error checking for overdue payments in plan ${planId}:`, error);
     return false;
@@ -169,6 +171,31 @@ serve(async (req) => {
               previous_status: plan.status,
               new_status: 'overdue'
             });
+            
+            // Record status change in activity log
+            const { data: planData, error: planError } = await supabase
+              .from('plans')
+              .select('patient_id, clinic_id, payment_link_id')
+              .eq('id', plan.id)
+              .single();
+              
+            if (!planError && planData) {
+              await supabase
+                .from('payment_activity')
+                .insert({
+                  patient_id: planData.patient_id,
+                  clinic_id: planData.clinic_id,
+                  payment_link_id: planData.payment_link_id,
+                  plan_id: plan.id,
+                  action_type: 'status_change',
+                  details: {
+                    previous_status: plan.status,
+                    new_status: 'overdue',
+                    reason: `${overdueUpdates.length} overdue payment(s) detected`,
+                    timestamp: new Date().toISOString()
+                  }
+                });
+            }
           }
         } else {
           // If no overdue payments found, check if plan is marked as overdue but shouldn't be
@@ -202,6 +229,31 @@ serve(async (req) => {
                 previous_status: plan.status,
                 new_status: newStatus
               });
+              
+              // Record status change in activity log
+              const { data: planData, error: planError } = await supabase
+                .from('plans')
+                .select('patient_id, clinic_id, payment_link_id')
+                .eq('id', plan.id)
+                .single();
+                
+              if (!planError && planData) {
+                await supabase
+                  .from('payment_activity')
+                  .insert({
+                    patient_id: planData.patient_id,
+                    clinic_id: planData.clinic_id,
+                    payment_link_id: planData.payment_link_id,
+                    plan_id: plan.id,
+                    action_type: 'status_change',
+                    details: {
+                      previous_status: plan.status,
+                      new_status: newStatus,
+                      reason: 'No more overdue payments',
+                      timestamp: new Date().toISOString()
+                    }
+                  });
+              }
             }
           }
         }

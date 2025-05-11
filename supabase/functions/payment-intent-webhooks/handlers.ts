@@ -265,11 +265,11 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
                   console.error("Error fetching plan data:", planFetchError);
                 } else if (planData) {
                   // Increment paid installments
-                  const paidInstallments = (planData.paid_installments || 0) + 1;
+                  const paidInstallments = Math.min((planData.paid_installments || 0) + 1, planData.total_installments);
                   const totalInstallments = planData.total_installments || scheduleData.total_payments;
                   
-                  // Calculate new progress percentage
-                  const progress = Math.floor((paidInstallments / totalInstallments) * 100) || 0;
+                  // Calculate new progress percentage - Cap at 100%
+                  const progress = Math.min(Math.floor((paidInstallments / totalInstallments) * 100) || 0, 100);
 
                   // Get all schedule entries for this plan to find next due date and check for overdue
                   const { data: allScheduleEntries, error: entriesError } = await supabaseClient
@@ -296,7 +296,7 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
                       nextDueDate = unpaidEntry.due_date;
                     }
 
-                    // Check for overdue status on remaining entries
+                    // Check for overdue status on remaining entries using same logic as update-plan-statuses
                     const now = new Date();
                     now.setHours(0, 0, 0, 0); // Start of day for accurate comparison
                     
@@ -306,31 +306,55 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
                       return entry.status !== 'paid' && entry.status !== 'cancelled' && dueDate < now;
                     });
                     
-                    // Determine the new status
+                    // Determine the new status - FIX THE STATUS CHANGE LOGIC
                     let newStatus = planData.status;
                     let statusChanged = false;
                     const oldStatus = planData.status;
                     
-                    // If all installments are paid, mark as completed
+                    console.log(`Plan status evaluation - Current status: ${oldStatus}, Has overdue payments: ${hasOverduePayments}`);
+                    
+                    // If all installments are paid, mark as completed (overrides all other status changes)
                     if (paidInstallments >= totalInstallments) {
                       newStatus = 'completed';
                       statusChanged = newStatus !== oldStatus;
+                      console.log(`All installments paid (${paidInstallments}/${totalInstallments}), marking plan as completed`);
                     } 
-                    // If no installments are overdue but plan was previously overdue, mark as active
-                    else if (!hasOverduePayments && planData.status === 'overdue') {
+                    // If plan has overdue payments, it should remain/become overdue unless paused or cancelled
+                    else if (hasOverduePayments && planData.status !== 'paused' && planData.status !== 'cancelled') {
+                      newStatus = 'overdue';
+                      statusChanged = newStatus !== oldStatus;
+                      if (statusChanged) {
+                        console.log(`Plan has overdue payments, marking as overdue (changed from ${oldStatus})`);
+                      } else {
+                        console.log(`Plan has overdue payments, maintaining overdue status`);
+                      }
+                    }
+                    // Only change from overdue to active if:
+                    // 1. Current payment actually resolves all overdue payments
+                    // 2. And plan was previously overdue
+                    else if (planData.status === 'overdue' && !hasOverduePayments) {
                       newStatus = 'active';
                       statusChanged = true;
-                      console.log("Plan status changed from overdue to active - no more overdue payments");
+                      console.log(`Plan was overdue but now has no overdue payments, changing to active`);
                     }
-                    // If some installments are paid but not all, mark as active (unless it's already overdue or paused)
+                    // If some installments are paid but not all, and not overdue, mark as active (unless paused/cancelled)
                     else if (paidInstallments > 0 && planData.status === 'pending') {
                       newStatus = 'active';
                       statusChanged = true;
+                      console.log(`First payment made, changing status from pending to active`);
                     }
-                    // If plan still has overdue payments, maintain overdue status
-                    else if (hasOverduePayments && newStatus !== 'paused' && newStatus !== 'cancelled') {
-                      newStatus = 'overdue';
-                    }
+                    
+                    // Debug logs for plan update
+                    console.log(`Plan update details:
+                      - Plan ID: ${planData.id}
+                      - Old status: ${planData.status}
+                      - New status: ${newStatus}
+                      - Status changed: ${statusChanged}
+                      - Paid installments: ${paidInstallments}/${totalInstallments}
+                      - Progress: ${progress}%
+                      - Has overdue payments: ${hasOverduePayments}
+                      - Next due date: ${nextDueDate || 'None'}
+                    `);
                     
                     // Update the plan with new values
                     const { error: planUpdateError } = await supabaseClient
@@ -348,9 +372,6 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
                       console.error("Error updating plan record:", planUpdateError);
                     } else {
                       console.log(`Successfully updated plan record. New status: ${newStatus}, Progress: ${progress}%, Has overdue payments: ${hasOverduePayments}, Next due date: ${nextDueDate || 'None'}`);
-                      
-                      // REMOVED: No more status_update activity when returning from overdue to active
-                      // We only want to log overdue status changes, which happen in the update-plan-statuses function
                     }
                   }
                 }
@@ -360,12 +381,12 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
             }
             
             // Record payment activity in the payment plan activity log
-            // FIXED: Changed payment_plan_activities to payment_activity which is the actual table name
             const activityPayload = {
               patient_id: scheduleData.patient_id,
               payment_link_id: scheduleData.payment_link_id,
               clinic_id: scheduleData.clinic_id,
               action_type: "payment_made",
+              plan_id: scheduleData.plan_id, // Add plan_id to ensure proper tracking
               details: {
                 payment_reference: paymentReference,
                 amount: amountInCents, // FIXED: Store as integer (cents)
@@ -895,5 +916,36 @@ export async function handleRefundUpdated(refund: any, stripeClient: Stripe, sup
   } catch (error) {
     console.error("Error processing refund:", error);
     console.error("Stack trace:", error.stack);
+  }
+}
+
+/**
+ * Helper function to check if a plan has overdue payments
+ * IMPORTANT: This uses the same logic as the update-plan-statuses function
+ * to ensure consistency
+ */
+async function checkPlanForOverduePayments(supabaseClient: any, planId: string): Promise<boolean> {
+  try {
+    // Get current date in YYYY-MM-DD format for overdue check
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    // Check if any payment is past its due date and not paid/cancelled/paused
+    const { data, error } = await supabaseClient
+      .from('payment_schedule')
+      .select('id')
+      .eq('plan_id', planId)
+      .in('status', ['pending', 'sent'])
+      .lt('due_date', todayStr)
+      .limit(1);
+      
+    if (error) throw error;
+    
+    // Return true if we found any overdue payments
+    console.log(`checkPlanForOverduePayments: Plan ${planId} has ${data?.length || 0} overdue payments`);
+    return data && data.length > 0;
+  } catch (error) {
+    console.error(`Error checking for overdue payments in plan ${planId}:`, error);
+    return false;
   }
 }

@@ -19,6 +19,7 @@ const PaymentPlanBreakdown: React.FC<PaymentPlanBreakdownProps> = ({
   paymentLinkId
 }) => {
   // Calculate payment progress percentage with safety checks
+  // Ensure it never exceeds 100%
   const progressPercentage = planTotalAmount > 0 
     ? Math.min(Math.round((totalPaid / planTotalAmount) * 100), 100)
     : 0;
@@ -37,10 +38,10 @@ const PaymentPlanBreakdown: React.FC<PaymentPlanBreakdownProps> = ({
             <span className="font-medium">{formatCurrency(totalPaid)}</span>
           </div>
           <div className="flex justify-between text-sm font-medium">
-            <span className={isOverdue ? "text-red-600" : "text-gray-700"}>
+            <span className={isOverdue ? "text-red-600 font-semibold" : "text-gray-700"}>
               {isOverdue ? "Overdue balance:" : "Remaining balance:"}
             </span>
-            <span className={isOverdue ? "text-red-600" : "text-gray-700"}>
+            <span className={isOverdue ? "text-red-600 font-semibold" : "text-gray-700"}>
               {formatCurrency(totalOutstanding)}
             </span>
           </div>
@@ -57,6 +58,11 @@ const PaymentPlanBreakdown: React.FC<PaymentPlanBreakdownProps> = ({
             className={`h-2 ${isOverdue ? "bg-red-100" : "bg-gray-100"}`}
             indicatorClassName={isOverdue ? "bg-red-500" : "bg-[#9b87f5]"} 
           />
+          {isOverdue && (
+            <div className="text-xs text-red-600 mt-1 font-medium">
+              Payment overdue - please make payment to continue your plan
+            </div>
+          )}
         </div>
       </div>
     </div>
