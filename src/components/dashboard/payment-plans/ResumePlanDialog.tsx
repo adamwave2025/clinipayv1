@@ -42,9 +42,6 @@ const ResumePlanDialog = ({
   planName,
   patientName,
   isProcessing = false,
-  hasSentPayments = false,
-  hasOverduePayments = false,
-  hasPaidPayments = false,
   resumeError = null,
 }: ResumePlanDialogProps) => {
   // Default resume date set to tomorrow to avoid issues with today's date
@@ -126,44 +123,7 @@ const ResumePlanDialog = ({
             </Alert>
           )}
           
-          {hasSentPayments && (
-            <Alert className="mt-4 bg-amber-50 border-amber-200">
-              <AlertCircle className="h-4 w-4 text-amber-500" />
-              <AlertDescription className="text-xs text-amber-700">
-                This plan has payment requests that have already been sent to the patient.
-                Resuming will reactivate those requests.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {hasOverduePayments && (
-            <Alert className="mt-4 bg-amber-50 border-amber-200">
-              <AlertCircle className="h-4 w-4 text-amber-500" />
-              <AlertDescription className="text-xs text-amber-700">
-                This plan has overdue payments. Resuming will reset them to pending status.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {hasPaidPayments && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-xs text-blue-700">
-                <strong>Note:</strong> This plan has payment(s) that have already been made. 
-                The plan will resume with status 'active' and those payments will remain recorded.
-              </p>
-            </div>
-          )}
-          
-          {!hasPaidPayments && (
-            <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
-              <p className="text-xs text-gray-700">
-                <strong>Note:</strong> This plan has no payments made yet. 
-                The plan will resume with status 'pending' until the first payment is made.
-              </p>
-            </div>
-          )}
-          
-          {/* Date picker is now always visible */}
+          {/* Date picker */}
           <div className="mt-6">
             <div className="space-y-2">
               <p className="text-sm font-medium">Select a resume date:</p>
