@@ -12,6 +12,10 @@ const PaymentSourceSection = ({ payment }: PaymentSourceSectionProps) => {
   const isPaymentPlan = payment.type === 'payment_plan';
   const sourceType = isPaymentPlan ? 'Payment Plan' : 'Reusable Link';
   
+  console.log('Payment in PaymentSourceSection:', payment);
+  console.log('Payment type:', payment.type);
+  console.log('Is payment plan?', isPaymentPlan);
+  
   return (
     <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
       <h4 className="text-sm font-medium text-gray-700 mb-1">Payment Source: {sourceType}</h4>

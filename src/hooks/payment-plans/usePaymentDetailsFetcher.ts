@@ -17,6 +17,11 @@ export const usePaymentDetailsFetcher = () => {
       console.log('Payment ID:', installment.paymentId);
       console.log('Payment Request ID:', installment.paymentRequestId);
       
+      // Determine if this is a payment plan payment
+      // If we have totalPayments and paymentNumber, it's likely a plan payment
+      const isPlanPayment = installment.totalPayments > 1;
+      console.log('Is this a plan payment?', isPlanPayment);
+      
       // Check if we have a direct payment ID (could happen with manual payments)
       if (installment.paymentId) {
         console.log('Fetching payment details directly for payment ID:', installment.paymentId);
@@ -51,6 +56,8 @@ export const usePaymentDetailsFetcher = () => {
           patientEmail: paymentData.patient_email,
           patientPhone: paymentData.patient_phone,
           manualPayment: paymentData.manual_payment || false,
+          // Explicitly set the type to payment_plan if this is a plan payment
+          type: isPlanPayment ? 'payment_plan' : 'other',
           linkTitle: installment.paymentNumber 
             ? `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
             : 'Payment'
@@ -108,6 +115,8 @@ export const usePaymentDetailsFetcher = () => {
         patientEmail: requestData.patient_email,
         patientPhone: requestData.patient_phone,
         manualPayment: requestData.payments.manual_payment || false,
+        // Explicitly set the type to payment_plan if this is a plan payment
+        type: isPlanPayment ? 'payment_plan' : 'other',
         linkTitle: installment.paymentNumber 
           ? `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
           : 'Payment'
