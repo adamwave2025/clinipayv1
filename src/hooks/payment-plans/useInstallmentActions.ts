@@ -45,18 +45,16 @@ export const useInstallmentActions = (
     
     toast.info(`Opening payment dialog for ${formatCurrency(installmentDetails.amount)}`);
     
-    // Store the full installment details
-    setSelectedInstallment(installmentDetails);
+    // FIXED: Update both states synchronously without setTimeout
     console.log("[useInstallmentActions] Setting selectedInstallment to:", installmentDetails);
+    setSelectedInstallment(installmentDetails);
+    setShowTakePaymentDialog(true);
     
-    // Wait a tick to ensure state is updated before showing dialog
-    setTimeout(() => {
-      setShowTakePaymentDialog(true);
-      console.log("[useInstallmentActions] Dialog state updated:", {
-        showTakePaymentDialog: true,
-        selectedInstallment: installmentDetails
-      });
-    }, 0);
+    // Debug log to confirm state after update
+    console.log("[useInstallmentActions] States set:", {
+      showTakePaymentDialog: true, 
+      selectedInstallment: installmentDetails
+    });
   };
   
   const confirmMarkAsPaid = async () => {

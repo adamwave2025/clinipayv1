@@ -27,25 +27,29 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
   onReschedule,
   onTakePayment
 }) => {
-  // Enhanced logging for debugging
-  const handleTakePayment = () => {
-    console.log("PaymentActionMenu: Take payment clicked for ID:", paymentId, "with installment:", installment);
+  // FIXED: Enhanced handling with better logging and validation
+  const handleTakePayment = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     
-    if (!installment.amount) {
-      toast.error(`Missing amount data for payment ${paymentId}`);
+    console.log("PaymentActionMenu: Take payment clicked for ID:", paymentId);
+    console.log("PaymentActionMenu: Full installment data:", installment);
+    
+    if (!installment || !installment.amount) {
+      toast.error(`Cannot process payment: Missing amount data`);
       console.error("PaymentActionMenu: Missing amount in installment:", installment);
       return;
     }
     
-    toast.info(`Take Payment action triggered for payment ${paymentId} (${installment.amount})`);
-    
-    if (onTakePayment) {
-      console.log("PaymentActionMenu: Calling onTakePayment handler with full installment");
-      onTakePayment(paymentId, installment);
-    } else {
-      console.error("PaymentActionMenu: onTakePayment is not defined!");
-      toast.error("Payment handler is not defined");
+    if (!onTakePayment) {
+      console.error("PaymentActionMenu: onTakePayment handler is not defined!");
+      toast.error("Payment handler is not configured");
+      return;
     }
+    
+    // Call the handler with both required parameters
+    toast.info(`Take Payment action triggered for payment ${paymentId}`);
+    onTakePayment(paymentId, installment);
   };
 
   return (
@@ -59,11 +63,7 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
       <DropdownMenuContent align="end">
         {onTakePayment && (
           <DropdownMenuItem 
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleTakePayment();
-            }}
+            onClick={handleTakePayment}
             className="cursor-pointer"
           >
             <CreditCard className="mr-2 h-4 w-4" />

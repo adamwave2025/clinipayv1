@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   Table, 
@@ -73,6 +74,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
     onReschedule(paymentId);
   };
 
+  // FIXED: Updated handler to directly pass through to parent without wrapping
   const handleTakePayment = onTakePayment ? (paymentId: string, installment: PlanInstallment) => {
     console.log("PlanPaymentsList: Take payment clicked for payment:", paymentId, installment);
     

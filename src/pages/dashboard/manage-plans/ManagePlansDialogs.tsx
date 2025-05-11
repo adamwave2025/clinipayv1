@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
 import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
@@ -69,22 +70,18 @@ export const ManagePlansDialogs = () => {
   });
   
   // Enhanced debug for selected installment when take payment dialog should show
-  if (showTakePaymentDialog) {
-    console.log('TakePaymentDialog should show with selectedInstallment:', selectedInstallment);
-    
-    if (!selectedInstallment) {
-      console.error('Missing selectedInstallment data in ManagePlansDialogs');
-      toast.error("Cannot show payment dialog: Missing installment data");
-      return null;
+  useEffect(() => {
+    if (showTakePaymentDialog) {
+      console.log('TakePaymentDialog should show with selectedInstallment:', selectedInstallment);
+      
+      if (!selectedInstallment) {
+        console.error('Missing selectedInstallment data in ManagePlansDialogs');
+        toast.error("Cannot show payment dialog: Missing installment data");
+        // Auto-close the dialog if we don't have data to prevent errors
+        setShowTakePaymentDialog(false);
+      }
     }
-    
-    // Validate installment has required data
-    if (!selectedInstallment.amount) {
-      console.error('Missing amount in selectedInstallment:', selectedInstallment);
-      toast.error("Cannot process payment: Installment amount is missing");
-      return null;
-    }
-  }
+  }, [showTakePaymentDialog, selectedInstallment, setShowTakePaymentDialog]);
 
   if (!selectedPlan) {
     console.log('No selectedPlan, returning null from ManagePlansDialogs');
@@ -94,6 +91,11 @@ export const ManagePlansDialogs = () => {
   // Prepare patient information from the selected plan
   const patientName = selectedPlan.patientName || '';
   const patientEmail = selectedPlan.patientEmail || ''; 
+
+  // Validate installment data before rendering TakePaymentDialog
+  const canShowPaymentDialog = selectedInstallment && 
+                               selectedInstallment.amount && 
+                               showTakePaymentDialog;
 
   return (
     <>
@@ -168,8 +170,8 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* FIXED: Enhanced Take Payment dialog with additional validation */}
-      {selectedInstallment && selectedInstallment.amount && showTakePaymentDialog && (
+      {/* FIXED: Enhanced Take Payment dialog with comprehensive validation */}
+      {canShowPaymentDialog ? (
         <TakePaymentDialog
           open={showTakePaymentDialog}
           onOpenChange={(open) => {
@@ -185,6 +187,16 @@ export const ManagePlansDialogs = () => {
           amount={selectedInstallment.amount}
           onPaymentProcessed={onPaymentUpdated}
         />
+      ) : (
+        showTakePaymentDialog && (
+          // If showTakePaymentDialog is true but we don't have valid installment data,
+          // log an error and auto-close the dialog to prevent further errors
+          <React.Fragment>
+            {console.error("Cannot show payment dialog: Invalid installment data", selectedInstallment)}
+            {toast.error("Cannot show payment dialog: Invalid installment data")}
+            {setShowTakePaymentDialog(false)}
+          </React.Fragment>
+        )
       )}
       
       {paymentToRefund && (
