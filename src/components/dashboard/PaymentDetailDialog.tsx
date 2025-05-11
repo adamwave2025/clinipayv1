@@ -34,6 +34,7 @@ const PaymentDetailDialog = ({
 
   const handleRefund = () => {
     if (onRefund && payment.status === 'paid') {
+      console.log('Requesting refund for payment:', payment.id);
       onRefund(payment.id);
     }
   };

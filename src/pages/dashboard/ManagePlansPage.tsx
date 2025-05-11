@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { PlusCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,8 @@ import { PaymentLink } from '@/types/payment';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import CreatePlanSheet from '@/components/dashboard/payment-plans/CreatePlanSheet';
 import PlanTemplatesView from '@/components/dashboard/payment-plans/PlanTemplatesView';
+import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
+import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 
 const ManagePlansHeader: React.FC<{
   isTemplateView: boolean;
@@ -55,6 +56,19 @@ const ManagePlansHeader: React.FC<{
           )}
         </div>
       }
+    />
+  );
+};
+
+// Create a wrapper component that can access the context
+const PaymentDetailsDialogWrapper = () => {
+  const { paymentData, showPaymentDetails, setShowPaymentDetails } = useManagePlansContext();
+  
+  return (
+    <PaymentDetailDialog
+      payment={paymentData}
+      open={showPaymentDetails}
+      onOpenChange={setShowPaymentDetails}
     />
   );
 };
@@ -106,6 +120,7 @@ const ManagePlansPageContent: React.FC = () => {
         <>
           <ManagePlansContent />
           <ManagePlansDialogs />
+          <PaymentDetailsDialogWrapper />
         </>
       )}
       

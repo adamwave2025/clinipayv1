@@ -6,6 +6,7 @@ import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialo
 import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDialog';
 import ReschedulePlanDialog from '@/components/dashboard/payment-plans/ReschedulePlanDialog';
 import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
+import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 
 export const ManagePlansDialogs = () => {
   const {
@@ -30,7 +31,8 @@ export const ManagePlansDialogs = () => {
     setRefundDialogOpen,
     paymentToRefund,
     processRefund,
-    resumeError
+    resumeError,
+    // Payment details are now handled at the page level
   } = useManagePlansContext();
 
   console.log('ManagePlansDialogs rendering with selectedPlan:', selectedPlan?.id);

@@ -70,7 +70,7 @@ const PlanDetailsDialog = ({
   const handleRowClick = (installment: PlanInstallment, e: React.MouseEvent) => {
     // Only trigger click for paid installments and don't navigate when clicking action buttons
     if (installment.status === 'paid' && !e.defaultPrevented) {
-      console.log("Row clicked for installment:", installment.id);
+      console.log("Row clicked for installment:", installment);
       onViewPaymentDetails(installment);
     }
   };
