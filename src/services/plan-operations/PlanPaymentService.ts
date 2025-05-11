@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { addToNotificationQueue } from '@/utils/notification-queue';
 
@@ -234,7 +233,63 @@ export class PlanPaymentService {
         }
       }
       
-      // 7. Update the plan's next_due_date field with the earliest unpaid installment date
+      // 7. Check if all installments for this plan are now paid, and update plan status if needed
+      console.log(`Checking if all installments for plan ${installment.plan_id} are now paid`);
+      const { data: allInstallments, error: installmentsError } = await supabase
+        .from('payment_schedule')
+        .select('id, status')
+        .eq('plan_id', installment.plan_id);
+        
+      if (installmentsError) {
+        console.error('Error checking all installments:', installmentsError);
+        // Non-fatal error, continue processing
+      } else if (allInstallments) {
+        const totalInstallments = allInstallments.length;
+        const paidInstallments = allInstallments.filter(item => item.status === 'paid').length;
+        
+        console.log(`Plan has ${paidInstallments} paid installments out of ${totalInstallments} total`);
+        
+        // If all installments are paid, update plan status to 'completed'
+        if (paidInstallments === totalInstallments && totalInstallments > 0) {
+          console.log(`All installments are paid! Updating plan status to completed`);
+          
+          const { error: updatePlanError } = await supabase
+            .from('plans')
+            .update({
+              status: 'completed',
+              paid_installments: paidInstallments,
+              progress: 100,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', installment.plan_id);
+            
+          if (updatePlanError) {
+            console.error('Error updating plan status to completed:', updatePlanError);
+            // Non-fatal error, continue processing
+          } else {
+            console.log(`Successfully updated plan ${installment.plan_id} status to completed`);
+          }
+        } else {
+          // Update paid installments count and progress, but don't change status
+          console.log(`Updating plan paid_installments count to ${paidInstallments}`);
+          const progress = Math.floor((paidInstallments / totalInstallments) * 100);
+          
+          const { error: updatePlanError } = await supabase
+            .from('plans')
+            .update({
+              paid_installments: paidInstallments,
+              progress: progress,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', installment.plan_id);
+            
+          if (updatePlanError) {
+            console.error('Error updating plan metrics:', updatePlanError);
+          }
+        }
+      }
+      
+      // 8. Update the plan's next_due_date field with the earliest unpaid installment date
       try {
         // Find the next unpaid installment for this plan
         const { data: nextUnpaid, error: nextError } = await supabase
@@ -267,8 +322,29 @@ export class PlanPaymentService {
             }
           } else {
             console.log('No more unpaid installments found for this plan');
-            // If there are no more unpaid installments, the plan might be completed
-            // We could potentially update the plan status to 'completed' here
+            // If there are no more unpaid installments and we didn't already set status to completed above,
+            // double-check and set it to completed now
+            const { data: planData } = await supabase
+              .from('plans')
+              .select('status, total_installments')
+              .eq('id', installment.plan_id)
+              .single();
+              
+            if (planData && planData.status !== 'completed') {
+              console.log(`No unpaid installments and plan not completed yet. Setting to completed.`);
+              const { error: finalUpdateError } = await supabase
+                .from('plans')
+                .update({
+                  status: 'completed',
+                  progress: 100,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', installment.plan_id);
+                
+              if (finalUpdateError) {
+                console.error('Error updating plan to completed status:', finalUpdateError);
+              }
+            }
           }
         }
       } catch (nextDueError) {
@@ -276,7 +352,7 @@ export class PlanPaymentService {
         // Non-fatal error, continue processing
       }
       
-      // 8. Record the activity
+      // 9. Record the activity
       await this.recordPaymentPlanActivity({
         planId: installment.plan_id,
         actionType: 'manual_payment_recorded',
@@ -290,7 +366,7 @@ export class PlanPaymentService {
         }
       });
       
-      // 9. Add to notification queue to send confirmation
+      // 10. Add to notification queue to send confirmation
       try {
         // Get clinic data for notification
         const { data: clinicData, error: clinicError } = await supabase
