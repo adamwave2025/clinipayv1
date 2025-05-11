@@ -13,9 +13,52 @@ export const usePaymentDetailsFetcher = () => {
     setIsLoading(true);
     
     try {
-      // If there is no payment request ID, we can't fetch payment details
-      if (!installment.paymentRequestId) {
-        console.log('No payment request ID found for this installment');
+      // Check if we have a direct payment ID (could happen with manual payments)
+      if (installment.paymentId && !installment.paymentRequestId) {
+        console.log('Fetching payment details directly for payment ID:', installment.paymentId);
+        
+        // Fetch payment details directly using payment ID
+        const { data: paymentData, error: paymentError } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('id', installment.paymentId)
+          .single();
+          
+        if (paymentError) {
+          console.error('Error fetching payment:', paymentError);
+          toast.error('Failed to load payment details');
+          return null;
+        }
+        
+        console.log('Direct payment data:', paymentData);
+        
+        // Format the payment data to match the expected structure
+        const paymentInfo = {
+          id: paymentData.id,
+          status: paymentData.status,
+          amount: paymentData.amount_paid,
+          date: formatDateTime(paymentData.paid_at, 'en-GB', 'Europe/London'),
+          reference: paymentData.payment_ref,
+          stripePaymentId: paymentData.stripe_payment_id,
+          refundedAmount: paymentData.refund_amount,
+          refundedAt: paymentData.refunded_at ? formatDateTime(paymentData.refunded_at, 'en-GB', 'Europe/London') : null,
+          patientName: paymentData.patient_name,
+          patientEmail: paymentData.patient_email,
+          patientPhone: paymentData.patient_phone,
+          manualPayment: paymentData.manual_payment || false,
+          linkTitle: installment.paymentNumber 
+            ? `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
+            : 'Payment'
+        };
+        
+        console.log('Formatted direct payment info:', paymentInfo);
+        setPaymentData(paymentInfo);
+        return paymentInfo;
+      }
+      
+      // If there is no payment request ID or payment ID, we can't fetch payment details
+      if (!installment.paymentRequestId && !installment.paymentId) {
+        console.log('No payment request ID or payment ID found for this installment');
         toast.error('No payment information available');
         return null;
       }
@@ -29,7 +72,7 @@ export const usePaymentDetailsFetcher = () => {
           id, payment_id, patient_name, patient_email, patient_phone,
           payments (
             id, amount_paid, status, paid_at, payment_ref, 
-            stripe_payment_id, refund_amount, refunded_at
+            stripe_payment_id, refund_amount, refunded_at, manual_payment
           )
         `)
         .eq('id', installment.paymentRequestId)
@@ -56,6 +99,7 @@ export const usePaymentDetailsFetcher = () => {
         patientName: requestData.patient_name,
         patientEmail: requestData.patient_email,
         patientPhone: requestData.patient_phone,
+        manualPayment: requestData.payments.manual_payment || false,
         linkTitle: installment.paymentNumber 
           ? `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
           : 'Payment'

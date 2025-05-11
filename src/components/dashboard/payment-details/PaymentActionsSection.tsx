@@ -5,10 +5,16 @@ import { Button } from '@/components/ui/button';
 interface PaymentActionsSectionProps {
   status: string;
   onRefund?: () => void;
+  manualPayment?: boolean; // Add prop to indicate manual payment
 }
 
-const PaymentActionsSection = ({ status, onRefund }: PaymentActionsSectionProps) => {
-  if (status !== 'paid' || !onRefund) return null;
+const PaymentActionsSection = ({ 
+  status, 
+  onRefund,
+  manualPayment = false // Default to false
+}: PaymentActionsSectionProps) => {
+  // Hide refund button for manual payments
+  if (status !== 'paid' || !onRefund || manualPayment) return null;
   
   return (
     <div className="flex justify-end mt-4">

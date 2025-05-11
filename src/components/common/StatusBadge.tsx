@@ -8,13 +8,15 @@ interface StatusBadgeProps {
   className?: string;
   isReadOnly?: boolean;
   originalStatus?: string;
+  manualPayment?: boolean; // Add new prop to indicate manual payment
 }
 
 const StatusBadge = ({ 
   status, 
   className = '',
   isReadOnly = false,
-  originalStatus
+  originalStatus,
+  manualPayment = false // Default to false
 }: StatusBadgeProps) => {
   const getStatusStyles = () => {
     // Special case for payments that were sent and then paused
@@ -49,6 +51,11 @@ const StatusBadge = ({
   };
 
   const getDisplayText = () => {
+    // Special case for manual payments
+    if (status === 'paid' && manualPayment) {
+      return 'M.Paid';
+    }
+    
     // Display special text for sent payments that were paused
     if (status === 'paused' && originalStatus === 'sent') {
       return 'Paused (Sent)';

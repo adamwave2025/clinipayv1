@@ -53,7 +53,10 @@ const InstallmentPaymentDialog = ({
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-medium">{paymentData.linkTitle || 'Payment'}</h3>
-            <StatusBadge status={paymentData.status} />
+            <StatusBadge 
+              status={paymentData.status} 
+              manualPayment={paymentData.manualPayment} 
+            />
           </div>
 
           <PaymentDetailsCard
@@ -63,14 +66,15 @@ const InstallmentPaymentDialog = ({
               { label: 'Payment Date', value: paymentData.date || 'Not available' },
               { label: 'Payment Amount', value: paymentData.amount ? formatCurrency(paymentData.amount) : 'Not available' },
               { label: 'Reference', value: paymentData.reference || 'Not available' },
-              { label: 'Type', value: 'Payment Plan Installment' }
+              { label: 'Type', value: paymentData.manualPayment ? 'Manual Payment' : 'Payment Plan Installment' }
             ]}
           />
 
-          {/* Add PaymentActionsSection for refund functionality */}
+          {/* Add PaymentActionsSection for refund functionality - now passes manualPayment prop */}
           <PaymentActionsSection
             status={paymentData.status}
             onRefund={onRefund}
+            manualPayment={paymentData.manualPayment}
           />
         </div>
       </DialogContent>

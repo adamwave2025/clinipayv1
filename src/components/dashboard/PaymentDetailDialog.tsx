@@ -88,10 +88,11 @@ const PaymentDetailDialog = ({
             totalAmount={payment.amount}
           />
           
-          {/* Refund action button */}
+          {/* Refund action button - now passes manualPayment prop */}
           <PaymentActionsSection 
             status={payment.status}
             onRefund={handleRefund}
+            manualPayment={payment.manualPayment}
           />
         </div>
       </DialogContent>
