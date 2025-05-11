@@ -48,7 +48,15 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
   };
 
   // For debugging - log the installments to see their structure
-  console.log("PlanPaymentsList rendering with installments:", installments);
+  console.log("PlanPaymentsList rendering with installments:", 
+    installments?.map(i => ({
+      id: i.id, 
+      status: i.status, 
+      paymentNumber: i.paymentNumber,
+      paidDate: i.paidDate,
+      manualPayment: i.manualPayment
+    }))
+  );
 
   return (
     <div className="overflow-x-auto">
@@ -63,7 +71,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {installments.length === 0 ? (
+          {!installments || installments.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                 No payments scheduled
@@ -71,6 +79,12 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
             </TableRow>
           ) : (
             installments.map((installment) => {
+              // Safety check for installment object
+              if (!installment || typeof installment !== 'object') {
+                console.error("Invalid installment object:", installment);
+                return null;
+              }
+              
               const status = determineStatus(installment);
               
               // Debug log to check each installment's payment information

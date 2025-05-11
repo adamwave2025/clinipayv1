@@ -28,51 +28,16 @@ export const formatPlanInstallments = (scheduleData: any[]): PlanInstallment[] =
   
   try {
     const installments = scheduleData.map(item => {
-      console.log(`Processing installment ${item.id}:`, item.status);
+      // Log each item's structure for debugging
+      console.log(`Processing installment ${item.id}:`, {
+        status: item.status,
+        payment: item.payment || "No payment",
+        manualPayment: item.manualPayment,
+        paidDate: item.paidDate
+      });
       
-      // Initialize variables for payment info
-      let paidDate: string | null = null;
-      let manualPayment = false;
-      let paymentId: string | undefined = undefined;
-      
-      // Check for direct payment first (simplest case)
-      if (item.payments && Array.isArray(item.payments) && item.payments.length > 0) {
-        const payment = item.payments[0];
-        if (payment && typeof payment === 'object') {
-          console.log(`Direct payment found for ${item.id}:`, payment);
-          paymentId = payment.id;
-          paidDate = payment.paid_at ? new Date(payment.paid_at).toISOString() : null;
-          manualPayment = !!payment.manual_payment;
-        }
-      }
-      // Then check payment via payment_request
-      else if (item.payment_requests && item.payment_requests.payments) {
-        console.log(`Payment request found for ${item.id}`);
-        
-        // Handle both array and single object formats
-        const paymentInfo = item.payment_requests.payments;
-        let payment = null;
-        
-        if (Array.isArray(paymentInfo) && paymentInfo.length > 0) {
-          payment = paymentInfo[0];
-        } else if (paymentInfo && typeof paymentInfo === 'object') {
-          payment = paymentInfo;
-        }
-        
-        if (payment) {
-          console.log(`  Payment info:`, payment);
-          paymentId = payment.id;
-          paidDate = payment.paid_at ? new Date(payment.paid_at).toISOString() : null;
-          manualPayment = !!payment.manual_payment;
-        }
-        
-        // If payment object doesn't have paid_at but payment_request does, use that
-        if (!paidDate && item.payment_requests.paid_at) {
-          paidDate = new Date(item.payment_requests.paid_at).toISOString();
-        }
-      }
-
-      return {
+      // Create the installment object with default values
+      const installment: PlanInstallment = {
         id: item.id,
         planId: item.plan_id,
         paymentNumber: item.payment_number,
@@ -80,11 +45,18 @@ export const formatPlanInstallments = (scheduleData: any[]): PlanInstallment[] =
         amount: item.amount,
         dueDate: item.due_date,
         status: item.status,
-        paidDate: paidDate, // Set paidDate to match interface requirement
+        paidDate: item.paidDate || null, // Use the paidDate we added in the service
         paymentRequestId: item.payment_request_id,
-        paymentId: paymentId || (item.payment_requests?.payment_id),
-        manualPayment: manualPayment,
+        originalStatus: item.status,
+        manualPayment: !!item.manualPayment // Use the manualPayment flag we added
       };
+      
+      // If payment exists, add its ID
+      if (item.payment) {
+        installment.paymentId = item.payment.id;
+      }
+      
+      return installment;
     });
     
     console.log(`Formatted ${installments.length} installments:`, installments);

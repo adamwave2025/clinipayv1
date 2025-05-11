@@ -97,7 +97,15 @@ export const usePlanDataFetcher = () => {
       // Use the PlanDataService to fetch installments directly
       const formattedInstallments = await PlanDataService.fetchPlanInstallments(plan);
       
-      console.log('Formatted installments from PlanDataService:', formattedInstallments.length, formattedInstallments);
+      console.log('Formatted installments from PlanDataService:', 
+        formattedInstallments.length, 
+        formattedInstallments.map(i => ({
+          id: i.id,
+          status: i.status,
+          paidDate: i.paidDate, 
+          manualPayment: i.manualPayment
+        }))
+      );
       
       if (!formattedInstallments || formattedInstallments.length === 0) {
         console.warn('No installments returned for plan', planId);
@@ -125,6 +133,7 @@ export const usePlanDataFetcher = () => {
       // Also fetch activities for this plan
       await fetchPlanActivitiesData(planId);
       
+      console.log('Installments fetched successfully');
       return formattedInstallments;
     } catch (error) {
       console.error('Error fetching plan installments:', error);
