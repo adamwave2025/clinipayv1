@@ -112,11 +112,14 @@ export function useSendLinkPageState() {
           return;
         }
         
+        // Dismiss the loading toast before scheduling the plan
+        toast.dismiss(loadingToast);
+        
         // Schedule the plan with the verified patient ID
-        toast.dismiss(loadingToast); // Dismiss the generic loading toast
         const result = await handleSchedulePaymentPlan(patientId, formData, selectedLink);
         
         if (result.success) {
+          // This is the ONLY toast we want to show for success
           toast.success(`Payment plan scheduled successfully for ${formData.patientName}`, {
             description: `Plan: ${selectedLink.title || 'Payment Plan'}`
           });

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { toast } from 'sonner';
 import { 
@@ -48,6 +47,8 @@ const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
   const handleLinkGenerated = () => {
     setIsLoading(false);
     onOpenChange(false); // Close the sheet
+    
+    // Keep only this single success toast
     toast.success('Payment plan created successfully');
     
     // Call the onPlanCreated callback if provided

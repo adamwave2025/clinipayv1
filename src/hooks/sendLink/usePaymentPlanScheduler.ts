@@ -252,16 +252,12 @@ export function usePaymentPlanScheduler() {
       return { success: false };
     }
 
-    // Use a single loading toast for the entire process
-    const loadingToastId = toast.loading('Setting up payment plan...');
-
     try {
       setIsSchedulingPlan(true);
       console.log('Starting payment plan scheduling with patient ID:', patientId);
       
       if (!selectedLink || !selectedLink.paymentPlan || !selectedLink.paymentCount) {
         console.error('Invalid payment plan selected:', selectedLink);
-        toast.dismiss(loadingToastId);
         toast.error('Invalid payment plan selected');
         setIsSchedulingPlan(false);
         return { success: false };
@@ -275,7 +271,6 @@ export function usePaymentPlanScheduler() {
         .single();
 
       if (userError || !userData?.clinic_id) {
-        toast.dismiss(loadingToastId);
         toast.error('Failed to get clinic information');
         setIsSchedulingPlan(false);
         return { success: false };
@@ -299,7 +294,6 @@ export function usePaymentPlanScheduler() {
         .single();
 
       if (clinicError) {
-        toast.dismiss(loadingToastId);
         toast.error('Failed to get clinic information');
         setIsSchedulingPlan(false);
         return { success: false };
@@ -366,7 +360,6 @@ export function usePaymentPlanScheduler() {
         .single();
 
       if (planError || !planData) {
-        toast.dismiss(loadingToastId);
         toast.error('Failed to create payment plan');
         setIsSchedulingPlan(false);
         return { success: false };
@@ -405,7 +398,6 @@ export function usePaymentPlanScheduler() {
         .insert(scheduleEntries);
 
       if (scheduleError) {
-        toast.dismiss(loadingToastId);
         toast.error('Failed to schedule payment plan');
         setIsSchedulingPlan(false);
         return { success: false };
@@ -456,9 +448,7 @@ export function usePaymentPlanScheduler() {
         }
       }
 
-      // Show a single success notification
-      toast.dismiss(loadingToastId);
-      toast.success('Payment plan created successfully');
+      // No success toast here - we'll let the parent component handle that
       
       // Redirect to payment plans page
       navigate('/dashboard/payment-plans');
@@ -466,7 +456,6 @@ export function usePaymentPlanScheduler() {
       return { success: true };
     } catch (error: any) {
       console.error('Error scheduling payment plan:', error);
-      toast.dismiss(loadingToastId);
       toast.error(`Failed to schedule payment plan: ${error.message}`);
       return { success: false };
     } finally {
