@@ -18,9 +18,11 @@ export const useInstallmentActions = (
   const [selectedInstallment, setSelectedInstallment] = useState<PlanInstallment | null>(null);
 
   const handleMarkAsPaid = async (installmentId: string) => {
+    console.log('handleMarkAsPaid called with installmentId:', installmentId);
     try {
       // Find the installment data to display in the confirmation dialog
       // Use payment_schedule table instead of payment_plan_installments
+      console.log('Fetching installment from payment_schedule table');
       const { data: installment, error } = await supabase
         .from('payment_schedule')
         .select('*')
@@ -32,6 +34,8 @@ export const useInstallmentActions = (
         toast.error('Could not find payment details');
         return;
       }
+      
+      console.log('Fetched installment data:', installment);
         
       if (installment) {
         // Convert to PlanInstallment type
@@ -49,10 +53,19 @@ export const useInstallmentActions = (
           manualPayment: false
         };
         
+        console.log('Setting selectedInstallment:', planInstallment);
         setSelectedInstallment(planInstallment);
         setSelectedInstallmentId(installmentId);
+        
+        console.log('Opening mark as paid dialog, setting showMarkAsPaidDialog to true');
         setShowMarkAsPaidDialog(true);
+        
+        // Debug after state update
+        setTimeout(() => {
+          console.log('Dialog state after update:', { showMarkAsPaidDialog });
+        }, 100);
       } else {
+        console.log('No installment found for ID:', installmentId);
         toast.error('Could not find payment details');
       }
     } catch (error) {
@@ -63,6 +76,7 @@ export const useInstallmentActions = (
   
   // New method to handle the actual payment marking after confirmation
   const confirmMarkAsPaid = async () => {
+    console.log('confirmMarkAsPaid called with selectedInstallmentId:', selectedInstallmentId);
     if (!selectedInstallmentId) {
       toast.error('No payment selected');
       return;
@@ -71,6 +85,7 @@ export const useInstallmentActions = (
     setIsProcessing(true);
     try {
       // Use the PlanPaymentService to record a manual payment
+      console.log('Recording manual payment for installment:', selectedInstallmentId);
       const result = await PlanPaymentService.recordManualPayment(selectedInstallmentId, undefined, undefined);
       
       if (result.success) {
@@ -92,8 +107,10 @@ export const useInstallmentActions = (
         }
         
         // Close the dialog after successful operation
+        console.log('Closing mark as paid dialog');
         setShowMarkAsPaidDialog(false);
       } else {
+        console.error('Failed to mark payment as paid:', result.error);
         toast.error(`Failed to mark payment as paid: ${result.error}`);
       }
     } catch (error) {
@@ -160,4 +177,3 @@ export const useInstallmentActions = (
     selectedInstallment
   };
 };
-

@@ -7,6 +7,8 @@ import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDia
 import ReschedulePlanDialog from '@/components/dashboard/payment-plans/ReschedulePlanDialog';
 import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
+import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
+import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 
 export const ManagePlansDialogs = () => {
   const {
@@ -32,7 +34,13 @@ export const ManagePlansDialogs = () => {
     paymentToRefund,
     processRefund,
     resumeError,
-    // Payment details are now handled at the page level
+    // Add the mark as paid dialog props
+    showMarkAsPaidDialog,
+    setShowMarkAsPaidDialog,
+    confirmMarkAsPaid,
+    selectedInstallment,
+    // Add the payment reschedule dialog props
+    handleReschedulePayment
   } = useManagePlansContext();
 
   console.log('ManagePlansDialogs rendering with selectedPlan:', selectedPlan?.id);
@@ -41,6 +49,7 @@ export const ManagePlansDialogs = () => {
     showPauseDialog,
     showResumeDialog,
     showRescheduleDialog,
+    showMarkAsPaidDialog,
     refundDialogOpen
   });
 
@@ -96,6 +105,23 @@ export const ManagePlansDialogs = () => {
         isLoading={false}
         hasSentPayments={hasSentPayments}
         hasOverduePayments={hasOverduePayments}
+      />
+      
+      {/* Add Mark as Paid dialog here as a backup */}
+      <MarkAsPaidConfirmDialog
+        open={showMarkAsPaidDialog}
+        onOpenChange={setShowMarkAsPaidDialog}
+        onConfirm={confirmMarkAsPaid}
+        isLoading={isProcessing}
+        installment={selectedInstallment}
+      />
+      
+      {/* Add Reschedule Payment dialog here as a backup */}
+      <ReschedulePaymentDialog
+        open={showRescheduleDialog} 
+        onOpenChange={setShowRescheduleDialog}
+        onConfirm={handleReschedulePayment}
+        isLoading={isProcessing}
       />
       
       {paymentToRefund && (

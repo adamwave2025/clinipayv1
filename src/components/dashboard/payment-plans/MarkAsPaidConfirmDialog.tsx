@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -21,7 +21,22 @@ const MarkAsPaidConfirmDialog: React.FC<MarkAsPaidConfirmDialogProps> = ({
   isLoading,
   installment
 }) => {
+  // Add logging to debug the component rendering and props
+  useEffect(() => {
+    console.log('MarkAsPaidConfirmDialog - Props:', {
+      open,
+      isLoading,
+      installment: installment ? {
+        id: installment.id,
+        amount: installment.amount,
+        paymentNumber: installment.paymentNumber,
+        totalPayments: installment.totalPayments
+      } : null
+    });
+  }, [open, isLoading, installment]);
+
   const handleConfirm = async () => {
+    console.log('Confirming mark as paid');
     await onConfirm();
   };
 

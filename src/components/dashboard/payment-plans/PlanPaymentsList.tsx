@@ -58,6 +58,22 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
     }))
   );
 
+  // Create wrapper functions to log when actions are triggered
+  const handleMarkAsPaid = (paymentId: string) => {
+    console.log("PlanPaymentsList: Mark as paid clicked for payment:", paymentId);
+    onMarkAsPaid(paymentId);
+  };
+
+  const handleReschedule = (paymentId: string) => {
+    console.log("PlanPaymentsList: Reschedule clicked for payment:", paymentId);
+    onReschedule(paymentId);
+  };
+
+  const handleTakePayment = onTakePayment ? (paymentId: string) => {
+    console.log("PlanPaymentsList: Take payment clicked for payment:", paymentId);
+    onTakePayment(paymentId);
+  } : undefined;
+
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -112,9 +128,9 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
                     {status !== 'paid' && (
                       <PaymentActionMenu
                         paymentId={installment.id}
-                        onMarkAsPaid={onMarkAsPaid}
-                        onReschedule={onReschedule}
-                        onTakePayment={onTakePayment}
+                        onMarkAsPaid={handleMarkAsPaid}
+                        onReschedule={handleReschedule}
+                        onTakePayment={handleTakePayment}
                       />
                     )}
                   </TableCell>

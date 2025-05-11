@@ -177,6 +177,12 @@ export const useManagePlans = (): ManagePlansContextType => {
     // We'll close the payment details modal after refund in processRefund
   };
 
+  console.log('useManagePlans - Dialog states:', {
+    showMarkAsPaidDialog,
+    selectedInstallment,
+    showRescheduleDialog
+  });
+
   return {
     // Search and filter state
     searchQuery,

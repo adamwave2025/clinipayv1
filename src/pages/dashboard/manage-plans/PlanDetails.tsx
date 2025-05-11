@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -30,6 +30,15 @@ const PlanDetails = () => {
     selectedInstallment,
     isProcessing
   } = useManagePlansContext();
+  
+  // Debug logging for the dialogs
+  useEffect(() => {
+    console.log('PlanDetails - Dialog states:', { 
+      showMarkAsPaidDialog, 
+      showRescheduleDialog,
+      selectedInstallment: selectedInstallment?.id
+    });
+  }, [showMarkAsPaidDialog, showRescheduleDialog, selectedInstallment]);
   
   if (!selectedPlan) {
     return null;
