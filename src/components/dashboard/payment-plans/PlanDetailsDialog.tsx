@@ -23,6 +23,7 @@ import StatusBadge, { StatusType } from '@/components/common/StatusBadge';
 import ActivityLog from './ActivityLog';
 import { formatCurrency, formatDateTime, formatDate } from '@/utils/formatters';
 import PaymentActionMenu from './PaymentActionMenu';
+import { Loader2 } from 'lucide-react';
 
 interface PlanDetailsDialogProps {
   showPlanDetails: boolean;
@@ -87,6 +88,7 @@ const PlanDetailsDialog = ({
             onReschedulePlan={onReschedulePlan}
             isPaused={isPlanPaused(selectedPlan)}
             isDisabled={isDisabled}
+            isLoading={isLoadingActivities} // Pass the loading state to show loader in dropdown
           />
         </SheetHeader>
 

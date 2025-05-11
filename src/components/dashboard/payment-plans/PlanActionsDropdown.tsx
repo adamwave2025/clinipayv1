@@ -1,76 +1,70 @@
 
 import React from 'react';
-import { Settings } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface PlanActionsDropdownProps {
   onCancelPlan: () => void;
   onPausePlan?: () => void;
   onResumePlan?: () => void;
-  onReschedulePlan?: () => void;
+  onReschedulePlan: () => void;
   isPaused: boolean;
-  isDisabled?: boolean;
+  isDisabled: boolean;
+  isLoading?: boolean; // Add loading prop
 }
 
-const PlanActionsDropdown = ({ 
-  onCancelPlan, 
-  onPausePlan, 
+const PlanActionsDropdown = ({
+  onCancelPlan,
+  onPausePlan,
   onResumePlan,
   onReschedulePlan,
   isPaused,
-  isDisabled = false 
+  isDisabled,
+  isLoading = false, // Default to false
 }: PlanActionsDropdownProps) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="flex items-center"
-          disabled={isDisabled}
-        >
-          <Settings className="h-4 w-4 mr-2" />
-          Manage Plan
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <MoreVertical className="h-4 w-4" />
+          )}
+          <span className="sr-only">Open menu</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[200px]">
-        {isPaused ? (
-          <DropdownMenuItem
-            onClick={onResumePlan}
-            className="cursor-pointer"
-            disabled={!onResumePlan}
-          >
+      <DropdownMenuContent align="end">
+        {onPausePlan && (
+          <DropdownMenuItem onClick={onPausePlan} disabled={isDisabled || isLoading}>
+            Pause Plan
+          </DropdownMenuItem>
+        )}
+        {onResumePlan && (
+          <DropdownMenuItem onClick={onResumePlan} disabled={isDisabled || isLoading}>
             Resume Plan
           </DropdownMenuItem>
-        ) : (
-          <>
-            <DropdownMenuItem
-              onClick={onPausePlan}
-              className="cursor-pointer"
-              disabled={!onPausePlan}
-            >
-              Pause Plan
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={onReschedulePlan}
-              className="cursor-pointer"
-              disabled={!onReschedulePlan}
-            >
-              Reschedule Plan
-            </DropdownMenuItem>
-          </>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={onCancelPlan}
-          className="cursor-pointer text-red-600 focus:text-red-600"
+        <DropdownMenuItem onClick={onReschedulePlan} disabled={isDisabled || isLoading}>
+          {isLoading ? (
+            <span className="flex items-center">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </span>
+          ) : (
+            "Reschedule Plan"
+          )}
+        </DropdownMenuItem>
+        <DropdownMenuItem 
+          onClick={onCancelPlan} 
+          disabled={isDisabled || isLoading}
+          className="text-red-500 focus:text-red-500 focus:bg-red-50"
         >
           Cancel Plan
         </DropdownMenuItem>
