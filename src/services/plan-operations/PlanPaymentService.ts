@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { addToNotificationQueue } from '@/utils/notification-queue';
 
@@ -148,10 +149,31 @@ export class PlanPaymentService {
       
       console.log(`Found installment data:`, installment);
       
-      // 2. Generate a payment reference for the manual payment
+      // 2. Check if there's an existing payment request for this installment
+      let paymentRequestId = installment.payment_request_id;
+      let paymentRequest = null;
+      
+      if (paymentRequestId) {
+        console.log(`Found existing payment_request_id: ${paymentRequestId}`);
+        // Fetch the payment request details
+        const { data: existingRequest, error: requestError } = await supabase
+          .from('payment_requests')
+          .select('*')
+          .eq('id', paymentRequestId)
+          .single();
+          
+        if (requestError) {
+          console.warn('Error fetching payment request details:', requestError);
+        } else {
+          paymentRequest = existingRequest;
+          console.log(`Found payment request with status: ${paymentRequest.status}`);
+        }
+      }
+      
+      // 3. Generate a payment reference for the manual payment
       const paymentRef = `MAN-${Date.now().toString().substring(6)}`;
       
-      // 3. Create a payment record in the payments table
+      // 4. Create a payment record in the payments table
       const { data: paymentData, error: insertError } = await supabase
         .from('payments')
         .insert({
@@ -178,7 +200,7 @@ export class PlanPaymentService {
       
       console.log(`Created payment record with ID: ${paymentData.id}`);
       
-      // 4. Update the payment schedule with the status and link directly to the payment
+      // 5. Update the payment schedule with the status
       const { error: updateError } = await supabase
         .from('payment_schedule')
         .update({
@@ -192,7 +214,27 @@ export class PlanPaymentService {
         throw updateError;
       }
       
-      // 5. Record the activity
+      // 6. If there's an existing payment request, also update its status and link it to the payment
+      if (paymentRequestId && paymentRequest) {
+        console.log(`Updating payment request ${paymentRequestId} to mark as paid`);
+        const { error: updateRequestError } = await supabase
+          .from('payment_requests')
+          .update({
+            status: 'paid',
+            paid_at: new Date().toISOString(),
+            payment_id: paymentData.id
+          })
+          .eq('id', paymentRequestId);
+          
+        if (updateRequestError) {
+          console.error('Error updating payment request status:', updateRequestError);
+          // Non-fatal error, continue processing
+        } else {
+          console.log(`Successfully updated payment request status to paid`);
+        }
+      }
+      
+      // 7. Record the activity
       await this.recordPaymentPlanActivity({
         planId: installment.plan_id,
         actionType: 'manual_payment_recorded',
@@ -201,11 +243,12 @@ export class PlanPaymentService {
           paymentNumber: installment.payment_number,
           amount: installment.amount,
           paymentId: paymentData.id,
-          paymentRef: paymentRef
+          paymentRef: paymentRef,
+          updatedPaymentRequest: !!paymentRequestId
         }
       });
       
-      // 6. Add to notification queue to send confirmation
+      // 8. Add to notification queue to send confirmation
       try {
         // Get clinic data for notification
         const { data: clinicData, error: clinicError } = await supabase
