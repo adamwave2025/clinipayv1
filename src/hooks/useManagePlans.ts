@@ -81,26 +81,24 @@ export const useManagePlans = (): ManagePlansContextType => {
     }
   };
   
-  // Use installment actions
-  const {
-    isProcessing: isProcessingInstallment,
-    showRescheduleDialog,
-    setShowRescheduleDialog,
-    handleMarkAsPaid,
-    handleOpenReschedule,
-    handleReschedulePayment,
-    handleTakePayment,
-    showMarkAsPaidDialog,
-    setShowMarkAsPaidDialog,
-    confirmMarkAsPaid
-  } = useInstallmentActions(selectedPlan?.id || '', refreshInstallments);
-  
   // Use payment reschedule actions for individual payments
   const {
     showRescheduleDialog: showReschedulePaymentDialog,
     setShowRescheduleDialog: setShowReschedulePaymentDialog,
     handleReschedulePayment: handleIndividualPaymentReschedule,
+    handleOpenRescheduleDialog
   } = usePaymentRescheduleActions(selectedPlan?.id || '', refreshInstallments);
+  
+  // Use installment actions
+  const {
+    isProcessing: isProcessingInstallment,
+    handleMarkAsPaid,
+    handleOpenReschedule,
+    handleTakePayment,
+    showMarkAsPaidDialog,
+    setShowMarkAsPaidDialog,
+    confirmMarkAsPaid
+  } = useInstallmentActions(selectedPlan?.id || '', refreshInstallments);
   
   // Use specialized action hooks
   const cancelActions = usePlanCancelActions(selectedPlan, setShowPlanDetails);
@@ -118,8 +116,8 @@ export const useManagePlans = (): ManagePlansContextType => {
   console.log('useManagePlans - Dialog states:', {
     showMarkAsPaidDialog,
     selectedInstallment,
-    showRescheduleDialog,
-    showReschedulePaymentDialog
+    showReschedulePaymentDialog,
+    showRescheduleDialog: rescheduleActions.showRescheduleDialog
   });
 
   return {

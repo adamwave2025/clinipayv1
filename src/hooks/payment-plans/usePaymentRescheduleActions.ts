@@ -13,6 +13,7 @@ export const usePaymentRescheduleActions = (
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   
   const handleOpenRescheduleDialog = (paymentId: string) => {
+    console.log("usePaymentRescheduleActions: Opening reschedule dialog for payment", paymentId);
     setSelectedPaymentId(paymentId);
     setShowRescheduleDialog(true);
   };
@@ -26,6 +27,8 @@ export const usePaymentRescheduleActions = (
     setIsProcessing(true);
     
     try {
+      console.log(`Rescheduling payment ${selectedPaymentId} to ${newDate.toISOString()}`);
+      
       // Use the service to reschedule the payment
       const result = await PlanOperationsService.reschedulePayment(selectedPaymentId, newDate);
       

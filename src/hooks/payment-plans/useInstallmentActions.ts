@@ -14,8 +14,6 @@ export const useInstallmentActions = (
   
   // Use the payment reschedule actions hook
   const {
-    showRescheduleDialog,
-    setShowRescheduleDialog,
     handleOpenRescheduleDialog,
     handleReschedulePayment
   } = usePaymentRescheduleActions(planId, onPaymentUpdated);
@@ -28,7 +26,7 @@ export const useInstallmentActions = (
   };
   
   const handleOpenReschedule = (paymentId: string) => {
-    console.log("Opening reschedule dialog for", paymentId);
+    console.log("Opening reschedule dialog for payment", paymentId);
     handleOpenRescheduleDialog(paymentId);
   };
   
@@ -65,8 +63,6 @@ export const useInstallmentActions = (
   
   return {
     isProcessing,
-    showRescheduleDialog,
-    setShowRescheduleDialog,
     handleMarkAsPaid,
     handleOpenReschedule,
     handleReschedulePayment,
