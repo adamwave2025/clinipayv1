@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
 import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
@@ -57,6 +57,10 @@ export const ManagePlansDialogs = () => {
     onPaymentUpdated
   } = useManagePlansContext();
 
+  // Cache the selected installment for the payment dialog to prevent it from being lost
+  // during state transitions or re-renders
+  const [cachedPaymentInstallment, setCachedPaymentInstallment] = useState(null);
+
   // Detailed debugging to track state and data flow
   console.log('ManagePlansDialogs rendering with selectedPlan:', selectedPlan?.id);
   console.log('Dialog states:', {
@@ -72,19 +76,30 @@ export const ManagePlansDialogs = () => {
   
   console.log('Selected installment data:', selectedInstallment);
   
+  // Update the cached installment when selectedInstallment changes and is not null
+  useEffect(() => {
+    if (selectedInstallment && typeof selectedInstallment === 'object' && selectedInstallment.id) {
+      console.log('Caching valid installment data:', selectedInstallment);
+      setCachedPaymentInstallment(selectedInstallment);
+    }
+  }, [selectedInstallment]);
+  
   // Enhanced debug for selected installment when take payment dialog should show
   useEffect(() => {
     if (showTakePaymentDialog) {
       console.log('TakePaymentDialog should show with selectedInstallment:', selectedInstallment);
+      console.log('Cached installment data:', cachedPaymentInstallment);
       
-      if (!selectedInstallment) {
-        console.error('Missing selectedInstallment data in ManagePlansDialogs');
+      const installmentToUse = selectedInstallment || cachedPaymentInstallment;
+      
+      if (!installmentToUse || !installmentToUse.amount) {
+        console.error('Missing installment data in ManagePlansDialogs');
         toast.error("Cannot show payment dialog: Missing installment data");
         // Auto-close the dialog if we don't have data to prevent errors
         setShowTakePaymentDialog(false);
       }
     }
-  }, [showTakePaymentDialog, selectedInstallment, setShowTakePaymentDialog]);
+  }, [showTakePaymentDialog, selectedInstallment, cachedPaymentInstallment, setShowTakePaymentDialog]);
 
   // Early return if no plan is selected
   if (!selectedPlan) {
@@ -96,33 +111,28 @@ export const ManagePlansDialogs = () => {
   const patientName = selectedPlan.patientName || '';
   const patientEmail = selectedPlan.patientEmail || ''; 
 
+  // Use either the current installment or the cached one, providing fallback
+  const installmentToUse = selectedInstallment || cachedPaymentInstallment;
+
   // IMPROVED: More comprehensive validation for installment data
   const canShowPaymentDialog = Boolean(
-    selectedInstallment && 
-    typeof selectedInstallment === 'object' &&
-    selectedInstallment.id &&
-    selectedInstallment.amount &&
+    installmentToUse && 
+    typeof installmentToUse === 'object' &&
+    installmentToUse.id &&
+    installmentToUse.amount &&
     showTakePaymentDialog
   );
   
-  // Error handling function that returns null instead of void
-  const renderMissingInstallmentHandler = () => {
-    if (showTakePaymentDialog && !canShowPaymentDialog) {
-      // Log the error
-      console.error("Cannot show payment dialog: Invalid installment data", selectedInstallment);
-      
-      // Show toast
-      toast.error("Cannot show payment dialog: Invalid installment data");
-      
-      // Close the dialog
-      setShowTakePaymentDialog(false);
-      
-      // Return null since we're in a function
-      return null;
-    }
+  if (showTakePaymentDialog && !canShowPaymentDialog) {
+    // Log the error
+    console.error("Cannot show payment dialog: Invalid installment data", installmentToUse);
     
-    return null;
-  };
+    // Show toast
+    toast.error("Cannot show payment dialog: Invalid installment data");
+    
+    // Close the dialog
+    setShowTakePaymentDialog(false);
+  }
 
   return (
     <>
@@ -200,7 +210,7 @@ export const ManagePlansDialogs = () => {
       {/* IMPROVED: More robust conditional rendering for TakePaymentDialog */}
       {canShowPaymentDialog && (
         <TakePaymentDialog
-          key={`payment-dialog-${selectedInstallment?.id}`} // Force re-render on installment change
+          key={`payment-dialog-${installmentToUse?.id}-${Date.now()}`} // Ensure re-render on each open
           open={showTakePaymentDialog}
           onOpenChange={(open) => {
             console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
@@ -209,16 +219,13 @@ export const ManagePlansDialogs = () => {
             }
             setShowTakePaymentDialog(open);
           }}
-          paymentId={selectedInstallment?.id}
+          paymentId={installmentToUse?.id}
           patientName={patientName}
           patientEmail={patientEmail}
-          amount={selectedInstallment?.amount}
+          amount={installmentToUse?.amount}
           onPaymentProcessed={onPaymentUpdated}
         />
       )}
-      
-      {/* Handle missing installment data with our helper function */}
-      {renderMissingInstallmentHandler()}
       
       {paymentToRefund && (
         <PaymentRefundDialog

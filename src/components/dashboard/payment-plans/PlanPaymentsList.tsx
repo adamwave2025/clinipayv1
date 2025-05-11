@@ -86,8 +86,8 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
       return;
     }
     
-    // Ensure we pass ALL necessary data to the parent component
-    const completeInstallment: PlanInstallment = {
+    // Create a deep clone to ensure we don't have any reference issues
+    const completeInstallment: PlanInstallment = JSON.parse(JSON.stringify({
       ...installment,
       id: paymentId, // Ensure ID is set and matches
       amount: installment.amount,
@@ -96,7 +96,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
       status: installment.status,
       dueDate: installment.dueDate,
       // Include any other fields that might be needed
-    };
+    }));
     
     toast.info(`Initiating Take Payment workflow for ${formatCurrency(completeInstallment.amount)}`);
     console.log("PlanPaymentsList: Passing complete installment to parent:", completeInstallment);
@@ -141,6 +141,9 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
                 paymentId: installment.id
               });
               
+              // Create a deep clone to prevent reference issues
+              const installmentCopy = JSON.parse(JSON.stringify(installment));
+              
               return (
                 <TableRow key={installment.id}>
                   <TableCell>
@@ -158,7 +161,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
                     {status !== 'paid' && (
                       <PaymentActionMenu
                         paymentId={installment.id}
-                        installment={installment}
+                        installment={installmentCopy}
                         onMarkAsPaid={handleMarkAsPaid}
                         onReschedule={handleReschedule}
                         onTakePayment={handleTakePayment}

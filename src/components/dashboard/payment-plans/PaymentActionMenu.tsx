@@ -53,8 +53,8 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
       return;
     }
     
-    // Ensure we have a complete installment object by creating a safety copy
-    const safeInstallment: PlanInstallment = {
+    // Create a deep clone of the installment to prevent any reference issues
+    const safeInstallment: PlanInstallment = JSON.parse(JSON.stringify({
       ...installment,
       id: paymentId, // Ensure ID is set
       // Set fallback values for any potentially missing properties
@@ -63,7 +63,7 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
       totalPayments: installment.totalPayments || 1,
       dueDate: installment.dueDate || new Date().toISOString(),
       status: installment.status || 'pending'
-    };
+    }));
     
     // Call the handler with both required parameters and the enhanced installment data
     toast.info(`Take Payment action triggered for payment ${paymentId}`);

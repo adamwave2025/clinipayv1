@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
@@ -57,18 +56,13 @@ export const useInstallmentActions = (
       dueDate: installmentDetails.dueDate || new Date().toISOString(),
     };
     
-    // Important: Set the state first, THEN show the dialog
+    // CRITICAL FIX: Update state then show dialog SYNCHRONOUSLY, no setTimeout
     setSelectedInstallment(completeInstallment);
+    toast.info(`Opening payment dialog for ${formatCurrency(completeInstallment.amount)}`);
+    setShowTakePaymentDialog(true);
     
-    // Add a small delay before showing the dialog to ensure state is updated
-    // This is a safer approach than what we had before
-    setTimeout(() => {
-      toast.info(`Opening payment dialog for ${formatCurrency(completeInstallment.amount)}`);
-      setShowTakePaymentDialog(true);
-      
-      // Debug log to confirm state after update
-      console.log("[useInstallmentActions] Dialog opened with installment:", completeInstallment);
-    }, 50);
+    // Debug log to confirm state after update
+    console.log("[useInstallmentActions] Dialog opened with installment:", completeInstallment);
   };
   
   const confirmMarkAsPaid = async () => {
