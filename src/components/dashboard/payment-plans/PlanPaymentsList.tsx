@@ -144,8 +144,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
                         installment={installment}
                         onMarkAsPaid={handleMarkAsPaid}
                         onReschedule={handleReschedule}
-                        onTakePayment={handleTakePayment ? 
-                          () => handleTakePayment(installment.id, installment) : undefined}
+                        onTakePayment={handleTakePayment}
                       />
                     )}
                   </TableCell>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
@@ -169,7 +168,7 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* Enhanced Take Payment dialog with additional validation */}
+      {/* FIXED: Enhanced Take Payment dialog with additional validation */}
       {selectedInstallment && selectedInstallment.amount && showTakePaymentDialog && (
         <TakePaymentDialog
           open={showTakePaymentDialog}
