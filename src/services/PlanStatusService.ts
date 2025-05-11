@@ -280,7 +280,7 @@ export class PlanStatusService {
           planData.status !== 'paused' && planData.status !== 'cancelled')) {
         
         // Determine the new status
-        let newStatus = planData.status;
+        let newStatus: Plan['status'] = planData.status as Plan['status'];
         
         // If plan has overdue payments, it should be marked as overdue (unless paused/cancelled)
         if (hasOverduePayments && planData.status !== 'paused' && planData.status !== 'cancelled') {
@@ -314,7 +314,7 @@ export class PlanStatusService {
       // Nothing changed, return current values
       return {
         success: true,
-        status: planData.status,
+        status: planData.status as Plan['status'],
         hasOverduePayments
       };
     } catch (error) {
