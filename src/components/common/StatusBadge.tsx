@@ -24,9 +24,10 @@ const StatusBadge = ({
       return 'bg-amber-50 border-amber-300 text-amber-800';
     }
     
-    // Special style for manual payments
+    // For manual payments, use the same green styling as regular paid status
+    // instead of the purple styling we had before
     if (status === 'paid' && manualPayment) {
-      return 'bg-purple-50 text-purple-700 border-purple-200';
+      return 'bg-green-50 text-green-700 border-green-200';
     }
     
     switch (status) {
