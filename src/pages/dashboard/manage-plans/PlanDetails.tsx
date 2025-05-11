@@ -16,6 +16,7 @@ const PlanDetails = () => {
     handleBackToPlans,
     handleMarkAsPaid,
     handleOpenReschedule,
+    handleTakePayment, // Add this new handler
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
@@ -50,6 +51,7 @@ const PlanDetails = () => {
         activities={activities}
         onMarkAsPaid={handleMarkAsPaid}
         onReschedule={handleOpenReschedule}
+        onTakePayment={handleTakePayment} // Pass the new handler
         isLoading={isLoadingActivities}
       />
       

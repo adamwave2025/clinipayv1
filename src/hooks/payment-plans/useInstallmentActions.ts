@@ -114,6 +114,37 @@ export function useInstallmentActions(
     }
   };
 
+  // Add the handleTakePayment function
+  const handleTakePayment = async (installmentId: string) => {
+    setIsProcessing(true);
+    try {
+      // 1. Get the installment details
+      const { data: installment, error: fetchError } = await supabase
+        .from('payment_schedule')
+        .select('*')
+        .eq('id', installmentId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // For now, this is a placeholder function. 
+      // In a real implementation, this would:
+      // 1. Open a payment dialog or navigate to a payment page
+      // 2. Process the payment through a payment gateway
+      // 3. Update the installment status upon successful payment
+      
+      toast.info('Payment feature will be implemented in a future update');
+      console.log('Take payment for installment:', installment);
+      
+      // We're not actually processing a payment yet, just logging
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      toast.error('Failed to process payment');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return {
     isProcessing,
     showRescheduleDialog,
@@ -121,6 +152,7 @@ export function useInstallmentActions(
     selectedInstallmentId,
     handleMarkAsPaid,
     handleOpenReschedule,
-    handleReschedulePayment
+    handleReschedulePayment,
+    handleTakePayment // Export the new function
   };
 }

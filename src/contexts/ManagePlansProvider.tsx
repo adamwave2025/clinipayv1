@@ -65,7 +65,8 @@ export const ManagePlansProvider: React.FC<{
     setShowRescheduleDialog,
     handleMarkAsPaid,
     handleOpenReschedule,
-    handleReschedulePayment
+    handleReschedulePayment,
+    handleTakePayment // Include the new function from the hook
   } = useInstallmentActions(
     selectedPlan?.id || '',
     async () => {
@@ -236,6 +237,7 @@ export const ManagePlansProvider: React.FC<{
         handleMarkAsPaid,
         handleOpenReschedule,
         handleReschedulePayment,
+        handleTakePayment, // Include the new function in the context value
         
         // Refund properties
         refundDialogOpen,

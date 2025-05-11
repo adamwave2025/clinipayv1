@@ -72,7 +72,8 @@ export const useManagePlans = (): ManagePlansContextType => {
     setShowRescheduleDialog,
     handleMarkAsPaid,
     handleOpenReschedule,
-    handleReschedulePayment
+    handleReschedulePayment,
+    handleTakePayment // Include the new function from the hook
   } = useInstallmentActions(
     selectedPlan?.id || '',
     async () => {
@@ -213,6 +214,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleMarkAsPaid,
     handleOpenReschedule,
     handleReschedulePayment,
+    handleTakePayment, // Include the new function in the returned object
     
     // Refund properties
     refundDialogOpen,

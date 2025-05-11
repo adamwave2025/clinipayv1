@@ -46,6 +46,7 @@ export interface ManagePlansContextType {
   handleMarkAsPaid: (paymentId: string) => void;
   handleOpenReschedule: (paymentId: string) => void;
   handleReschedulePayment: (date: Date) => void;
+  handleTakePayment: (paymentId: string) => void; // Add the new handler method
   
   // Refund properties
   refundDialogOpen: boolean;
