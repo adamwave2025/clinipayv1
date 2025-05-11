@@ -16,6 +16,7 @@ import { useViewModeState } from './payment-plans/useViewModeState';
 import { useEnhancedNavigation } from './payment-plans/useEnhancedNavigation';
 import { useInstallmentHandler } from './payment-plans/useInstallmentHandler';
 import { useInstallmentActions } from './payment-plans/useInstallmentActions';
+import { usePaymentRescheduleActions } from './payment-plans/usePaymentRescheduleActions';
 
 export const useManagePlans = (): ManagePlansContextType => {
   const { user } = useAuth();
@@ -80,6 +81,20 @@ export const useManagePlans = (): ManagePlansContextType => {
     // Remove the duplicate declaration of selectedInstallment here
     // as it's already declared in useInstallmentHandler above
   } = useInstallmentActions(
+    selectedPlan?.id || '',
+    async () => {
+      if (selectedPlan) {
+        await fetchPlanInstallmentsData(selectedPlan.id);
+      }
+    }
+  );
+  
+  // Use payment reschedule actions hook for individual payment rescheduling
+  const {
+    showRescheduleDialog: showReschedulePaymentDialog,
+    setShowRescheduleDialog: setShowReschedulePaymentDialog,
+    handleReschedulePayment: handleRescheduleIndividualPayment,
+  } = usePaymentRescheduleActions(
     selectedPlan?.id || '',
     async () => {
       if (selectedPlan) {
@@ -180,7 +195,8 @@ export const useManagePlans = (): ManagePlansContextType => {
   console.log('useManagePlans - Dialog states:', {
     showMarkAsPaidDialog,
     selectedInstallment,
-    showRescheduleDialog
+    showRescheduleDialog,
+    showReschedulePaymentDialog
   });
 
   return {
@@ -238,6 +254,10 @@ export const useManagePlans = (): ManagePlansContextType => {
     paymentToRefund,
     openRefundDialog: enhancedOpenRefundDialog,
     processRefund,
+    
+    // Add payment rescheduling dialog properties
+    showReschedulePaymentDialog,
+    setShowReschedulePaymentDialog,
     
     // Include all plan action properties
     ...cancelActions,

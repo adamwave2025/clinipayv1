@@ -1,3 +1,4 @@
+
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
 import { PlanPauseService } from './plan-operations/PlanPauseService';
@@ -115,6 +116,28 @@ export class PlanOperationsService {
     } catch (error) {
       console.error('Error in reschedulePayment:', error);
       toast.error(`Failed to reschedule payment: ${error instanceof Error ? error.message : String(error)}`);
+      return { success: false, error };
+    }
+  }
+  
+  /**
+   * Record a manual payment for an installment
+   * @param paymentId The payment ID to mark as paid
+   * @returns Object indicating success or failure
+   */
+  static async recordManualPayment(paymentId: string): Promise<{ success: boolean, error?: any }> {
+    try {
+      // Use PlanPaymentService to record the manual payment
+      const result = await PlanPaymentService.recordManualPayment(paymentId);
+      
+      if (!result.success) {
+        toast.error('Failed to record payment');
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error in recordManualPayment:', error);
+      toast.error(`Failed to record payment: ${error instanceof Error ? error.message : String(error)}`);
       return { success: false, error };
     }
   }
