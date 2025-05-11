@@ -299,16 +299,6 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
                       console.log(`No more unpaid entries found for plan ${scheduleData.plan_id}`);
                     }
 
-                    // Check for overdue status on remaining entries using same logic as update-plan-statuses
-                    const now = new Date();
-                    now.setHours(0, 0, 0, 0); // Start of day for accurate comparison
-                    
-                    const hasOverduePayments = allScheduleEntries.some(entry => {
-                      const dueDate = new Date(entry.due_date);
-                      dueDate.setHours(0, 0, 0, 0); // Start of day for accurate comparison
-                      return entry.status !== 'paid' && entry.status !== 'cancelled' && dueDate < now;
-                    });
-                    
                     // SIMPLIFIED STATUS LOGIC:
                     // 1. If all installments are paid -> completed
                     // 2. If not paused/cancelled and at least one payment made -> active
@@ -337,26 +327,24 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseC
                       - New status: ${newStatus}
                       - Paid installments: ${paidInstallments}/${totalInstallments}
                       - Progress: ${progress}%
-                      - Has overdue payments: ${hasOverduePayments}
                       - Next due date: ${nextDueDate || 'None'}
                     `);
                     
-                    // Update the plan with new values
+                    // Update the plan with new values - REMOVED has_overdue_payments field
                     const { error: planUpdateError } = await supabaseClient
                       .from("plans")
                       .update({
                         paid_installments: paidInstallments,
                         progress: progress,
                         next_due_date: nextDueDate,
-                        status: newStatus,
-                        has_overdue_payments: hasOverduePayments
+                        status: newStatus
                       })
                       .eq("id", scheduleData.plan_id);
                     
                     if (planUpdateError) {
                       console.error("Error updating plan record:", planUpdateError);
                     } else {
-                      console.log(`Successfully updated plan record. New status: ${newStatus}, Progress: ${progress}%, Has overdue payments: ${hasOverduePayments}, Next due date: ${nextDueDate || 'None'}`);
+                      console.log(`Successfully updated plan record. New status: ${newStatus}, Progress: ${progress}%, Next due date: ${nextDueDate || 'None'}`);
                     }
                   }
                 }
