@@ -1,3 +1,4 @@
+
 import { format } from 'date-fns';
 
 // Define the PlanInstallment interface
@@ -41,17 +42,18 @@ export const formatPlanInstallments = (installments: any[]): PlanInstallment[] =
       }
       
       // Check payment_requests path if no direct payments found
-      else if (installment.payment_requests?.paid_at) {
-        paidDate = installment.payment_requests.paid_at;
-        
-        // If payment_requests has a payment_id, check that payment for manual_payment flag
-        if (installment.payment_requests.payment_id) {
+      else if (installment.payment_requests) {
+        // If payment record exists within payment_requests
+        if (installment.payment_requests.payments) {
+          console.log('Found payment via payment_request for installment:', installment.id);
+          paidDate = installment.payment_requests.paid_at || installment.payment_requests.payments.paid_at;
+          paymentId = installment.payment_requests.payment_id || installment.payment_requests.payments.id;
+          manualPayment = installment.payment_requests.payments.manual_payment || false;
+        } else if (installment.payment_requests.payment_id) {
+          // If we just have a payment ID reference but no nested payment data
+          console.log('Found payment_id reference in payment_request:', installment.payment_requests.payment_id);
+          paidDate = installment.payment_requests.paid_at;
           paymentId = installment.payment_requests.payment_id;
-          
-          // If payment record exists within payment_requests, check for manual_payment flag
-          if (installment.payment_requests.payments) {
-            manualPayment = installment.payment_requests.payments.manual_payment || false;
-          }
         }
       }
     }
@@ -60,6 +62,7 @@ export const formatPlanInstallments = (installments: any[]): PlanInstallment[] =
       status: installment.status,
       paymentId,
       manualPayment,
+      paidDate,
       hasDirectPayments: installment.payments?.length > 0,
       hasPaymentRequests: !!installment.payment_requests
     });

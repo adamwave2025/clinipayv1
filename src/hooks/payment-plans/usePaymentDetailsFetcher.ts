@@ -16,6 +16,7 @@ export const usePaymentDetailsFetcher = () => {
       console.log('Installation in fetchPaymentDetails:', installment);
       console.log('Payment ID:', installment.paymentId);
       console.log('Payment Request ID:', installment.paymentRequestId);
+      console.log('Manual payment flag:', installment.manualPayment);
       
       // Determine if this is a payment plan payment
       // If we have totalPayments and paymentNumber, it's likely a plan payment
@@ -72,6 +73,45 @@ export const usePaymentDetailsFetcher = () => {
       // If there is no payment request ID or payment ID, we can't fetch payment details
       if (!installment.paymentRequestId && !installment.paymentId) {
         console.log('No payment request ID or payment ID found for this installment');
+        
+        // Try a fallback approach: search for any payment that might be linked to this installment
+        const { data: fallbackPayments, error: fallbackError } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('payment_link_id', installment.id) // Try using installment ID as a potential link
+          .order('paid_at', { ascending: false })
+          .limit(1);
+          
+        if (!fallbackError && fallbackPayments && fallbackPayments.length > 0) {
+          // Found a payment through fallback approach
+          const paymentData = fallbackPayments[0];
+          console.log('Found payment through fallback approach:', paymentData);
+          
+          const paymentInfo = {
+            id: paymentData.id,
+            status: paymentData.status || 'paid',
+            amount: paymentData.amount_paid,
+            date: formatDateTime(paymentData.paid_at, 'en-GB', 'Europe/London'),
+            reference: paymentData.payment_ref,
+            stripePaymentId: paymentData.stripe_payment_id,
+            refundedAmount: paymentData.refund_amount,
+            refundedAt: paymentData.refunded_at ? formatDateTime(paymentData.refunded_at, 'en-GB', 'Europe/London') : null,
+            patientName: paymentData.patient_name,
+            patientEmail: paymentData.patient_email,
+            patientPhone: paymentData.patient_phone,
+            manualPayment: paymentData.manual_payment || false,
+            type: isPlanPayment ? 'payment_plan' : 'other',
+            linkTitle: installment.paymentNumber 
+              ? `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
+              : 'Payment'
+          };
+          
+          setPaymentData(paymentInfo);
+          setIsLoading(false);
+          return paymentInfo;
+        }
+        
+        // No payment information found
         toast.error('No payment information available');
         setIsLoading(false);
         return null;
@@ -101,10 +141,33 @@ export const usePaymentDetailsFetcher = () => {
       
       console.log('Payment request data:', requestData);
       
+      // If we have a payment_id but no nested payment data, fetch the payment directly
+      if (requestData.payment_id && (!requestData.payments || Object.keys(requestData.payments).length === 0)) {
+        console.log('Payment request has payment_id but no nested data, fetching payment directly:', requestData.payment_id);
+        
+        const { data: directPaymentData, error: directPaymentError } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('id', requestData.payment_id)
+          .single();
+          
+        if (directPaymentError) {
+          console.error('Error fetching direct payment:', directPaymentError);
+          toast.error('Failed to load payment details');
+          setIsLoading(false);
+          return null;
+        }
+        
+        console.log('Fetched direct payment data:', directPaymentData);
+        
+        // Use the direct payment data
+        requestData.payments = directPaymentData;
+      }
+      
       // Extract payment information from the request
       const paymentInfo = requestData.payments ? {
-        id: requestData.payments.id,
-        status: requestData.payments.status,
+        id: requestData.payments.id || requestData.payment_id,
+        status: requestData.payments.status || 'paid',
         amount: requestData.payments.amount_paid,
         date: formatDateTime(requestData.payments.paid_at, 'en-GB', 'Europe/London'),
         reference: requestData.payments.payment_ref,

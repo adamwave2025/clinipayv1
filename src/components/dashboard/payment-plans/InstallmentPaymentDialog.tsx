@@ -31,7 +31,7 @@ const InstallmentPaymentDialog = ({
   };
   
   // For debugging
-  console.log('Payment data in dialog:', paymentData);
+  console.log('Payment data in InstallmentPaymentDialog:', paymentData);
 
   return (
     <Dialog open={showDialog} onOpenChange={setShowDialog}>

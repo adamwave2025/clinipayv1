@@ -31,11 +31,11 @@ export class PlanDataService {
           payment_requests (
             id, status, payment_id, paid_at,
             payments (
-              id, manual_payment, paid_at
+              id, manual_payment, paid_at, status
             )
           ),
           payments!payment_schedule_payment_id_fkey (
-            id, manual_payment, paid_at
+            id, manual_payment, paid_at, status
           )
         `)
         .eq('plan_id', plan.id)
