@@ -459,6 +459,7 @@ export type Database = {
           patient_phone: string | null
           payment_link_id: string | null
           payment_ref: string | null
+          payment_schedule_id: string | null
           platform_fee: number | null
           refund_amount: number | null
           refunded_at: string | null
@@ -481,6 +482,7 @@ export type Database = {
           patient_phone?: string | null
           payment_link_id?: string | null
           payment_ref?: string | null
+          payment_schedule_id?: string | null
           platform_fee?: number | null
           refund_amount?: number | null
           refunded_at?: string | null
@@ -503,6 +505,7 @@ export type Database = {
           patient_phone?: string | null
           payment_link_id?: string | null
           payment_ref?: string | null
+          payment_schedule_id?: string | null
           platform_fee?: number | null
           refund_amount?: number | null
           refunded_at?: string | null
@@ -532,6 +535,13 @@ export type Database = {
             columns: ["payment_link_id"]
             isOneToOne: false
             referencedRelation: "payment_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_payment_schedule_id_fkey"
+            columns: ["payment_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "payment_schedule"
             referencedColumns: ["id"]
           },
         ]

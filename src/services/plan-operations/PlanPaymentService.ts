@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { addToNotificationQueue } from '@/utils/notification-queue';
 
@@ -17,36 +18,55 @@ export class PlanPaymentService {
       // Get the payment details
       const { data: paymentData, error: paymentError } = await supabase
         .from('payments')
-        .select('payment_link_id')
+        .select('payment_link_id, payment_schedule_id')
         .eq('id', paymentId)
         .single();
         
       if (paymentError) throw paymentError;
       
-      // Find the payment schedule entry through payment requests if it exists
-      const { data: requestsData, error: requestsError } = await supabase
-        .from('payment_requests')
-        .select('id')
-        .eq('payment_id', paymentId)
-        .maybeSingle();
-        
-      if (requestsError) {
-        console.warn('Could not fetch payment request:', requestsError);
-      }
-      
+      // First check if we have a direct link to payment_schedule
       let scheduleData = null;
-      if (requestsData?.id) {
-        // Look for associated payment schedule
-        const { data: scheduleResult, error: scheduleError } = await supabase
+      if (paymentData.payment_schedule_id) {
+        // Directly get the plan_id from payment_schedule using the direct link
+        const { data: directScheduleData, error: directScheduleError } = await supabase
           .from('payment_schedule')
           .select('plan_id')
-          .eq('payment_request_id', requestsData.id)
+          .eq('id', paymentData.payment_schedule_id)
+          .single();
+          
+        if (directScheduleError) {
+          console.warn('Could not fetch directly linked payment_schedule:', directScheduleError);
+        } else {
+          scheduleData = directScheduleData;
+        }
+      }
+      
+      // If no direct link or direct fetch failed, try the legacy path via payment_requests
+      if (!scheduleData) {
+        // Find the payment schedule entry through payment requests if it exists
+        const { data: requestsData, error: requestsError } = await supabase
+          .from('payment_requests')
+          .select('id')
+          .eq('payment_id', paymentId)
           .maybeSingle();
           
-        if (scheduleError) {
-          console.warn('Could not find payment_schedule entry:', scheduleError);
-        } else {
-          scheduleData = scheduleResult;
+        if (requestsError) {
+          console.warn('Could not fetch payment request:', requestsError);
+        }
+        
+        if (requestsData?.id) {
+          // Look for associated payment schedule
+          const { data: scheduleResult, error: scheduleError } = await supabase
+            .from('payment_schedule')
+            .select('plan_id')
+            .eq('payment_request_id', requestsData.id)
+            .maybeSingle();
+            
+          if (scheduleError) {
+            console.warn('Could not find payment_schedule entry:', scheduleError);
+          } else {
+            scheduleData = scheduleResult;
+          }
         }
       }
       
@@ -65,17 +85,41 @@ export class PlanPaymentService {
       }
       
       // If this payment was part of a payment plan, update the payment_schedule status
-      if (scheduleData?.plan_id && requestsData?.id) {
-        const { error: updateScheduleError } = await supabase
-          .from('payment_schedule')
-          .update({
-            status: isFullRefund ? 'refunded' : 'partially_refunded',
-            updated_at: new Date().toISOString()
-          })
-          .eq('payment_request_id', requestsData.id);
-          
-        if (updateScheduleError) {
-          console.warn('Could not update payment schedule status:', updateScheduleError);
+      if (scheduleData?.plan_id) {
+        // If we have a direct link to payment_schedule, use it
+        if (paymentData.payment_schedule_id) {
+          const { error: updateScheduleError } = await supabase
+            .from('payment_schedule')
+            .update({
+              status: isFullRefund ? 'refunded' : 'partially_refunded',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', paymentData.payment_schedule_id);
+            
+          if (updateScheduleError) {
+            console.warn('Could not update payment schedule status:', updateScheduleError);
+          }
+        } else {
+          // Legacy path - try to update via payment_request_id
+          const { data: requestsData } = await supabase
+            .from('payment_requests')
+            .select('id')
+            .eq('payment_id', paymentId)
+            .maybeSingle();
+            
+          if (requestsData?.id) {
+            const { error: updateScheduleError } = await supabase
+              .from('payment_schedule')
+              .update({
+                status: isFullRefund ? 'refunded' : 'partially_refunded',
+                updated_at: new Date().toISOString()
+              })
+              .eq('payment_request_id', requestsData.id);
+              
+            if (updateScheduleError) {
+              console.warn('Could not update payment schedule status:', updateScheduleError);
+            }
+          }
         }
       }
       
@@ -184,6 +228,7 @@ export class PlanPaymentService {
           amount_paid: installment.amount,
           net_amount: installment.amount, // For manual payments, net = gross
           payment_link_id: installment.payment_link_id,
+          payment_schedule_id: installment.id, // Directly link to the payment schedule
           status: 'paid',
           paid_at: new Date().toISOString(),
           payment_ref: paymentRef,

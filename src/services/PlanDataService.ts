@@ -54,8 +54,20 @@ export class PlanDataService {
         let paidDate = null;
         
         try {
-          // If there's a payment request, check for payment information
-          if (item.payment_request_id) {
+          // First check for direct payment links
+          const { data: directPaymentData } = await supabase
+            .from('payments')
+            .select('id, manual_payment, paid_at, status')
+            .eq('payment_schedule_id', item.id)
+            .maybeSingle();
+            
+          if (directPaymentData) {
+            // We found a payment directly linked to this schedule item
+            paymentData = directPaymentData;
+            manualPayment = !!directPaymentData.manual_payment;
+            paidDate = directPaymentData.paid_at;
+          } else if (item.payment_request_id) {
+            // Fall back to legacy path via payment_request if no direct link found
             const { data: requestData } = await supabase
               .from('payment_requests')
               .select('id, payment_id, paid_at, status')
@@ -79,10 +91,6 @@ export class PlanDataService {
               }
             }
           }
-          
-          // Also check for direct payments linked to this schedule
-          // This is removed to simplify the code as it was causing issues
-          // Direct payment relationship can be handled elsewhere if needed
         } catch (err) {
           console.error(`Error enriching installment ${item.id}:`, err);
         }
