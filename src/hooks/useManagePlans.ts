@@ -81,15 +81,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     }
   };
   
-  // Use payment reschedule actions for individual payments
-  const {
-    showRescheduleDialog: showReschedulePaymentDialog,
-    setShowRescheduleDialog: setShowReschedulePaymentDialog,
-    handleReschedulePayment: handleIndividualPaymentReschedule,
-    handleOpenRescheduleDialog
-  } = usePaymentRescheduleActions(selectedPlan?.id || '', refreshInstallments);
-  
-  // Use installment actions
+  // Use installment actions with all needed props
   const {
     isProcessing: isProcessingInstallment,
     handleMarkAsPaid,
@@ -97,7 +89,10 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleTakePayment,
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
-    confirmMarkAsPaid
+    confirmMarkAsPaid,
+    rescheduleDialog: installmentRescheduleDialog,
+    setRescheduleDialog: setInstallmentRescheduleDialog,
+    handleReschedulePayment: installmentReschedulePayment
   } = useInstallmentActions(selectedPlan?.id || '', refreshInstallments);
   
   // Use specialized action hooks
@@ -116,7 +111,7 @@ export const useManagePlans = (): ManagePlansContextType => {
   console.log('useManagePlans - Dialog states:', {
     showMarkAsPaidDialog,
     selectedInstallment,
-    showReschedulePaymentDialog,
+    installmentRescheduleDialog,
     showRescheduleDialog: rescheduleActions.showRescheduleDialog
   });
 
@@ -177,10 +172,10 @@ export const useManagePlans = (): ManagePlansContextType => {
     openRefundDialog: enhancedOpenRefundDialog,
     processRefund,
     
-    // Payment rescheduling dialog properties
-    showReschedulePaymentDialog,
-    setShowReschedulePaymentDialog,
-    handleReschedulePayment: handleIndividualPaymentReschedule,
+    // Payment rescheduling dialog properties - use values from installment actions
+    showReschedulePaymentDialog: installmentRescheduleDialog,
+    setShowReschedulePaymentDialog: setInstallmentRescheduleDialog,
+    handleReschedulePayment: installmentReschedulePayment,
     
     // Include all plan action properties but avoid using handleReschedulePayment again
     ...cancelActions,

@@ -16,6 +16,11 @@ export const usePaymentRescheduleActions = (
     console.log("usePaymentRescheduleActions: Opening reschedule dialog for payment", paymentId);
     setSelectedPaymentId(paymentId);
     setShowRescheduleDialog(true);
+    console.log("usePaymentRescheduleActions: Dialog state after opening:", showRescheduleDialog);
+    // Using setTimeout to check the state after the React update cycle
+    setTimeout(() => {
+      console.log("usePaymentRescheduleActions: Dialog state after timeout:", showRescheduleDialog);
+    }, 0);
   };
   
   const handleReschedulePayment = async (newDate: Date) => {

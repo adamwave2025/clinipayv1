@@ -116,11 +116,17 @@ export const ManagePlansDialogs = () => {
         hasOverduePayments={hasOverduePayments}
       />
       
-      {/* Dialog for rescheduling an individual payment */}
+      {/* Dialog for rescheduling an individual payment - with extra debugging log */}
       <ReschedulePaymentDialog
         open={showReschedulePaymentDialog} 
-        onOpenChange={setShowReschedulePaymentDialog}
-        onConfirm={handleReschedulePayment}
+        onOpenChange={(open) => {
+          console.log(`Setting reschedule payment dialog to ${open ? 'open' : 'closed'}`);
+          setShowReschedulePaymentDialog(open);
+        }}
+        onConfirm={(date) => {
+          console.log(`Confirming reschedule payment with date: ${date.toISOString()}`);
+          handleReschedulePayment(date);
+        }}
         isLoading={isProcessing}
       />
       
