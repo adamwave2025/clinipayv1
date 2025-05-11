@@ -22,6 +22,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import StatusBadge, { StatusType } from '@/components/common/StatusBadge';
 import ActivityLog from './ActivityLog';
 import { formatCurrency, formatDateTime, formatDate } from '@/utils/formatters';
+import PaymentActionMenu from './PaymentActionMenu';
 
 interface PlanDetailsDialogProps {
   showPlanDetails: boolean;
@@ -37,6 +38,9 @@ interface PlanDetailsDialogProps {
   onResumePlan: () => void;
   onReschedulePlan: () => void;
   isPlanPaused: (plan: Plan | null) => boolean;
+  onMarkAsPaid?: (installmentId: string) => void;
+  onReschedule?: (installmentId: string) => void;
+  onTakePayment?: (installmentId: string) => void;
 }
 
 const PlanDetailsDialog = ({
@@ -52,7 +56,10 @@ const PlanDetailsDialog = ({
   onPausePlan,
   onResumePlan,
   onReschedulePlan,
-  isPlanPaused
+  isPlanPaused,
+  onMarkAsPaid,
+  onReschedule,
+  onTakePayment
 }: PlanDetailsDialogProps) => {
   if (!selectedPlan) return null;
   
@@ -130,14 +137,19 @@ const PlanDetailsDialog = ({
                       <TableHead>Amount</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Paid Date</TableHead>
+                      {/* Add Actions column if action handlers are provided */}
+                      {(onMarkAsPaid || onReschedule || onTakePayment) && (
+                        <TableHead className="text-right">Actions</TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {installments.map((installment) => (
                       <TableRow 
                         key={installment.id}
-                        onClick={() => {
-                          if (installment.status === 'paid') {
+                        onClick={(e) => {
+                          // Only trigger click for paid installments and don't navigate when clicking action buttons
+                          if (installment.status === 'paid' && !e.defaultPrevented) {
                             onViewPaymentDetails(installment);
                           }
                         }}
@@ -157,6 +169,19 @@ const PlanDetailsDialog = ({
                             ? formatDateTime(installment.paidDate, 'en-GB', 'Europe/London') 
                             : '-'}
                         </TableCell>
+                        {/* Add Actions column with PaymentActionMenu for unpaid installments */}
+                        {(onMarkAsPaid || onReschedule || onTakePayment) && (
+                          <TableCell className="text-right">
+                            {installment.status !== 'paid' && (
+                              <PaymentActionMenu
+                                paymentId={installment.id}
+                                onMarkAsPaid={onMarkAsPaid || (() => {})}
+                                onReschedule={onReschedule || (() => {})}
+                                onTakePayment={onTakePayment}
+                              />
+                            )}
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>

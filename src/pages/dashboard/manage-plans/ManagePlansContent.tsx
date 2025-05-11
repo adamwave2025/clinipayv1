@@ -28,6 +28,9 @@ const ManagePlansContent: React.FC = () => {
     handleOpenPauseDialog,
     handleOpenResumeDialog,
     handleOpenRescheduleDialog,
+    handleMarkAsPaid,
+    handleOpenReschedule,
+    handleTakePayment,
     isPlanPaused
   } = useManagePlansContext();
 
@@ -75,6 +78,9 @@ const ManagePlansContent: React.FC = () => {
         onResumePlan={handleOpenResumeDialog}
         onReschedulePlan={handleOpenRescheduleDialog}
         isPlanPaused={isPlanPaused}
+        onMarkAsPaid={handleMarkAsPaid}
+        onReschedule={handleOpenReschedule}
+        onTakePayment={handleTakePayment}
       />
     </div>
   );
