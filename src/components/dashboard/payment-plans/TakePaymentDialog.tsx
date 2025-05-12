@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -8,8 +8,7 @@ import { useInstallmentPayment } from '@/hooks/payment-plans/useInstallmentPayme
 import StripeProvider from '@/components/payment/StripeProvider';
 import StripeCardElement from '@/components/payment/form/StripeCardElement';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useForm } from 'react-hook-form';
-import { Form } from '@/components/ui/form';
+import { useForm, FormProvider } from 'react-hook-form';
 
 interface TakePaymentDialogProps {
   open: boolean;
@@ -40,8 +39,9 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isCardComplete, setIsCardComplete] = useState(false);
+  const cardCompleteRef = useRef(false);
   
-  // Initialize form
+  // Initialize form with FormProvider to ensure context is available
   const form = useForm<PaymentFormValues>({
     defaultValues: {
       stripeCard: undefined
@@ -79,158 +79,170 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
         setPaymentComplete(false);
         setValidationError(null);
         setIsCardComplete(false);
+        cardCompleteRef.current = false;
         form.reset(); // Reset form when dialog closes
       }, 300);
     }
     onOpenChange(newOpen);
   };
   
-  // Use a stable component to reduce re-renders
-  const PaymentProcessor = React.memo(() => {
-    const { 
-      handlePaymentSubmit,
-      isProcessing,
-      isLoading,
-      isStripeReady
-    } = useInstallmentPayment(paymentId, amount, onPaymentProcessed);
+  // Use the installment payment hook
+  const { 
+    handlePaymentSubmit,
+    isProcessing,
+    isLoading,
+    isStripeReady
+  } = useInstallmentPayment(paymentId, amount, onPaymentProcessed);
+  
+  // Track card completion with a ref to prevent reset issues
+  const handleCardChange = (event: any) => {
+    console.log('Card element change:', { 
+      isEmpty: event.empty, 
+      isComplete: event.complete,
+      hasError: event.error ? true : false,
+      errorMessage: event.error?.message || 'No error' 
+    });
     
-    // Track card completion state with a ref to preserve during re-renders
-    const cardCompleteRef = React.useRef(false);
+    // Update both state and ref to track card completion
+    setIsCardComplete(event.complete);
+    cardCompleteRef.current = event.complete;
+  };
+  
+  const handleSubmitPayment = async () => {
+    if (isProcessing || isLoading || !isStripeReady) {
+      console.log("Payment already in progress or not ready");
+      return;
+    }
     
-    const handleCardChange = useCallback((event: any) => {
-      console.log('Card element change:', { 
-        isEmpty: event.empty, 
-        isComplete: event.complete,
-        hasError: event.error ? true : false,
-        errorMessage: event.error?.message || 'No error' 
-      });
-      
-      // Update both state and ref to track card completion
-      setIsCardComplete(event.complete);
-      cardCompleteRef.current = event.complete;
-      
-      // Update form value
-      form.setValue('stripeCard', event.complete ? { complete: true } : undefined);
-    }, []);
+    if (!cardCompleteRef.current) {
+      console.log("Card not complete, cannot process payment");
+      toast.error("Please enter complete card details");
+      return;
+    }
     
-    const handleSubmitPayment = useCallback(async (formData: PaymentFormValues) => {
-      if (isProcessing || isLoading || !isStripeReady) {
-        console.log("Payment already in progress or not ready");
-        return;
-      }
+    console.log("Processing payment with:", {
+      paymentId,
+      name: patientName,
+      email: patientEmail,
+      cardComplete: cardCompleteRef.current
+    });
+    
+    try {
+      // Use the form data but rely on cardCompleteRef for card completion status
+      const formData = form.getValues();
       
-      if (!cardCompleteRef.current) {
-        console.log("Card not complete, cannot process payment");
-        toast.error("Please enter complete card details");
-        return;
-      }
-      
-      console.log("Processing payment with:", {
-        paymentId,
+      const result = await handlePaymentSubmit({
         name: patientName,
         email: patientEmail,
-        cardComplete: cardCompleteRef.current
-      });
+        phone: patientPhone,
+        stripeCard: { complete: true }
+      }, cardCompleteRef.current);
       
-      try {
-        const result = await handlePaymentSubmit({
-          name: patientName,
-          email: patientEmail,
-          phone: patientPhone,
-          stripeCard: { complete: true }
-        }, cardCompleteRef.current);
-        
-        if (result.success) {
-          setPaymentComplete(true);
-        } else {
-          toast.error(result.error || "Payment failed");
-        }
-      } catch (error: any) {
-        console.error("Payment submission error:", error);
-        toast.error(error.message || "Payment processing failed");
+      if (result.success) {
+        setPaymentComplete(true);
+      } else {
+        toast.error(result.error || "Payment failed");
       }
-    }, [handlePaymentSubmit, isProcessing, isLoading, isStripeReady, paymentId, patientName, patientEmail, patientPhone]);
-    
-    if (validationError) {
-      return (
-        <div className="py-6">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{validationError}</AlertDescription>
-          </Alert>
-          <Button 
-            className="w-full mt-6"
-            onClick={() => onOpenChange(false)}
-          >
-            Close
-          </Button>
-        </div>
-      );
+    } catch (error: any) {
+      console.error("Payment submission error:", error);
+      toast.error(error.message || "Payment processing failed");
     }
+  };
 
-    return (
-      <Form {...form}>
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          form.handleSubmit((data) => handleSubmitPayment(data))(e);
-        }} className="space-y-4">
-          {/* Patient & Payment Information - Read-only */}
-          <div className="rounded-md bg-gray-50 p-4 mb-2">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-sm font-medium">Amount:</span>
-              <span className="font-bold">{displayAmount}</span>
+  // Content when there's a validation error
+  const renderValidationError = () => (
+    <div className="py-6">
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{validationError}</AlertDescription>
+      </Alert>
+      <Button 
+        className="w-full mt-6"
+        onClick={() => onOpenChange(false)}
+      >
+        Close
+      </Button>
+    </div>
+  );
+
+  // Payment form content
+  const renderPaymentForm = () => (
+    <FormProvider {...form}>
+      <div className="space-y-4">
+        {/* Patient & Payment Information - Read-only */}
+        <div className="rounded-md bg-gray-50 p-4 mb-2">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm font-medium">Amount:</span>
+            <span className="font-bold">{displayAmount}</span>
+          </div>
+          
+          <div className="text-sm space-y-1">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Patient:</span>
+              <span>{patientName}</span>
             </div>
             
-            <div className="text-sm space-y-1">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Patient:</span>
-                <span>{patientName}</span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span className="text-gray-500">Email:</span>
-                <span>{patientEmail}</span>
-              </div>
-              
-              {patientPhone && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Phone:</span>
-                  <span>{patientPhone}</span>
-                </div>
-              )}
+            <div className="flex justify-between">
+              <span className="text-gray-500">Email:</span>
+              <span>{patientEmail}</span>
             </div>
+            
+            {patientPhone && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Phone:</span>
+                <span>{patientPhone}</span>
+              </div>
+            )}
           </div>
-          
-          {/* Simplified card element implementation */}
-          <div className="mt-4">
-            <StripeCardElement 
-              isLoading={isLoading || isProcessing}
-              onChange={handleCardChange}
-              label="Card Details"
-              className="mb-4"
-            />
-          </div>
-          
-          <Button 
-            className="w-full mt-2" 
-            disabled={isLoading || isProcessing || !isStripeReady || !isCardComplete}
-            onClick={form.handleSubmit(handleSubmitPayment)}
-            type="button"
-          >
-            {isLoading || isProcessing ? "Processing..." : "Process Payment"}
-          </Button>
-          
-          <div className="text-xs text-center text-gray-500">
-            <p>This is a secure payment processed by CliniPay</p>
-          </div>
-        </form>
-      </Form>
-    );
-  });
-  
-  // Prevent unnecessary re-renders by setting displayName
-  PaymentProcessor.displayName = 'PaymentProcessor';
+        </div>
+        
+        {/* Card element without form field to prevent reset issues */}
+        <div className="mt-4">
+          <StripeCardElement 
+            isLoading={isLoading || isProcessing}
+            onChange={handleCardChange}
+            label="Card Details"
+            className="mb-4"
+          />
+        </div>
+        
+        <Button 
+          className="w-full mt-2" 
+          disabled={isLoading || isProcessing || !isStripeReady || !isCardComplete}
+          onClick={handleSubmitPayment}
+          type="button"
+        >
+          {isLoading || isProcessing ? "Processing..." : "Process Payment"}
+        </Button>
+        
+        <div className="text-xs text-center text-gray-500">
+          <p>This is a secure payment processed by CliniPay</p>
+        </div>
+      </div>
+    </FormProvider>
+  );
+
+  // Success content
+  const renderSuccessContent = () => (
+    <div className="py-6 px-2">
+      <div className="flex flex-col items-center justify-center text-center space-y-4">
+        <div className="rounded-full bg-green-100 p-3">
+          <CheckCircle className="h-8 w-8 text-green-600" />
+        </div>
+        <h3 className="text-lg font-medium">Payment Successful</h3>
+        <p className="text-sm text-gray-500">
+          The payment of {displayAmount} has been processed successfully.
+        </p>
+        <Button 
+          className="mt-4 w-full"
+          onClick={() => onOpenChange(false)}
+        >
+          Close
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -240,26 +252,10 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
         </DialogHeader>
         
         {paymentComplete ? (
-          <div className="py-6 px-2">
-            <div className="flex flex-col items-center justify-center text-center space-y-4">
-              <div className="rounded-full bg-green-100 p-3">
-                <CheckCircle className="h-8 w-8 text-green-600" />
-              </div>
-              <h3 className="text-lg font-medium">Payment Successful</h3>
-              <p className="text-sm text-gray-500">
-                The payment of {displayAmount} has been processed successfully.
-              </p>
-              <Button 
-                className="mt-4 w-full"
-                onClick={() => onOpenChange(false)}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
+          renderSuccessContent()
         ) : (
           <StripeProvider>
-            <PaymentProcessor />
+            {validationError ? renderValidationError() : renderPaymentForm()}
           </StripeProvider>
         )}
       </DialogContent>

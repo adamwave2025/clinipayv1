@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { CardElement } from '@stripe/react-stripe-js';
-import { FormControl, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 interface StripeCardElementProps {
   onChange?: (event: any) => void;
@@ -87,15 +87,13 @@ const StripeCardElement = ({
         aria-disabled={isLoading}
         data-testid="stripe-card-element-container"
       >
-        <FormControl>
-          <CardElement 
-            id="card-element"
-            options={cardElementOptions} 
-            onChange={handleCardChange}
-            // We don't use disabled since it's not supported by Stripe
-            // Instead we control via parent div's classes and aria-disabled
-          />
-        </FormControl>
+        <CardElement 
+          id="card-element"
+          options={cardElementOptions} 
+          onChange={handleCardChange}
+          // We don't use disabled since it's not supported by Stripe
+          // Instead we control via parent div's classes and aria-disabled
+        />
       </div>
       <FormMessage />
     </FormItem>
