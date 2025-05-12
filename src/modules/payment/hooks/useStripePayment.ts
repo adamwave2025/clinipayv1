@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback } from 'react';
 import { useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
@@ -98,6 +97,7 @@ export function useStripePayment() {
     }
   }, [stripe, elements, isProcessing]);
 
+  // Keep the rest of the component as is
   const processApplePayPayment = useCallback(async ({
     clientSecret,
     paymentMethod

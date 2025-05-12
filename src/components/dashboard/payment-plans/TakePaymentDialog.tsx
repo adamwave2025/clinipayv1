@@ -103,7 +103,9 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     const handleCardChange = (event: any) => {
       console.log('Card element change:', { 
         isEmpty: event.empty, 
-        isComplete: event.complete
+        isComplete: event.complete,
+        hasError: event.error ? true : false,
+        errorMessage: event.error?.message || 'No error'
       });
       
       setIsCardComplete(event.complete);
@@ -247,7 +249,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
             )}
           />
           
-          {/* Card Element - No header, the component includes its own label */}
+          {/* Card Element - Using the stable StripeCardElement component */}
           <FormField
             control={form.control}
             name="stripeCard"
@@ -255,6 +257,8 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
               <StripeCardElement 
                 isLoading={isLoading || isProcessing}
                 onChange={handleCardChange}
+                label=""
+                className="mb-2"
               />
             )}
           />
