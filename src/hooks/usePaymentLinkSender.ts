@@ -1,12 +1,11 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
 import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
-import { addToNotificationQueue, checkNotificationExists } from '@/utils/notification-queue';
-import { verifyWebhookConfiguration } from '@/utils/webhook-caller';
+import { addToNotificationQueue, checkNotificationExists } from '@/utils/notifications';
+import { verifyWebhookConfiguration } from '@/utils/notifications';
 
 interface PaymentLinkSenderProps {
   formData: {
