@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
@@ -6,7 +5,8 @@ import { toast } from 'sonner';
 
 export const usePlanCancelActions = (
   selectedPlan: Plan | null,
-  setShowPlanDetails: (show: boolean) => void
+  setShowPlanDetails: (show: boolean) => void,
+  refreshPlanState?: (planId: string) => Promise<void>
 ) => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -26,7 +26,14 @@ export const usePlanCancelActions = (
       if (success) {
         toast.success('Payment plan cancelled successfully');
         setShowCancelDialog(false);
-        setShowPlanDetails(false); // Close the plan details modal
+        
+        // Keep the drawer open but refresh the plan data
+        if (refreshPlanState) {
+          await refreshPlanState(selectedPlan.id);
+        }
+        
+        // Don't close the plan details modal anymore
+        // setShowPlanDetails(false); 
       } else {
         toast.error('Failed to cancel payment plan');
       }

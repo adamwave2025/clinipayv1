@@ -1,3 +1,4 @@
+
 import { useMemo, useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { ManagePlansContextType, PaymentDialogData } from '@/contexts/ManagePlansContext';
@@ -39,6 +40,9 @@ export const useManagePlans = (): ManagePlansContextType => {
     statusFilter,
     setStatusFilter
   } = usePlanFiltering(allPlans);
+  
+  // State for tracking refresh operations
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Use action handlers with properly typed function params
   const {
@@ -82,10 +86,51 @@ export const useManagePlans = (): ManagePlansContextType => {
     }
   };
   
+  // NEW: Centralized refresh function that maintains plan card visibility
+  const refreshPlanState = async (planId: string) => {
+    if (!planId) {
+      console.error("Cannot refresh plan state: No plan ID provided");
+      return;
+    }
+    
+    console.log(`Refreshing plan state for plan ID: ${planId}`);
+    setIsRefreshing(true);
+    
+    try {
+      // 1. Refresh the plans list to get updated plan status
+      await fetchPaymentPlans();
+      
+      // 2. If this is for the currently selected plan, refresh its details too
+      if (selectedPlan && selectedPlan.id === planId) {
+        console.log("Refreshing selected plan details");
+        // Get fresh installment data
+        await fetchPlanInstallmentsData(planId);
+        
+        // Update the selected plan with the refreshed data
+        const refreshedPlan = allPlans.find(p => p.id === planId);
+        if (refreshedPlan) {
+          console.log("Found refreshed plan data:", refreshedPlan.status);
+        } else {
+          console.log("Could not find refreshed plan in allPlans");
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing plan state:", error);
+      toast.error("Failed to refresh plan data");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+  
   // Create the onPaymentUpdated function that will be used after payment processing
   const onPaymentUpdated = async () => {
     console.log("Payment updated, refreshing installments data");
-    await refreshInstallments();
+    if (selectedPlan) {
+      await refreshPlanState(selectedPlan.id);
+    } else {
+      console.warn("Could not refresh after payment: No plan selected");
+      await refreshInstallments();
+    }
   };
   
   // Use installment actions with all needed props
@@ -104,7 +149,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     handleReschedulePayment: installmentReschedulePayment,
     selectedInstallment, // This is the primary selectedInstallment
     setSelectedInstallment
-  } = useInstallmentActions(selectedPlan?.id || '', refreshInstallments);
+  } = useInstallmentActions(selectedPlan?.id || '', refreshPlanState); // Pass in refreshPlanState instead of refreshInstallments
   
   // Add state for payment dialog data
   const [paymentDialogData, setPaymentDialogData] = useState<PaymentDialogData | null>(null);
@@ -162,11 +207,11 @@ export const useManagePlans = (): ManagePlansContextType => {
     }
   };
   
-  // Use specialized action hooks
-  const cancelActions = usePlanCancelActions(selectedPlan, setShowPlanDetails);
-  const pauseActions = usePlanPauseActions(selectedPlan, setShowPlanDetails, refreshData);
-  const resumeActions = usePlanResumeActions(selectedPlan, setShowPlanDetails, refreshData);
-  const rescheduleActions = usePlanRescheduleActions(selectedPlan, setShowPlanDetails, refreshData);
+  // Use specialized action hooks with the refreshPlanState function
+  const cancelActions = usePlanCancelActions(selectedPlan, setShowPlanDetails, refreshPlanState);
+  const pauseActions = usePlanPauseActions(selectedPlan, setShowPlanDetails, refreshPlanState);
+  const resumeActions = usePlanResumeActions(selectedPlan, setShowPlanDetails, refreshPlanState);
+  const rescheduleActions = usePlanRescheduleActions(selectedPlan, setShowPlanDetails, refreshPlanState);
   
   // Override the refund functionality to handle the payment details view
   const enhancedOpenRefundDialog = () => {
@@ -217,6 +262,10 @@ export const useManagePlans = (): ManagePlansContextType => {
     // View mode state
     isViewMode,
     setIsViewMode,
+    
+    // Refresh state
+    isRefreshing,
+    refreshPlanState,
     
     // Action handlers
     handleViewPlanDetails,
@@ -279,6 +328,6 @@ export const useManagePlans = (): ManagePlansContextType => {
     
     // Plan state helpers
     isPlanPaused,
-    isProcessing: isProcessingActions || isProcessingInstallment
+    isProcessing: isProcessingActions || isProcessingInstallment || isRefreshing
   };
 };

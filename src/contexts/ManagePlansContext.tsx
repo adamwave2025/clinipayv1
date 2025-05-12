@@ -46,6 +46,10 @@ export interface ManagePlansContextType {
   setPaymentDialogData: (data: PaymentDialogData | null) => void;
   preparePaymentData: (paymentId: string, installmentDetails: PlanInstallment) => boolean; 
   
+  // NEW: Plan state refresh
+  isRefreshing: boolean;
+  refreshPlanState: (planId: string) => Promise<void>;
+  
   // View mode toggle state
   isViewMode: boolean;
   setIsViewMode: (isViewMode: boolean) => void;

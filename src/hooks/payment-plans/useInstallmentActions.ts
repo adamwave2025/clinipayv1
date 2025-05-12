@@ -1,129 +1,196 @@
 
 import { useState } from 'react';
-import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
-import { usePaymentRescheduleActions } from './usePaymentRescheduleActions';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 
 export const useInstallmentActions = (
-  planId: string,
-  onPaymentUpdated: () => Promise<void>
+  planId: string, 
+  refreshPlanState?: (planId: string) => Promise<void>
 ) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedInstallment, setSelectedInstallment] = useState<PlanInstallment | null>(null);
-  const [paymentData, setPaymentData] = useState<PlanInstallment | null>(null);
+  const navigate = useNavigate();
+  
+  // Mark as Paid dialog state
   const [showMarkAsPaidDialog, setShowMarkAsPaidDialog] = useState(false);
+  
+  // Reschedule Payment dialog state
+  const [rescheduleDialog, setRescheduleDialog] = useState(false);
+  
+  // Take Payment dialog state
   const [showTakePaymentDialog, setShowTakePaymentDialog] = useState(false);
   
-  // Use the payment reschedule actions hook with proper destructuring
-  const rescheduleActions = usePaymentRescheduleActions(planId, onPaymentUpdated);
-
-  const handleMarkAsPaid = (paymentId: string, installmentDetails?: PlanInstallment) => {
-    console.log("[useInstallmentActions] Opening mark as paid dialog for", paymentId);
+  // Handler for opening the Mark as Paid dialog
+  const handleMarkAsPaid = (paymentId: string) => {
+    console.log("handleMarkAsPaid called for payment ID:", paymentId);
     
-    // Set the selected installment with the provided details if available
-    if (installmentDetails) {
-      // Use the actual installment data that was passed in
-      setSelectedInstallment(installmentDetails);
-    } else {
-      // Just set the ID if no details provided - simplified approach
-      setSelectedInstallment({ 
-        id: paymentId,
-        status: 'pending'
-      } as PlanInstallment);
-    }
-    
-    setShowMarkAsPaidDialog(true);
-  };
-  
-  const handleOpenReschedule = (paymentId: string) => {
-    console.log("[useInstallmentActions] Opening reschedule dialog for payment", paymentId);
-    
-    rescheduleActions.handleOpenRescheduleDialog(paymentId);
-    console.log("[useInstallmentActions] After calling handleOpenRescheduleDialog");
-  };
-  
-  // Improved validation and data handling for the take payment action
-  const handleTakePayment = (paymentId: string, installmentDetails: PlanInstallment) => {
-    console.log("[useInstallmentActions] Take payment requested for ID:", paymentId);
-    
-    // Validate payment ID early
-    if (!paymentId || typeof paymentId !== 'string' || paymentId.trim() === '') {
-      console.error("[useInstallmentActions] Invalid payment ID:", paymentId);
-      toast.error("Cannot process payment: Invalid payment ID");
+    if (!planId) {
+      console.error("Cannot mark as paid: No plan ID available");
+      toast.error("Cannot process payment: Missing plan ID");
       return;
     }
     
-    // Validate installment details
-    if (!installmentDetails || typeof installmentDetails !== 'object') {
-      console.error("[useInstallmentActions] Invalid installment details:", installmentDetails);
-      toast.error("Cannot process payment: Missing payment details");
-      return;
-    }
-    
-    if (!installmentDetails.amount || typeof installmentDetails.amount !== 'number') {
-      console.error("[useInstallmentActions] Invalid amount in installment:", installmentDetails);
-      toast.error("Cannot process payment: Invalid payment amount");
-      return;
-    }
-    
-    // Update state BEFORE showing dialog - critical fix!
-    setSelectedInstallment(installmentDetails);
-    setPaymentData(installmentDetails);
-    
-    console.log("[useInstallmentActions] Payment data set, opening dialog with:", { 
-      id: paymentId,
-      amount: installmentDetails.amount
-    });
-    
-    // Only show the dialog once the state is updated
-    setTimeout(() => {
-      setShowTakePaymentDialog(true);
-    }, 10);
+    // Find the installment by ID to display details in the confirmation
+    supabase
+      .from('payment_schedule')
+      .select('*')
+      .eq('id', paymentId)
+      .single()
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Error fetching installment:", error);
+          toast.error("Failed to get payment details");
+          return;
+        }
+        
+        // Set the selected installment
+        setSelectedInstallment(data);
+        
+        // Open the confirmation dialog
+        setShowMarkAsPaidDialog(true);
+      });
   };
   
+  // Handler for confirming Mark as Paid
   const confirmMarkAsPaid = async () => {
-    if (!selectedInstallment) {
-      toast.error('No payment selected');
+    if (!selectedInstallment || !planId) {
+      toast.error("No payment selected");
       return;
     }
     
     setIsProcessing(true);
+    
     try {
-      const result = await PlanOperationsService.recordManualPayment(selectedInstallment.id);
+      // Use the service to mark the payment as paid
+      const result = await PlanOperationsService.markAsPaid(selectedInstallment.id);
       
       if (result.success) {
-        toast.success('Payment marked as paid successfully');
+        toast.success("Payment marked as paid successfully");
+        
+        // Close the dialog
         setShowMarkAsPaidDialog(false);
-        await onPaymentUpdated();
+        
+        // Refresh the plan state to update UI
+        if (refreshPlanState) {
+          await refreshPlanState(planId);
+        }
       } else {
-        toast.error('Failed to mark payment as paid');
+        toast.error("Failed to mark payment as paid");
       }
     } catch (error) {
-      console.error('Error marking payment as paid:', error);
-      toast.error('An error occurred');
+      console.error("Error marking payment as paid:", error);
+      toast.error("An error occurred while processing your request");
     } finally {
       setIsProcessing(false);
     }
   };
   
+  // Handler for opening the Reschedule Payment dialog
+  const handleOpenReschedule = (paymentId: string) => {
+    console.log("handleOpenReschedule called for payment ID:", paymentId);
+    
+    // Find the installment by ID
+    supabase
+      .from('payment_schedule')
+      .select('*')
+      .eq('id', paymentId)
+      .single()
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Error fetching installment:", error);
+          toast.error("Failed to get payment details");
+          return;
+        }
+        
+        // Set the selected installment
+        setSelectedInstallment(data);
+        
+        // Open the reschedule dialog
+        setRescheduleDialog(true);
+      });
+  };
+  
+  // Handler for rescheduling a payment
+  const handleReschedulePayment = async (newDate: Date) => {
+    if (!selectedInstallment || !planId) {
+      toast.error("No payment selected for rescheduling");
+      return;
+    }
+    
+    setIsProcessing(true);
+    
+    try {
+      const result = await PlanOperationsService.reschedulePayment(
+        selectedInstallment.id,
+        newDate
+      );
+      
+      if (result.success) {
+        toast.success("Payment rescheduled successfully");
+        
+        // Close the dialog
+        setRescheduleDialog(false);
+        
+        // Refresh the plan state to update UI
+        if (refreshPlanState) {
+          await refreshPlanState(planId);
+        }
+      } else {
+        toast.error("Failed to reschedule payment");
+      }
+    } catch (error) {
+      console.error("Error rescheduling payment:", error);
+      toast.error("An error occurred while rescheduling the payment");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  
+  // Handler for taking a payment via the payment portal
+  const handleTakePayment = (paymentId: string, installmentDetails?: PlanInstallment) => {
+    console.log("handleTakePayment called for payment ID:", paymentId);
+    
+    if (!installmentDetails) {
+      // Try to fetch the installment details if not provided
+      supabase
+        .from('payment_schedule')
+        .select('*')
+        .eq('id', paymentId)
+        .single()
+        .then(({ data, error }) => {
+          if (error) {
+            console.error("Error fetching installment:", error);
+            toast.error("Failed to get payment details");
+            return;
+          }
+          
+          setSelectedInstallment(data);
+          setShowTakePaymentDialog(true);
+        });
+    } else {
+      // Use the provided installment details
+      setSelectedInstallment(installmentDetails);
+      setShowTakePaymentDialog(true);
+    }
+  };
+
   return {
     isProcessing,
-    paymentData,
+    selectedInstallment,
+    setSelectedInstallment,
     handleMarkAsPaid,
     handleOpenReschedule,
     handleTakePayment,
+    confirmMarkAsPaid,
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
-    confirmMarkAsPaid,
-    selectedInstallment,
-    setSelectedInstallment, // Add this to expose the setter
-    // Take payment dialog state
+    rescheduleDialog,
+    setRescheduleDialog,
+    handleReschedulePayment,
     showTakePaymentDialog,
-    setShowTakePaymentDialog,
-    // Expose the reschedule actions directly for clarity
-    rescheduleDialog: rescheduleActions.showRescheduleDialog,
-    setRescheduleDialog: rescheduleActions.setShowRescheduleDialog,
-    handleReschedulePayment: rescheduleActions.handleReschedulePayment
+    setShowTakePaymentDialog
   };
 };
