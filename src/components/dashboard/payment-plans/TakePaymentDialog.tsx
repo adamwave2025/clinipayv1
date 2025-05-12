@@ -1,32 +1,13 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Form, FormField, FormItem, FormControl, FormMessage } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 import { useInstallmentPayment } from '@/hooks/payment-plans/useInstallmentPayment';
 import StripeProvider from '@/components/payment/StripeProvider';
 import StripeCardElement from '@/components/payment/form/StripeCardElement';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
-// Form schema for patient and payment details
-const paymentFormSchema = z.object({
-  name: z.string().min(2, "Patient name is required"),
-  email: z.string().email("Valid email is required"),
-  phone: z.string().optional(),
-  stripeCard: z.object({
-    complete: z.boolean().optional(),
-    empty: z.boolean().optional()
-  }).refine(data => data.complete === true, {
-    message: "Please complete your card details"
-  }),
-});
-
-type PaymentFormValues = z.infer<typeof paymentFormSchema>;
 
 interface TakePaymentDialogProps {
   open: boolean;
@@ -52,7 +33,6 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isCardComplete, setIsCardComplete] = useState(false);
-  const cardElementRef = useRef<{ complete: boolean } | null>(null);
   
   // Format amount for display (from pence to pounds)
   const displayAmount = new Intl.NumberFormat('en-GB', { 
@@ -77,21 +57,21 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       }
     }
   }, [open, paymentId, patientName, amount]);
-  
-  // Create the form outside of payment processing logic
-  const form = useForm<PaymentFormValues>({
-    resolver: zodResolver(paymentFormSchema),
-    defaultValues: {
-      name: patientName || '',
-      email: patientEmail || '',
-      phone: patientPhone || '',
-      stripeCard: undefined,
-    },
-  });
 
-  // Use a memoized component to wrap payment processing logic to prevent unnecessary re-renders
+  // Reset dialog state when it closes
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      setTimeout(() => {
+        setPaymentComplete(false);
+        setValidationError(null);
+        setIsCardComplete(false);
+      }, 300);
+    }
+    onOpenChange(newOpen);
+  };
+  
+  // Use a stable component to reduce re-renders
   const PaymentProcessor = React.memo(() => {
-    // Move the hook inside this component to ensure it's only called when StripeProvider is ready
     const { 
       handlePaymentSubmit,
       isProcessing,
@@ -99,62 +79,51 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       isStripeReady
     } = useInstallmentPayment(paymentId, amount, onPaymentProcessed);
     
-    // Track card completion state
-    const handleCardChange = (event: any) => {
+    // Track card completion state with a ref to preserve during re-renders
+    const cardCompleteRef = React.useRef(false);
+    
+    const handleCardChange = useCallback((event: any) => {
       console.log('Card element change:', { 
         isEmpty: event.empty, 
         isComplete: event.complete,
         hasError: event.error ? true : false,
-        errorMessage: event.error?.message || 'No error'
+        errorMessage: event.error?.message || 'No error' 
       });
       
+      // Update both state and ref to track card completion
       setIsCardComplete(event.complete);
-      // Store card state in ref to preserve during rerenders
-      cardElementRef.current = {
-        complete: event.complete
-      };
-      
-      // Update the form state
-      form.setValue('stripeCard', {
-        complete: event.complete,
-        empty: event.empty
-      }, { shouldValidate: true });
-      
-      // Clear form error when card becomes complete
-      if (event.complete) {
-        form.clearErrors('stripeCard');
-      }
-    };
+      cardCompleteRef.current = event.complete;
+    }, []);
     
-    // Submit handler that calls our payment processor
-    const onSubmit = async (data: PaymentFormValues) => {
+    const handleSubmitPayment = useCallback(async () => {
+      if (isProcessing || isLoading || !isStripeReady) {
+        console.log("Payment already in progress or not ready");
+        return;
+      }
+      
+      if (!cardCompleteRef.current) {
+        console.log("Card not complete, cannot process payment");
+        toast.error("Please enter complete card details");
+        return;
+      }
+      
+      console.log("Processing payment with:", {
+        paymentId,
+        name: patientName,
+        email: patientEmail,
+        cardComplete: cardCompleteRef.current
+      });
+      
       try {
-        console.log("Submitting payment with payment ID:", paymentId);
-        
-        if (!paymentId || typeof paymentId !== 'string' || paymentId.trim() === '') {
-          console.error("Payment ID is missing or invalid:", paymentId);
-          toast.error("Payment ID is required");
-          return;
-        }
-        
-        // Check if card is complete using the ref and current state
-        const isCardReady = cardElementRef.current?.complete || isCardComplete;
-        
-        if (!isCardReady) {
-          console.error("Card details are incomplete");
-          form.setError('stripeCard', {
-            type: 'manual',
-            message: 'Please complete your card details'
-          });
-          toast.error("Please enter complete card details");
-          return;
-        }
-        
-        const result = await handlePaymentSubmit(data, isCardReady);
+        const result = await handlePaymentSubmit({
+          name: patientName,
+          email: patientEmail,
+          phone: patientPhone,
+          stripeCard: { complete: true }
+        }, cardCompleteRef.current);
         
         if (result.success) {
           setPaymentComplete(true);
-          form.reset();
         } else {
           toast.error(result.error || "Payment failed");
         }
@@ -162,7 +131,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
         console.error("Payment submission error:", error);
         toast.error(error.message || "Payment processing failed");
       }
-    };
+    }, [handlePaymentSubmit, isProcessing, isLoading, isStripeReady, paymentId, patientName, patientEmail, patientPhone]);
     
     if (validationError) {
       return (
@@ -181,120 +150,63 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
         </div>
       );
     }
-    
+
     return (
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {/* Patient & Payment Information - Read-only */}
-          <div className="rounded-md bg-gray-50 p-4 mb-2">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-sm font-medium">Amount:</span>
-              <span className="font-bold">{displayAmount}</span>
+      <div className="space-y-4">
+        {/* Patient & Payment Information - Read-only */}
+        <div className="rounded-md bg-gray-50 p-4 mb-2">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm font-medium">Amount:</span>
+            <span className="font-bold">{displayAmount}</span>
+          </div>
+          
+          <div className="text-sm space-y-1">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Patient:</span>
+              <span>{patientName}</span>
             </div>
             
-            <div className="text-sm space-y-1">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Patient:</span>
-                <span>{patientName}</span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span className="text-gray-500">Email:</span>
-                <span>{patientEmail}</span>
-              </div>
-              
-              {patientPhone && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Phone:</span>
-                  <span>{patientPhone}</span>
-                </div>
-              )}
+            <div className="flex justify-between">
+              <span className="text-gray-500">Email:</span>
+              <span>{patientEmail}</span>
             </div>
+            
+            {patientPhone && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Phone:</span>
+                <span>{patientPhone}</span>
+              </div>
+            )}
           </div>
-          
-          {/* Hidden fields for patient info */}
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem className="hidden">
-                <FormControl>
-                  <input type="hidden" {...field} />
-                </FormControl>
-              </FormItem>
-            )}
+        </div>
+        
+        {/* Simplified card element implementation */}
+        <div className="mt-4">
+          <StripeCardElement 
+            isLoading={isLoading || isProcessing}
+            onChange={handleCardChange}
+            label="Card Details"
+            className="mb-4"
           />
-          
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem className="hidden">
-                <FormControl>
-                  <input type="hidden" {...field} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="phone"
-            render={({ field }) => (
-              <FormItem className="hidden">
-                <FormControl>
-                  <input type="hidden" {...field} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          
-          {/* Card Element - Using the stable StripeCardElement component */}
-          <FormField
-            control={form.control}
-            name="stripeCard"
-            render={() => (
-              <StripeCardElement 
-                isLoading={isLoading || isProcessing}
-                onChange={handleCardChange}
-                label=""
-                className="mb-2"
-              />
-            )}
-          />
-          
-          <Button 
-            type="submit"
-            className="w-full mt-2" 
-            disabled={isLoading || isProcessing || !isStripeReady || !isCardComplete}
-          >
-            {isLoading || isProcessing ? "Processing..." : "Process Payment"}
-          </Button>
-          
-          <div className="text-xs text-center text-gray-500">
-            <p>This is a secure payment processed by CliniPay</p>
-          </div>
-        </form>
-      </Form>
+        </div>
+        
+        <Button 
+          className="w-full mt-2" 
+          disabled={isLoading || isProcessing || !isStripeReady || !isCardComplete}
+          onClick={handleSubmitPayment}
+        >
+          {isLoading || isProcessing ? "Processing..." : "Process Payment"}
+        </Button>
+        
+        <div className="text-xs text-center text-gray-500">
+          <p>This is a secure payment processed by CliniPay</p>
+        </div>
+      </div>
     );
   });
   
   // Prevent unnecessary re-renders by setting displayName
   PaymentProcessor.displayName = 'PaymentProcessor';
-  
-  // Reset dialog state when it closes
-  const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) {
-      setTimeout(() => {
-        setPaymentComplete(false);
-        setValidationError(null);
-        setIsCardComplete(false);
-        cardElementRef.current = null;
-        form.reset();
-      }, 300);
-    }
-    onOpenChange(newOpen);
-  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
