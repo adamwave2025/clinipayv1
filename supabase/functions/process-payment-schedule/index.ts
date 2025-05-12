@@ -32,7 +32,7 @@ serve(async (req) => {
     const today = new Date().toISOString().split('T')[0];
     console.log(`📅 Processing payments due on or before: ${today}`);
 
-    // Find pending payments that are due today or earlier
+    // Find ONLY pending payments that are due today or earlier AND don't already have a payment request
     const { data: duePayments, error: fetchError } = await supabase
       .from('payment_schedule')
       .select(`
@@ -42,7 +42,8 @@ serve(async (req) => {
         payment_links:payment_link_id (*)
       `)
       .eq('status', 'pending')
-      .lte('due_date', today);
+      .lte('due_date', today)
+      .is('payment_request_id', null); // Only process payments without an existing request
 
     if (fetchError) {
       throw new Error(`Error fetching due payments: ${fetchError.message}`);
