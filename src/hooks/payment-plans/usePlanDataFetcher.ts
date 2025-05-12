@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
@@ -36,7 +37,7 @@ export const usePlanDataFetcher = () => {
         .select(`
           *,
           patients (
-            id, name, email
+            id, name, email, phone
           )
         `)
         .eq('clinic_id', clinicId)
