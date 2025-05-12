@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,7 +8,7 @@ import { format } from 'date-fns';
 export const usePlanResumeActions = (
   selectedPlan: Plan | null,
   setShowPlanDetails: (show: boolean) => void,
-  refreshPlans?: () => Promise<void>
+  refreshPlanState?: (planId: string) => Promise<void>
 ) => {
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [hasSentPayments, setHasSentPayments] = useState(false);
@@ -156,12 +155,14 @@ export const usePlanResumeActions = (
       
       // Close the dialog
       setShowResumeDialog(false);
-      setShowPlanDetails(false);
       
-      // Refresh the plans list if a refresh function is provided
-      if (refreshPlans) {
-        await refreshPlans();
+      // Refresh the plan data using the refreshPlanState function
+      if (refreshPlanState) {
+        await refreshPlanState(selectedPlan.id);
       }
+      
+      // Keep the plan details modal open
+      // setShowPlanDetails(false);
     } catch (error) {
       console.error('Error resuming plan:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);

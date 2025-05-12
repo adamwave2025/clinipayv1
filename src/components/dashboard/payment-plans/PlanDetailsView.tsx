@@ -1,161 +1,115 @@
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency, formatDate } from '@/utils/formatters';
 import { Plan } from '@/utils/planTypes';
-import { PlanInstallment } from '@/utils/paymentPlanUtils';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import PlanProgressCard from './PlanProgressCard';
+import PlanDetailsCard from './PlanDetailsCard';
+import PlanActionsCard from './PlanActionsCard';
+import PlanScheduleCard from './PlanScheduleCard';
+import PlanActivityCard from './PlanActivityCard';
 import { PlanActivity } from '@/utils/planActivityUtils';
-import PlanPaymentsList from './PlanPaymentsList';
-import ActivityLog from './ActivityLog';
-import StatusBadge from '@/components/common/StatusBadge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Loader2 } from 'lucide-react';
 
 interface PlanDetailsViewProps {
   plan: Plan;
-  installments: PlanInstallment[];
+  installments: any[];
   activities: PlanActivity[];
-  onMarkAsPaid: (paymentId: string) => void;
-  onReschedule: (paymentId: string) => void;
-  onTakePayment?: (paymentId: string) => void;
+  onMarkAsPaid: (id: string, installment: any) => void;
+  onReschedule: (id: string) => void;
+  onTakePayment: (id: string, installment: any) => void;
   isLoading: boolean;
+  isRefreshing?: boolean;
+  onOpenCancelDialog?: () => void;
+  onOpenPauseDialog?: () => void;
+  onOpenResumeDialog?: () => void;
+  onOpenRescheduleDialog?: () => void;
+  onSendReminder?: () => void;
 }
 
-const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
-  plan,
-  installments,
-  activities,
+const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({ 
+  plan, 
+  installments, 
+  activities, 
   onMarkAsPaid,
   onReschedule,
   onTakePayment,
-  isLoading
+  isLoading,
+  isRefreshing = false,
+  onOpenCancelDialog,
+  onOpenPauseDialog,
+  onOpenResumeDialog,
+  onOpenRescheduleDialog,
+  onSendReminder
 }) => {
-  // Extract patient name directly from patientName property
-  const patientName = plan.patientName || 'Unknown Patient';
-    
-  // Extract plan name/title - handle both data formats
-  const planTitle = plan.title || plan.planName || 'Payment Plan';
+  const LoadingOverlay = () => (
+    <div className="absolute inset-0 bg-white/70 dark:bg-gray-900/70 flex items-center justify-center z-10">
+      <div className="flex flex-col items-center space-y-2">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Updating plan...</p>
+      </div>
+    </div>
+  );
 
-  // Log plan details for debugging
-  console.log('Plan details:', {
-    id: plan.id,
-    patientName,
-    planTitle,
-    paidInstallments: plan.paidInstallments,
-    totalInstallments: plan.totalInstallments,
-    progress: plan.progress,
-    status: plan.status
-  });
-  
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="relative">
+        {isRefreshing && <LoadingOverlay />}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="col-span-1">
+            <PlanProgressCard plan={plan} isLoading={isLoading} />
+          </div>
+          <div className="col-span-1 md:col-span-2">
+            <PlanDetailsCard plan={plan} isLoading={isLoading} />
+          </div>
+        </div>
+      </div>
+      
+      <div className="relative">
+        {isRefreshing && <LoadingOverlay />}
+        <PlanActionsCard 
+          plan={plan}
+          onOpenCancelDialog={onOpenCancelDialog}
+          onOpenPauseDialog={onOpenPauseDialog}
+          onOpenResumeDialog={onOpenResumeDialog}
+          onOpenRescheduleDialog={onOpenRescheduleDialog}
+          onSendReminder={onSendReminder}
+        />
+      </div>
+      
+      <div className="relative">
+        {isRefreshing && <LoadingOverlay />}
         <Card>
-          <CardHeader>
-            <CardTitle>Plan Details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid grid-cols-1 gap-4 text-sm">
-              <div className="flex justify-between">
-                <dt className="font-medium text-gray-500">Plan Name:</dt>
-                <dd className="text-gray-900">{planTitle}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-medium text-gray-500">Patient:</dt>
-                <dd className="text-gray-900">{patientName}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-medium text-gray-500">Total Amount:</dt>
-                <dd className="text-gray-900 font-medium">{formatCurrency(plan.totalAmount || plan.amount || 0)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-medium text-gray-500">Start Date:</dt>
-                <dd className="text-gray-900">{formatDate(plan.startDate)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-medium text-gray-500">Payment Frequency:</dt>
-                <dd className="text-gray-900 capitalize">{plan.paymentFrequency}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-medium text-gray-500">Status:</dt>
-                <dd className="text-right">
-                  <StatusBadge status={plan.status} />
-                </dd>
-              </div>
-            </dl>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="relative pt-1">
-                <div className="flex mb-2 items-center justify-between">
-                  <div>
-                    <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full bg-green-50 text-green-600">
-                      Progress
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-semibold inline-block text-green-600">
-                      {plan.progress || 0}%
-                    </span>
-                  </div>
-                </div>
-                <div className="flex h-2 mb-4 overflow-hidden rounded bg-green-100">
-                  <div
-                    style={{ width: `${plan.progress || 0}%` }}
-                    className="bg-green-500"
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <p className="text-xl font-semibold text-green-600">{plan.paidInstallments || 0}</p>
-                  <p className="text-xs text-gray-500">Payments Made</p>
-                </div>
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <p className="text-xl font-semibold text-blue-600">
-                    {(plan.totalInstallments || 0) - (plan.paidInstallments || 0)}
-                  </p>
-                  <p className="text-xs text-gray-500">Payments Remaining</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
+          <Tabs defaultValue="schedule" className="w-full">
+            <TabsList className="w-full md:w-auto">
+              <TabsTrigger value="schedule">Payment Schedule</TabsTrigger>
+              <TabsTrigger value="activity">Activity</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="schedule">
+              <CardContent className="p-0 pt-4">
+                <PlanScheduleCard 
+                  installments={installments}
+                  isLoading={isLoading}
+                  onMarkAsPaid={onMarkAsPaid}
+                  onReschedule={onReschedule}
+                  onTakePayment={onTakePayment}
+                />
+              </CardContent>
+            </TabsContent>
+            
+            <TabsContent value="activity">
+              <CardContent className="p-0 pt-4">
+                <PlanActivityCard 
+                  activities={activities}
+                  isLoading={isLoading}
+                />
+              </CardContent>
+            </TabsContent>
+          </Tabs>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment Schedule</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="py-8 text-center text-gray-500">
-              Loading payment schedule...
-            </div>
-          ) : (
-            <PlanPaymentsList
-              installments={installments}
-              onMarkAsPaid={onMarkAsPaid}
-              onReschedule={onReschedule}
-              onTakePayment={onTakePayment}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Activity Log</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ActivityLog activities={activities} isLoading={false} />
-        </CardContent>
-      </Card>
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
@@ -20,11 +21,10 @@ export const usePlanActions = (refreshPlans: (userId?: string) => Promise<Plan[]
       // Use PlanOperationsService for consistent API
       const result = await PlanOperationsService.sendPaymentReminder(installmentId);
       
-      // Already displaying toast in the service
-      return;
+      // Toast notification is handled within the service
+      
     } catch (error) {
       toast.error('Failed to send payment reminder');
-      return;
     } finally {
       setIsProcessing(false);
     }

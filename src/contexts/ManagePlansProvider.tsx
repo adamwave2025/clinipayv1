@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext, { PaymentDialogData } from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -14,6 +15,7 @@ import { usePlanRescheduleActions } from '@/hooks/payment-plans/usePlanReschedul
 import { usePaymentRescheduleActions } from '@/hooks/payment-plans/usePaymentRescheduleActions';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { toast } from '@/hooks/use-toast';
+import { PlanOperationsService } from '@/services/PlanOperationsService';
 
 export const ManagePlansProvider: React.FC<{
   children: React.ReactNode;
@@ -36,11 +38,51 @@ export const ManagePlansProvider: React.FC<{
   
   // Add state for template view
   const [isTemplateView, setIsTemplateView] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Create a refresh function for use after operations
   const refreshData = async () => {
     if (user) {
       await fetchPaymentPlans(user.id);
+    }
+  };
+  
+  // NEW: Centralized refresh function that maintains plan card visibility
+  const refreshPlanState = async (planId: string) => {
+    if (!planId) {
+      console.error("Cannot refresh plan state: No plan ID provided");
+      return;
+    }
+    
+    console.log(`Refreshing plan state for plan ID: ${planId}`);
+    setIsRefreshing(true);
+    
+    try {
+      // 1. Refresh the plans list to get updated plan status
+      if (user) {
+        await fetchPaymentPlans(user.id);
+      }
+      
+      // 2. If this is for the currently selected plan, refresh its details too
+      if (selectedPlan && selectedPlan.id === planId) {
+        console.log("Refreshing selected plan details");
+        // Get fresh installment data
+        await fetchPlanInstallmentsData(planId);
+        
+        // The selected plan might need updating from the fresh data
+        const refreshedPlan = allPlans.find(p => p.id === planId);
+        if (refreshedPlan) {
+          console.log("Found refreshed plan data with status:", refreshedPlan.status);
+          setSelectedPlan(refreshedPlan);
+        } else {
+          console.log("Could not find refreshed plan in allPlans");
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing plan state:", error);
+      toast.error("Failed to refresh plan data");
+    } finally {
+      setIsRefreshing(false);
     }
   };
   
@@ -64,17 +106,14 @@ export const ManagePlansProvider: React.FC<{
     handleViewPaymentDetails
   } = useInstallmentHandler();
   
-  // Create a refresh function for installment data
-  const refreshInstallments = async () => {
-    if (selectedPlan) {
-      await fetchPlanInstallmentsData(selectedPlan.id);
-    }
-  };
-  
   // Define onPaymentUpdated function for the take payment dialog
   const onPaymentUpdated = async () => {
-    console.log("Payment updated, refreshing installments data");
-    await refreshInstallments();
+    console.log("Payment updated, refreshing plan state");
+    if (selectedPlan) {
+      await refreshPlanState(selectedPlan.id);
+    } else {
+      console.warn("Could not refresh after payment: No plan selected");
+    }
   };
   
   // Add new state for payment dialog data - simplified to just track the ID
@@ -149,7 +188,7 @@ export const ManagePlansProvider: React.FC<{
     setSelectedInstallment
   } = useInstallmentActions(
     selectedPlan?.id || '',
-    refreshInstallments
+    refreshPlanState
   );
   
   // Create a fixed and improved take payment handler
@@ -175,18 +214,18 @@ export const ManagePlansProvider: React.FC<{
     }
   };
   
-  // Use the plan reschedule hook with the setIsTemplateView function
+  // Use the plan reschedule hook with the refreshPlanState function
   const planRescheduleActions = usePlanRescheduleActions(
     selectedPlan, 
     setShowPlanDetails, 
-    refreshData,
+    refreshPlanState,
     setIsTemplateView
   );
   
   // Use the payment reschedule hook for individual payments
   const paymentRescheduleActions = usePaymentRescheduleActions(
     selectedPlan?.id || '',
-    refreshInstallments
+    refreshPlanState
   );
 
   // Apply filters to get the filtered plans
@@ -238,7 +277,7 @@ export const ManagePlansProvider: React.FC<{
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
   
-  // Use the improved resume actions hook
+  // Use the improved resume actions hook with refreshPlanState
   const { 
     showResumeDialog, 
     setShowResumeDialog, 
@@ -248,7 +287,7 @@ export const ManagePlansProvider: React.FC<{
     hasOverduePayments,
     hasPaidPayments,
     resumeError
-  } = usePlanResumeActions(selectedPlan, setShowPlanDetails, refreshData);
+  } = usePlanResumeActions(selectedPlan, setShowPlanDetails, refreshPlanState);
   
   // Open dialog handlers
   const handleOpenCancelDialog = () => {
@@ -266,25 +305,67 @@ export const ManagePlansProvider: React.FC<{
     setRefundDialogOpen(true);
   };
   
-  // Action handlers
+  // Use updated action handlers that leverage refreshPlanState
   const handleCancelPlan = async () => {
     console.log("Cancel plan action called");
-    setShowCancelDialog(false);
-    // Always reset to patient plans view after operations
-    setIsTemplateView(false);
+    
+    if (!selectedPlan) {
+      toast.error("No plan selected for cancellation");
+      return;
+    }
+    
+    try {
+      const success = await PlanOperationsService.cancelPlan(selectedPlan);
+      
+      if (success) {
+        toast.success("Payment plan cancelled successfully");
+        setShowCancelDialog(false);
+        
+        // Refresh the plan state without closing the drawer
+        if (selectedPlan.id) {
+          await refreshPlanState(selectedPlan.id);
+        }
+      } else {
+        toast.error("Failed to cancel payment plan");
+      }
+    } catch (error) {
+      console.error("Error cancelling plan:", error);
+      toast.error("An error occurred while cancelling the plan");
+    }
   };
   
   const handlePausePlan = async () => {
     console.log("Pause plan action called");
-    setShowPauseDialog(false);
-    // Always reset to patient plans view after operations
-    setIsTemplateView(false);
+    
+    if (!selectedPlan) {
+      toast.error("No plan selected for pausing");
+      return;
+    }
+    
+    try {
+      const success = await PlanOperationsService.pausePlan(selectedPlan);
+      
+      if (success) {
+        toast.success("Payment plan paused successfully");
+        setShowPauseDialog(false);
+        
+        // Refresh the plan state without closing the drawer
+        if (selectedPlan.id) {
+          await refreshPlanState(selectedPlan.id);
+        }
+      } else {
+        toast.error("Failed to pause payment plan");
+      }
+    } catch (error) {
+      console.error("Error pausing plan:", error);
+      toast.error("An error occurred while pausing the plan");
+    }
   };
   
   // Create a handler that returns to patient plans view after reschedule
   const handleReschedulePlan = async (newStartDate: Date) => {
     await planRescheduleActions.handleReschedulePlan(newStartDate);
-    // The reschedule hook will now handle setIsTemplateView
+    // The reschedule hook will now handle refreshPlanState
   };
   
   // Create a wrapper function that adapts the signature
@@ -329,6 +410,10 @@ export const ManagePlansProvider: React.FC<{
         selectedPlan,
         showPlanDetails,
         setShowPlanDetails,
+        
+        // Refresh state
+        isRefreshing,
+        refreshPlanState,
         
         // Payment details state - using the renamed property
         showPaymentDetails,
@@ -409,7 +494,7 @@ export const ManagePlansProvider: React.FC<{
         
         // Plan state helpers
         isPlanPaused,
-        isProcessing: isProcessingInstallment || planRescheduleActions.isProcessing || paymentRescheduleActions.isProcessing,
+        isProcessing: isProcessingInstallment || planRescheduleActions.isProcessing || paymentRescheduleActions.isProcessing || isRefreshing,
         resumeError
       }}
     >
@@ -418,4 +503,3 @@ export const ManagePlansProvider: React.FC<{
   );
 };
 
-export default ManagePlansProvider;

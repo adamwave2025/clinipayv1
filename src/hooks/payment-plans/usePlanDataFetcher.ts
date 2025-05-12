@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
@@ -103,7 +102,7 @@ export const usePlanDataFetcher = () => {
           id: i.id,
           status: i.status,
           paidDate: i.paidDate, 
-          manualPayment: i.manualPayment
+          manualPayment: i.manualPayment || false // Add default false if undefined
         }))
       );
       

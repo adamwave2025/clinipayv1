@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { PaymentLink } from '@/types/payment';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { useSendLinkFormState } from './sendLink/useSendLinkFormState';
 import { usePatientManager } from './sendLink/usePatientManager';
 import { usePaymentPlanScheduler } from './sendLink/usePaymentPlanScheduler';
-import { usePaymentLinkSender } from './sendLink/usePaymentLinkSender';
+import { usePaymentLinkSender } from './usePaymentLinkSender';
 import { useFormValidation } from './sendLink/useFormValidation';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/utils/formatters';
@@ -37,8 +36,10 @@ export function useSendLinkPageState() {
 
   // Separate payment links and payment plans
   useEffect(() => {
-    setRegularLinks(allPaymentLinks.filter(link => !link.paymentPlan));
-    setPaymentPlans(allPaymentLinks.filter(link => link.paymentPlan));
+    if (allPaymentLinks && Array.isArray(allPaymentLinks)) {
+      setRegularLinks(allPaymentLinks.filter(link => !link.paymentPlan));
+      setPaymentPlans(allPaymentLinks.filter(link => link.paymentPlan));
+    }
   }, [allPaymentLinks]);
 
   // Track if the selected link is a payment plan
@@ -52,6 +53,7 @@ export function useSendLinkPageState() {
     setIsPaymentPlan(selectedLink?.paymentPlan || false);
   }, [formData.selectedLink, regularLinks, paymentPlans]);
 
+  // Handle submitting the form
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -76,6 +78,8 @@ export function useSendLinkPageState() {
     let loadingToast: string | number | undefined;
     if (!isPaymentPlan) {
       loadingToast = toast.loading('Processing payment request...');
+    } else {
+      loadingToast = toast.loading('Scheduling payment plan...');
     }
     
     try {
@@ -84,7 +88,8 @@ export function useSendLinkPageState() {
         patientName: formData.patientName,
         patientEmail: formData.patientEmail,
         isCreatingNewPatient,
-        selectedPatient: selectedPatient?.id
+        selectedPatient: selectedPatient?.id,
+        isPaymentPlan
       });
       
       // Step 1: Create or get the patient first - this is the critical step
@@ -111,14 +116,30 @@ export function useSendLinkPageState() {
         // For payment plans, get the selected plan details
         const selectedLink = [...regularLinks, ...paymentPlans].find(link => link.id === formData.selectedLink);
         if (!selectedLink) {
-          // We don't need to dismiss the loading toast here since we don't show it for payment plans
+          if (loadingToast) toast.dismiss(loadingToast);
           toast.error('Selected payment plan not found');
           setIsProcessing(false);
           return;
         }
         
+        console.log('Scheduling plan with patient ID:', patientId);
+        console.log('Selected plan details:', selectedLink);
+        
+        // Convert startDate to string format for the API
+        const startDateString = formData.startDate instanceof Date 
+          ? formData.startDate.toISOString().split('T')[0]
+          : formData.startDate;
+          
+        // Create plan data with string date
+        const planFormData = {
+          ...formData,
+          startDate: startDateString
+        };
+        
         // Schedule the plan with the verified patient ID
-        const result = await handleSchedulePaymentPlan(patientId, formData, selectedLink);
+        const result = await handleSchedulePaymentPlan(patientId, planFormData, selectedLink);
+        
+        if (loadingToast) toast.dismiss(loadingToast);
         
         if (result.success) {
           // This is the ONLY toast we want to show for success
@@ -127,6 +148,10 @@ export function useSendLinkPageState() {
           });
           resetForm();
           setShowConfirmation(false);
+        } else {
+          // Show detailed error for plan scheduling
+          console.error('Payment plan scheduling failed:', result.error);
+          toast.error(`Failed to schedule payment plan: ${result.error || 'Unknown error'}`);
         }
       } else {
         // For regular payment links, use the link sender with the verified patient ID

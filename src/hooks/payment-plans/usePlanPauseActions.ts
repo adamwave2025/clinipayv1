@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
@@ -8,7 +7,7 @@ import { toast } from 'sonner';
 export const usePlanPauseActions = (
   selectedPlan: Plan | null,
   setShowPlanDetails: (show: boolean) => void,
-  refreshData?: () => Promise<void>
+  refreshPlanState?: (planId: string) => Promise<void>
 ) => {
   const [showPauseDialog, setShowPauseDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -29,14 +28,16 @@ export const usePlanPauseActions = (
         // Get the updated status from the service
         const { status } = await PlanStatusService.refreshPlanStatus(selectedPlan.id);
         
-        // Refresh all plans data to update UI
-        if (refreshData) {
-          await refreshData();
+        // Refresh plan data using the new refreshPlanState function if available
+        if (refreshPlanState) {
+          await refreshPlanState(selectedPlan.id);
         }
         
         toast.success('Payment plan paused successfully');
         setShowPauseDialog(false);
-        setShowPlanDetails(false); // Close the plan details modal
+        
+        // Keep the plan details modal open
+        // setShowPlanDetails(false);
       } else {
         toast.error('Failed to pause payment plan');
       }

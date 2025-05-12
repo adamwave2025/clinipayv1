@@ -1,103 +1,86 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 /**
- * Utility function to set up the notification processing cron job.
- * This can be called from the admin panel or during app initialization.
+ * Trigger immediate processing of the notification queue
  */
-export async function setupNotificationCron() {
+export async function processNotificationsNow() {
+  console.log('Triggering immediate notification queue processing');
+  
   try {
-    console.log('Setting up notification cron job...');
+    // First check if we have any pending notifications to process
+    const { data: pendingNotifications, error: checkError } = await supabase
+      .from('notification_queue')
+      .select('id, type')
+      .eq('status', 'pending')
+      .limit(10);
     
-    // First check if essential system settings exist for notifications
-    const { data: settingsData, error: settingsError } = await supabase
-      .from('system_settings')
-      .select('*')
-      .in('key', ['patient_notification_webhook', 'clinic_notification_webhook']);
+    if (checkError) {
+      console.error('Error checking for pending notifications:', checkError);
+      return { success: false, error: checkError };
+    }
     
-    if (settingsError) {
-      console.error('Error checking notification settings:', settingsError);
+    if (!pendingNotifications || pendingNotifications.length === 0) {
+      console.log('No pending notifications found, skipping processing');
+      return { success: true, message: 'No pending notifications' };
+    }
+    
+    console.log(`Found ${pendingNotifications.length} pending notifications:`, 
+      pendingNotifications.map(n => `${n.id} (${n.type})`));
+    
+    // Call the process-notification-queue edge function
+    try {
+      // Ensure we have the function URL from Supabase
+      const functionEndpoint = 'https://jbtxxlkhiubuzanegtzn.supabase.co/functions/v1/process-notification-queue';
+      console.log('Calling edge function at:', functionEndpoint);
       
-      // Don't stop the process, but log a warning that notifications might not work
-      console.warn('Notification system settings may not be properly configured');
-    } else if (!settingsData || settingsData.length < 2) {
-      // Setup default webhook URLs if they don't exist
-      try {
-        // These are placeholder values - in production these would be real webhook URLs
-        const webhooks = [
-          { 
-            key: 'patient_notification_webhook', 
-            value: 'https://notification-service.clinipay.co.uk/patient-notifications'
-          },
-          {
-            key: 'clinic_notification_webhook',
-            value: 'https://notification-service.clinipay.co.uk/clinic-notifications'
-          }
-        ];
-        
-        // Insert any missing webhooks
-        for (const webhook of webhooks) {
-          const { data: existingData } = await supabase
-            .from('system_settings')
-            .select('*')
-            .eq('key', webhook.key)
-            .maybeSingle();
-          
-          if (!existingData) {
-            console.log(`Setting up default webhook for ${webhook.key}`);
-            await supabase
-              .from('system_settings')
-              .insert(webhook);
-          }
-        }
-        
-        console.log('Default notification webhooks configured');
-      } catch (err) {
-        console.error('Error setting up default webhooks:', err);
+      // Get current session - using async getSession instead of deprecated session()
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      
+      // If no authenticated session, use the anon key as fallback
+      const authHeader = accessToken 
+        ? `Bearer ${accessToken}`
+        : 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpidHh4bGtoaXVidXphbmVndHpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQxMjU3MTIsImV4cCI6MjA1OTcwMTcxMn0.Pe8trGeGMCmJ61zEFbkaPJidKnmxVOWkLExPa-TNn9I';
+      
+      console.log('Using auth header:', authHeader.substring(0, 20) + '...');
+      
+      const response = await fetch(functionEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader
+        },
+        body: JSON.stringify({ 
+          trigger: 'manual',
+          timestamp: new Date().toISOString()
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Edge function returned status ${response.status}: ${errorText}`);
+        return { success: false, error: `Function error: ${response.status} - ${errorText}` };
       }
-    } else {
-      console.log('Notification webhooks already configured:', settingsData);
+      
+      const result = await response.json();
+      console.log('Function execution result:', result);
+      
+      return { success: true, result };
+    } catch (funcError) {
+      console.error('Error calling process-notification-queue function:', funcError);
+      return { success: false, error: funcError };
     }
-    
-    // Call the edge function to set up the cron job
-    const { data, error } = await supabase.functions.invoke('setup-notification-cron');
-    
-    if (error) {
-      console.error('Error setting up notification cron:', error);
-      toast.error('Failed to set up notification processing: ' + error.message);
-      return { success: false, error };
-    }
-    
-    console.log('Notification cron setup result:', data);
-    toast.success('Notification processing has been set up successfully');
-    return { success: true, data };
-  } catch (err: any) {
-    console.error('Exception setting up notification cron:', err);
-    toast.error('Failed to set up notification processing: ' + err.message);
-    return { success: false, error: err.message };
+  } catch (error) {
+    console.error('Error in processNotificationsNow:', error);
+    return { success: false, error };
   }
 }
 
 /**
- * Process any pending notifications in the queue immediately.
- * This can be useful after adding a new notification to ensure quick delivery.
+ * Set up automatic notification processing via cron
  */
-export async function processNotificationsNow() {
-  try {
-    console.log('Processing notifications immediately...');
-    // Call the edge function to process notifications
-    const { data, error } = await supabase.functions.invoke('process-notification-queue');
-    
-    if (error) {
-      console.error('Error processing notifications:', error);
-      return { success: false, error };
-    }
-    
-    console.log('Notification processing result:', data);
-    return { success: true, data };
-  } catch (err: any) {
-    console.error('Exception processing notifications:', err);
-    return { success: false, error: err.message };
-  }
+export function setupNotificationCron() {
+  // This will be implemented if needed, but for now we're using immediate processing
+  console.log('Notification cron setup is not active - using immediate processing');
 }
