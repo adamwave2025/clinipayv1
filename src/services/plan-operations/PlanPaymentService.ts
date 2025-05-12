@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { generatePaymentReference } from '@/utils/paymentUtils';
 
 /**
  * Service for handling payment-related operations within plans
@@ -103,7 +104,7 @@ export class PlanPaymentService {
       // First get the payment schedule entry
       const { data: scheduleEntry, error: fetchError } = await supabase
         .from('payment_schedule')
-        .select('id, plan_id, amount, payment_number, total_payments, patient_id, clinic_id, payment_link_id, due_date')
+        .select('id, plan_id, amount, payment_number, total_payments, patient_id, clinic_id, payment_link_id, due_date, payment_request_id')
         .eq('id', paymentId)
         .single();
       
@@ -111,6 +112,22 @@ export class PlanPaymentService {
         console.error('Error fetching payment schedule:', fetchError);
         throw fetchError;
       }
+      
+      // Get patient details
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .select('name, email, phone')
+        .eq('id', scheduleEntry.patient_id)
+        .single();
+        
+      if (patientError) {
+        console.error('Error fetching patient data:', patientError);
+        // Continue even if we can't fetch patient details - just log the error
+      }
+      
+      // Generate a payment reference
+      const paymentRef = generatePaymentReference();
+      console.log('Generated payment reference:', paymentRef);
       
       // Create a payment record for the manual payment
       const { data: payment, error: paymentError } = await supabase
@@ -123,7 +140,13 @@ export class PlanPaymentService {
           patient_id: scheduleEntry.patient_id,
           clinic_id: scheduleEntry.clinic_id,
           payment_link_id: scheduleEntry.payment_link_id,
-          paid_at: new Date().toISOString()
+          paid_at: new Date().toISOString(),
+          // Add missing fields
+          patient_name: patientData?.name || 'Unknown',
+          patient_email: patientData?.email || null,
+          patient_phone: patientData?.phone || null,
+          payment_ref: paymentRef,
+          net_amount: scheduleEntry.amount // Set net amount to the payment amount
         })
         .select()
         .single();
@@ -131,6 +154,25 @@ export class PlanPaymentService {
       if (paymentError) {
         console.error('Error creating payment record:', paymentError);
         throw paymentError;
+      }
+      
+      // Check if the payment has an associated payment_request and update it
+      if (scheduleEntry.payment_request_id) {
+        const { error: requestUpdateError } = await supabase
+          .from('payment_requests')
+          .update({
+            status: 'paid',
+            payment_id: payment.id,
+            paid_at: new Date().toISOString()
+          })
+          .eq('id', scheduleEntry.payment_request_id);
+          
+        if (requestUpdateError) {
+          console.error('Error updating payment request:', requestUpdateError);
+          // Continue even if we can't update the payment request - just log the error
+        } else {
+          console.log(`Updated payment request ${scheduleEntry.payment_request_id} to paid status`);
+        }
       }
       
       // Update the payment schedule status
@@ -190,7 +232,8 @@ export class PlanPaymentService {
             amount: scheduleEntry.amount,
             payment_number: scheduleEntry.payment_number,
             total_payments: scheduleEntry.total_payments,
-            due_date: scheduleEntry.due_date
+            due_date: scheduleEntry.due_date,
+            payment_ref: paymentRef
           }
         });
       }
