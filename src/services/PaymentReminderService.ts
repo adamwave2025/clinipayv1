@@ -1,9 +1,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { addToNotificationQueue } from '@/utils/notification-queue';
+import { addToNotificationQueue, checkNotificationExists } from '@/utils/notification-queue';
 import { StandardNotificationPayload } from '@/types/notification';
 import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
+import { verifyWebhookConfiguration } from '@/utils/webhook-caller';
 
 /**
  * Sends a payment reminder for a specific installment
@@ -11,6 +12,16 @@ import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
  */
 export const sendPaymentReminder = async (installmentId: string): Promise<{ success: boolean; error?: any }> => {
   try {
+    console.log('🔔 Sending payment reminder for installment:', installmentId);
+    
+    // First verify webhook configuration
+    console.log('🔍 Verifying webhook configuration before proceeding...');
+    const webhookConfig = await verifyWebhookConfiguration();
+    if (!webhookConfig.patient) {
+      console.warn('⚠️ Patient webhook is not configured! The reminder might not be delivered properly.');
+      toast.warning('Notification system is not fully configured. Contact support if reminders are not being delivered.');
+    }
+    
     // Get installment details with expanded data
     const { data: installment, error: installmentError } = await supabase
       .from('payment_schedule')
@@ -42,7 +53,7 @@ export const sendPaymentReminder = async (installmentId: string): Promise<{ succ
       .single();
     
     if (installmentError) {
-      console.error('Error fetching installment details:', installmentError);
+      console.error('❌ Error fetching installment details:', installmentError);
       toast.error('Failed to send payment reminder');
       return { success: false, error: installmentError };
     }
@@ -53,6 +64,14 @@ export const sendPaymentReminder = async (installmentId: string): Promise<{ succ
       return { success: false, error: 'No payment request for this installment' };
     }
 
+    // Check if a reminder notification has already been sent for this payment request
+    const notificationExists = await checkNotificationExists('payment_reminder', 'patient', installment.payment_request_id);
+    if (notificationExists) {
+      console.warn(`⚠️ A reminder notification already exists for payment request ${installment.payment_request_id}, skipping`);
+      toast.info('A reminder has already been sent for this payment');
+      return { success: true };
+    }
+
     // Get clinic details for the notification
     const { data: clinicData, error: clinicError } = await supabase
       .from('clinics')
@@ -61,7 +80,7 @@ export const sendPaymentReminder = async (installmentId: string): Promise<{ succ
       .single();
 
     if (clinicError) {
-      console.error('Error fetching clinic data:', clinicError);
+      console.error('❌ Error fetching clinic data:', clinicError);
       toast.error('Failed to send payment reminder: Could not get clinic details');
       return { success: false, error: clinicError };
     }
@@ -111,9 +130,11 @@ export const sendPaymentReminder = async (installmentId: string): Promise<{ succ
       }
     };
     
+    console.log('⚠️ CRITICAL: Payment reminder notification payload prepared:', JSON.stringify(notificationPayload, null, 2));
+    
     // Add to notification queue with immediate processing
     try {
-      const { success, error, webhook_success, webhook_error } = await addToNotificationQueue(
+      const { success, error, notification_id, webhook_success, webhook_error } = await addToNotificationQueue(
         'payment_reminder',
         notificationPayload,
         'patient',
@@ -122,14 +143,16 @@ export const sendPaymentReminder = async (installmentId: string): Promise<{ succ
       );
 
       if (!success) {
-        console.error('Failed to queue payment reminder:', error);
+        console.error('❌ Failed to queue payment reminder:', error);
         toast.error('Failed to send payment reminder');
         return { success: false, error };
       } else if (!webhook_success) {
-        console.error('Failed to deliver reminder via webhook:', webhook_error);
+        console.error('⚠️ Failed to deliver reminder via webhook:', webhook_error);
         toast.warning('Payment reminder was queued but delivery might be delayed');
         return { success: true, error: webhook_error };
       }
+      
+      console.log('✅ Successfully added payment reminder to notification queue with ID:', notification_id);
       
       // Add activity record for the reminder
       await supabase
@@ -151,13 +174,13 @@ export const sendPaymentReminder = async (installmentId: string): Promise<{ succ
       toast.success('Payment reminder sent successfully');
       return { success: true };
     } catch (error) {
-      console.error('Error sending payment reminder:', error);
+      console.error('❌ Error sending payment reminder:', error);
       toast.error('Failed to send payment reminder');
       return { success: false, error };
     }
   } catch (error) {
-    console.error('Error in sendPaymentReminder:', error);
+    console.error('❌ Error in sendPaymentReminder:', error);
     toast.error('Failed to send payment reminder');
     return { success: false, error };
   }
-};
+}

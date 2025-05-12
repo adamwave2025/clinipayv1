@@ -5,7 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
 import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
-import { addToNotificationQueue } from '@/utils/notification-queue';
+import { addToNotificationQueue, checkNotificationExists } from '@/utils/notification-queue';
+import { verifyWebhookConfiguration } from '@/utils/webhook-caller';
 
 interface PaymentLinkSenderProps {
   formData: {
@@ -26,9 +27,17 @@ export function usePaymentLinkSender() {
 
   const sendPaymentLink = async ({ formData, paymentLinks, patientId }: PaymentLinkSenderProps) => {
     setIsLoading(true);
-    console.log('Starting payment link creation process...');
+    console.log('🚀 Starting payment link creation process...');
     
     try {
+      // First verify webhook configuration
+      console.log('🔍 Verifying webhook configuration before proceeding...');
+      const webhookConfig = await verifyWebhookConfiguration();
+      if (!webhookConfig.patient) {
+        console.warn('⚠️ Patient webhook is not configured! Notifications might not be delivered properly.');
+        toast.warning('Notification system is not fully configured. Contact support if notifications are not being delivered.');
+      }
+      
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('clinic_id')
@@ -36,16 +45,16 @@ export function usePaymentLinkSender() {
         .single();
 
       if (userError) {
-        console.error('Error fetching user data:', userError);
+        console.error('❌ Error fetching user data:', userError);
         throw userError;
       }
       
       if (!userData.clinic_id) {
-        console.error('No clinic_id found for user:', user?.id);
+        console.error('❌ No clinic_id found for user:', user?.id);
         throw new Error('No clinic associated with this user');
       }
       
-      console.log('Found clinic_id:', userData.clinic_id);
+      console.log('✓ Found clinic_id:', userData.clinic_id);
 
       const { data: clinicData, error: clinicError } = await supabase
         .from('clinics')
@@ -54,11 +63,11 @@ export function usePaymentLinkSender() {
         .single();
 
       if (clinicError) {
-        console.error('Error fetching clinic data:', clinicError);
+        console.error('❌ Error fetching clinic data:', clinicError);
         throw clinicError;
       }
       
-      console.log('Retrieved clinic data successfully');
+      console.log('✓ Retrieved clinic data successfully');
 
       let amount = 0;
       let paymentLinkId = null;
@@ -72,18 +81,18 @@ export function usePaymentLinkSender() {
           paymentLinkId = selectedPaymentLink.id;
           paymentTitle = selectedPaymentLink.title;
           isPaymentPlan = selectedPaymentLink.paymentPlan || false;
-          console.log('Using payment link:', { 
+          console.log('✓ Using payment link:', { 
             id: paymentLinkId, 
             title: paymentTitle, 
             amount,
             isPaymentPlan 
           });
         } else {
-          console.error('Selected payment link not found in available links');
+          console.error('❌ Selected payment link not found in available links');
         }
       } else if (formData.customAmount) {
         amount = Number(formData.customAmount);
-        console.log('Using custom amount:', amount);
+        console.log('✓ Using custom amount:', amount);
       }
 
       // Use provided patientId or find/create one
@@ -101,7 +110,7 @@ export function usePaymentLinkSender() {
             
           if (existingPatient) {
             finalPatientId = existingPatient.id;
-            console.log('Found existing patient:', finalPatientId);
+            console.log('✓ Found existing patient:', finalPatientId);
           } else {
             // Create a new patient if not found
             const { data: newPatient, error: patientError } = await supabase
@@ -116,19 +125,19 @@ export function usePaymentLinkSender() {
               .single();
               
             if (patientError) {
-              console.error('Error creating patient:', patientError);
+              console.error('❌ Error creating patient:', patientError);
               // Continue without patient ID
             } else if (newPatient) {
               finalPatientId = newPatient.id;
-              console.log('Created new patient:', finalPatientId);
+              console.log('✓ Created new patient:', finalPatientId);
             }
           }
         }
       } else {
-        console.log('Using provided patient ID:', finalPatientId);
+        console.log('✓ Using provided patient ID:', finalPatientId);
       }
 
-      console.log('Creating payment request with:', {
+      console.log('📝 Creating payment request with:', {
         clinicId: userData.clinic_id,
         patientId: finalPatientId,
         paymentLinkId,
@@ -153,17 +162,25 @@ export function usePaymentLinkSender() {
         .select();
 
       if (error) {
-        console.error('Error creating payment request:', error);
+        console.error('❌ Error creating payment request:', error);
         throw error;
       }
       
       if (!data || data.length === 0) {
-        console.error('No data returned from payment request creation');
+        console.error('❌ No data returned from payment request creation');
         throw new Error('Failed to create payment request');
       }
 
       const paymentRequest = data[0];
-      console.log('⚠️ CRITICAL: Payment request created successfully:', paymentRequest.id);
+      console.log('✅ Payment request created successfully:', paymentRequest.id);
+      
+      // Check if a notification already exists for this reference
+      const notificationExists = await checkNotificationExists('payment_request', 'patient', paymentRequest.id);
+      if (notificationExists) {
+        console.warn(`⚠️ A notification already exists for payment request ${paymentRequest.id}, skipping notification creation`);
+        toast.success('Payment link sent successfully');
+        return { success: true };
+      }
       
       const notificationMethod: NotificationMethod = {
         email: !!formData.patientEmail,
@@ -173,7 +190,7 @@ export function usePaymentLinkSender() {
       const formattedAddress = ClinicFormatter.formatAddress(clinicData);
       
       if (notificationMethod.email || notificationMethod.sms) {
-        console.log('⚠️ CRITICAL: Creating notification for payment request');
+        console.log('⚠️ CRITICAL: Creating notification for payment request', paymentRequest.id);
         
         const notificationPayload: StandardNotificationPayload = {
           notification_type: "payment_request",
@@ -209,7 +226,7 @@ export function usePaymentLinkSender() {
         try {
           console.log('⚠️ CRITICAL: Adding notification to queue and calling webhook directly...');
           
-          const { success, error, webhook_success, webhook_error } = await addToNotificationQueue(
+          const { success, error, webhook_success, webhook_error, notification_id } = await addToNotificationQueue(
             'payment_request',
             notificationPayload,
             'patient',
@@ -224,21 +241,21 @@ export function usePaymentLinkSender() {
             console.error("⚠️ CRITICAL ERROR: Failed to deliver notification via webhook:", webhook_error);
             toast.warning("Payment link was sent, but notification delivery might be delayed");
           } else {
-            console.log("⚠️ CRITICAL SUCCESS: Payment request notification sent successfully");
+            console.log("⚠️ CRITICAL SUCCESS: Payment request notification sent successfully with ID:", notification_id);
           }
         } catch (notifyErr) {
           console.error("⚠️ CRITICAL ERROR: Exception during notification delivery:", notifyErr);
           toast.warning("Payment link created, but there was an issue sending notifications");
         }
       } else {
-        console.warn('No notification methods available for this patient');
+        console.warn('⚠️ No notification methods available for this patient');
       }
       
       toast.success('Payment link sent successfully');
       
       return { success: true };
     } catch (error: any) {
-      console.error('Error sending payment link:', error);
+      console.error('❌ Error sending payment link:', error);
       toast.error('Failed to send payment link: ' + error.message);
       return { success: false, error: error.message };
     } finally {

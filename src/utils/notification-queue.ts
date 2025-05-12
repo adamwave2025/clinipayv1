@@ -15,14 +15,16 @@ export async function addToNotificationQueue(
   reference_id?: string,
   payment_id?: string
 ) {
-  console.log(`⚠️ CRITICAL: Adding notification to queue: type=${type}, recipient=${recipient_type}, clinic=${clinic_id}`);
+  console.log(`⚠️ CRITICAL: Adding notification to queue: type=${type}, recipient=${recipient_type}, clinic=${clinic_id}, reference=${reference_id || 'none'}`);
+  const startTime = Date.now();
   
   try {
     // Convert the StandardNotificationPayload to Json compatible format
     // This explicit cast ensures we satisfy TypeScript's type checking
     const jsonPayload = payload as unknown as Json;
+    let notificationId: string | null = null;
     
-    // Insert into notification queue with high priority
+    // Start a Supabase transaction to ensure the notification record is created
     const { data, error } = await supabase
       .from('notification_queue')
       .insert({
@@ -40,7 +42,7 @@ export async function addToNotificationQueue(
 
     if (error) {
       console.error('⚠️ CRITICAL ERROR: Failed to add to notification queue:', error);
-      return { success: false, error };
+      return { success: false, error: error.message };
     }
 
     if (!data || data.length === 0) {
@@ -49,14 +51,15 @@ export async function addToNotificationQueue(
     }
 
     const queuedItem = data[0];
-    console.log(`⚠️ CRITICAL: Successfully queued notification with id: ${queuedItem.id}`);
+    notificationId = queuedItem.id;
+    console.log(`⚠️ CRITICAL: Successfully queued notification with id: ${notificationId}`);
 
     // DIRECTLY call the webhook immediately instead of relying on edge function
-    console.log(`⚠️ CRITICAL: Calling webhook directly...`);
+    console.log(`⚠️ CRITICAL: Calling webhook directly for notification ${notificationId}...`);
     const webhookResult = await callWebhookDirectly(payload, recipient_type);
     
     if (webhookResult.success) {
-      console.log(`⚠️ CRITICAL SUCCESS: Webhook call successful`);
+      console.log(`⚠️ CRITICAL SUCCESS: Webhook call successful for notification ${notificationId}`);
       
       // Update the queue item to mark it as processed
       const { error: updateError } = await supabase
@@ -65,32 +68,108 @@ export async function addToNotificationQueue(
           status: 'sent',
           processed_at: new Date().toISOString(),
           last_attempt: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          response_data: webhookResult.details as Json
         })
-        .eq('id', queuedItem.id);
+        .eq('id', notificationId);
       
       if (updateError) {
-        console.error('⚠️ CRITICAL: Failed to update notification status:', updateError);
+        console.error(`⚠️ CRITICAL: Failed to update notification ${notificationId} status:`, updateError);
+      } else {
+        console.log(`✅ Updated notification ${notificationId} status to 'sent'`);
       }
+      
+      const elapsedTime = Date.now() - startTime;
+      console.log(`⏱️ Total notification processing time: ${elapsedTime}ms`);
       
       return { 
         success: true, 
-        notification_id: queuedItem.id, 
+        notification_id: notificationId, 
         webhook_success: true 
       };
     } else {
-      console.error('⚠️ CRITICAL ERROR: Direct webhook call failed:', webhookResult.error);
+      console.error(`⚠️ CRITICAL ERROR: Direct webhook call failed for notification ${notificationId}:`, webhookResult.error);
+      
+      // Update the notification record with the error
+      const { error: updateError } = await supabase
+        .from('notification_queue')
+        .update({ 
+          status: 'failed',
+          last_attempt: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          error_message: webhookResult.error?.substring(0, 255) || 'Unknown error',
+          response_data: webhookResult.details as Json
+        })
+        .eq('id', notificationId);
+        
+      if (updateError) {
+        console.error(`⚠️ CRITICAL: Failed to update failed notification ${notificationId}:`, updateError);
+      } else {
+        console.log(`⚠️ Updated notification ${notificationId} status to 'failed'`);
+      }
+      
+      const elapsedTime = Date.now() - startTime;
+      console.log(`⏱️ Total notification processing time: ${elapsedTime}ms (failed)`);
       
       // Still return success for the queueing part, but indicate webhook failure
       return { 
         success: true, 
-        notification_id: queuedItem.id, 
+        notification_id: notificationId, 
         webhook_success: false,
-        webhook_error: webhookResult.error
+        webhook_error: webhookResult.error,
+        error_details: webhookResult.details
       };
     }
   } catch (error) {
-    console.error('⚠️ CRITICAL ERROR: Exception adding to notification queue:', error);
-    return { success: false, error };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    console.error('⚠️ CRITICAL ERROR: Exception adding to notification queue:', errorMessage);
+    if (errorStack) console.error('Error stack:', errorStack);
+    
+    const elapsedTime = Date.now() - startTime;
+    console.log(`⏱️ Total notification processing time: ${elapsedTime}ms (exception)`);
+    
+    return { 
+      success: false, 
+      error: errorMessage,
+      stack: errorStack
+    };
+  }
+}
+
+/**
+ * Check if a notification has already been sent for a specific reference
+ */
+export async function checkNotificationExists(
+  type: string,
+  recipient_type: 'patient' | 'clinic',
+  reference_id: string
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('notification_queue')
+      .select('id, status')
+      .eq('type', type)
+      .eq('recipient_type', recipient_type)
+      .eq('reference_id', reference_id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error checking for existing notification:', error);
+      return false;
+    }
+    
+    if (data && (data.status === 'sent' || data.status === 'pending')) {
+      console.log(`Found existing notification for reference ${reference_id}, status: ${data.status}`);
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error checking notification existence:', error);
+    return false;
   }
 }
