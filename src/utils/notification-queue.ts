@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { StandardNotificationPayload } from '@/types/notification';
+import { Json } from '@/integrations/supabase/types';
 
 /**
  * Add an item to the notification queue for processing
@@ -16,17 +17,21 @@ export async function addToNotificationQueue(
   console.log(`Adding notification to queue: type=${type}, recipient=${recipient_type}, clinic=${clinic_id}`);
   
   try {
+    // Convert the StandardNotificationPayload to Json compatible format
+    // This explicit cast ensures we satisfy TypeScript's type checking
+    const jsonPayload = payload as unknown as Json;
+    
     const { data, error } = await supabase
       .from('notification_queue')
       .insert({
         type,
-        payload,
+        payload: jsonPayload,
         recipient_type,
         clinic_id,
         reference_id,
-        payment_id,
         status: 'pending',
-        retry_count: 0
+        retry_count: 0,
+        payment_id
       })
       .select();
 
