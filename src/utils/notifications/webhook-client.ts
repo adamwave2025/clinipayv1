@@ -1,16 +1,18 @@
 
 import { StandardNotificationPayload } from '@/types/notification';
 import { supabase } from '@/integrations/supabase/client';
-import { PrimitiveJsonObject } from './types';
+import { RecipientType, WebhookResult, WebhookErrorDetails } from './types';
 import { Json } from '@/integrations/supabase/types';
+import { safeString, createErrorDetails } from './json-utils';
 
 /**
  * Directly call webhook with notification payload
+ * Returns simplified objects with primitive values to avoid type recursion
  */
 export async function callWebhookDirectly(
   payload: StandardNotificationPayload,
-  recipient_type: 'patient' | 'clinic'
-): Promise<{ success: boolean; error?: string; details?: Record<string, any> }> {
+  recipient_type: RecipientType
+): Promise<WebhookResult> {
   try {
     console.log('⚠️ CRITICAL: Calling webhook directly with payload:', JSON.stringify(payload, null, 2));
     
@@ -94,23 +96,28 @@ export async function callWebhookDirectly(
     // Check response
     if (!response.ok) {
       const errorText = await response.text();
-      const errorDetails = {
+      const errorResponse = safeString(errorText);
+      
+      const errorDetails: WebhookErrorDetails = {
         status: response.status,
-        statusText: response.statusText,
-        responseBody: errorText.substring(0, 255), // Limit string length
-        webhook: webhookUrl.substring(0, 255), // Limit string length
+        statusText: safeString(response.statusText),
+        responseBody: errorResponse,
+        webhook: safeString(webhookUrl),
         recipientType: recipient_type
       };
+      
       console.error(`⚠️ CRITICAL ERROR: Webhook call failed:`, JSON.stringify(errorDetails, null, 2));
+      
       return { 
         success: false, 
-        error: `Webhook responded with ${response.status}: ${errorText.substring(0, 255)}`, // Limit string length
-        details: errorDetails 
+        error: `Webhook responded with ${response.status}: ${errorResponse}`,
+        status_code: response.status,
+        response_body: errorResponse
       };
     }
 
     // Try to get response body for additional logging
-    let responseBody;
+    let responseBody = '';
     try {
       responseBody = await response.text();
       console.log(`✅ Webhook response body: ${responseBody}`);
@@ -119,36 +126,30 @@ export async function callWebhookDirectly(
     }
 
     console.log(`✅ Webhook call succeeded with status: ${response.status}`);
+    
     return { 
       success: true, 
-      details: { 
-        status: response.status, 
-        responseBody: responseBody ? responseBody.substring(0, 255) : undefined // Limit string length
-      } 
+      status_code: response.status,
+      response_body: safeString(responseBody)
     };
   } catch (error) {
-    // Enhance error reporting but ensure we only use simple types
-    const errorMessage = error instanceof Error ? error.message.substring(0, 255) : 'Unknown error calling webhook';
-    const errorStack = error instanceof Error ? error.stack?.substring(0, 255) : undefined;
+    const errorMessage = error instanceof Error ? 
+      safeString(error.message) : 
+      'Unknown error calling webhook';
     
     console.error('⚠️ CRITICAL ERROR: Exception in webhook call:', errorMessage);
-    if (errorStack) console.error('Error stack:', errorStack);
     
     return { 
       success: false, 
       error: errorMessage,
-      details: {
-        stack: errorStack,
-        recipientType: recipient_type,
-        payloadType: payload.notification_type
-      }
+      status_code: 500
     };
   }
 }
 
 /**
  * Check if webhook URLs are properly configured in system_settings
- * Returns a status object indicating which webhooks are configured
+ * Returns a status object with primitive values only
  */
 export async function verifyWebhookConfiguration(): Promise<{
   patient: boolean;

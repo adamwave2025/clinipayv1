@@ -1,10 +1,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { StandardNotificationPayload } from '@/types/notification';
-import { NotificationResponse, NotificationStatus, PrimitiveJsonObject, RecipientType } from './types';
+import { NotificationResponse, NotificationStatus, RecipientType } from './types';
 import { Json } from '@/integrations/supabase/types';
 import { callWebhookDirectly } from './webhook-client';
-import { createPrimitivePayload } from './json-utils';
+import { createPrimitivePayload, createErrorDetails, safeString } from './json-utils';
 
 /**
  * Add an item to the notification queue for processing and immediately call webhook
@@ -21,21 +21,20 @@ export async function addToNotificationQueue(
   const startTime = Date.now();
   
   try {
-    // Create a safe copy of the payload to avoid circular references
-    const primitivePayload: PrimitiveJsonObject = createPrimitivePayload(payload);
-    
+    // Create a safe copy of the payload without circular references
+    const primitivePayload = createPrimitivePayload(payload);
     let notificationId: string | null = null;
     
-    // Start a Supabase transaction to ensure the notification record is created
+    // Insert into notification queue 
     const { data, error } = await supabase
       .from('notification_queue')
       .insert({
         type,
-        payload: primitivePayload as Json, // Safe cast with our primitive structure
+        payload: primitivePayload as Json, 
         recipient_type,
         clinic_id,
         reference_id,
-        status: 'pending',
+        status: 'pending' as NotificationStatus,
         retry_count: 0,
         payment_id,
         priority: 'high'
@@ -56,29 +55,24 @@ export async function addToNotificationQueue(
     notificationId = queuedItem.id;
     console.log(`⚠️ CRITICAL: Successfully queued notification with id: ${notificationId}`);
 
-    // DIRECTLY call the webhook immediately instead of relying on edge function
+    // DIRECTLY call the webhook immediately
     console.log(`⚠️ CRITICAL: Calling webhook directly for notification ${notificationId}...`);
     const webhookResult = await callWebhookDirectly(payload, recipient_type);
     
     if (webhookResult.success) {
       console.log(`⚠️ CRITICAL SUCCESS: Webhook call successful for notification ${notificationId}`);
       
-      // Create a simple response details object with only primitive values
-      const responseDetails: PrimitiveJsonObject = {};
-      if (webhookResult.details) {
-        if (typeof webhookResult.details.status === 'number') {
-          responseDetails.status = webhookResult.details.status;
-        }
-        if (typeof webhookResult.details.responseBody === 'string') {
-          responseDetails.responseBody = webhookResult.details.responseBody.substring(0, 255);
-        }
-      }
+      // Create a simple response details object with primitive values
+      const responseDetails: Record<string, FlatJsonValue> = {
+        status: webhookResult.status_code || 200,
+        responseBody: webhookResult.response_body || ''
+      };
       
       // Update the queue item to mark it as processed
       const { error: updateError } = await supabase
         .from('notification_queue')
         .update({ 
-          status: 'sent',
+          status: 'sent' as NotificationStatus,
           processed_at: new Date().toISOString(),
           last_attempt: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -99,52 +93,29 @@ export async function addToNotificationQueue(
       return { 
         success: true, 
         notification_id: notificationId, 
-        webhook_success: true 
+        webhook_success: true,
+        status_code: webhookResult.status_code
       };
     } else {
       console.error(`⚠️ CRITICAL ERROR: Direct webhook call failed for notification ${notificationId}:`, webhookResult.error);
       
-      // Create a simplified error details object with only primitive values
-      const errorDetails: Record<string, string | number> = {
-        status: 0,
-        statusText: '',
-        responseBody: '',
-        webhook: '',
-        recipientType: ''
+      // Create a record with only primitive values for error details
+      const errorDetails: Record<string, FlatJsonValue> = {
+        status: webhookResult.status_code || 0,
+        error: safeString(webhookResult.error),
+        responseBody: safeString(webhookResult.response_body),
+        recipientType: recipient_type
       };
-      
-      // Safely extract error details
-      if (webhookResult.details) {
-        if (webhookResult.details.status !== undefined) {
-          errorDetails.status = Number(webhookResult.details.status) || 0;
-        }
-        
-        if (typeof webhookResult.details.statusText === 'string') {
-          errorDetails.statusText = webhookResult.details.statusText.substring(0, 255);
-        }
-        
-        if (typeof webhookResult.details.responseBody === 'string') {
-          errorDetails.responseBody = webhookResult.details.responseBody.substring(0, 255);
-        }
-        
-        if (typeof webhookResult.details.webhook === 'string') {
-          errorDetails.webhook = webhookResult.details.webhook.substring(0, 255);
-        }
-        
-        if (typeof webhookResult.details.recipientType === 'string') {
-          errorDetails.recipientType = webhookResult.details.recipientType;
-        }
-      }
       
       // Update the notification record with the error
       const { error: updateError } = await supabase
         .from('notification_queue')
         .update({ 
-          status: 'failed',
+          status: 'failed' as NotificationStatus,
           last_attempt: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          error_message: webhookResult.error ? webhookResult.error.substring(0, 255) : 'Unknown error',
-          response_data: errorDetails as unknown as Json
+          error_message: safeString(webhookResult.error),
+          response_data: errorDetails as Json
         })
         .eq('id', notificationId);
         
@@ -157,25 +128,24 @@ export async function addToNotificationQueue(
       const elapsedTime = Date.now() - startTime;
       console.log(`⏱️ Total notification processing time: ${elapsedTime}ms (failed)`);
       
-      // FIXED: Return a completely flat structure with only primitive values
       return { 
         success: true, 
         notification_id: notificationId, 
         webhook_success: false,
-        webhook_error: webhookResult.error ? webhookResult.error.substring(0, 255) : 'Unknown error'
+        webhook_error: safeString(webhookResult.error),
+        status_code: webhookResult.status_code
       };
     }
   } catch (error) {
-    // FIXED: Convert the error to a simple string instead of using the error object directly
-    // This fixes the type recursion by ensuring we only use primitive types
-    const errorMessage = error instanceof Error ? error.message.substring(0, 255) : 'Unknown error';
+    // Convert the error to a simple string
+    const errorMessage = error instanceof Error ? safeString(error.message) : 'Unknown error';
     
     console.error('⚠️ CRITICAL ERROR: Exception adding to notification queue:', errorMessage);
     
     const elapsedTime = Date.now() - startTime;
     console.log(`⏱️ Total notification processing time: ${elapsedTime}ms (exception)`);
     
-    // FIXED: Return a completely flat structure without nested objects or complex types
+    // Return a simple flat structure
     return { 
       success: false, 
       error_message: errorMessage

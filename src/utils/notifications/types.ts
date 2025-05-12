@@ -2,13 +2,6 @@
 import { Json } from '@/integrations/supabase/types';
 
 /**
- * Type definition for primitive objects that can safely be stored in the database
- */
-export interface PrimitiveJsonObject {
-  [key: string]: string | number | boolean | null | PrimitiveJsonObject | (string | number | boolean | null)[];
-}
-
-/**
  * Notification status types
  */
 export type NotificationStatus = 'pending' | 'sent' | 'failed';
@@ -24,8 +17,14 @@ export type NotificationPriority = 'high' | 'normal' | 'low';
 export type RecipientType = 'patient' | 'clinic';
 
 /**
- * Common response type for notification operations
- * Simplified to use only flat primitive properties to avoid recursive type references
+ * Simple type for flat property storage
+ * Non-recursive, flat structure for database storage
+ */
+export type FlatJsonValue = string | number | boolean | null;
+
+/**
+ * Response type for notification operations with only primitive values
+ * No recursive types allowed to prevent infinite type instantiation
  */
 export interface NotificationResponse {
   success: boolean;
@@ -33,6 +32,27 @@ export interface NotificationResponse {
   error_message?: string;
   webhook_success?: boolean;
   webhook_error?: string;
-  // Allow additional flat properties but don't use nested objects
-  [key: string]: string | number | boolean | undefined;
+  status_code?: number;
+  response_body?: string;
+}
+
+/**
+ * Structure for WebhookResult to ensure consistent return types
+ */
+export interface WebhookResult {
+  success: boolean;
+  error?: string;
+  status_code?: number;
+  response_body?: string;
+}
+
+/**
+ * Type for webhook error details with primitive values only
+ */
+export interface WebhookErrorDetails {
+  status: number;
+  statusText: string;
+  responseBody: string;
+  webhook: string;
+  recipientType: string;
 }
