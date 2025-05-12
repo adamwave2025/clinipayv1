@@ -38,6 +38,9 @@ export const usePlanOperations = (
           ...selectedPlan,
           status: status || 'cancelled'
         });
+        
+        // Refresh the plan details to update UI
+        await refreshPlanDetails();
       }
     } catch (error) {
       console.error('Error in handleCancelPlan:', error);
@@ -68,6 +71,9 @@ export const usePlanOperations = (
           ...selectedPlan,
           status: status || 'paused'
         });
+        
+        // Refresh the plan details to update UI
+        await refreshPlanDetails();
       }
     } catch (error) {
       console.error('Error in handlePausePlan:', error);

@@ -1,8 +1,11 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { toast } from 'sonner';
+import { PlanRescheduleService } from './plan-operations/PlanRescheduleService';
+import { PlanCancelService } from './plan-operations/PlanCancelService';
+import { PlanPauseService } from './plan-operations/PlanPauseService';
+import { format } from 'date-fns';
 
 /**
  * Service for performing operations on payment plans
@@ -18,22 +21,23 @@ export class PlanOperationsService {
         return false;
       }
       
-      // Update the plan status to cancelled
-      const { error } = await supabase
-        .from('plans')
-        .update({ status: 'cancelled' })
-        .eq('id', plan.id);
+      // Delegate to PlanCancelService for full implementation
+      const success = await PlanCancelService.cancelPlan(plan);
       
-      if (error) {
-        console.error('Error cancelling plan:', error);
-        throw error;
+      if (!success) {
+        console.error('Error in PlanCancelService.cancelPlan');
+        return false;
       }
       
-      // Log activity
-      await this.logPlanActivity(plan.id, 'plan_cancelled', { 
-        planId: plan.id,
-        planName: plan.title || plan.planName 
-      });
+      // Log activity if not already logged by the service
+      try {
+        await this.logPlanActivity(plan.id, 'plan_cancelled', { 
+          planId: plan.id,
+          planName: plan.title || plan.planName 
+        });
+      } catch (err) {
+        console.warn('Could not log plan activity for cancellation:', err);
+      }
       
       return true;
     } catch (err) {
@@ -52,22 +56,23 @@ export class PlanOperationsService {
         return false;
       }
       
-      // Update the plan status to paused
-      const { error } = await supabase
-        .from('plans')
-        .update({ status: 'paused' })
-        .eq('id', plan.id);
+      // Delegate to PlanPauseService for full implementation
+      const success = await PlanPauseService.pausePlan(plan);
       
-      if (error) {
-        console.error('Error pausing plan:', error);
-        throw error;
+      if (!success) {
+        console.error('Error in PlanPauseService.pausePlan');
+        return false;
       }
       
-      // Log activity
-      await this.logPlanActivity(plan.id, 'plan_paused', { 
-        planId: plan.id,
-        planName: plan.title || plan.planName 
-      });
+      // Log activity if not already logged by the service
+      try {
+        await this.logPlanActivity(plan.id, 'plan_paused', { 
+          planId: plan.id,
+          planName: plan.title || plan.planName 
+        });
+      } catch (err) {
+        console.warn('Could not log plan activity for pause operation:', err);
+      }
       
       return true;
     } catch (err) {
@@ -86,30 +91,25 @@ export class PlanOperationsService {
         return false;
       }
       
-      // Format date for database
-      const formattedDate = resumeDate.toISOString();
+      // Format date properly for DB using date-fns
+      const formattedDate = format(resumeDate, 'yyyy-MM-dd');
+      console.log('Resuming plan with date:', formattedDate);
       
-      // Update the plan status to active and set next due date
-      const { error } = await supabase
-        .from('plans')
-        .update({ 
-          status: 'active',
-          next_due_date: formattedDate
-        })
-        .eq('id', plan.id);
+      // Call the Supabase function to handle the complex resume logic
+      const { data, error } = await supabase
+        .rpc('complete_resume_plan', {
+          p_plan_id: plan.id,
+          p_resume_date: formattedDate
+        });
       
       if (error) {
         console.error('Error resuming plan:', error);
-        throw error;
+        return false;
       }
       
-      // Log activity
-      await this.logPlanActivity(plan.id, 'plan_resumed', { 
-        planId: plan.id,
-        planName: plan.title || plan.planName,
-        resumeDate: formattedDate
-      });
+      console.log('Resume plan result:', data);
       
+      // Already logged in the database function
       return true;
     } catch (err) {
       console.error('Error in resumePlan:', err);
@@ -127,29 +127,13 @@ export class PlanOperationsService {
         return false;
       }
       
-      // Format date for database
-      const formattedDate = newStartDate.toISOString();
+      // Delegate to PlanRescheduleService for full implementation
+      const success = await PlanRescheduleService.reschedulePlan(plan, newStartDate);
       
-      // Update the plan with new start date
-      const { error } = await supabase
-        .from('plans')
-        .update({ 
-          start_date: formattedDate,
-          next_due_date: formattedDate
-        })
-        .eq('id', plan.id);
-      
-      if (error) {
-        console.error('Error rescheduling plan:', error);
-        throw error;
+      if (!success) {
+        console.error('Error in PlanRescheduleService.reschedulePlan');
+        return false;
       }
-      
-      // Log activity
-      await this.logPlanActivity(plan.id, 'plan_rescheduled', { 
-        planId: plan.id,
-        planName: plan.title || plan.planName,
-        newStartDate: formattedDate
-      });
       
       return true;
     } catch (err) {
@@ -168,8 +152,9 @@ export class PlanOperationsService {
         return { success: false, error: 'Invalid payment ID' };
       }
       
-      // Format date for database
-      const formattedDate = newDate.toISOString();
+      // Format date properly for database
+      const formattedDate = format(newDate, 'yyyy-MM-dd');
+      console.log('Rescheduling payment to formatted date:', formattedDate);
       
       // Get the payment schedule item to retrieve plan ID for logging
       const { data: paymentData, error: fetchError } = await supabase
@@ -187,7 +172,7 @@ export class PlanOperationsService {
       const { error } = await supabase
         .from('payment_schedule')
         .update({ 
-          due_date: formattedDate.split('T')[0], // Store only the date part
+          due_date: formattedDate, // Store only the date part
           updated_at: new Date().toISOString()
         })
         .eq('id', paymentId);
@@ -224,20 +209,20 @@ export class PlanOperationsService {
       
       // Get current date
       const now = new Date();
-      const paidDate = now.toISOString();
+      const paidDate = format(now, 'yyyy-MM-dd');
       
       // Update the payment schedule item as paid
       const { error } = await supabase
         .from('payment_schedule')
         .update({ 
           status: 'paid',
-          paid_date: paidDate
+          paid_date: paidDate // This field may not exist in your schema - check!
         })
         .eq('id', installmentId);
       
       if (error) {
         console.error('Error marking payment as paid:', error);
-        throw error;
+        return false;
       }
       
       // Log activity if we have a plan ID

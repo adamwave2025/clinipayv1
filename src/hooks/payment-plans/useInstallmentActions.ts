@@ -147,6 +147,7 @@ export const useInstallmentActions = (
     setIsProcessing(true);
     
     try {
+      console.log("Rescheduling payment to:", newDate);
       const result = await PlanOperationsService.reschedulePayment(
         selectedInstallment.id,
         newDate
