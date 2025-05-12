@@ -61,17 +61,24 @@ export const ManagePlansDialogs = () => {
     paymentDialogData
   } = useManagePlansContext();
 
-  // Log dialog state for debugging
+  // Log dialog state and payment data for debugging
   useEffect(() => {
     if (showTakePaymentDialog) {
-      console.log("ManagePlansDialogs: Dialog opened, payment data:", {
-        paymentId: paymentDialogData?.paymentId || 'NOT SET',
+      console.log("ManagePlansDialogs: Take Payment Dialog opened, checking payment data:", {
         dialogOpen: showTakePaymentDialog,
         hasPaymentDialogData: Boolean(paymentDialogData),
-        hasInstallment: Boolean(selectedInstallment)
+        paymentId: paymentDialogData?.paymentId || 'NOT SET',
+        validPaymentId: Boolean(paymentDialogData?.paymentId),
+        amount: paymentDialogData?.amount,
+        patientName: paymentDialogData?.patientName
       });
+      
+      if (!paymentDialogData || !paymentDialogData.paymentId) {
+        console.error("ManagePlansDialogs: CRITICAL ERROR - Payment dialog opened but paymentDialogData is missing or has no ID!");
+        toast.error("Payment setup error: Missing payment ID");
+      }
     }
-  }, [showTakePaymentDialog, paymentDialogData, selectedInstallment]);
+  }, [showTakePaymentDialog, paymentDialogData]);
 
   // Early return if no plan is selected
   if (!selectedPlan) {
@@ -152,26 +159,25 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* Take payment dialog - Simplified to directly use paymentDialogData.paymentId */}
-      {showTakePaymentDialog && (
+      {/* Take payment dialog - Using a conditional to ensure paymentDialogData exists */}
+      {showTakePaymentDialog && paymentDialogData && paymentDialogData.paymentId && (
         <TakePaymentDialog
-          key={`payment-dialog-${paymentDialogData?.paymentId || 'new'}`}
+          key={`payment-dialog-${paymentDialogData.paymentId || 'new'}`}
           open={showTakePaymentDialog}
           onOpenChange={(open) => {
             console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
             if (!open) {
-              // Clear payment data on close to prevent stale data
               console.log("Payment dialog closed, resetting state");
             }
             setShowTakePaymentDialog(open);
           }}
-          paymentId={paymentDialogData?.paymentId || ''}
+          paymentId={paymentDialogData.paymentId}
           onPaymentProcessed={onPaymentUpdated}
           // Pass optional pre-loaded data if available
-          patientName={paymentDialogData?.patientName}
-          patientEmail={paymentDialogData?.patientEmail}
-          patientPhone={paymentDialogData?.patientPhone}
-          amount={paymentDialogData?.amount}
+          patientName={paymentDialogData.patientName}
+          patientEmail={paymentDialogData.patientEmail}
+          patientPhone={paymentDialogData.patientPhone}
+          amount={paymentDialogData.amount}
         />
       )}
       

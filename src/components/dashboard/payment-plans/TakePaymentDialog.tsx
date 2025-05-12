@@ -47,12 +47,24 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   const [amount, setAmount] = useState<number | undefined>(initialAmount);
   const [hasValidId, setHasValidId] = useState(false);
 
+  // Log all props for debugging
+  useEffect(() => {
+    console.log("TakePaymentDialog - Constructor Props:", {
+      open,
+      paymentId: paymentId || 'NOT PROVIDED',
+      hasInitialAmount: Boolean(initialAmount),
+      hasInitialName: Boolean(initialPatientName),
+      hasInitialEmail: Boolean(initialPatientEmail),
+      amount: initialAmount
+    });
+  }, []);
+
   // Effect to validate payment ID and potentially handle early errors
   useEffect(() => {
-    console.log("TakePaymentDialog - Received paymentId:", paymentId);
+    console.log("TakePaymentDialog - Validating paymentId:", paymentId);
     
     if (!paymentId || paymentId === '') {
-      console.error("Missing or empty payment ID in TakePaymentDialog");
+      console.error("CRITICAL ERROR: Missing or empty payment ID in TakePaymentDialog");
       setDataError("No payment ID provided. Cannot process payment.");
       setHasValidId(false);
       toast.error("Missing payment ID");
@@ -68,6 +80,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     if (open && hasValidId) {
       // Only load data if we don't already have it
       if (!initialAmount || !initialPatientName) {
+        console.log("TakePaymentDialog - No pre-loaded data, loading payment data for ID:", paymentId);
         loadPaymentData();
       } else {
         console.log("TakePaymentDialog - Using provided data:", {
@@ -82,6 +95,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   // Function to load payment data
   const loadPaymentData = async () => {
     if (!paymentId) {
+      console.error("TakePaymentDialog - Cannot load payment data: Missing payment ID");
       setDataError("Cannot load payment data: Missing payment ID");
       return;
     }
@@ -105,6 +119,11 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       if (!amount) setAmount(1000); // $10.00
       
       setIsLoadingData(false);
+      
+      console.log("TakePaymentDialog - Payment data loaded:", {
+        patientName: patientName || 'Patient Name',
+        amount: amount || 1000
+      });
     } catch (error) {
       console.error('Error loading payment data:', error);
       setDataError('Failed to load payment details. Please try again.');
@@ -117,6 +136,12 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     // We need to ensure we always have a valid paymentId and amount before using useInstallmentPayment
     const validPaymentId = hasValidId ? paymentId : null;
     const validAmount = amount || 0;
+
+    console.log("PaymentDialogContent - Rendering with:", {
+      hasValidId,
+      validPaymentId,
+      validAmount
+    });
 
     const {
       isProcessing,
@@ -142,14 +167,17 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
           throw new Error(`Cannot process payment: Invalid amount ${amount}`);
         }
         
+        console.log("PaymentDialogContent - Submitting payment form with valid ID:", paymentId);
         const result = await handlePaymentSubmit(formData);
         
         if (result.success) {
           setPaymentSuccess(true);
           setPaymentError(null);
+          console.log("PaymentDialogContent - Payment submission succeeded");
         } else {
           setPaymentError(result.error || 'Payment processing failed');
           setPaymentSuccess(false);
+          console.error("PaymentDialogContent - Payment submission failed:", result.error);
         }
       } catch (error: any) {
         console.error('Payment submission error:', error);

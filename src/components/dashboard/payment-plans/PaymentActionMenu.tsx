@@ -32,10 +32,13 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
     e.preventDefault();
     e.stopPropagation();
     
-    console.log("PaymentActionMenu: Take payment clicked for ID:", paymentId);
+    console.log("PaymentActionMenu: Take payment clicked, validating data...");
+    console.log("  - Payment ID:", paymentId);
+    console.log("  - Handler exists:", Boolean(onTakePayment));
+    console.log("  - Installment exists:", Boolean(installment));
     
     if (!paymentId || paymentId === '') {
-      console.error("PaymentActionMenu: Missing payment ID!");
+      console.error("PaymentActionMenu: CRITICAL ERROR - Missing or empty payment ID!");
       toast.error("Cannot process payment: Missing payment ID");
       return;
     }
@@ -58,13 +61,14 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
       ? formatCurrency(installment.amount) 
       : "unknown amount";
     
-    toast.info(`Opening payment dialog for ${amountDisplay} (ID: ${paymentId})`);
+    toast.info(`Preparing payment for ${amountDisplay} (ID: ${paymentId})`);
     
     // Explicitly log the payment ID to confirm it's valid
-    console.log("PaymentActionMenu: Triggering payment for ID:", paymentId, 
-      "with amount:", installment?.amount,
-      "installment:", JSON.stringify(installment)
-    );
+    console.log("PaymentActionMenu: PAYMENT FLOW - Triggering payment with valid data:", {
+      paymentId,
+      amount: installment?.amount,
+      installment: JSON.stringify(installment)
+    });
     
     // Pass both the ID and the full installment object
     onTakePayment(paymentId, installment);

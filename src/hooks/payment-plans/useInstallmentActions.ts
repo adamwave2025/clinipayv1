@@ -45,17 +45,31 @@ export const useInstallmentActions = (
   };
   
   const handleTakePayment = (paymentId: string, installmentDetails: PlanInstallment) => {
-    console.log("[useInstallmentActions] Take payment clicked for", paymentId);
+    console.log("[useInstallmentActions] PAYMENT FLOW - Take payment requested for ID:", paymentId);
     
-    if (!installmentDetails || !installmentDetails.amount || typeof installmentDetails.amount !== 'number') {
-      console.error("[useInstallmentActions] Missing or invalid installment details:", installmentDetails);
+    // Validate payment ID
+    if (!paymentId || typeof paymentId !== 'string' || paymentId.trim() === '') {
+      console.error("[useInstallmentActions] CRITICAL ERROR - Invalid payment ID:", paymentId);
+      toast.error("Cannot take payment: Missing or invalid payment ID");
+      return;
+    }
+    
+    // Validate installment details
+    if (!installmentDetails) {
+      console.error("[useInstallmentActions] Missing installment details");
       toast.error("Cannot take payment: Missing payment details");
+      return;
+    }
+    
+    if (!installmentDetails.amount || typeof installmentDetails.amount !== 'number') {
+      console.error("[useInstallmentActions] Missing or invalid amount in installment:", installmentDetails);
+      toast.error("Cannot take payment: Invalid payment amount");
       return;
     }
     
     // First set the payment data to ensure it's available immediately
     const validatedPaymentData: PlanInstallment = {
-      id: paymentId,
+      id: paymentId.trim(),
       amount: installmentDetails.amount,
       paymentNumber: installmentDetails.paymentNumber || 1,
       totalPayments: installmentDetails.totalPayments || 1,
@@ -64,7 +78,7 @@ export const useInstallmentActions = (
       paidDate: installmentDetails.paidDate || null // Add the required paidDate property
     };
     
-    console.log("[useInstallmentActions] Setting validated payment data:", validatedPaymentData);
+    console.log("[useInstallmentActions] PAYMENT FLOW - Setting validated payment data:", validatedPaymentData);
     
     // Set payment data first, then selectedInstallment for consistency
     setPaymentData(validatedPaymentData);
@@ -79,6 +93,7 @@ export const useInstallmentActions = (
     toast.info(`Opening payment dialog for ${formattedAmount}`);
     
     // Only show the dialog after data is set
+    console.log("[useInstallmentActions] PAYMENT FLOW - Opening payment dialog for ID:", paymentId);
     setShowTakePaymentDialog(true);
   };
   
