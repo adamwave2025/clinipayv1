@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { ManagePlansContextType, PaymentDialogData } from '@/contexts/ManagePlansContext';
@@ -80,9 +79,9 @@ export const useManagePlans = (): ManagePlansContextType => {
   } = useInstallmentHandler();
   
   // Create a refresh function for installments
-  const refreshInstallments = async () => {
+  const refreshInstallments = async (planId?: string) => {
     if (selectedPlan) {
-      await fetchPlanInstallmentsData(selectedPlan.id);
+      await fetchPlanInstallmentsData(planId || selectedPlan.id);
     }
   };
   

@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { Button } from '@/components/ui/button';
@@ -82,7 +81,7 @@ const PlanDetails = () => {
         onOpenPauseDialog={handleOpenPauseDialog}
         onOpenResumeDialog={handleOpenResumeDialog}
         onOpenRescheduleDialog={handleOpenRescheduleDialog}
-        onSendReminder={handleSendReminder}
+        onSendReminder={() => selectedPlan && handleSendReminder(selectedPlan.id)}
       />
       
       {paymentData && (

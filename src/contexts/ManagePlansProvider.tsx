@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext, { PaymentDialogData } from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -15,6 +14,7 @@ import { usePlanRescheduleActions } from '@/hooks/payment-plans/usePlanReschedul
 import { usePaymentRescheduleActions } from '@/hooks/payment-plans/usePaymentRescheduleActions';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { toast } from '@/hooks/use-toast';
+import { PlanOperationsService } from '@/services/PlanOperationsService';
 
 export const ManagePlansProvider: React.FC<{
   children: React.ReactNode;

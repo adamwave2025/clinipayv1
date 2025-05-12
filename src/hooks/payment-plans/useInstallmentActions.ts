@@ -6,6 +6,24 @@ import { supabase } from '@/integrations/supabase/client';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 
+/**
+ * Maps database payment schedule data to PlanInstallment type
+ */
+const mapToPlanInstallment = (data: any): PlanInstallment => {
+  return {
+    id: data.id,
+    amount: data.amount,
+    planId: data.plan_id,
+    dueDate: data.due_date,
+    paidDate: data.paid_date || null,
+    status: data.status,
+    paymentNumber: data.payment_number,
+    totalPayments: data.total_payments,
+    paymentRequestId: data.payment_request_id,
+    // Add any other fields needed for PlanInstallment
+  };
+};
+
 export const useInstallmentActions = (
   planId: string, 
   refreshPlanState?: (planId: string) => Promise<void>
@@ -46,8 +64,8 @@ export const useInstallmentActions = (
           return;
         }
         
-        // Set the selected installment
-        setSelectedInstallment(data);
+        // Map to PlanInstallment type before setting it
+        setSelectedInstallment(mapToPlanInstallment(data));
         
         // Open the confirmation dialog
         setShowMarkAsPaidDialog(true);
@@ -64,8 +82,8 @@ export const useInstallmentActions = (
     setIsProcessing(true);
     
     try {
-      // Use the service to mark the payment as paid
-      const result = await PlanOperationsService.markAsPaid(selectedInstallment.id);
+      // Use the service to record a manual payment
+      const result = await PlanOperationsService.recordManualPayment(selectedInstallment.id);
       
       if (result.success) {
         toast.success("Payment marked as paid successfully");
@@ -105,8 +123,8 @@ export const useInstallmentActions = (
           return;
         }
         
-        // Set the selected installment
-        setSelectedInstallment(data);
+        // Map to PlanInstallment type before setting it
+        setSelectedInstallment(mapToPlanInstallment(data));
         
         // Open the reschedule dialog
         setRescheduleDialog(true);
@@ -167,11 +185,12 @@ export const useInstallmentActions = (
             return;
           }
           
-          setSelectedInstallment(data);
+          // Map to PlanInstallment type before setting
+          setSelectedInstallment(mapToPlanInstallment(data));
           setShowTakePaymentDialog(true);
         });
     } else {
-      // Use the provided installment details
+      // Use the provided installment details directly
       setSelectedInstallment(installmentDetails);
       setShowTakePaymentDialog(true);
     }

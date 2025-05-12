@@ -1,4 +1,3 @@
-
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
 import { PlanPauseService } from './plan-operations/PlanPauseService';
@@ -118,6 +117,15 @@ export class PlanOperationsService {
       toast.error(`Failed to reschedule payment: ${error instanceof Error ? error.message : String(error)}`);
       return { success: false, error };
     }
+  }
+  
+  /**
+   * Mark a payment as paid (manual payment)
+   * @param paymentId The payment ID to mark as paid
+   * @returns Object indicating success or failure
+   */
+  static async markAsPaid(paymentId: string): Promise<{ success: boolean, error?: any }> {
+    return await PlanOperationsService.recordManualPayment(paymentId);
   }
   
   /**
