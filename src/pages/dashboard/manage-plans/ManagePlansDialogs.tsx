@@ -61,6 +61,9 @@ export const ManagePlansDialogs = () => {
     paymentDialogData
   } = useManagePlansContext();
 
+  // State to track if we have valid payment data
+  const [paymentDataValidated, setPaymentDataValidated] = useState(false);
+
   // Log dialog state and payment data for debugging
   useEffect(() => {
     if (showTakePaymentDialog) {
@@ -73,10 +76,18 @@ export const ManagePlansDialogs = () => {
         patientName: paymentDialogData?.patientName
       });
       
+      // Validate payment data and set state
       if (!paymentDialogData || !paymentDialogData.paymentId) {
         console.error("ManagePlansDialogs: CRITICAL ERROR - Payment dialog opened but paymentDialogData is missing or has no ID!");
         toast.error("Payment setup error: Missing payment ID");
+        setPaymentDataValidated(false);
+      } else {
+        setPaymentDataValidated(true);
+        console.log("ManagePlansDialogs: Payment data validated successfully");
       }
+    } else {
+      // Reset validation when dialog is closed
+      setPaymentDataValidated(false);
     }
   }, [showTakePaymentDialog, paymentDialogData]);
 
@@ -159,10 +170,10 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* Take payment dialog - Using a conditional to ensure paymentDialogData exists */}
-      {showTakePaymentDialog && paymentDialogData && paymentDialogData.paymentId && (
+      {/* Take payment dialog - Using multiple conditions to ensure paymentDialogData exists */}
+      {showTakePaymentDialog && paymentDialogData && paymentDialogData.paymentId && paymentDataValidated && (
         <TakePaymentDialog
-          key={`payment-dialog-${paymentDialogData.paymentId || 'new'}`}
+          key={`payment-dialog-${paymentDialogData.paymentId}`}
           open={showTakePaymentDialog}
           onOpenChange={(open) => {
             console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);

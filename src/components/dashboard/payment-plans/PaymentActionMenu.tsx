@@ -34,8 +34,10 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
     
     console.log("PaymentActionMenu: Take payment clicked, validating data...");
     console.log("  - Payment ID:", paymentId);
+    console.log("  - Payment ID length:", paymentId ? paymentId.length : 'undefined');
     console.log("  - Handler exists:", Boolean(onTakePayment));
     console.log("  - Installment exists:", Boolean(installment));
+    console.log("  - Installment data:", JSON.stringify(installment, null, 2));
     
     if (!paymentId || paymentId === '') {
       console.error("PaymentActionMenu: CRITICAL ERROR - Missing or empty payment ID!");
@@ -70,8 +72,15 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
       installment: JSON.stringify(installment)
     });
     
+    // Create a copy with trimmed ID to avoid issues with whitespace
+    const validPaymentId = paymentId.trim();
+    const validInstallment = {
+      ...installment,
+      id: validPaymentId
+    };
+    
     // Pass both the ID and the full installment object
-    onTakePayment(paymentId, installment);
+    onTakePayment(validPaymentId, validInstallment);
   };
 
   return (

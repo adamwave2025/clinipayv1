@@ -25,7 +25,7 @@ export const useInstallmentActions = (
     // Find the selected installment
     setSelectedInstallment({ 
       id: paymentId, 
-      paidDate: null, // Add the required paidDate property
+      paidDate: null,
       amount: 0,
       dueDate: '',
       status: '',
@@ -44,6 +44,7 @@ export const useInstallmentActions = (
     console.log("[useInstallmentActions] After calling handleOpenRescheduleDialog");
   };
   
+  // Modified to not directly open the dialog
   const handleTakePayment = (paymentId: string, installmentDetails: PlanInstallment) => {
     console.log("[useInstallmentActions] PAYMENT FLOW - Take payment requested for ID:", paymentId);
     
@@ -67,6 +68,15 @@ export const useInstallmentActions = (
       return;
     }
     
+    // Log with formatted currency for clarity
+    const formattedAmount = new Intl.NumberFormat('en-GB', { 
+      style: 'currency', 
+      currency: 'GBP' 
+    }).format(installmentDetails.amount / 100);
+    
+    console.log(`[useInstallmentActions] Processing payment of ${formattedAmount}, paymentID: ${paymentId}`);
+    toast.info(`Preparing payment of ${formattedAmount}`);
+    
     // First set the payment data to ensure it's available immediately
     const validatedPaymentData: PlanInstallment = {
       id: paymentId.trim(),
@@ -75,7 +85,7 @@ export const useInstallmentActions = (
       totalPayments: installmentDetails.totalPayments || 1,
       dueDate: installmentDetails.dueDate || new Date().toISOString(),
       status: installmentDetails.status || 'pending',
-      paidDate: installmentDetails.paidDate || null // Add the required paidDate property
+      paidDate: installmentDetails.paidDate || null
     };
     
     console.log("[useInstallmentActions] PAYMENT FLOW - Setting validated payment data:", validatedPaymentData);
@@ -84,17 +94,13 @@ export const useInstallmentActions = (
     setPaymentData(validatedPaymentData);
     setSelectedInstallment(validatedPaymentData);
     
-    // Log with formatted currency for clarity
-    const formattedAmount = new Intl.NumberFormat('en-GB', { 
-      style: 'currency', 
-      currency: 'GBP' 
-    }).format(validatedPaymentData.amount / 100);
-    
-    toast.info(`Opening payment dialog for ${formattedAmount}`);
-    
-    // Only show the dialog after data is set
+    // Only show the dialog after data is set - IMPORTANT: show the dialog AFTER data is ready
     console.log("[useInstallmentActions] PAYMENT FLOW - Opening payment dialog for ID:", paymentId);
-    setShowTakePaymentDialog(true);
+    
+    // Add a slight delay to ensure state updates have propagated
+    setTimeout(() => {
+      setShowTakePaymentDialog(true);
+    }, 50);
   };
   
   // Helper function to format currency (kept for consistency)
