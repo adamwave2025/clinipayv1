@@ -28,17 +28,10 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
   onReschedule,
   onTakePayment
 }) => {
-  // Simplified take payment handler - no validation, just opens the dialog
+  // Simplified take payment handler - just open the dialog, no toast
   const handleTakePayment = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    // Simple toast notification
-    const amountDisplay = installment?.amount 
-      ? formatCurrency(installment.amount) 
-      : "£500.00"; // Default fallback amount
-    
-    toast.info(`Opening payment form for ${amountDisplay}`);
     
     if (onTakePayment) {
       // Just pass the ID and installment directly without complex validation

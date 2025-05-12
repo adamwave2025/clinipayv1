@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
@@ -11,11 +10,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { CheckCircle } from 'lucide-react';
 
-// Simple form schema for the payment form
+// Only validate card fields since patient info is read-only
 const paymentFormSchema = z.object({
-  name: z.string().min(2, "Name is required"),
-  email: z.string().email("Valid email is required"),
-  phone: z.string().optional(),
   cardNumber: z.string().min(16, "Valid card number is required"),
   expiry: z.string().min(5, "Valid expiry date is required"),
   cvc: z.string().min(3, "Valid CVC is required"),
@@ -54,9 +50,6 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
-      name: patientName,
-      email: patientEmail,
-      phone: patientPhone,
       cardNumber: '',
       expiry: '',
       cvc: ''
@@ -113,69 +106,43 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
           </div>
         ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              <div className="grid gap-4">
-                <div className="flex flex-col space-y-1.5">
-                  <h3 className="text-sm font-semibold">Payment Details</h3>
-                  <p className="text-xs text-gray-500">Payment ID: {paymentId}</p>
-                </div>
-                
-                <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
-                  <span>Amount:</span>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              {/* Patient & Payment Information - Now read-only */}
+              <div className="rounded-md bg-gray-50 p-4 mb-2">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-sm font-medium">Amount:</span>
                   <span className="font-bold">{displayAmount}</span>
                 </div>
+                
+                <div className="text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Patient:</span>
+                    <span>{patientName}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Email:</span>
+                    <span>{patientEmail}</span>
+                  </div>
+                  
+                  {patientPhone && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Phone:</span>
+                      <span>{patientPhone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
               
-                <h3 className="text-sm font-semibold pt-2">Patient Information</h3>
-                
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Patient name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="patient@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="+44 1234 567890" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <h3 className="text-sm font-semibold pt-2">Card Details</h3>
+              {/* Card Details Section */}
+              <div>
+                <h3 className="text-sm font-medium mb-2">Card Details</h3>
                 
                 <FormField
                   control={form.control}
                   name="cardNumber"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="mb-2">
                       <FormLabel>Card Number</FormLabel>
                       <FormControl>
                         <Input placeholder="4242 4242 4242 4242" {...field} />
@@ -185,7 +152,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
                   )}
                 />
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <FormField
                     control={form.control}
                     name="expiry"
@@ -216,19 +183,16 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
                 </div>
               </div>
               
-              <div className="pt-4">
-                <Button 
-                  type="submit"
-                  className="w-full" 
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Processing..." : "Process Payment"}
-                </Button>
-              </div>
+              <Button 
+                type="submit"
+                className="w-full mt-2" 
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Processing..." : "Process Payment"}
+              </Button>
               
               <div className="text-xs text-center text-gray-500">
                 <p>This is a secure payment processed by CliniPay</p>
-                <p>Your card details are encrypted and never stored on our servers</p>
               </div>
             </form>
           </Form>

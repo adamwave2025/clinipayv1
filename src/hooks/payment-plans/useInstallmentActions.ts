@@ -20,7 +20,6 @@ export const useInstallmentActions = (
 
   const handleMarkAsPaid = (paymentId: string) => {
     console.log("[useInstallmentActions] Opening mark as paid dialog for", paymentId);
-    toast.info(`Opening Mark as Paid dialog for payment ${paymentId}`);
     
     // Find the selected installment
     setSelectedInstallment({ 
@@ -38,13 +37,12 @@ export const useInstallmentActions = (
   
   const handleOpenReschedule = (paymentId: string) => {
     console.log("[useInstallmentActions] Opening reschedule dialog for payment", paymentId);
-    toast.info(`Opening Reschedule dialog for payment ${paymentId}`);
     
     rescheduleActions.handleOpenRescheduleDialog(paymentId);
     console.log("[useInstallmentActions] After calling handleOpenRescheduleDialog");
   };
   
-  // Simplified to just open the dialog without complex validation
+  // Simplified to just open the dialog without complex validation or toast notifications
   const handleTakePayment = (paymentId: string, installmentDetails: PlanInstallment) => {
     console.log("[useInstallmentActions] Take payment requested for ID:", paymentId);
     
