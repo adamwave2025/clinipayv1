@@ -20,7 +20,8 @@ export async function addToNotificationQueue(
   
   try {
     // Create a safe copy of the payload to avoid circular references
-    const payloadCopy = JSON.parse(JSON.stringify(payload));
+    // Using JSON.parse(JSON.stringify()) to completely break any reference chains
+    const payloadCopy = JSON.parse(JSON.stringify(payload)) as Record<string, unknown>;
     let notificationId: string | null = null;
     
     // Start a Supabase transaction to ensure the notification record is created
@@ -61,7 +62,12 @@ export async function addToNotificationQueue(
       console.log(`⚠️ CRITICAL SUCCESS: Webhook call successful for notification ${notificationId}`);
       
       // Create a safe copy of the webhook response to avoid type issues
-      const safeResponseData = JSON.parse(JSON.stringify(webhookResult.details || {}));
+      // Explicitly create a new object with only the properties we need
+      const responseDetails = webhookResult.details ? 
+        { 
+          status: webhookResult.details.status, 
+          responseBody: webhookResult.details.responseBody 
+        } : {};
       
       // Update the queue item to mark it as processed
       const { error: updateError } = await supabase
@@ -71,7 +77,7 @@ export async function addToNotificationQueue(
           processed_at: new Date().toISOString(),
           last_attempt: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          response_data: safeResponseData as Json
+          response_data: responseDetails as Json
         })
         .eq('id', notificationId);
       
@@ -92,8 +98,14 @@ export async function addToNotificationQueue(
     } else {
       console.error(`⚠️ CRITICAL ERROR: Direct webhook call failed for notification ${notificationId}:`, webhookResult.error);
       
-      // Create a safe copy of the error details
-      const safeErrorDetails = JSON.parse(JSON.stringify(webhookResult.details || {}));
+      // Create a safe copy of the error details with explicitly defined structure
+      const errorDetails = webhookResult.details ? {
+        status: webhookResult.details.status,
+        statusText: webhookResult.details.statusText,
+        responseBody: webhookResult.details.responseBody,
+        webhook: webhookResult.details.webhook,
+        recipientType: webhookResult.details.recipientType
+      } : {};
       
       // Update the notification record with the error
       const { error: updateError } = await supabase
@@ -103,7 +115,7 @@ export async function addToNotificationQueue(
           last_attempt: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           error_message: webhookResult.error?.substring(0, 255) || 'Unknown error',
-          response_data: safeErrorDetails as Json
+          response_data: errorDetails as Json
         })
         .eq('id', notificationId);
         
