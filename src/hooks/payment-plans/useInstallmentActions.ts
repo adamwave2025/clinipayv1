@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -55,7 +56,7 @@ export const useInstallmentActions = (
           setShowMarkAsPaidDialog(true);
           setIsProcessing(false);
         })
-        .catch(error => {
+        .catch((error: Error) => { // Add explicit typing for error
           console.error('Unexpected error in handleMarkAsPaid:', error);
           toast.error('Unexpected error occurred');
           setIsProcessing(false);
@@ -124,7 +125,7 @@ export const useInstallmentActions = (
           setRescheduleDialog(true);
           setIsProcessing(false);
         })
-        .catch(error => {
+        .catch((error: Error) => { // Add explicit typing for error
           console.error('Unexpected error in handleOpenReschedule:', error);
           toast.error('Unexpected error occurred');
           setIsProcessing(false);
@@ -206,7 +207,7 @@ export const useInstallmentActions = (
           setShowTakePaymentDialog(true);
           setIsProcessing(false);
         })
-        .catch(error => {
+        .catch((error: Error) => { // Add explicit typing for error
           console.error('Unexpected error in handleTakePayment:', error);
           toast.error('Unexpected error occurred');
           setIsProcessing(false);
