@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
 import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
@@ -11,6 +11,7 @@ import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAs
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 import TakePaymentDialog from '@/components/dashboard/payment-plans/TakePaymentDialog';
 import { toast } from '@/hooks/use-toast';
+import { PlanInstallment } from '@/utils/paymentPlanUtils';
 
 export const ManagePlansDialogs = () => {
   const {
@@ -57,49 +58,79 @@ export const ManagePlansDialogs = () => {
     onPaymentUpdated
   } = useManagePlansContext();
 
-  // Cache the selected installment for the payment dialog to prevent it from being lost
-  // during state transitions or re-renders
-  const [cachedPaymentInstallment, setCachedPaymentInstallment] = useState(null);
+  // Enhanced caching: Store the last valid installment
+  const [cachedInstallment, setCachedInstallment] = useState<PlanInstallment | null>(null);
 
-  // Detailed debugging to track state and data flow
-  console.log('ManagePlansDialogs rendering with selectedPlan:', selectedPlan?.id);
-  console.log('Dialog states:', {
-    showCancelDialog,
-    showPauseDialog,
-    showResumeDialog,
-    showReschedulePlanDialog,
-    showReschedulePaymentDialog,
-    showMarkAsPaidDialog,
-    showTakePaymentDialog,
-    refundDialogOpen
-  });
+  // Track payment dialog rendering to debug issues
+  const [paymentDialogRenderCount, setPaymentDialogRenderCount] = useState(0);
   
-  console.log('Selected installment data:', selectedInstallment);
+  // Memoized valid installment, combining current or cached data
+  const validInstallment = useMemo(() => {
+    // Get either the current installment or the cached one
+    const installmentToUse = selectedInstallment || cachedInstallment;
+    
+    // Debug the source of our installment data
+    console.log("Current installment source:", selectedInstallment ? "selectedInstallment" : 
+      (cachedInstallment ? "cachedInstallment" : "none"));
+    
+    // If we have an installment, validate it has the required data
+    if (installmentToUse && 
+        typeof installmentToUse === 'object' && 
+        installmentToUse.id && 
+        installmentToUse.amount) {
+      // Create a complete deep clone with all necessary properties
+      try {
+        // Create a complete clone with fallback values for any missing properties
+        const safeInstallment = JSON.parse(JSON.stringify({
+          ...installmentToUse,
+          id: installmentToUse.id,
+          amount: installmentToUse.amount,
+          paymentNumber: installmentToUse.paymentNumber || 1,
+          totalPayments: installmentToUse.totalPayments || 1,
+          dueDate: installmentToUse.dueDate || new Date().toISOString(),
+          status: installmentToUse.status || 'pending'
+        }));
+        
+        console.log("ManagePlansDialogs: Valid installment created:", safeInstallment);
+        return safeInstallment;
+      } catch (err) {
+        console.error("Failed to create safe installment:", err);
+        return null;
+      }
+    }
+    
+    console.log("ManagePlansDialogs: No valid installment available");
+    return null;
+  }, [selectedInstallment, cachedInstallment]);
   
-  // Update the cached installment when selectedInstallment changes and is not null
+  // Update cached installment whenever we get a valid selectedInstallment
   useEffect(() => {
-    if (selectedInstallment && typeof selectedInstallment === 'object' && selectedInstallment.id) {
+    if (selectedInstallment && typeof selectedInstallment === 'object' && 
+        selectedInstallment.id && selectedInstallment.amount) {
       console.log('Caching valid installment data:', selectedInstallment);
-      setCachedPaymentInstallment(selectedInstallment);
+      setCachedInstallment(selectedInstallment);
     }
   }, [selectedInstallment]);
   
-  // Enhanced debug for selected installment when take payment dialog should show
+  // Monitor the take payment dialog flag and valid installment
   useEffect(() => {
     if (showTakePaymentDialog) {
-      console.log('TakePaymentDialog should show with selectedInstallment:', selectedInstallment);
-      console.log('Cached installment data:', cachedPaymentInstallment);
+      console.log(`TakePaymentDialog should show (render #${paymentDialogRenderCount + 1})`);
+      console.log('Selected installment:', selectedInstallment);
+      console.log('Cached installment:', cachedInstallment);
+      console.log('Valid installment for dialog:', validInstallment);
       
-      const installmentToUse = selectedInstallment || cachedPaymentInstallment;
+      // Increment render tracking
+      setPaymentDialogRenderCount(prev => prev + 1);
       
-      if (!installmentToUse || !installmentToUse.amount) {
-        console.error('Missing installment data in ManagePlansDialogs');
-        toast.error("Cannot show payment dialog: Missing installment data");
-        // Auto-close the dialog if we don't have data to prevent errors
+      if (!validInstallment) {
+        console.error("Cannot show payment dialog: No valid installment data available");
+        toast.error("Cannot show payment dialog: Missing payment data");
+        // Close the dialog if we don't have data to prevent errors
         setShowTakePaymentDialog(false);
       }
     }
-  }, [showTakePaymentDialog, selectedInstallment, cachedPaymentInstallment, setShowTakePaymentDialog]);
+  }, [showTakePaymentDialog, validInstallment, selectedInstallment, cachedInstallment]);
 
   // Early return if no plan is selected
   if (!selectedPlan) {
@@ -111,28 +142,8 @@ export const ManagePlansDialogs = () => {
   const patientName = selectedPlan.patientName || '';
   const patientEmail = selectedPlan.patientEmail || ''; 
 
-  // Use either the current installment or the cached one, providing fallback
-  const installmentToUse = selectedInstallment || cachedPaymentInstallment;
-
-  // IMPROVED: More comprehensive validation for installment data
-  const canShowPaymentDialog = Boolean(
-    installmentToUse && 
-    typeof installmentToUse === 'object' &&
-    installmentToUse.id &&
-    installmentToUse.amount &&
-    showTakePaymentDialog
-  );
-  
-  if (showTakePaymentDialog && !canShowPaymentDialog) {
-    // Log the error
-    console.error("Cannot show payment dialog: Invalid installment data", installmentToUse);
-    
-    // Show toast
-    toast.error("Cannot show payment dialog: Invalid installment data");
-    
-    // Close the dialog
-    setShowTakePaymentDialog(false);
-  }
+  // Comprehensive check if we can show the payment dialog
+  const canShowPaymentDialog = showTakePaymentDialog && validInstallment !== null;
 
   return (
     <>
@@ -184,7 +195,7 @@ export const ManagePlansDialogs = () => {
         hasOverduePayments={hasOverduePayments}
       />
       
-      {/* Dialog for rescheduling an individual payment - with extra debugging log */}
+      {/* Dialog for rescheduling an individual payment */}
       <ReschedulePaymentDialog
         open={showReschedulePaymentDialog} 
         onOpenChange={(open) => {
@@ -198,7 +209,7 @@ export const ManagePlansDialogs = () => {
         isLoading={isProcessing}
       />
       
-      {/* Add Mark as Paid dialog here */}
+      {/* Mark as Paid dialog */}
       <MarkAsPaidConfirmDialog
         open={showMarkAsPaidDialog}
         onOpenChange={setShowMarkAsPaidDialog}
@@ -207,10 +218,10 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* IMPROVED: More robust conditional rendering for TakePaymentDialog */}
-      {canShowPaymentDialog && (
+      {/* Improved payment dialog rendering with clear conditions */}
+      {canShowPaymentDialog && validInstallment && (
         <TakePaymentDialog
-          key={`payment-dialog-${installmentToUse?.id}-${Date.now()}`} // Ensure re-render on each open
+          key={`payment-dialog-${validInstallment.id}-${paymentDialogRenderCount}`}
           open={showTakePaymentDialog}
           onOpenChange={(open) => {
             console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
@@ -219,10 +230,10 @@ export const ManagePlansDialogs = () => {
             }
             setShowTakePaymentDialog(open);
           }}
-          paymentId={installmentToUse?.id}
+          paymentId={validInstallment.id}
           patientName={patientName}
           patientEmail={patientEmail}
-          amount={installmentToUse?.amount}
+          amount={validInstallment.amount}
           onPaymentProcessed={onPaymentUpdated}
         />
       )}

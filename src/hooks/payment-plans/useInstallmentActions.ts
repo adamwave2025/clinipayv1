@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
@@ -34,7 +35,8 @@ export const useInstallmentActions = (
   };
   
   const handleTakePayment = (paymentId: string, installmentDetails?: PlanInstallment) => {
-    console.log("[useInstallmentActions] Take payment clicked for", paymentId, "with details:", installmentDetails);
+    console.log("[useInstallmentActions] Take payment clicked for", paymentId, "with details:", 
+      installmentDetails ? JSON.stringify(installmentDetails) : "NO DETAILS");
     
     if (!installmentDetails || !installmentDetails.amount) {
       console.error("[useInstallmentActions] Missing installment details or amount:", installmentDetails);
@@ -42,27 +44,51 @@ export const useInstallmentActions = (
       return;
     }
     
-    // FIXED: First update the selectedInstallment state
-    console.log("[useInstallmentActions] Setting selectedInstallment with complete data:", installmentDetails);
+    // Validate and ensure we have a complete installment object
+    const validatedInstallment = validateInstallment(installmentDetails, paymentId);
+    if (!validatedInstallment) {
+      toast.error("Cannot process payment: Invalid payment data");
+      return;
+    }
     
-    // Ensure we have a complete installment object with all necessary data
-    const completeInstallment = {
-      ...installmentDetails,
-      id: paymentId,
-      // Make sure these fields are defined if they're used in the dialog
-      amount: installmentDetails.amount,
-      paymentNumber: installmentDetails.paymentNumber || 1,
-      totalPayments: installmentDetails.totalPayments || 1,
-      dueDate: installmentDetails.dueDate || new Date().toISOString(),
-    };
+    // CRITICAL FIX: Set the selectedInstallment state first, then show the dialog
+    // without using setTimeout to ensure correct ordering
+    console.log("[useInstallmentActions] Setting selectedInstallment with validated data:", validatedInstallment);
+    setSelectedInstallment(validatedInstallment);
     
-    // CRITICAL FIX: Update state then show dialog SYNCHRONOUSLY, no setTimeout
-    setSelectedInstallment(completeInstallment);
-    toast.info(`Opening payment dialog for ${formatCurrency(completeInstallment.amount)}`);
+    // Log and show dialog
+    toast.info(`Opening payment dialog for ${formatCurrency(validatedInstallment.amount)}`);
     setShowTakePaymentDialog(true);
-    
-    // Debug log to confirm state after update
-    console.log("[useInstallmentActions] Dialog opened with installment:", completeInstallment);
+  };
+  
+  // Helper function to validate installment data
+  const validateInstallment = (
+    installment: PlanInstallment, 
+    paymentId: string
+  ): PlanInstallment | null => {
+    try {
+      if (!installment || typeof installment !== 'object') {
+        throw new Error('Invalid installment object');
+      }
+      
+      if (!installment.amount) {
+        throw new Error('Missing amount in installment');
+      }
+      
+      // Create a deep clone to prevent reference issues
+      return JSON.parse(JSON.stringify({
+        ...installment,
+        id: paymentId, // Ensure the ID is correct
+        amount: installment.amount,
+        paymentNumber: installment.paymentNumber || 1,
+        totalPayments: installment.totalPayments || 1, 
+        dueDate: installment.dueDate || new Date().toISOString(),
+        status: installment.status || 'pending'
+      }));
+    } catch (error) {
+      console.error("[useInstallmentActions] Failed to validate installment:", error);
+      return null;
+    }
   };
   
   const confirmMarkAsPaid = async () => {

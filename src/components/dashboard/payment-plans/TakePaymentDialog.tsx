@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Elements } from '@stripe/react-stripe-js';
@@ -38,6 +38,30 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
 }) => {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Added validation effect on props
+  useEffect(() => {
+    if (open) {
+      console.log("TakePaymentDialog opened with props:", { 
+        paymentId, patientName, amount 
+      });
+      
+      // Validate that we have required data for the dialog
+      if (!paymentId) {
+        setValidationError("Missing payment ID");
+        return;
+      }
+      
+      if (!amount || amount <= 0) {
+        setValidationError(`Invalid payment amount: ${amount}`);
+        return;
+      }
+      
+      // Clear any previous validation errors
+      setValidationError(null);
+    }
+  }, [open, paymentId, amount]);
 
   const {
     isProcessing,
@@ -78,6 +102,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       setTimeout(() => {
         setPaymentSuccess(false);
         setPaymentError(null);
+        setValidationError(null);
       }, 300);
     }
     onOpenChange(newOpen);
@@ -90,7 +115,23 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
           <DialogTitle>Process Payment</DialogTitle>
         </DialogHeader>
 
-        {!isStripeReady ? (
+        {validationError ? (
+          <div className="p-6 space-y-4">
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Configuration Error</AlertTitle>
+              <AlertDescription>{validationError}</AlertDescription>
+            </Alert>
+            <div className="flex justify-end">
+              <Button 
+                onClick={() => handleOpenChange(false)}
+                variant="default"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        ) : !isStripeReady ? (
           <div className="flex flex-col items-center justify-center p-8">
             <LoadingSpinner size="md" />
             <p className="mt-4 text-gray-600">Loading payment system...</p>
@@ -148,6 +189,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
               <p className="font-medium">{patientName}</p>
               <p className="text-sm text-gray-600 mb-1 mt-2">Amount:</p>
               <p className="text-lg font-bold">{formatCurrency(amount)}</p>
+              <p className="text-xs text-gray-500 mt-1">Payment ID: {paymentId}</p>
             </div>
             
             <Elements stripe={stripePromise}>

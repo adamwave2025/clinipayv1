@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Table, 
@@ -75,7 +74,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
     onReschedule(paymentId);
   };
 
-  // IMPROVED: Better validation and error handling for take payment action
+  // Improved validation for take payment action
   const handleTakePayment = onTakePayment ? (paymentId: string, installment: PlanInstallment) => {
     console.log("PlanPaymentsList: Take payment clicked for payment:", paymentId);
     console.log("PlanPaymentsList: Full installment data:", JSON.stringify(installment, null, 2));
@@ -86,21 +85,9 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
       return;
     }
     
-    // Create a deep clone to ensure we don't have any reference issues
-    const completeInstallment: PlanInstallment = JSON.parse(JSON.stringify({
-      ...installment,
-      id: paymentId, // Ensure ID is set and matches
-      amount: installment.amount,
-      paymentNumber: installment.paymentNumber,
-      totalPayments: installment.totalPayments,
-      status: installment.status,
-      dueDate: installment.dueDate,
-      // Include any other fields that might be needed
-    }));
-    
-    toast.info(`Initiating Take Payment workflow for ${formatCurrency(completeInstallment.amount)}`);
-    console.log("PlanPaymentsList: Passing complete installment to parent:", completeInstallment);
-    onTakePayment(paymentId, completeInstallment);
+    // Pass the validated data up to the parent
+    console.log("PlanPaymentsList: Passing complete installment to parent:", installment);
+    onTakePayment(paymentId, installment);
   } : undefined;
 
   return (
@@ -138,11 +125,10 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
                 paidDate: installment.paidDate,
                 manualPayment: installment.manualPayment || false,
                 amount: installment.amount,
-                paymentId: installment.id
+                paymentNumber: installment.paymentNumber,
+                totalPayments: installment.totalPayments,
+                dueDate: installment.dueDate
               });
-              
-              // Create a deep clone to prevent reference issues
-              const installmentCopy = JSON.parse(JSON.stringify(installment));
               
               return (
                 <TableRow key={installment.id}>
@@ -161,7 +147,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
                     {status !== 'paid' && (
                       <PaymentActionMenu
                         paymentId={installment.id}
-                        installment={installmentCopy}
+                        installment={installment}
                         onMarkAsPaid={handleMarkAsPaid}
                         onReschedule={handleReschedule}
                         onTakePayment={handleTakePayment}
