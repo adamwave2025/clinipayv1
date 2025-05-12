@@ -28,13 +28,13 @@ export async function processNotificationsNow() {
     console.log(`Found ${pendingNotifications.length} pending notifications:`, 
       pendingNotifications.map(n => `${n.id} (${n.type})`));
     
-    // Call the process-notification-queue edge function
+    // Call the process-notification-queue edge function directly
     try {
-      // Ensure we have the function URL from Supabase
+      // Use the full URL with project reference to ensure it works
       const functionEndpoint = 'https://jbtxxlkhiubuzanegtzn.supabase.co/functions/v1/process-notification-queue';
-      console.log('Calling edge function at:', functionEndpoint);
+      console.log('⚠️ CRITICAL: Calling webhook directly at:', functionEndpoint);
       
-      // Get current session - using async getSession instead of deprecated session()
+      // Get current session for authentication
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
       
@@ -43,8 +43,9 @@ export async function processNotificationsNow() {
         ? `Bearer ${accessToken}`
         : 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpidHh4bGtoaXVidXphbmVndHpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQxMjU3MTIsImV4cCI6MjA1OTcwMTcxMn0.Pe8trGeGMCmJ61zEFbkaPJidKnmxVOWkLExPa-TNn9I';
       
-      console.log('Using auth header:', authHeader.substring(0, 20) + '...');
+      console.log('⚠️ CRITICAL: Using auth header:', authHeader.substring(0, 20) + '...');
       
+      // Make the request with higher timeout for processing
       const response = await fetch(functionEndpoint, {
         method: 'POST',
         headers: {
@@ -53,22 +54,23 @@ export async function processNotificationsNow() {
         },
         body: JSON.stringify({ 
           trigger: 'manual',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          priority: 'high'
         })
       });
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Edge function returned status ${response.status}: ${errorText}`);
-        return { success: false, error: `Function error: ${response.status} - ${errorText}` };
+        console.error(`⚠️ CRITICAL ERROR: Webhook returned status ${response.status}: ${errorText}`);
+        return { success: false, error: `Webhook error: ${response.status} - ${errorText}` };
       }
       
       const result = await response.json();
-      console.log('Function execution result:', result);
+      console.log('⚠️ CRITICAL SUCCESS: Webhook execution result:', result);
       
       return { success: true, result };
     } catch (funcError) {
-      console.error('Error calling process-notification-queue function:', funcError);
+      console.error('⚠️ CRITICAL ERROR: Error calling process-notification-queue webhook:', funcError);
       return { success: false, error: funcError };
     }
   } catch (error) {

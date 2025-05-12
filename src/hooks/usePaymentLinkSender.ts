@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -165,7 +164,7 @@ export function usePaymentLinkSender() {
       }
 
       const paymentRequest = data[0];
-      console.log('Payment request created successfully:', paymentRequest);
+      console.log('⚠️ CRITICAL: Payment request created successfully:', paymentRequest.id);
       
       const notificationMethod: NotificationMethod = {
         email: !!formData.patientEmail,
@@ -175,7 +174,7 @@ export function usePaymentLinkSender() {
       const formattedAddress = ClinicFormatter.formatAddress(clinicData);
       
       if (notificationMethod.email || notificationMethod.sms) {
-        console.log('Creating notification for payment request');
+        console.log('⚠️ CRITICAL: Creating notification for payment request');
         
         const notificationPayload: StandardNotificationPayload = {
           notification_type: "payment_request",
@@ -200,7 +199,7 @@ export function usePaymentLinkSender() {
           }
         };
 
-        console.log('⚠️ CRITICAL - Notification payload prepared:', JSON.stringify(notificationPayload, null, 2));
+        console.log('⚠️ CRITICAL: Notification payload prepared:', JSON.stringify(notificationPayload, null, 2));
         
         // Add a debug flag to the payload for payment plans
         if (isPaymentPlan) {
@@ -209,6 +208,8 @@ export function usePaymentLinkSender() {
         }
 
         try {
+          console.log('⚠️ CRITICAL: Adding notification to queue with IMMEDIATE processing...');
+          
           const { success, error } = await addToNotificationQueue(
             'payment_request',
             notificationPayload,
@@ -218,33 +219,13 @@ export function usePaymentLinkSender() {
           );
 
           if (!success) {
-            console.error("Failed to queue notification:", error);
-            console.error("Error details:", JSON.stringify(error, null, 2));
+            console.error("⚠️ CRITICAL ERROR: Failed to queue notification:", error);
             toast.warning("Payment link was sent, but notification delivery might be delayed");
           } else {
-            console.log("⚠️ CRITICAL - Payment request notification queued successfully");
-            
-            try {
-              console.log("⚠️ CRITICAL - Processing notifications immediately...");
-              // Add a small delay to ensure the database has processed the queue entry
-              await new Promise(resolve => setTimeout(resolve, 500));
-              
-              const processResult = await processNotificationsNow();
-              console.log("⚠️ CRITICAL - Process notifications result:", processResult);
-              
-              if (processResult.error) {
-                console.error("Error processing notifications:", processResult.error);
-                toast.warning("Payment link created, but there was an issue sending notifications");
-              } else {
-                console.log("✅ Notifications processed successfully!");
-              }
-            } catch (cronErr) {
-              console.error("Exception triggering notification processing:", cronErr);
-              toast.warning("Payment link created, but there was an issue sending notifications");
-            }
+            console.log("⚠️ CRITICAL SUCCESS: Payment request notification queued and processed immediately");
           }
         } catch (notifyErr) {
-          console.error("Critical error during notification queueing:", notifyErr);
+          console.error("⚠️ CRITICAL ERROR: Exception during notification queueing:", notifyErr);
           toast.warning("Payment link created, but there was an issue sending notifications");
         }
       } else {

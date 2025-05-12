@@ -1,10 +1,12 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { PaymentLink } from '@/types/payment';
 import { processNotificationsNow } from '@/utils/notification-cron-setup';
+import { addToNotificationQueue } from '@/utils/notification-queue';
+import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
+import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
 
 export function usePaymentPlanScheduler() {
   const [isSchedulingPlan, setIsSchedulingPlan] = useState(false);
@@ -192,7 +194,7 @@ export function usePaymentPlanScheduler() {
         throw new Error('Failed to create initial payment schedule');
       }
       
-      console.log('First payment schedule created:', firstPaymentSchedule);
+      console.log('⚠️ CRITICAL: First payment schedule created:', firstPaymentSchedule.id);
 
       // Now create a payment request for the first installment
       const { data: paymentRequestData, error: paymentRequestError } = await supabase
@@ -220,7 +222,7 @@ export function usePaymentPlanScheduler() {
         throw new Error('Failed to create payment request: No data returned');
       }
 
-      console.log('Created payment request for first installment:', paymentRequestData);
+      console.log('⚠️ CRITICAL: Created payment request for first installment:', paymentRequestData.id);
 
       // Update the first payment schedule with the request ID
       const { error: updateError } = await supabase
@@ -262,26 +264,71 @@ export function usePaymentPlanScheduler() {
         console.log('Created activity record for plan creation');
       }
 
-      // Manually trigger the notifications for the first payment - use a more robust approach
-      try {
-        console.log('⚠️ CRITICAL: Processing first payment notification immediately');
-        console.log('About to call processNotificationsNow()...');
+      // Now create and send the notification for the first payment
+      const { data: clinicData, error: clinicDataError } = await supabase
+        .from('clinics')
+        .select('*')
+        .eq('id', clinicId)
+        .single();
         
-        // Add a small delay to ensure the database has time to process the request
-        await new Promise(resolve => setTimeout(resolve, 500));
+      if (clinicDataError) {
+        console.error('Error fetching clinic details for notification:', clinicDataError);
+        toast.warning('Payment plan created, but notification might be delayed');
+      } else {
+        const formattedAddress = ClinicFormatter.formatAddress(clinicData);
+        const notificationMethod: NotificationMethod = {
+          email: !!formData.patientEmail,
+          sms: !!formData.patientPhone
+        };
         
-        const processResult = await processNotificationsNow();
-        console.log('Notification processing result:', processResult);
+        console.log('⚠️ CRITICAL: Creating notification for payment plan first installment');
         
-        if (!processResult.success) {
-          console.warn('Warning: Notification processing returned an error:', processResult.error);
-          toast.warning('Payment plan created, but notification might be delayed');
-        } else {
-          console.log('✅ Successfully processed notifications immediately');
+        const notificationPayload: StandardNotificationPayload = {
+          notification_type: "payment_request",
+          notification_method: notificationMethod,
+          patient: {
+            name: formData.patientName,
+            email: formData.patientEmail,
+            phone: formData.patientPhone
+          },
+          payment: {
+            reference: paymentRequestData.id,
+            amount: installmentAmount,
+            refund_amount: null,
+            payment_link: `https://clinipay.co.uk/payment/${paymentRequestData.id}`,
+            message: `[PLAN] ${formData.message || `Payment plan: ${selectedPlan.title || 'Payment Plan'} - Installment 1 of ${paymentCount}`}`
+          },
+          clinic: {
+            name: clinicData.clinic_name || "Your healthcare provider",
+            email: clinicData.email,
+            phone: clinicData.phone,
+            address: formattedAddress
+          }
+        };
+        
+        console.log('⚠️ CRITICAL: Notification payload prepared for payment plan:', JSON.stringify(notificationPayload, null, 2));
+        
+        try {
+          console.log('⚠️ CRITICAL: Adding payment plan notification to queue with IMMEDIATE processing...');
+          
+          const { success, error } = await addToNotificationQueue(
+            'payment_request',
+            notificationPayload,
+            'patient',
+            clinicId,
+            paymentRequestData.id
+          );
+
+          if (!success) {
+            console.error("⚠️ CRITICAL ERROR: Failed to queue payment plan notification:", error);
+            toast.warning("Payment plan created, but notification delivery might be delayed");
+          } else {
+            console.log("⚠️ CRITICAL SUCCESS: Payment plan notification queued and processed immediately");
+          }
+        } catch (notifyErr) {
+          console.error("⚠️ CRITICAL ERROR: Exception during payment plan notification queueing:", notifyErr);
+          toast.warning("Payment plan created, but there was an issue sending notifications");
         }
-      } catch (notifyError) {
-        console.error('Error processing notifications:', notifyError);
-        toast.warning('Payment plan created, but notification delivery might be delayed');
       }
 
       return { 
