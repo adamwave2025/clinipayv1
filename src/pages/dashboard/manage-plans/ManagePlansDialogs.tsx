@@ -1,11 +1,10 @@
-
 import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
 import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
 import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDialog';
 import ReschedulePlanDialog from '@/components/dashboard/payment-plans/ReschedulePlanDialog';
-import PaymentRefundDialog from '@/components/dashboard/payment-plans/PaymentRefundDialog';
+import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
