@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -265,7 +266,8 @@ export function usePaymentPlanScheduler() {
       }
 
       // Now create and send the notification for the first payment
-      const { data: clinicData, error: clinicDataError } = await supabase
+      // Use clinicNotificationData instead of clinicData to avoid name collision
+      const { data: clinicNotificationData, error: clinicDataError } = await supabase
         .from('clinics')
         .select('*')
         .eq('id', clinicId)
@@ -275,7 +277,7 @@ export function usePaymentPlanScheduler() {
         console.error('Error fetching clinic details for notification:', clinicDataError);
         toast.warning('Payment plan created, but notification might be delayed');
       } else {
-        const formattedAddress = ClinicFormatter.formatAddress(clinicData);
+        const formattedAddress = ClinicFormatter.formatAddress(clinicNotificationData);
         const notificationMethod: NotificationMethod = {
           email: !!formData.patientEmail,
           sms: !!formData.patientPhone
@@ -299,9 +301,9 @@ export function usePaymentPlanScheduler() {
             message: `[PLAN] ${formData.message || `Payment plan: ${selectedPlan.title || 'Payment Plan'} - Installment 1 of ${paymentCount}`}`
           },
           clinic: {
-            name: clinicData.clinic_name || "Your healthcare provider",
-            email: clinicData.email,
-            phone: clinicData.phone,
+            name: clinicNotificationData.clinic_name || "Your healthcare provider",
+            email: clinicNotificationData.email,
+            phone: clinicNotificationData.phone,
             address: formattedAddress
           }
         };
