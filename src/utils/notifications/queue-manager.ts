@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { StandardNotificationPayload } from '@/types/notification';
 import { NotificationResponse, NotificationStatus, RecipientType, FlatJsonValue, FlatJsonRecord } from './types';
@@ -164,6 +163,7 @@ export async function checkNotificationExists(
   reference_id: string
 ): Promise<boolean> {
   try {
+    // Explicitly typed query with minimal column selection to avoid deep type instantiation
     const { data, error } = await supabase
       .from('notification_queue')
       .select('id, status')
@@ -172,7 +172,7 @@ export async function checkNotificationExists(
       .eq('reference_id', reference_id)
       .order('created_at', { ascending: false })
       .limit(1)
-      .maybeSingle();
+      .maybeSingle() as { data: NotificationQueryResult | null, error: any };
     
     if (error) {
       console.error('Error checking for existing notification:', error);
