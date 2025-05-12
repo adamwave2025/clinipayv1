@@ -188,6 +188,7 @@ export async function addToNotificationQueue(
       const elapsedTime = Date.now() - startTime;
       console.log(`⏱️ Total notification processing time: ${elapsedTime}ms`);
       
+      // Return a simple flat object with primitive types only
       return { 
         success: true, 
         notification_id: notificationId, 
@@ -265,21 +266,17 @@ export async function addToNotificationQueue(
   } catch (error) {
     // Fix for infinite type recursion - Create a completely flat error response with only primitive values
     const errorMessage = error instanceof Error ? error.message.substring(0, 255) : 'Unknown error';
-    const errorStack = error instanceof Error ? 
-      error.stack ? error.stack.substring(0, 255) : undefined : 
-      undefined;
     
     console.error('⚠️ CRITICAL ERROR: Exception adding to notification queue:', errorMessage);
-    if (errorStack) console.error('Error stack:', errorStack);
     
     const elapsedTime = Date.now() - startTime;
     console.log(`⏱️ Total notification processing time: ${elapsedTime}ms (exception)`);
     
-    // Return a flat structure with primitive values only
+    // Return a completely flat structure with primitive values only - no nested objects or arrays
     return { 
       success: false, 
       error_message: errorMessage,
-      error_stack: errorStack || null,
+      error_type: error instanceof Error ? 'Error' : typeof error,
       processing_time_ms: elapsedTime
     };
   }
