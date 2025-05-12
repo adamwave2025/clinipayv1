@@ -5,7 +5,7 @@ import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDia
 import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
 import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDialog';
 import ReschedulePlanDialog from '@/components/dashboard/payment-plans/ReschedulePlanDialog';
-import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
+import PaymentRefundDialog from '@/components/dashboard/payment-plans/PaymentRefundDialog';
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
@@ -48,7 +48,7 @@ export const ManagePlansDialogs = () => {
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
-    selectedInstallment,
+    selectedInstallment, // Using the primary selectedInstallment
     
     // Add the take payment dialog props
     showTakePaymentDialog,

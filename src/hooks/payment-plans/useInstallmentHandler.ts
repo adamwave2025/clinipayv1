@@ -6,6 +6,7 @@ import { Payment } from '@/types/payment';
 import { toast } from 'sonner';
 
 export const useInstallmentHandler = () => {
+  // Renamed to avoid conflict with primary selectedInstallment
   const [selectedInstallment, setSelectedInstallment] = useState<PlanInstallment | null>(null);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const { paymentData, fetchPaymentDetails, setPaymentData } = usePaymentDetailsFetcher();

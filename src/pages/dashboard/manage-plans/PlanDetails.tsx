@@ -27,8 +27,9 @@ const PlanDetails = () => {
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
-    selectedInstallment,
-    isProcessing
+    selectedInstallment, // Use the primary selectedInstallment
+    isProcessing,
+    viewDetailsInstallment // Using the renamed property here
   } = useManagePlansContext();
   
   // Debug logging for the dialogs
@@ -36,9 +37,10 @@ const PlanDetails = () => {
     console.log('PlanDetails - Dialog states:', { 
       showMarkAsPaidDialog, 
       showRescheduleDialog,
-      selectedInstallment: selectedInstallment?.id
+      selectedInstallmentId: selectedInstallment?.id,
+      viewDetailsInstallmentId: viewDetailsInstallment?.id
     });
-  }, [showMarkAsPaidDialog, showRescheduleDialog, selectedInstallment]);
+  }, [showMarkAsPaidDialog, showRescheduleDialog, selectedInstallment, viewDetailsInstallment]);
   
   if (!selectedPlan) {
     return null;

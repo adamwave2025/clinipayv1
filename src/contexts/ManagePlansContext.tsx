@@ -35,11 +35,11 @@ export interface ManagePlansContextType {
   showPlanDetails: boolean;
   setShowPlanDetails: (show: boolean) => void;
   
-  // Payment details state
+  // Payment details state - RENAMED to viewDetailsInstallment to avoid conflict
   showPaymentDetails: boolean;
   setShowPaymentDetails: (show: boolean) => void;
   paymentData: Payment | null;
-  selectedInstallment: PlanInstallment | null;
+  viewDetailsInstallment: PlanInstallment | null; // Renamed from selectedInstallment
   
   // Payment dialog data - specific for take payment operations
   paymentDialogData: PaymentDialogData | null;
@@ -116,6 +116,9 @@ export interface ManagePlansContextType {
   // Plan state helpers
   isPlanPaused: (plan: Plan | null) => boolean;
   isProcessing: boolean;
+  
+  // Add the primary selected installment state for payment actions
+  selectedInstallment: PlanInstallment | null;
 }
 
 const ManagePlansContext = createContext<ManagePlansContextType | undefined>(undefined);

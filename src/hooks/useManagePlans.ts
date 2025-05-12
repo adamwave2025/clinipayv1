@@ -65,13 +65,13 @@ export const useManagePlans = (): ManagePlansContextType => {
     processRefund
   } = useDialogHandlers();
   
-  // Use installment handlers
+  // Use installment handlers - update variable name to match the context
   const {
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    selectedInstallment,
-    setSelectedInstallment,
+    selectedInstallment: viewDetailsInstallment, // Renamed to avoid conflict
+    setSelectedInstallment: setViewDetailsInstallment,
     handleViewPaymentDetails
   } = useInstallmentHandler();
   
@@ -101,7 +101,9 @@ export const useManagePlans = (): ManagePlansContextType => {
     setShowTakePaymentDialog,
     rescheduleDialog: installmentRescheduleDialog,
     setRescheduleDialog: setInstallmentRescheduleDialog,
-    handleReschedulePayment: installmentReschedulePayment
+    handleReschedulePayment: installmentReschedulePayment,
+    selectedInstallment, // This is the primary selectedInstallment
+    setSelectedInstallment
   } = useInstallmentActions(selectedPlan?.id || '', refreshInstallments);
   
   // Add state for payment dialog data
@@ -201,11 +203,11 @@ export const useManagePlans = (): ManagePlansContextType => {
     showPlanDetails,
     setShowPlanDetails,
     
-    // Payment details state
+    // Payment details state - use renamed property
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    selectedInstallment,
+    viewDetailsInstallment, // Renamed from selectedInstallment
     
     // Add the payment dialog data and related functions
     paymentDialogData,
@@ -240,6 +242,9 @@ export const useManagePlans = (): ManagePlansContextType => {
     showTakePaymentDialog,
     setShowTakePaymentDialog,
     onPaymentUpdated,
+    
+    // Add the primary selected installment state (for payment actions)
+    selectedInstallment,
     
     // Refund properties
     refundDialogOpen,

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext, { PaymentDialogData } from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -56,12 +55,12 @@ export const ManagePlansProvider: React.FC<{
     handleBackToPlans
   } = usePlanDetailsView();
 
-  // Use installment handler hooks
+  // Use installment handler hooks - with renamed variable to avoid conflict
   const {
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    selectedInstallment: viewDetailsSelectedInstallment,  // Renamed to avoid conflict
+    selectedInstallment: viewDetailsInstallment,  // Renamed to viewDetailsInstallment
     handleViewPaymentDetails
   } = useInstallmentHandler();
   
@@ -331,11 +330,11 @@ export const ManagePlansProvider: React.FC<{
         showPlanDetails,
         setShowPlanDetails,
         
-        // Payment details state
+        // Payment details state - using the renamed property
         showPaymentDetails,
         setShowPaymentDetails,
         paymentData,
-        selectedInstallment: viewDetailsSelectedInstallment,  // Use the renamed variable here
+        viewDetailsInstallment, // Changed from selectedInstallment to viewDetailsInstallment
         
         // Payment dialog data
         paymentDialogData,
@@ -369,7 +368,7 @@ export const ManagePlansProvider: React.FC<{
         showTakePaymentDialog,
         setShowTakePaymentDialog,
         onPaymentUpdated,
-        selectedInstallment,  // Primary selectedInstallment state from useInstallmentActions
+        selectedInstallment, // This is the primary selectedInstallment state from useInstallmentActions
         
         // Refund properties
         refundDialogOpen,
