@@ -44,12 +44,12 @@ export async function addToNotificationQueue(
 
     if (error) {
       console.error('⚠️ CRITICAL ERROR: Failed to add to notification queue:', error);
-      return { success: false, error: error.message };
+      return { success: false, error_message: error.message };
     }
 
     if (!data || data.length === 0) {
       console.error('⚠️ CRITICAL ERROR: No data returned from notification queue insertion');
-      return { success: false, error: 'No data returned' };
+      return { success: false, error_message: 'No data returned' };
     }
 
     const queuedItem = data[0];
@@ -157,21 +157,16 @@ export async function addToNotificationQueue(
       const elapsedTime = Date.now() - startTime;
       console.log(`⏱️ Total notification processing time: ${elapsedTime}ms (failed)`);
       
-      // Fix for infinite type recursion - Use a flat structure with all primitive values
+      // FIX: Return a completely flat structure to avoid type recursion
       return { 
         success: true, 
         notification_id: notificationId, 
         webhook_success: false,
-        webhook_error: webhookResult.error ? webhookResult.error.substring(0, 255) : 'Unknown error',
-        error_status: errorDetails.status as number,
-        error_status_text: errorDetails.statusText as string,
-        error_response: errorDetails.responseBody as string,
-        error_webhook: errorDetails.webhook as string,
-        error_recipient: errorDetails.recipientType as string
+        webhook_error: webhookResult.error ? webhookResult.error.substring(0, 255) : 'Unknown error'
       };
     }
   } catch (error) {
-    // Fix for infinite type recursion - Create a completely flat error response with only primitive values
+    // FIX: Use simple string representation for error instead of passing the error object
     const errorMessage = error instanceof Error ? error.message.substring(0, 255) : 'Unknown error';
     
     console.error('⚠️ CRITICAL ERROR: Exception adding to notification queue:', errorMessage);
@@ -179,12 +174,10 @@ export async function addToNotificationQueue(
     const elapsedTime = Date.now() - startTime;
     console.log(`⏱️ Total notification processing time: ${elapsedTime}ms (exception)`);
     
-    // Return a completely flat structure with primitive values only - no nested objects or arrays
+    // FIX: Return a simple flat object without any complex structures
     return { 
       success: false, 
-      error_message: errorMessage,
-      error_type: error instanceof Error ? 'Error' : typeof error,
-      processing_time_ms: elapsedTime
+      error_message: errorMessage
     };
   }
 }
@@ -224,3 +217,4 @@ export async function checkNotificationExists(
     return false;
   }
 }
+

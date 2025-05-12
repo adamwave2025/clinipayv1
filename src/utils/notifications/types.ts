@@ -25,6 +25,7 @@ export type RecipientType = 'patient' | 'clinic';
 
 /**
  * Common response type for notification operations
+ * FIX: Simplified to use only flat primitive properties to avoid recursive type references
  */
 export interface NotificationResponse {
   success: boolean;
@@ -32,5 +33,7 @@ export interface NotificationResponse {
   error_message?: string;
   webhook_success?: boolean;
   webhook_error?: string;
-  [key: string]: any; // For any additional flat properties
+  // Allow additional flat properties but don't use nested objects
+  [key: string]: string | number | boolean | undefined;
 }
+
