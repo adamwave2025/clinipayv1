@@ -1,6 +1,19 @@
 
-// Re-export all notification utilities
+// Re-export the types which are still needed
 export * from './types';
 export * from './json-utils';
-export * from './webhook-client';
-export * from './queue-manager';
+
+// Import and re-export the stub functions
+import { 
+  addToNotificationQueue,
+  checkNotificationExists,
+  callWebhookDirectly,
+  verifyWebhookConfiguration
+} from '../notification-stub';
+
+export {
+  addToNotificationQueue,
+  checkNotificationExists,
+  callWebhookDirectly,
+  verifyWebhookConfiguration
+};

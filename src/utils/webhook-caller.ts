@@ -1,6 +1,5 @@
 
-import { StandardNotificationPayload } from '@/types/notification';
-import { callWebhookDirectly, verifyWebhookConfiguration } from './notifications';
+import { callWebhookDirectly, verifyWebhookConfiguration } from './notification-stub';
 
-// Re-export functions from the notifications module
+// Re-export functions from the stub module
 export { callWebhookDirectly, verifyWebhookConfiguration };

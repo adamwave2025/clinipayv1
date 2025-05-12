@@ -1,11 +1,8 @@
 
-// Re-export all functionality from the refactored modules
+// Re-export all functionality from the stub module
 export { 
   addToNotificationQueue,
-  checkNotificationExists 
-} from './notifications/queue-manager';
-
-export {
+  checkNotificationExists,
   callWebhookDirectly,
   verifyWebhookConfiguration
-} from './notifications/webhook-client';
+} from './notification-stub';
