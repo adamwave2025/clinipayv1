@@ -47,6 +47,9 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
     
     toast.info(`Opening payment dialog for ${amountDisplay}`);
     
+    // Explicitly log the payment ID to confirm it's valid
+    console.log("PaymentActionMenu: Triggering payment for ID:", paymentId, "with amount:", installment?.amount);
+    
     // Pass both the ID and the full installment object
     onTakePayment(paymentId, installment);
   };
