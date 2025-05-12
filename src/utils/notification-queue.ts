@@ -20,8 +20,8 @@ export async function addToNotificationQueue(
   
   try {
     // Convert the StandardNotificationPayload to Json compatible format
-    // This explicit cast ensures we satisfy TypeScript's type checking
-    const jsonPayload = payload as unknown as Json;
+    // Use a type assertion that doesn't cause infinite recursion
+    const jsonPayload = payload as unknown as { [key: string]: any };
     let notificationId: string | null = null;
     
     // Start a Supabase transaction to ensure the notification record is created
@@ -29,7 +29,7 @@ export async function addToNotificationQueue(
       .from('notification_queue')
       .insert({
         type,
-        payload: jsonPayload,
+        payload: jsonPayload as Json,
         recipient_type,
         clinic_id,
         reference_id,
