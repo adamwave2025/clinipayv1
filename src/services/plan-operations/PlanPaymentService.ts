@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -116,7 +117,6 @@ export class PlanPaymentService {
         .from('payments')
         .insert({
           payment_schedule_id: scheduleEntry.id,
-          plan_id: scheduleEntry.plan_id,
           amount_paid: scheduleEntry.amount,
           status: 'paid',
           manual_payment: true,
