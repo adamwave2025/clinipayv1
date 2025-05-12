@@ -64,16 +64,16 @@ export function usePaymentPlanScheduler() {
         throw new Error(`Failed to get clinic details: ${clinicError.message}`);
       }
 
-      // Validate the payment frequency
-      const paymentFrequency = selectedPlan.payment_cycle || 'monthly';
+      // Validate the payment frequency - fixed property name
+      const paymentFrequency = selectedPlan.paymentCycle || 'monthly';
       if (!['weekly', 'bi-weekly', 'monthly'].includes(paymentFrequency)) {
         console.error('Invalid payment frequency:', paymentFrequency);
         throw new Error(`Invalid payment frequency: ${paymentFrequency}`);
       }
 
-      // Calculate total amount and installment amount
-      const totalAmount = selectedPlan.plan_total_amount || selectedPlan.amount || 0;
-      const paymentCount = selectedPlan.payment_count || 1;
+      // Calculate total amount and installment amount - fixed property names
+      const totalAmount = selectedPlan.planTotalAmount || selectedPlan.amount || 0;
+      const paymentCount = selectedPlan.paymentCount || 1;
       const installmentAmount = Math.floor(totalAmount / paymentCount);
 
       console.log('Payment plan details:', {
@@ -265,11 +265,17 @@ export function usePaymentPlanScheduler() {
       // Manually trigger the notifications for the first payment
       try {
         console.log('Processing first payment notification immediately');
+        console.log('About to call processNotificationsNow()...');
         const processResult = await processNotificationsNow();
         console.log('Notification processing result:', processResult);
+        
+        if (!processResult.success) {
+          console.warn('Warning: Notification processing returned an error:', processResult.error);
+          toast.warning('Payment plan created, but notification might be delayed');
+        }
       } catch (notifyError) {
         console.error('Error processing notifications:', notifyError);
-        // Non-fatal error, we can continue
+        toast.warning('Payment plan created, but notification delivery might be delayed');
       }
 
       return { 

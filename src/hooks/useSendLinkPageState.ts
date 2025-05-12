@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { PaymentLink } from '@/types/payment';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
@@ -54,6 +53,7 @@ export function useSendLinkPageState() {
     setIsPaymentPlan(selectedLink?.paymentPlan || false);
   }, [formData.selectedLink, regularLinks, paymentPlans]);
 
+  // Handle submitting the form
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -125,8 +125,19 @@ export function useSendLinkPageState() {
         console.log('Scheduling plan with patient ID:', patientId);
         console.log('Selected plan details:', selectedLink);
         
+        // Convert startDate to string format for the API
+        const startDateString = formData.startDate instanceof Date 
+          ? formData.startDate.toISOString().split('T')[0]
+          : formData.startDate;
+          
+        // Create plan data with string date
+        const planFormData = {
+          ...formData,
+          startDate: startDateString
+        };
+        
         // Schedule the plan with the verified patient ID
-        const result = await handleSchedulePaymentPlan(patientId, formData, selectedLink);
+        const result = await handleSchedulePaymentPlan(patientId, planFormData, selectedLink);
         
         if (loadingToast) toast.dismiss(loadingToast);
         

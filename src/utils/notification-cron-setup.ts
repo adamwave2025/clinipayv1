@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { httpsCallable } from '@/integrations/firebase/firebase';
 
 /**
  * Trigger immediate processing of the notification queue
@@ -35,11 +34,22 @@ export async function processNotificationsNow() {
       const functionEndpoint = 'https://jbtxxlkhiubuzanegtzn.supabase.co/functions/v1/process-notification-queue';
       console.log('Calling edge function at:', functionEndpoint);
       
+      // Get current session - using async getSession instead of deprecated session()
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      
+      // If no authenticated session, use the anon key as fallback
+      const authHeader = accessToken 
+        ? `Bearer ${accessToken}`
+        : 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpidHh4bGtoaXVidXphbmVndHpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQxMjU3MTIsImV4cCI6MjA1OTcwMTcxMn0.Pe8trGeGMCmJ61zEFbkaPJidKnmxVOWkLExPa-TNn9I';
+      
+      console.log('Using auth header:', authHeader.substring(0, 20) + '...');
+      
       const response = await fetch(functionEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.auth.session()?.access_token}`
+          'Authorization': authHeader
         },
         body: JSON.stringify({ 
           trigger: 'manual',
@@ -50,7 +60,7 @@ export async function processNotificationsNow() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Edge function returned status ${response.status}: ${errorText}`);
-        return { success: false, error: `Function error: ${response.status}` };
+        return { success: false, error: `Function error: ${response.status} - ${errorText}` };
       }
       
       const result = await response.json();

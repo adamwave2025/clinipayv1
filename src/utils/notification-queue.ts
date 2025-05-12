@@ -74,13 +74,13 @@ export async function addToNotificationQueue(
   paymentId?: string
 ) {
   console.log(`Adding ${recipientType} notification to queue: ${type}`, payload);
-  
-  // Ensure monetary values in the payload have proper decimal formatting
-  const formattedPayload = formatMonetaryValues(payload);
-  console.log(`Payload structure details with formatted monetary values:`, JSON.stringify(formattedPayload, null, 2));
   console.log(`Using clinic_id: ${clinicId}`);
   
   try {
+    // Ensure monetary values in the payload have proper decimal formatting
+    const formattedPayload = formatMonetaryValues(payload);
+    console.log(`Payload structure with formatted monetary values:`, JSON.stringify(formattedPayload, null, 2));
+    
     // Check if system webhooks are configured 
     console.log('Checking if notification webhooks are configured...');
     const { data: webhooks, error: webhookError } = await supabase
