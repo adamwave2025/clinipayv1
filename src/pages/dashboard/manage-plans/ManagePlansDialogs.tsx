@@ -13,15 +13,6 @@ import TakePaymentDialog from '@/components/dashboard/payment-plans/TakePaymentD
 import { toast } from '@/hooks/use-toast';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 
-// Define a type for the direct payment data used by the payment dialog
-interface PaymentDialogData {
-  paymentId: string;
-  patientName: string;
-  patientEmail: string;
-  amount: number;
-  isValid: boolean;
-}
-
 export const ManagePlansDialogs = () => {
   const {
     selectedPlan,
@@ -65,65 +56,32 @@ export const ManagePlansDialogs = () => {
     // Add the take payment dialog props
     showTakePaymentDialog,
     setShowTakePaymentDialog,
-    onPaymentUpdated
+    onPaymentUpdated,
+    
+    // Add the dedicated payment dialog data
+    paymentDialogData
   } = useManagePlansContext();
 
   // Track payment dialog rendering to debug issues
   const [paymentDialogRenderCount, setPaymentDialogRenderCount] = useState(0);
   
-  // Create a direct payment data object that won't be affected by context state issues
-  const [directPaymentData, setDirectPaymentData] = useState<PaymentDialogData>({
-    paymentId: '',
-    patientName: '',
-    patientEmail: '',
-    amount: 0,
-    isValid: false
-  });
-  
-  // Update direct payment data whenever selectedInstallment or paymentData changes
-  useEffect(() => {
-    // For debugging
-    console.log("Selected installment updated:", selectedInstallment);
-    console.log("Payment data updated:", paymentData);
-    
-    const installmentToUse = paymentData || selectedInstallment;
-    
-    if (installmentToUse && 
-        typeof installmentToUse === 'object' && 
-        installmentToUse.id && 
-        typeof installmentToUse.amount === 'number') {
-      
-      // Create the direct payment data
-      const newPaymentData: PaymentDialogData = {
-        paymentId: installmentToUse.id,
-        patientName: selectedPlan?.patientName || '',
-        patientEmail: selectedPlan?.patientEmail || '',
-        amount: installmentToUse.amount,
-        isValid: true
-      };
-      
-      console.log("Setting direct payment data:", newPaymentData);
-      setDirectPaymentData(newPaymentData);
-    }
-  }, [selectedInstallment, paymentData, selectedPlan]);
-  
   // Monitor the take payment dialog to react to it opening
   useEffect(() => {
     if (showTakePaymentDialog) {
       console.log(`TakePaymentDialog should show (render #${paymentDialogRenderCount + 1})`);
-      console.log('Direct payment data:', directPaymentData);
       
       // Increment render tracking
       setPaymentDialogRenderCount(prev => prev + 1);
       
-      if (!directPaymentData.isValid) {
-        console.error("Cannot show payment dialog: No valid payment data available");
+      // Validate payment data is available
+      if (!paymentDialogData?.isValid) {
+        console.error("Cannot show payment dialog: No valid payment dialog data available");
         toast.error("Cannot show payment dialog: Missing payment data");
         // Close the dialog if we don't have data to prevent errors
         setShowTakePaymentDialog(false);
       }
     }
-  }, [showTakePaymentDialog, directPaymentData, paymentDialogRenderCount]);
+  }, [showTakePaymentDialog, paymentDialogData, paymentDialogRenderCount, setShowTakePaymentDialog]);
 
   // Early return if no plan is selected
   if (!selectedPlan) {
@@ -163,7 +121,7 @@ export const ManagePlansDialogs = () => {
         isProcessing={isProcessing}
         hasSentPayments={hasSentPayments}
         hasOverduePayments={hasOverduePayments}
-        hasPaidPayments={hasPaidPayments}
+        hasPaidPayments={hasPaidPayments} // Add this prop
         resumeError={resumeError}
       />
       
@@ -204,19 +162,20 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* Improved payment dialog rendering with direct data */}
-      {showTakePaymentDialog && directPaymentData.isValid && (
+      {/* Improved payment dialog rendering with dedicated payment dialog data */}
+      {showTakePaymentDialog && paymentDialogData?.isValid && (
         <TakePaymentDialog
-          key={`payment-dialog-${directPaymentData.paymentId}-${paymentDialogRenderCount}`}
+          key={`payment-dialog-${paymentDialogData.paymentId}-${paymentDialogRenderCount}`}
           open={showTakePaymentDialog}
           onOpenChange={(open) => {
             console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
             setShowTakePaymentDialog(open);
           }}
-          paymentId={directPaymentData.paymentId}
-          patientName={directPaymentData.patientName}
-          patientEmail={directPaymentData.patientEmail}
-          amount={directPaymentData.amount}
+          paymentId={paymentDialogData.paymentId}
+          patientName={paymentDialogData.patientName}
+          patientEmail={paymentDialogData.patientEmail}
+          patientPhone={paymentDialogData.patientPhone}
+          amount={paymentDialogData.amount}
           onPaymentProcessed={onPaymentUpdated}
         />
       )}

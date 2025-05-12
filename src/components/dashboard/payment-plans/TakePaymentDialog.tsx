@@ -11,6 +11,7 @@ import { formatCurrency } from '@/utils/formatters';
 import { AlertTriangle } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { toast } from '@/hooks/use-toast';
 
 // Initialize Stripe once outside of the component
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
@@ -222,7 +223,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
             </div>
             
             <Elements stripe={stripePromise}>
-              <PaymentForm
+              <PaymentForm 
                 onSubmit={handlePaymentFormSubmit}
                 isLoading={isProcessing || isLoading}
                 amount={validatedAmount}

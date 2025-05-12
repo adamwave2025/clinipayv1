@@ -5,6 +5,16 @@ import { Payment } from '@/types/payment';
 import { PlanActivity } from '@/utils/planActivityUtils';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 
+// Create a dedicated type for payment dialog data
+export interface PaymentDialogData {
+  paymentId: string;
+  patientName: string;
+  patientEmail?: string;
+  patientPhone?: string;
+  amount: number;
+  isValid: boolean;
+}
+
 export interface ManagePlansContextType {
   // Search and filter state
   searchQuery: string;
@@ -31,6 +41,10 @@ export interface ManagePlansContextType {
   paymentData: Payment | null;
   selectedInstallment: PlanInstallment | null;
   
+  // Payment dialog data - specific for take payment operations
+  paymentDialogData: PaymentDialogData | null;
+  setPaymentDialogData: (data: PaymentDialogData | null) => void;
+  
   // View mode toggle state
   isViewMode: boolean;
   setIsViewMode: (isViewMode: boolean) => void;
@@ -48,13 +62,14 @@ export interface ManagePlansContextType {
   handleOpenReschedule: (paymentId: string) => void;
   handleReschedulePayment: (date: Date) => void;
   handleTakePayment: (paymentId: string, installmentDetails?: any) => void;
+  preparePaymentData: (paymentId: string, installmentDetails: PlanInstallment) => boolean; // New validation method
   
   // Mark as paid confirmation dialog
   showMarkAsPaidDialog: boolean;
   setShowMarkAsPaidDialog: (show: boolean) => void;
   confirmMarkAsPaid: () => Promise<void>;
   
-  // Take payment dialog - Add the missing properties
+  // Take payment dialog
   showTakePaymentDialog: boolean;
   setShowTakePaymentDialog: (show: boolean) => void;
   onPaymentUpdated: () => Promise<void>;
@@ -85,7 +100,7 @@ export interface ManagePlansContextType {
   handleOpenResumeDialog: () => void;
   hasSentPayments: boolean;
   hasOverduePayments: boolean;
-  hasPaidPayments: boolean; // Required property
+  hasPaidPayments: boolean;
   resumeError?: string | null;
   
   // Reschedule plan properties (entire plan)
