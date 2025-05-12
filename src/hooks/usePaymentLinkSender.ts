@@ -1,10 +1,10 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
 import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
-import { processNotificationsNow } from '@/utils/notification-cron-setup';
 import { addToNotificationQueue } from '@/utils/notification-queue';
 
 interface PaymentLinkSenderProps {
@@ -149,7 +149,6 @@ export function usePaymentLinkSender() {
           patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,
           status: 'sent',
           message: formData.message || null
-          // Removed is_payment_plan field which was causing the error
         })
         .select();
 
@@ -208,9 +207,9 @@ export function usePaymentLinkSender() {
         }
 
         try {
-          console.log('⚠️ CRITICAL: Adding notification to queue with IMMEDIATE processing...');
+          console.log('⚠️ CRITICAL: Adding notification to queue and calling webhook directly...');
           
-          const { success, error } = await addToNotificationQueue(
+          const { success, error, webhook_success, webhook_error } = await addToNotificationQueue(
             'payment_request',
             notificationPayload,
             'patient',
@@ -221,11 +220,14 @@ export function usePaymentLinkSender() {
           if (!success) {
             console.error("⚠️ CRITICAL ERROR: Failed to queue notification:", error);
             toast.warning("Payment link was sent, but notification delivery might be delayed");
+          } else if (!webhook_success) {
+            console.error("⚠️ CRITICAL ERROR: Failed to deliver notification via webhook:", webhook_error);
+            toast.warning("Payment link was sent, but notification delivery might be delayed");
           } else {
-            console.log("⚠️ CRITICAL SUCCESS: Payment request notification queued and processed immediately");
+            console.log("⚠️ CRITICAL SUCCESS: Payment request notification sent successfully");
           }
         } catch (notifyErr) {
-          console.error("⚠️ CRITICAL ERROR: Exception during notification queueing:", notifyErr);
+          console.error("⚠️ CRITICAL ERROR: Exception during notification delivery:", notifyErr);
           toast.warning("Payment link created, but there was an issue sending notifications");
         }
       } else {

@@ -2,10 +2,10 @@
 import { supabase } from '@/integrations/supabase/client';
 import { StandardNotificationPayload } from '@/types/notification';
 import { Json } from '@/integrations/supabase/types';
-import { processNotificationsNow } from './notification-cron-setup';
+import { callWebhookDirectly } from './webhook-caller';
 
 /**
- * Add an item to the notification queue for processing and immediately attempt to process
+ * Add an item to the notification queue for processing and immediately call webhook
  */
 export async function addToNotificationQueue(
   type: string,
@@ -22,7 +22,7 @@ export async function addToNotificationQueue(
     // This explicit cast ensures we satisfy TypeScript's type checking
     const jsonPayload = payload as unknown as Json;
     
-    // Insert into notification queue with high priority for immediate processing
+    // Insert into notification queue with high priority
     const { data, error } = await supabase
       .from('notification_queue')
       .insert({
@@ -34,7 +34,7 @@ export async function addToNotificationQueue(
         status: 'pending',
         retry_count: 0,
         payment_id,
-        priority: 'high' // Add high priority to ensure it's processed immediately
+        priority: 'high'
       })
       .select();
 
@@ -51,27 +51,44 @@ export async function addToNotificationQueue(
     const queuedItem = data[0];
     console.log(`⚠️ CRITICAL: Successfully queued notification with id: ${queuedItem.id}`);
 
-    // Immediately attempt to process the notification
-    console.log(`⚠️ CRITICAL: Triggering immediate processing of the notification...`);
+    // DIRECTLY call the webhook immediately instead of relying on edge function
+    console.log(`⚠️ CRITICAL: Calling webhook directly...`);
+    const webhookResult = await callWebhookDirectly(payload, recipient_type);
     
-    try {
-      // Process notifications immediately
-      const processResult = await processNotificationsNow();
+    if (webhookResult.success) {
+      console.log(`⚠️ CRITICAL SUCCESS: Webhook call successful`);
       
-      if (processResult.success) {
-        console.log(`⚠️ CRITICAL SUCCESS: Immediately processed notification ${queuedItem.id}`);
-      } else {
-        console.error(`⚠️ CRITICAL ERROR: Failed to process notification immediately:`, processResult.error);
+      // Update the queue item to mark it as processed
+      const { error: updateError } = await supabase
+        .from('notification_queue')
+        .update({ 
+          status: 'sent',
+          processed_at: new Date().toISOString(),
+          last_attempt: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', queuedItem.id);
+      
+      if (updateError) {
+        console.error('⚠️ CRITICAL: Failed to update notification status:', updateError);
       }
       
-      // Return success regardless of processing result, as the item is in the queue
-      return { success: true, notification_id: queuedItem.id, processed: processResult.success };
-    } catch (processError) {
-      console.error('⚠️ CRITICAL ERROR: Exception during immediate processing:', processError);
-      // Still return success for the queueing part
-      return { success: true, notification_id: queuedItem.id, processed: false, processError };
+      return { 
+        success: true, 
+        notification_id: queuedItem.id, 
+        webhook_success: true 
+      };
+    } else {
+      console.error('⚠️ CRITICAL ERROR: Direct webhook call failed:', webhookResult.error);
+      
+      // Still return success for the queueing part, but indicate webhook failure
+      return { 
+        success: true, 
+        notification_id: queuedItem.id, 
+        webhook_success: false,
+        webhook_error: webhookResult.error
+      };
     }
-    
   } catch (error) {
     console.error('⚠️ CRITICAL ERROR: Exception adding to notification queue:', error);
     return { success: false, error };

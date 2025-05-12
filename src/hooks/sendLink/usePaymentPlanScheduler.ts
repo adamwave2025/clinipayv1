@@ -4,10 +4,9 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { PaymentLink } from '@/types/payment';
-import { processNotificationsNow } from '@/utils/notification-cron-setup';
-import { addToNotificationQueue } from '@/utils/notification-queue';
 import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
 import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
+import { addToNotificationQueue } from '@/utils/notification-queue';
 
 export function usePaymentPlanScheduler() {
   const [isSchedulingPlan, setIsSchedulingPlan] = useState(false);
@@ -209,7 +208,6 @@ export function usePaymentPlanScheduler() {
           patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,
           status: 'sent',
           message: formData.message || `Payment plan: ${selectedPlan.title || 'Payment Plan'} - Installment 1 of ${paymentCount}`
-          // Removed is_payment_plan field which was causing the error
         })
         .select()
         .single();
@@ -311,9 +309,9 @@ export function usePaymentPlanScheduler() {
         console.log('⚠️ CRITICAL: Notification payload prepared for payment plan:', JSON.stringify(notificationPayload, null, 2));
         
         try {
-          console.log('⚠️ CRITICAL: Adding payment plan notification to queue with IMMEDIATE processing...');
+          console.log('⚠️ CRITICAL: Adding payment plan notification to queue and calling webhook immediately...');
           
-          const { success, error } = await addToNotificationQueue(
+          const { success, error, webhook_success, webhook_error } = await addToNotificationQueue(
             'payment_request',
             notificationPayload,
             'patient',
@@ -324,11 +322,14 @@ export function usePaymentPlanScheduler() {
           if (!success) {
             console.error("⚠️ CRITICAL ERROR: Failed to queue payment plan notification:", error);
             toast.warning("Payment plan created, but notification delivery might be delayed");
+          } else if (!webhook_success) {
+            console.error("⚠️ CRITICAL ERROR: Failed to deliver notification via webhook:", webhook_error);
+            toast.warning("Payment plan created, but notification delivery might be delayed");
           } else {
-            console.log("⚠️ CRITICAL SUCCESS: Payment plan notification queued and processed immediately");
+            console.log("⚠️ CRITICAL SUCCESS: Payment plan notification sent successfully");
           }
         } catch (notifyErr) {
-          console.error("⚠️ CRITICAL ERROR: Exception during payment plan notification queueing:", notifyErr);
+          console.error("⚠️ CRITICAL ERROR: Exception during payment plan notification delivery:", notifyErr);
           toast.warning("Payment plan created, but there was an issue sending notifications");
         }
       }
