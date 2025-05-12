@@ -1,8 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Elements } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import PaymentForm from '@/components/payment/PaymentForm';
 import { useInstallmentPayment } from '@/hooks/payment-plans/useInstallmentPayment';
@@ -12,9 +11,6 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
 import StripeProvider from '@/components/payment/StripeProvider';
-
-// Remove this initialization as we'll use the StripeProvider instead
-// const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 interface TakePaymentDialogProps {
   open: boolean;
@@ -49,22 +45,23 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   const [patientEmail, setPatientEmail] = useState(initialPatientEmail || '');
   const [patientPhone, setPatientPhone] = useState(initialPatientPhone || '');
   const [amount, setAmount] = useState<number | undefined>(initialAmount);
-  const [hasValidId, setHasValidId] = useState(!!paymentId);
+  const [hasValidId, setHasValidId] = useState(false);
 
   // Effect to validate payment ID and potentially handle early errors
   useEffect(() => {
     console.log("TakePaymentDialog - Received paymentId:", paymentId);
     
-    if (!paymentId) {
-      console.error("Missing payment ID in TakePaymentDialog");
+    if (!paymentId || paymentId === '') {
+      console.error("Missing or empty payment ID in TakePaymentDialog");
       setDataError("No payment ID provided. Cannot process payment.");
       setHasValidId(false);
       toast.error("Missing payment ID");
     } else {
+      console.log("TakePaymentDialog - Valid payment ID confirmed:", paymentId);
       setHasValidId(true);
       setDataError(null);
     }
-  }, [paymentId]);
+  }, [paymentId, open]);
 
   // Effect to load payment data when dialog opens and we have a valid ID
   useEffect(() => {
@@ -72,6 +69,12 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       // Only load data if we don't already have it
       if (!initialAmount || !initialPatientName) {
         loadPaymentData();
+      } else {
+        console.log("TakePaymentDialog - Using provided data:", {
+          name: initialPatientName,
+          email: initialPatientEmail,
+          amount: initialAmount
+        });
       }
     }
   }, [open, hasValidId, initialAmount, initialPatientName]);
@@ -111,12 +114,16 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
 
   // The inner component wrapped by StripeProvider
   const PaymentDialogContent = () => {
+    // We need to ensure we always have a valid paymentId and amount before using useInstallmentPayment
+    const validPaymentId = hasValidId ? paymentId : null;
+    const validAmount = amount || 0;
+
     const {
       isProcessing,
       isLoading,
       isStripeReady,
       handlePaymentSubmit,
-    } = useInstallmentPayment(paymentId, amount || 0, onPaymentProcessed);
+    } = useInstallmentPayment(validPaymentId, validAmount, onPaymentProcessed);
 
     // Prepare default values for the payment form
     const defaultValues: Partial<PaymentFormValues> = {

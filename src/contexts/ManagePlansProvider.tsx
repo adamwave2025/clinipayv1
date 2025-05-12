@@ -86,6 +86,13 @@ export const ManagePlansProvider: React.FC<{
     console.log("Preparing payment data for:", paymentId);
     
     try {
+      // Validate the payment ID
+      if (!paymentId || paymentId.trim() === '') {
+        console.error("Invalid or empty payment ID provided");
+        toast.error("Cannot process payment: Missing payment ID");
+        return false;
+      }
+
       // Only validate that we have a selected plan and an installment with an amount
       if (!selectedPlan) {
         console.error("No selected plan available for payment");
@@ -98,10 +105,16 @@ export const ManagePlansProvider: React.FC<{
         toast.error("Cannot process payment: Missing installment details");
         return false;
       }
+
+      if (!installmentDetails.amount || typeof installmentDetails.amount !== 'number') {
+        console.error("Invalid amount in installment:", installmentDetails);
+        toast.error("Cannot process payment: Missing payment amount");
+        return false;
+      }
       
       // Create simpler dialog data - the dialog will handle most of the validation
       const newPaymentData: PaymentDialogData = {
-        paymentId: paymentId,
+        paymentId: paymentId.trim(),
         patientName: selectedPlan.patientName || '',
         patientEmail: selectedPlan.patientEmail || '',
         patientPhone: selectedPlan.patients?.phone || '',

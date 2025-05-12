@@ -61,24 +61,15 @@ export const ManagePlansDialogs = () => {
     paymentDialogData
   } = useManagePlansContext();
 
-  // Track the current payment ID for the dialog
-  const [currentPaymentId, setCurrentPaymentId] = useState<string | null>(null);
-  
-  // Update payment ID when dialog opens or paymentDialogData changes
+  // Log dialog state for debugging
   useEffect(() => {
     if (showTakePaymentDialog) {
-      console.log("Dialog open, checking for payment ID");
-      
-      if (paymentDialogData?.paymentId) {
-        console.log(`Setting currentPaymentId to ${paymentDialogData.paymentId} from paymentDialogData`);
-        setCurrentPaymentId(paymentDialogData.paymentId);
-      } else if (selectedInstallment?.id) {
-        console.log(`Setting currentPaymentId to ${selectedInstallment.id} from selectedInstallment`);
-        setCurrentPaymentId(selectedInstallment.id);
-      }
-    } else {
-      // Clear ID when dialog closes
-      setCurrentPaymentId(null);
+      console.log("ManagePlansDialogs: Dialog opened, payment data:", {
+        paymentId: paymentDialogData?.paymentId || 'NOT SET',
+        dialogOpen: showTakePaymentDialog,
+        hasPaymentDialogData: Boolean(paymentDialogData),
+        hasInstallment: Boolean(selectedInstallment)
+      });
     }
   }, [showTakePaymentDialog, paymentDialogData, selectedInstallment]);
 
@@ -161,16 +152,20 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* Take payment dialog - Simplified rendering logic to always render when showTakePaymentDialog is true */}
+      {/* Take payment dialog - Simplified to directly use paymentDialogData.paymentId */}
       {showTakePaymentDialog && (
         <TakePaymentDialog
-          key={`payment-dialog-${paymentDialogData?.paymentId || currentPaymentId || 'new'}`}
+          key={`payment-dialog-${paymentDialogData?.paymentId || 'new'}`}
           open={showTakePaymentDialog}
           onOpenChange={(open) => {
             console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
+            if (!open) {
+              // Clear payment data on close to prevent stale data
+              console.log("Payment dialog closed, resetting state");
+            }
             setShowTakePaymentDialog(open);
           }}
-          paymentId={paymentDialogData?.paymentId || currentPaymentId || ''}
+          paymentId={paymentDialogData?.paymentId || ''}
           onPaymentProcessed={onPaymentUpdated}
           // Pass optional pre-loaded data if available
           patientName={paymentDialogData?.patientName}

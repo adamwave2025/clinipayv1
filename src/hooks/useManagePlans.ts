@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { ManagePlansContextType, PaymentDialogData } from '@/contexts/ManagePlansContext';
@@ -113,28 +112,35 @@ export const useManagePlans = (): ManagePlansContextType => {
     console.log("useManagePlans: Preparing payment data for:", paymentId);
     
     try {
+      // Validate the payment ID
+      if (!paymentId || paymentId.trim() === '') {
+        console.error("useManagePlans: Invalid or empty payment ID provided");
+        toast.error("Cannot process payment: Missing payment ID");
+        return false;
+      }
+
       // Validate the installment data
       if (!installmentDetails || typeof installmentDetails !== 'object') {
-        console.error("Invalid installment details provided:", installmentDetails);
+        console.error("useManagePlans: Invalid installment details provided:", installmentDetails);
         toast.error("Cannot process payment: Missing installment details");
         return false;
       }
       
       if (!installmentDetails.amount || typeof installmentDetails.amount !== 'number') {
-        console.error("Invalid amount in installment:", installmentDetails);
+        console.error("useManagePlans: Invalid amount in installment:", installmentDetails);
         toast.error("Cannot process payment: Invalid payment amount");
         return false;
       }
       
       if (!selectedPlan) {
-        console.error("No selected plan available for payment");
+        console.error("useManagePlans: No selected plan available for payment");
         toast.error("Cannot process payment: No plan selected");
         return false;
       }
       
       // Create the validated dialog data
       const newPaymentData: PaymentDialogData = {
-        paymentId: paymentId,
+        paymentId: paymentId.trim(),
         patientName: selectedPlan.patientName || '',
         patientEmail: selectedPlan.patientEmail || '',
         patientPhone: selectedPlan.patients?.phone || '',
@@ -142,13 +148,13 @@ export const useManagePlans = (): ManagePlansContextType => {
         isValid: true
       };
       
-      console.log("Setting validated payment dialog data:", newPaymentData);
+      console.log("useManagePlans: Setting validated payment dialog data:", newPaymentData);
       
       // Set the validated data
       setPaymentDialogData(newPaymentData);
       return true;
     } catch (error) {
-      console.error("Error preparing payment data:", error);
+      console.error("useManagePlans: Error preparing payment data:", error);
       toast.error("Failed to prepare payment data");
       return false;
     }
