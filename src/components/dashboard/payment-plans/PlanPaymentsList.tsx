@@ -62,17 +62,17 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
     }))
   );
 
-  // Create wrapper functions to log when actions are triggered
+  // Create wrapper functions without toast notifications
   const handleMarkAsPaid = (paymentId: string, installment: PlanInstallment) => {
     console.log("PlanPaymentsList: Mark as paid clicked for payment:", paymentId);
     console.log("PlanPaymentsList: Installment details:", installment);
-    toast.info(`Initiating Mark as Paid workflow for payment ${paymentId}`);
+    // Removed toast notification
     onMarkAsPaid(paymentId, installment);
   };
 
   const handleReschedule = (paymentId: string) => {
     console.log("PlanPaymentsList: Reschedule clicked for payment:", paymentId);
-    toast.info(`Initiating Reschedule workflow for payment ${paymentId}`);
+    // Removed toast notification
     onReschedule(paymentId);
   };
 

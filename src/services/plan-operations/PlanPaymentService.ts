@@ -218,7 +218,7 @@ export class PlanPaymentService {
           const newProgress = Math.round((newPaidInstallments / planData.total_installments) * 100);
           
           // =====================================================================
-          // IMPORTANT: Check if this is the final payment that completes the plan
+          // IMPORTANT: FIX - Set plan to 'active' after first payment, or completed if all payments are made
           // =====================================================================
           let newStatus = planData.status;
           let nextDueDate = null;
@@ -229,8 +229,29 @@ export class PlanPaymentService {
             newStatus = 'completed';
             // When plan is completed, next_due_date should be null (consistent with webhook behavior)
             nextDueDate = null;
-          } else {
-            // If not completed, calculate the next due date
+          } 
+          // If this is the first payment, set status to active (FIX: added this condition)
+          else if (newPaidInstallments === 1 && (planData.status === 'pending' || planData.status === 'overdue')) {
+            console.log(`First payment for plan ${scheduleEntry.plan_id} completed. Setting status to active.`);
+            newStatus = 'active';
+            
+            // Calculate the next due date
+            const { data: nextPaymentData, error: nextPaymentError } = await supabase
+              .from('payment_schedule')
+              .select('due_date')
+              .eq('plan_id', scheduleEntry.plan_id)
+              .eq('status', 'pending')
+              .order('due_date', { ascending: true })
+              .limit(1)
+              .single();
+              
+            if (!nextPaymentError && nextPaymentData) {
+              nextDueDate = nextPaymentData.due_date;
+            }
+          }
+          // If it's an existing active plan, just update the next due date
+          else {
+            // Calculate the next due date
             const { data: nextPaymentData, error: nextPaymentError } = await supabase
               .from('payment_schedule')
               .select('due_date')

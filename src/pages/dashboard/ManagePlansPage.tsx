@@ -141,7 +141,6 @@ const ManagePlansPageContent: React.FC = () => {
   
   const handleCreatePlanClick = () => {
     console.log("ManagePlansPage: handleCreatePlanClick");
-    toast.info("Opening Create Plan form");
     setCreateSheetOpen(true);
   };
 
@@ -149,14 +148,12 @@ const ManagePlansPageContent: React.FC = () => {
     console.log("ManagePlansPage: handleViewTemplatesClick");
     navigate('/dashboard/manage-plans?view=templates');
     setIsTemplateView(true);
-    toast.info("Switching to Templates view");
   };
   
   const handleBackToPlans = () => {
     console.log("ManagePlansPage: handleBackToPlans");
     navigate('/dashboard/manage-plans?view=active');
     setIsTemplateView(false);
-    toast.info("Returning to Patient Plans view");
   };
 
   // Log current state for debugging
@@ -198,11 +195,6 @@ const ManagePlansPageContent: React.FC = () => {
 // Render a ManagePlansProvider that wraps the content
 const ManagePlansPage: React.FC = () => {
   console.log("Rendering ManagePlansPage");
-  
-  useEffect(() => {
-    // Log when the page mounts
-    toast.info("Payment Plans page loaded");
-  }, []);
   
   return (
     <DashboardLayout userType="clinic">

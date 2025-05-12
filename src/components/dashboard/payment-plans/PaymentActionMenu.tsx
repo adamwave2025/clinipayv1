@@ -9,7 +9,6 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { formatCurrency } from '@/utils/formatters';
 
@@ -65,8 +64,7 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
             e.preventDefault();
             e.stopPropagation();
             console.log("PaymentActionMenu: Mark as paid clicked for ID:", paymentId);
-            toast.info(`Mark as Paid action triggered for payment ${paymentId}`);
-            // Pass both the ID and the installment details
+            // Removed toast notification
             onMarkAsPaid(paymentId, installment);
           }}
           className="cursor-pointer"
@@ -82,7 +80,7 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
             e.preventDefault();
             e.stopPropagation();
             console.log("PaymentActionMenu: Reschedule clicked for ID:", paymentId);
-            toast.info(`Reschedule action triggered for payment ${paymentId}`);
+            // Removed toast notification
             onReschedule(paymentId);
           }}
           className="cursor-pointer"
