@@ -3,26 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
-import { PlanInstallment } from '@/utils/paymentPlanUtils';
+import { PlanInstallment, formatInstallmentFromDb } from '@/utils/paymentPlanUtils';
 
 /**
  * Maps database payment schedule data to PlanInstallment type
  */
 const mapToPlanInstallment = (data: any): PlanInstallment => {
-  return {
-    id: data.id || '',
-    planId: data.plan_id || '',
-    amount: data.amount || 0,
-    dueDate: data.due_date || '',
-    paidDate: data.paid_date || null,
-    status: data.status || 'pending',
-    originalStatus: data.original_status,
-    paymentNumber: data.payment_number || 0,
-    totalPayments: data.total_payments || 0,
-    paymentRequestId: data.payment_request_id,
-    paymentId: data.payment_id,
-    manualPayment: data.manualPayment || false
-  };
+  return formatInstallmentFromDb(data);
 };
 
 export const useInstallmentActions = (
@@ -49,29 +36,35 @@ export const useInstallmentActions = (
     // Fetch the installment data
     setIsProcessing(true);
     
-    supabase
-      .from('payment_schedule')
-      .select('*')
-      .eq('id', paymentId)
-      .single()
-      .then(({ data: installmentData, error }) => {
-        if (error) {
-          console.error('Error fetching installment data:', error);
-          toast.error('Error loading payment data');
+    try {
+      supabase
+        .from('payment_schedule')
+        .select('*')
+        .eq('id', paymentId)
+        .single()
+        .then(({ data: installmentData, error }) => {
+          if (error) {
+            console.error('Error fetching installment data:', error);
+            toast.error('Error loading payment data');
+            setIsProcessing(false);
+            return;
+          }
+          
+          console.log('Fetched installment data:', installmentData);
+          setSelectedInstallment(mapToPlanInstallment(installmentData));
+          setShowMarkAsPaidDialog(true);
           setIsProcessing(false);
-          return;
-        }
-        
-        console.log('Fetched installment data:', installmentData);
-        setSelectedInstallment(mapToPlanInstallment(installmentData));
-        setShowMarkAsPaidDialog(true);
-        setIsProcessing(false);
-      })
-      .catch(error => {
-        console.error('Unexpected error in handleMarkAsPaid:', error);
-        toast.error('Unexpected error occurred');
-        setIsProcessing(false);
-      });
+        })
+        .catch(error => {
+          console.error('Unexpected error in handleMarkAsPaid:', error);
+          toast.error('Unexpected error occurred');
+          setIsProcessing(false);
+        });
+    } catch (error) {
+      console.error('Error in handleMarkAsPaid outer try block:', error);
+      toast.error('Error occurred while fetching payment data');
+      setIsProcessing(false);
+    }
   };
   
   // Handler for confirming Mark as Paid
@@ -112,29 +105,35 @@ export const useInstallmentActions = (
     // Fetch the installment data
     setIsProcessing(true);
     
-    supabase
-      .from('payment_schedule')
-      .select('*')
-      .eq('id', paymentId)
-      .single()
-      .then(({ data: installmentData, error }) => {
-        if (error) {
-          console.error('Error fetching installment data:', error);
-          toast.error('Error loading payment data');
+    try {
+      supabase
+        .from('payment_schedule')
+        .select('*')
+        .eq('id', paymentId)
+        .single()
+        .then(({ data: installmentData, error }) => {
+          if (error) {
+            console.error('Error fetching installment data:', error);
+            toast.error('Error loading payment data');
+            setIsProcessing(false);
+            return;
+          }
+          
+          console.log('Fetched installment data for reschedule:', installmentData);
+          setSelectedInstallment(mapToPlanInstallment(installmentData));
+          setRescheduleDialog(true);
           setIsProcessing(false);
-          return;
-        }
-        
-        console.log('Fetched installment data for reschedule:', installmentData);
-        setSelectedInstallment(mapToPlanInstallment(installmentData));
-        setRescheduleDialog(true);
-        setIsProcessing(false);
-      })
-      .catch(error => {
-        console.error('Unexpected error in handleOpenReschedule:', error);
-        toast.error('Unexpected error occurred');
-        setIsProcessing(false);
-      });
+        })
+        .catch(error => {
+          console.error('Unexpected error in handleOpenReschedule:', error);
+          toast.error('Unexpected error occurred');
+          setIsProcessing(false);
+        });
+    } catch (error) {
+      console.error('Error in handleOpenReschedule outer try block:', error);
+      toast.error('Error occurred while fetching payment data');
+      setIsProcessing(false);
+    }
   };
   
   // Handler for rescheduling a payment
@@ -188,29 +187,35 @@ export const useInstallmentActions = (
     // Otherwise fetch the installment data
     setIsProcessing(true);
     
-    supabase
-      .from('payment_schedule')
-      .select('*')
-      .eq('id', paymentId)
-      .single()
-      .then(({ data: installmentData, error }) => {
-        if (error) {
-          console.error('Error fetching installment data:', error);
-          toast.error('Error loading payment data');
+    try {
+      supabase
+        .from('payment_schedule')
+        .select('*')
+        .eq('id', paymentId)
+        .single()
+        .then(({ data: installmentData, error }) => {
+          if (error) {
+            console.error('Error fetching installment data:', error);
+            toast.error('Error loading payment data');
+            setIsProcessing(false);
+            return;
+          }
+          
+          console.log('Fetched installment data for payment:', installmentData);
+          setSelectedInstallment(mapToPlanInstallment(installmentData));
+          setShowTakePaymentDialog(true);
           setIsProcessing(false);
-          return;
-        }
-        
-        console.log('Fetched installment data for payment:', installmentData);
-        setSelectedInstallment(mapToPlanInstallment(installmentData));
-        setShowTakePaymentDialog(true);
-        setIsProcessing(false);
-      })
-      .catch(error => {
-        console.error('Unexpected error in handleTakePayment:', error);
-        toast.error('Unexpected error occurred');
-        setIsProcessing(false);
-      });
+        })
+        .catch(error => {
+          console.error('Unexpected error in handleTakePayment:', error);
+          toast.error('Unexpected error occurred');
+          setIsProcessing(false);
+        });
+    } catch (error) {
+      console.error('Error in handleTakePayment outer try block:', error);
+      toast.error('Error occurred while fetching payment data');
+      setIsProcessing(false);
+    }
   };
 
   return {
