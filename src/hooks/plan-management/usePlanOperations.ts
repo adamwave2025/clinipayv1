@@ -38,9 +38,6 @@ export const usePlanOperations = (
           ...selectedPlan,
           status: status || 'cancelled'
         });
-        
-        // Refresh the plan details to update UI
-        await refreshPlanDetails();
       }
     } catch (error) {
       console.error('Error in handleCancelPlan:', error);
@@ -71,9 +68,6 @@ export const usePlanOperations = (
           ...selectedPlan,
           status: status || 'paused'
         });
-        
-        // Refresh the plan details to update UI
-        await refreshPlanDetails();
       }
     } catch (error) {
       console.error('Error in handlePausePlan:', error);
@@ -93,7 +87,7 @@ export const usePlanOperations = (
     
     try {
       // Use the consolidated PlanOperationsService
-      const success = await PlanOperationsService.resumePlan(selectedPlan, resumeDate || new Date());
+      const success = await PlanOperationsService.resumePlan(selectedPlan, resumeDate);
       
       if (success && selectedPlan) {
         // After successful resume, fetch the updated plan data to get correct status

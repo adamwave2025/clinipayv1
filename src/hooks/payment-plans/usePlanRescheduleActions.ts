@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +8,7 @@ import { toast } from 'sonner';
 export const usePlanRescheduleActions = (
   selectedPlan: Plan | null,
   setShowPlanDetails: (show: boolean) => void,
-  refreshPlanState?: (planId: string) => Promise<void>,
+  refreshData?: () => Promise<void>, // Add optional refreshData parameter
   setIsTemplateView?: (isTemplate: boolean) => void // Add optional setIsTemplateView parameter
 ) => {
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
@@ -69,14 +70,14 @@ export const usePlanRescheduleActions = (
       if (success) {
         toast.success('Payment plan rescheduled successfully');
         
-        // Refresh the plan data using the refreshPlanState function
-        if (refreshPlanState) {
-          await refreshPlanState(selectedPlan.id);
+        // Call refreshData if provided to update the UI immediately
+        if (refreshData) {
+          await refreshData();
         }
         
-        // Close the dialog but keep the plan details open
+        // Ensure we close the dialog and return to patient plans view
         setShowRescheduleDialog(false);
-        // setShowPlanDetails(false); // Keep the plan details modal open
+        setShowPlanDetails(false); // Close the plan details modal
         
         // Explicitly set view back to patient plans (not templates)
         if (setIsTemplateView) {

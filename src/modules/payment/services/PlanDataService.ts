@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
-import { PlanInstallment, formatPlanInstallments } from '@/utils/paymentPlanUtils';
+import { formatPlanInstallments, PlanInstallment } from '@/utils/paymentPlanUtils';
 import { formatPlanActivities } from '@/utils/planActivityUtils';
 import { PlanActivity } from '@/utils/planActivityUtils';
 import { toast } from 'sonner';

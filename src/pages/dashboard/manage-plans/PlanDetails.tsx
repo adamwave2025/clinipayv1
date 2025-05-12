@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,6 @@ const PlanDetails = () => {
     installments,
     activities,
     isLoadingActivities,
-    isRefreshing,
     handleBackToPlans,
     handleMarkAsPaid,
     handleOpenReschedule,
@@ -21,33 +21,26 @@ const PlanDetails = () => {
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    showReschedulePaymentDialog,
-    setShowReschedulePaymentDialog,
+    showRescheduleDialog,
+    setShowRescheduleDialog,
     handleReschedulePayment,
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
     selectedInstallment, // Use the primary selectedInstallment
     isProcessing,
-    viewDetailsInstallment, // Using the renamed property here
-    
-    // Add plan operation handlers
-    handleOpenCancelDialog,
-    handleOpenPauseDialog,
-    handleOpenResumeDialog,
-    handleOpenRescheduleDialog,
-    handleSendReminder
+    viewDetailsInstallment // Using the renamed property here
   } = useManagePlansContext();
   
   // Debug logging for the dialogs
   useEffect(() => {
     console.log('PlanDetails - Dialog states:', { 
       showMarkAsPaidDialog, 
-      showReschedulePaymentDialog,
+      showRescheduleDialog,
       selectedInstallmentId: selectedInstallment?.id,
       viewDetailsInstallmentId: viewDetailsInstallment?.id
     });
-  }, [showMarkAsPaidDialog, showReschedulePaymentDialog, selectedInstallment, viewDetailsInstallment]);
+  }, [showMarkAsPaidDialog, showRescheduleDialog, selectedInstallment, viewDetailsInstallment]);
   
   if (!selectedPlan) {
     return null;
@@ -76,12 +69,6 @@ const PlanDetails = () => {
         onReschedule={handleOpenReschedule}
         onTakePayment={handleTakePayment}
         isLoading={isLoadingActivities}
-        isRefreshing={isRefreshing}
-        onOpenCancelDialog={handleOpenCancelDialog}
-        onOpenPauseDialog={handleOpenPauseDialog}
-        onOpenResumeDialog={handleOpenResumeDialog}
-        onOpenRescheduleDialog={handleOpenRescheduleDialog}
-        onSendReminder={() => selectedPlan && handleSendReminder(selectedPlan.id)}
       />
       
       {paymentData && (
@@ -94,8 +81,8 @@ const PlanDetails = () => {
       )}
       
       <ReschedulePaymentDialog
-        open={showReschedulePaymentDialog}
-        onOpenChange={setShowReschedulePaymentDialog}
+        open={showRescheduleDialog}
+        onOpenChange={setShowRescheduleDialog}
         onConfirm={handleReschedulePayment}
         isLoading={isProcessing}
       />

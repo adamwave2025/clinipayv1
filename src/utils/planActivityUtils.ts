@@ -1,3 +1,4 @@
+
 /**
  * Interface for plan activity entries
  */
@@ -8,9 +9,6 @@ export interface PlanActivity {
   patientId: string;
   paymentLinkId: string;
   actionType: string;
-  type?: string; // Added this for compatibility with existing code
-  description?: string; // Added this for compatibility with existing code
-  timestamp?: string; // Added this for compatibility with existing code
   performedAt: string;
   performedByUserId?: string;
   details?: {
@@ -55,9 +53,6 @@ export const formatPlanActivities = (activities: any[]): PlanActivity[] => {
       patientId: activity.patient_id,
       paymentLinkId: activity.payment_link_id,
       actionType: activity.action_type,
-      type: activity.action_type, // Map actionType to type for compatibility
-      description: activity.description || '', // Add description field
-      timestamp: activity.performed_at, // Map performedAt to timestamp for compatibility
       performedAt: activity.performed_at,
       performedByUserId: activity.performed_by_user_id,
       details: enrichActivityDetails(activity.action_type, activity.details || {})

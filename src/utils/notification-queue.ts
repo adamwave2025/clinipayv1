@@ -74,13 +74,13 @@ export async function addToNotificationQueue(
   paymentId?: string
 ) {
   console.log(`Adding ${recipientType} notification to queue: ${type}`, payload);
+  
+  // Ensure monetary values in the payload have proper decimal formatting
+  const formattedPayload = formatMonetaryValues(payload);
+  console.log(`Payload structure details with formatted monetary values:`, JSON.stringify(formattedPayload, null, 2));
   console.log(`Using clinic_id: ${clinicId}`);
   
   try {
-    // Ensure monetary values in the payload have proper decimal formatting
-    const formattedPayload = formatMonetaryValues(payload);
-    console.log(`Payload structure with formatted monetary values:`, JSON.stringify(formattedPayload, null, 2));
-    
     // Check if system webhooks are configured 
     console.log('Checking if notification webhooks are configured...');
     const { data: webhooks, error: webhookError } = await supabase
@@ -90,19 +90,12 @@ export async function addToNotificationQueue(
     
     if (webhookError) {
       console.error('Error checking webhook configuration:', webhookError);
-      return { success: false, error: webhookError };
     } else {
       if (!webhooks || webhooks.length < 2) {
         console.warn('Notification webhooks not fully configured in system_settings:');
         console.log('Found webhooks:', webhooks);
-        return { success: false, error: 'Notification webhooks not fully configured' };
       } else {
-        console.log('Notification webhooks are configured correctly:', webhooks.map(w => w.key));
-        
-        // Log the webhook URLs for debugging (value contains the URL)
-        for (const webhook of webhooks) {
-          console.log(`${webhook.key}: ${webhook.value ? 'Set' : 'Not set'}`);
-        }
+        console.log('Notification webhooks are configured correctly:', webhooks);
       }
     }
     
@@ -116,13 +109,11 @@ export async function addToNotificationQueue(
       
       if (permissionError) {
         console.error('Permission check failed for notification_queue table:', permissionError);
-        return { success: false, error: permissionError };
       } else {
         console.log('Successfully accessed notification_queue table, permissions OK');
       }
     } catch (permErr) {
       console.error('Exception during permission check:', permErr);
-      return { success: false, error: permErr };
     }
     
     // Add clinic_id to the payload itself instead of as a separate column
@@ -136,7 +127,7 @@ export async function addToNotificationQueue(
     
     // Add to notification queue - properly convert to Json type
     console.log('Attempting to insert notification...');
-    const insertResult = await supabase
+    const { data, error } = await supabase
       .from("notification_queue")
       .insert({
         type,
@@ -147,20 +138,20 @@ export async function addToNotificationQueue(
       })
       .select();
 
-    if (insertResult.error) {
-      console.error("Error queueing notification:", insertResult.error);
-      console.error("Error details:", JSON.stringify(insertResult.error, null, 2));
+    if (error) {
+      console.error("Error queueing notification:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
       
       // Check if this is a permissions issue
-      if (insertResult.error.code === 'PGRST301' || insertResult.error.message?.includes('permission denied')) {
+      if (error.code === 'PGRST301' || error.message?.includes('permission denied')) {
         console.error("This appears to be a permissions error - check RLS policies");
       }
       
-      return { success: false, error: insertResult.error };
+      return { success: false, error };
     }
 
-    console.log(`${recipientType} notification queued successfully:`, insertResult.data);
-    return { success: true, data: insertResult.data };
+    console.log(`${recipientType} notification queued successfully:`, data);
+    return { success: true, data };
   } catch (err: any) {
     console.error("Critical error during notification queueing:", err);
     return { success: false, error: err.message };

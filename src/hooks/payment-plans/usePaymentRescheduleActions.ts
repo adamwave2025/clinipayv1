@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 
 export const usePaymentRescheduleActions = (
   planId: string,
-  onPaymentRescheduled?: (planId: string) => Promise<void>
+  onPaymentRescheduled?: () => Promise<void>
 ) => {
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -40,12 +40,10 @@ export const usePaymentRescheduleActions = (
       if (result.success) {
         toast.success('Payment rescheduled successfully');
         
-        // Close dialog
+        // Close dialog and refresh data if callback provided
         setShowRescheduleDialog(false);
-        
-        // Refresh data if callback provided
-        if (onPaymentRescheduled && planId) {
-          await onPaymentRescheduled(planId);
+        if (onPaymentRescheduled) {
+          await onPaymentRescheduled();
         }
       } else {
         toast.error('Failed to reschedule payment');

@@ -1,10 +1,8 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
-import { formatPlanInstallments } from '@/utils/paymentPlanUtils';
 
 /**
  * Fetch plans directly from the plans table
