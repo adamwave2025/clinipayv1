@@ -217,4 +217,3 @@ export async function checkNotificationExists(
     return false;
   }
 }
-

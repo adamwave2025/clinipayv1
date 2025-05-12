@@ -36,4 +36,3 @@ export interface NotificationResponse {
   // Allow additional flat properties but don't use nested objects
   [key: string]: string | number | boolean | undefined;
 }
-
