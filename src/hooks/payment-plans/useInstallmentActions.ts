@@ -11,6 +11,7 @@ export const useInstallmentActions = (
 ) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedInstallment, setSelectedInstallment] = useState<PlanInstallment | null>(null);
+  const [paymentData, setPaymentData] = useState<PlanInstallment | null>(null);
   const [showMarkAsPaidDialog, setShowMarkAsPaidDialog] = useState(false);
   const [showTakePaymentDialog, setShowTakePaymentDialog] = useState(false);
   
@@ -34,61 +35,49 @@ export const useInstallmentActions = (
     console.log("[useInstallmentActions] After calling handleOpenRescheduleDialog");
   };
   
-  const handleTakePayment = (paymentId: string, installmentDetails?: PlanInstallment) => {
-    console.log("[useInstallmentActions] Take payment clicked for", paymentId, "with details:", 
-      installmentDetails ? JSON.stringify(installmentDetails) : "NO DETAILS");
+  const handleTakePayment = (paymentId: string, installmentDetails: PlanInstallment) => {
+    console.log("[useInstallmentActions] Take payment clicked for", paymentId);
     
-    if (!installmentDetails || !installmentDetails.amount) {
-      console.error("[useInstallmentActions] Missing installment details or amount:", installmentDetails);
+    if (!installmentDetails || !installmentDetails.amount || typeof installmentDetails.amount !== 'number') {
+      console.error("[useInstallmentActions] Missing or invalid installment details:", installmentDetails);
       toast.error("Cannot take payment: Missing payment details");
       return;
     }
     
-    // Validate and ensure we have a complete installment object
-    const validatedInstallment = validateInstallment(installmentDetails, paymentId);
-    if (!validatedInstallment) {
-      toast.error("Cannot process payment: Invalid payment data");
-      return;
-    }
+    // First set the payment data to ensure it's available immediately
+    const validatedPaymentData = {
+      id: paymentId,
+      amount: installmentDetails.amount,
+      paymentNumber: installmentDetails.paymentNumber || 1,
+      totalPayments: installmentDetails.totalPayments || 1,
+      dueDate: installmentDetails.dueDate || new Date().toISOString(),
+      status: installmentDetails.status || 'pending'
+    };
     
-    // CRITICAL FIX: Set the selectedInstallment state first, then show the dialog
-    // without using setTimeout to ensure correct ordering
-    console.log("[useInstallmentActions] Setting selectedInstallment with validated data:", validatedInstallment);
-    setSelectedInstallment(validatedInstallment);
+    console.log("[useInstallmentActions] Setting validated payment data:", validatedPaymentData);
     
-    // Log and show dialog
-    toast.info(`Opening payment dialog for ${formatCurrency(validatedInstallment.amount)}`);
+    // Set payment data first, then selectedInstallment for consistency
+    setPaymentData(validatedPaymentData);
+    setSelectedInstallment(validatedPaymentData);
+    
+    // Log with formatted currency for clarity
+    const formattedAmount = new Intl.NumberFormat('en-GB', { 
+      style: 'currency', 
+      currency: 'GBP' 
+    }).format(validatedPaymentData.amount / 100);
+    
+    toast.info(`Opening payment dialog for ${formattedAmount}`);
+    
+    // Only show the dialog after data is set
     setShowTakePaymentDialog(true);
   };
   
-  // Helper function to validate installment data
-  const validateInstallment = (
-    installment: PlanInstallment, 
-    paymentId: string
-  ): PlanInstallment | null => {
-    try {
-      if (!installment || typeof installment !== 'object') {
-        throw new Error('Invalid installment object');
-      }
-      
-      if (!installment.amount) {
-        throw new Error('Missing amount in installment');
-      }
-      
-      // Create a deep clone to prevent reference issues
-      return JSON.parse(JSON.stringify({
-        ...installment,
-        id: paymentId, // Ensure the ID is correct
-        amount: installment.amount,
-        paymentNumber: installment.paymentNumber || 1,
-        totalPayments: installment.totalPayments || 1, 
-        dueDate: installment.dueDate || new Date().toISOString(),
-        status: installment.status || 'pending'
-      }));
-    } catch (error) {
-      console.error("[useInstallmentActions] Failed to validate installment:", error);
-      return null;
-    }
+  // Helper function to format currency (kept for consistency)
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('en-GB', { 
+      style: 'currency', 
+      currency: 'GBP' 
+    }).format(amount / 100);
   };
   
   const confirmMarkAsPaid = async () => {
@@ -116,16 +105,9 @@ export const useInstallmentActions = (
     }
   };
   
-  // Helper function to format currency (copied from formatter utils for consistency)
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('en-GB', { 
-      style: 'currency', 
-      currency: 'GBP' 
-    }).format(amount);
-  };
-  
   return {
     isProcessing,
+    paymentData,
     handleMarkAsPaid,
     handleOpenReschedule,
     handleTakePayment,

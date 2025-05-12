@@ -39,6 +39,9 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  
+  // Added state to track validated data
+  const [validatedAmount, setValidatedAmount] = useState<number>(0);
 
   // Added validation effect on props
   useEffect(() => {
@@ -47,16 +50,27 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
         paymentId, patientName, amount 
       });
       
+      // Reset any previous states
+      setPaymentSuccess(false);
+      setPaymentError(null);
+      setValidationError(null);
+      
       // Validate that we have required data for the dialog
       if (!paymentId) {
+        console.error("TakePaymentDialog: Missing payment ID");
         setValidationError("Missing payment ID");
         return;
       }
       
-      if (!amount || amount <= 0) {
+      if (!amount || amount <= 0 || typeof amount !== 'number') {
+        console.error(`TakePaymentDialog: Invalid payment amount: ${amount}`);
         setValidationError(`Invalid payment amount: ${amount}`);
         return;
       }
+      
+      // Set amount only after validation
+      console.log(`TakePaymentDialog: Using validated amount: ${amount}`);
+      setValidatedAmount(amount);
       
       // Clear any previous validation errors
       setValidationError(null);
@@ -68,7 +82,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     isLoading,
     isStripeReady,
     handlePaymentSubmit,
-  } = useInstallmentPayment(paymentId, amount, onPaymentProcessed);
+  } = useInstallmentPayment(paymentId, validatedAmount, onPaymentProcessed);
 
   // Prepare default values for the payment form
   const defaultValues: Partial<PaymentFormValues> = {
@@ -79,6 +93,11 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
 
   const handlePaymentFormSubmit = async (formData: PaymentFormValues) => {
     try {
+      // Double-check amount is valid before submitting
+      if (validatedAmount <= 0) {
+        throw new Error(`Cannot process payment: Invalid amount ${validatedAmount}`);
+      }
+      
       const result = await handlePaymentSubmit(formData);
       
       if (result.success) {
@@ -107,6 +126,16 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     }
     onOpenChange(newOpen);
   };
+
+  // Format amount for display
+  const displayAmount = React.useMemo(() => {
+    try {
+      return formatCurrency(validatedAmount);
+    } catch (error) {
+      console.error("Error formatting amount:", error);
+      return "Invalid amount";
+    }
+  }, [validatedAmount]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -146,7 +175,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
                 Payment Successful
               </h3>
               <p className="mt-2 text-green-700">
-                Payment of {formatCurrency(amount)} has been successfully processed for {patientName}.
+                Payment of {displayAmount} has been successfully processed for {patientName}.
               </p>
             </div>
             <div className="flex justify-end">
@@ -188,7 +217,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
               <p className="text-sm text-gray-600 mb-1">Processing payment for:</p>
               <p className="font-medium">{patientName}</p>
               <p className="text-sm text-gray-600 mb-1 mt-2">Amount:</p>
-              <p className="text-lg font-bold">{formatCurrency(amount)}</p>
+              <p className="text-lg font-bold">{displayAmount}</p>
               <p className="text-xs text-gray-500 mt-1">Payment ID: {paymentId}</p>
             </div>
             
@@ -196,7 +225,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
               <PaymentForm
                 onSubmit={handlePaymentFormSubmit}
                 isLoading={isProcessing || isLoading}
-                amount={amount}
+                amount={validatedAmount}
                 defaultValues={defaultValues}
               />
             </Elements>

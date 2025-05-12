@@ -27,27 +27,31 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
   onReschedule,
   onTakePayment
 }) => {
-  // Deep clone the installment data to ensure we have a complete copy that won't be affected by reference issues
-  const safeInstallment = React.useMemo(() => {
+  // Create a standalone validated installment object for direct passing
+  const validatedInstallment = React.useMemo(() => {
     // First validate that we have the essential data
-    if (!installment || typeof installment !== 'object' || !installment.amount) {
+    if (!installment || typeof installment !== 'object') {
       console.error("PaymentActionMenu: Invalid installment object received:", installment);
+      return null;
+    }
+    
+    if (!installment.amount || typeof installment.amount !== 'number') {
+      console.error("PaymentActionMenu: Missing or invalid amount in installment:", installment);
       return null;
     }
     
     try {
       // Create a complete deep clone with all required fields
-      return JSON.parse(JSON.stringify({
-        ...installment,
+      return {
         id: paymentId, // Ensure ID is always set
         amount: installment.amount,
         paymentNumber: installment.paymentNumber || 1,
         totalPayments: installment.totalPayments || 1,
         dueDate: installment.dueDate || new Date().toISOString(),
         status: installment.status || 'pending'
-      }));
+      };
     } catch (err) {
-      console.error("PaymentActionMenu: Failed to clone installment:", err);
+      console.error("PaymentActionMenu: Failed to create validated installment:", err);
       return null;
     }
   }, [paymentId, installment]);
@@ -58,7 +62,7 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
     
     console.log("PaymentActionMenu: Take payment clicked for ID:", paymentId);
     
-    if (!safeInstallment) {
+    if (!validatedInstallment) {
       toast.error(`Cannot process payment: Missing or invalid installment data`);
       console.error("PaymentActionMenu: No valid installment data available");
       return;
@@ -70,9 +74,11 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
       return;
     }
     
+    // Log the exact data being passed to ensure consistency
+    console.log("PaymentActionMenu: Passing validated installment data:", validatedInstallment);
+    
     toast.info(`Take Payment action triggered for payment ${paymentId}`);
-    console.log("PaymentActionMenu: Passing complete installment data:", safeInstallment);
-    onTakePayment(paymentId, safeInstallment);
+    onTakePayment(paymentId, validatedInstallment);
   };
 
   return (
@@ -84,7 +90,7 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {onTakePayment && safeInstallment && (
+        {onTakePayment && validatedInstallment && (
           <DropdownMenuItem 
             onClick={handleTakePayment}
             className="cursor-pointer"
@@ -94,7 +100,7 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
           </DropdownMenuItem>
         )}
         
-        {onTakePayment && safeInstallment && <DropdownMenuSeparator />}
+        {onTakePayment && validatedInstallment && <DropdownMenuSeparator />}
         
         <DropdownMenuItem 
           onClick={(e) => {
