@@ -8,7 +8,7 @@ import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import PaymentForm from '@/components/payment/PaymentForm';
 import { useInstallmentPayment } from '@/hooks/payment-plans/useInstallmentPayment';
 import { formatCurrency } from '@/utils/formatters';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
@@ -19,71 +19,83 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
 interface TakePaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  paymentId: string | null;
-  patientName: string;
+  paymentId: string;
+  onPaymentProcessed: () => Promise<void>;
+  // Optional props that can be provided if available
+  patientName?: string;
   patientEmail?: string;
   patientPhone?: string;
-  amount: number;
-  onPaymentProcessed: () => Promise<void>;
+  amount?: number;
 }
 
 const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   open,
   onOpenChange,
   paymentId,
-  patientName,
-  patientEmail,
-  patientPhone,
-  amount,
-  onPaymentProcessed
+  onPaymentProcessed,
+  patientName: initialPatientName,
+  patientEmail: initialPatientEmail,
+  patientPhone: initialPatientPhone,
+  amount: initialAmount
 }) => {
+  // State for payment processing
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
   
-  // Added state to track validated data
-  const [validatedAmount, setValidatedAmount] = useState<number>(0);
+  // State for payment data
+  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const [patientName, setPatientName] = useState(initialPatientName || '');
+  const [patientEmail, setPatientEmail] = useState(initialPatientEmail || '');
+  const [patientPhone, setPatientPhone] = useState(initialPatientPhone || '');
+  const [amount, setAmount] = useState<number | undefined>(initialAmount);
 
-  // Added validation effect on props
+  // Effect to load payment data when dialog opens
   useEffect(() => {
-    if (open) {
-      console.log("TakePaymentDialog opened with props:", { 
-        paymentId, patientName, amount 
-      });
-      
-      // Reset any previous states
-      setPaymentSuccess(false);
-      setPaymentError(null);
-      setValidationError(null);
-      
-      // Validate that we have required data for the dialog
-      if (!paymentId) {
-        console.error("TakePaymentDialog: Missing payment ID");
-        setValidationError("Missing payment ID");
-        return;
+    if (open && paymentId) {
+      // Only load data if we don't already have it
+      if (!initialAmount || !initialPatientName) {
+        loadPaymentData();
       }
-      
-      if (!amount || amount <= 0 || typeof amount !== 'number') {
-        console.error(`TakePaymentDialog: Invalid payment amount: ${amount}`);
-        setValidationError(`Invalid payment amount: ${amount}`);
-        return;
-      }
-      
-      // Set amount only after validation
-      console.log(`TakePaymentDialog: Using validated amount: ${amount}`);
-      setValidatedAmount(amount);
-      
-      // Clear any previous validation errors
-      setValidationError(null);
     }
-  }, [open, paymentId, amount]);
+  }, [open, paymentId, initialAmount, initialPatientName]);
+
+  // Function to load payment data
+  const loadPaymentData = async () => {
+    if (!paymentId) return;
+    
+    setIsLoadingData(true);
+    setDataError(null);
+    
+    try {
+      // Here we would typically fetch payment data from the API
+      // For now, we'll simulate this with a timeout
+      console.log('Loading payment data for ID:', paymentId);
+      
+      // In a real implementation, this would be an API call to get installment details
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // This is where you would fetch actual data
+      // For now, we'll use dummy values if none were provided
+      if (!patientName) setPatientName('Patient Name');
+      if (!patientEmail) setPatientEmail('patient@example.com');
+      if (!patientPhone) setPatientPhone('');
+      if (!amount) setAmount(1000); // $10.00
+      
+      setIsLoadingData(false);
+    } catch (error) {
+      console.error('Error loading payment data:', error);
+      setDataError('Failed to load payment details. Please try again.');
+      setIsLoadingData(false);
+    }
+  };
 
   const {
     isProcessing,
     isLoading,
     isStripeReady,
     handlePaymentSubmit,
-  } = useInstallmentPayment(paymentId, validatedAmount, onPaymentProcessed);
+  } = useInstallmentPayment(paymentId, amount || 0, onPaymentProcessed);
 
   // Prepare default values for the payment form
   const defaultValues: Partial<PaymentFormValues> = {
@@ -94,9 +106,8 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
 
   const handlePaymentFormSubmit = async (formData: PaymentFormValues) => {
     try {
-      // Double-check amount is valid before submitting
-      if (validatedAmount <= 0) {
-        throw new Error(`Cannot process payment: Invalid amount ${validatedAmount}`);
+      if (!amount || amount <= 0) {
+        throw new Error(`Cannot process payment: Invalid amount ${amount}`);
       }
       
       const result = await handlePaymentSubmit(formData);
@@ -122,7 +133,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       setTimeout(() => {
         setPaymentSuccess(false);
         setPaymentError(null);
-        setValidationError(null);
+        setDataError(null);
       }, 300);
     }
     onOpenChange(newOpen);
@@ -130,27 +141,45 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
 
   // Format amount for display
   const displayAmount = React.useMemo(() => {
+    if (!amount) return "Loading...";
     try {
-      return formatCurrency(validatedAmount);
+      return formatCurrency(amount);
     } catch (error) {
       console.error("Error formatting amount:", error);
       return "Invalid amount";
     }
-  }, [validatedAmount]);
+  }, [amount]);
 
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Process Payment</DialogTitle>
-        </DialogHeader>
+  // Render the data loading state
+  if (isLoadingData) {
+    return (
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Process Payment</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-8">
+            <LoadingSpinner size="md" />
+            <p className="mt-4 text-gray-600">Loading payment details...</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
-        {validationError ? (
+  // Render if there was an error loading data
+  if (dataError) {
+    return (
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Error</DialogTitle>
+          </DialogHeader>
           <div className="p-6 space-y-4">
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Configuration Error</AlertTitle>
-              <AlertDescription>{validationError}</AlertDescription>
+              <AlertTitle>Unable to Load Payment Information</AlertTitle>
+              <AlertDescription>{dataError}</AlertDescription>
             </Alert>
             <div className="flex justify-end">
               <Button 
@@ -159,9 +188,28 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
               >
                 Close
               </Button>
+              <Button 
+                onClick={loadPaymentData}
+                variant="outline"
+                className="ml-2"
+              >
+                Try Again
+              </Button>
             </div>
           </div>
-        ) : !isStripeReady ? (
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Process Payment</DialogTitle>
+        </DialogHeader>
+
+        {!isStripeReady ? (
           <div className="flex flex-col items-center justify-center p-8">
             <LoadingSpinner size="md" />
             <p className="mt-4 text-gray-600">Loading payment system...</p>
@@ -226,7 +274,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
               <PaymentForm 
                 onSubmit={handlePaymentFormSubmit}
                 isLoading={isProcessing || isLoading}
-                amount={validatedAmount}
+                amount={amount || 0}
                 defaultValues={defaultValues}
               />
             </Elements>

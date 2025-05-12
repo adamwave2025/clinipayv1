@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
 import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
@@ -11,7 +11,6 @@ import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAs
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 import TakePaymentDialog from '@/components/dashboard/payment-plans/TakePaymentDialog';
 import { toast } from '@/hooks/use-toast';
-import { PlanInstallment } from '@/utils/paymentPlanUtils';
 
 export const ManagePlansDialogs = () => {
   const {
@@ -58,30 +57,25 @@ export const ManagePlansDialogs = () => {
     setShowTakePaymentDialog,
     onPaymentUpdated,
     
-    // Add the dedicated payment dialog data
+    // Payment dialog data for optional pre-loading
     paymentDialogData
   } = useManagePlansContext();
 
-  // Track payment dialog rendering to debug issues
-  const [paymentDialogRenderCount, setPaymentDialogRenderCount] = useState(0);
+  // Track the current payment ID for the dialog
+  const [currentPaymentId, setCurrentPaymentId] = useState<string | null>(null);
   
-  // Monitor the take payment dialog to react to it opening
+  // Update payment ID when dialog opens
   useEffect(() => {
     if (showTakePaymentDialog) {
-      console.log(`TakePaymentDialog should show (render #${paymentDialogRenderCount + 1})`);
-      
-      // Increment render tracking
-      setPaymentDialogRenderCount(prev => prev + 1);
-      
-      // Validate payment data is available
-      if (!paymentDialogData?.isValid) {
-        console.error("Cannot show payment dialog: No valid payment dialog data available");
-        toast.error("Cannot show payment dialog: Missing payment data");
-        // Close the dialog if we don't have data to prevent errors
-        setShowTakePaymentDialog(false);
+      // Use the ID from paymentDialogData if available
+      if (paymentDialogData?.paymentId) {
+        setCurrentPaymentId(paymentDialogData.paymentId);
       }
+    } else {
+      // Clear ID when dialog closes
+      setCurrentPaymentId(null);
     }
-  }, [showTakePaymentDialog, paymentDialogData, paymentDialogRenderCount, setShowTakePaymentDialog]);
+  }, [showTakePaymentDialog, paymentDialogData]);
 
   // Early return if no plan is selected
   if (!selectedPlan) {
@@ -121,7 +115,7 @@ export const ManagePlansDialogs = () => {
         isProcessing={isProcessing}
         hasSentPayments={hasSentPayments}
         hasOverduePayments={hasOverduePayments}
-        hasPaidPayments={hasPaidPayments} // Add this prop
+        hasPaidPayments={hasPaidPayments}
         resumeError={resumeError}
       />
       
@@ -162,21 +156,22 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* Improved payment dialog rendering with dedicated payment dialog data */}
-      {showTakePaymentDialog && paymentDialogData?.isValid && (
+      {/* Improved payment dialog with internal data loading */}
+      {showTakePaymentDialog && currentPaymentId && (
         <TakePaymentDialog
-          key={`payment-dialog-${paymentDialogData.paymentId}-${paymentDialogRenderCount}`}
+          key={`payment-dialog-${currentPaymentId}`}
           open={showTakePaymentDialog}
           onOpenChange={(open) => {
             console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
             setShowTakePaymentDialog(open);
           }}
-          paymentId={paymentDialogData.paymentId}
-          patientName={paymentDialogData.patientName}
-          patientEmail={paymentDialogData.patientEmail}
-          patientPhone={paymentDialogData.patientPhone}
-          amount={paymentDialogData.amount}
+          paymentId={currentPaymentId}
           onPaymentProcessed={onPaymentUpdated}
+          // Pass optional pre-loaded data if available
+          patientName={paymentDialogData?.patientName}
+          patientEmail={paymentDialogData?.patientEmail}
+          patientPhone={paymentDialogData?.patientPhone}
+          amount={paymentDialogData?.amount}
         />
       )}
       

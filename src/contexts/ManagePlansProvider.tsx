@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext, { PaymentDialogData } from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -78,46 +77,41 @@ export const ManagePlansProvider: React.FC<{
     await refreshInstallments();
   };
   
-  // Add new state for payment dialog data
+  // Add new state for payment dialog data - simplified to just track the ID
   const [paymentDialogData, setPaymentDialogData] = useState<PaymentDialogData | null>(null);
   
-  // Function to validate and prepare payment data
+  // Simplify the preparePaymentData function - it now only needs to store basic information 
+  // since the dialog will handle most validation internally
   const preparePaymentData = (paymentId: string, installmentDetails: PlanInstallment): boolean => {
     console.log("Preparing payment data for:", paymentId);
     
     try {
-      // Validate the installment data
-      if (!installmentDetails || typeof installmentDetails !== 'object') {
-        console.error("Invalid installment details provided:", installmentDetails);
-        toast.error("Cannot process payment: Missing installment details");
-        return false;
-      }
-      
-      if (!installmentDetails.amount || typeof installmentDetails.amount !== 'number') {
-        console.error("Invalid amount in installment:", installmentDetails);
-        toast.error("Cannot process payment: Invalid payment amount");
-        return false;
-      }
-      
+      // Only validate that we have a selected plan and an installment with an amount
       if (!selectedPlan) {
         console.error("No selected plan available for payment");
         toast.error("Cannot process payment: No plan selected");
         return false;
       }
       
-      // Create the validated dialog data
+      if (!installmentDetails || typeof installmentDetails !== 'object') {
+        console.error("Invalid installment details provided:", installmentDetails);
+        toast.error("Cannot process payment: Missing installment details");
+        return false;
+      }
+      
+      // Create simpler dialog data - the dialog will handle most of the validation
       const newPaymentData: PaymentDialogData = {
         paymentId: paymentId,
         patientName: selectedPlan.patientName || '',
         patientEmail: selectedPlan.patientEmail || '',
-        patientPhone: selectedPlan.patients?.phone || '', // Use optional chaining to safely access phone
+        patientPhone: selectedPlan.patients?.phone || '',
         amount: installmentDetails.amount,
         isValid: true
       };
       
-      console.log("Setting validated payment dialog data:", newPaymentData);
+      console.log("Setting payment dialog data:", newPaymentData);
       
-      // Set the validated data
+      // Set the data
       setPaymentDialogData(newPaymentData);
       return true;
     } catch (error) {
@@ -143,23 +137,23 @@ export const ManagePlansProvider: React.FC<{
     refreshInstallments
   );
   
-  // Create an enhanced take payment handler that uses the new data flow
+  // Create a simplified take payment handler
   const handleTakePayment = (paymentId: string, installmentDetails: PlanInstallment) => {
     console.log("Enhanced handleTakePayment called with:", paymentId);
     
     // Clear any previous payment data
     setPaymentDialogData(null);
     
-    // First prepare the data and validate it
+    // Prepare the basic payment data
     const isValid = preparePaymentData(paymentId, installmentDetails);
     
-    // Only proceed if data validation was successful
+    // Open the dialog if we have basic data
     if (isValid) {
-      console.log("Payment data validated successfully, opening dialog");
+      console.log("Opening payment dialog for:", paymentId);
       setShowTakePaymentDialog(true);
     } else {
-      console.error("Payment data validation failed, not opening dialog");
-      toast.error("Cannot process payment: Missing or invalid data");
+      console.error("Failed to prepare payment data");
+      toast.error("Cannot open payment dialog: Missing basic data");
     }
   };
   
@@ -168,7 +162,7 @@ export const ManagePlansProvider: React.FC<{
     selectedPlan, 
     setShowPlanDetails, 
     refreshData,
-    setIsTemplateView  // Pass setIsTemplateView to the hook
+    setIsTemplateView
   );
   
   // Use the payment reschedule hook for individual payments
@@ -219,22 +213,6 @@ export const ManagePlansProvider: React.FC<{
       isTemplateView
     });
   }, [showPlanDetails, selectedPlan, isTemplateView]);
-  
-  // Add effect to log payment dialog state changes
-  useEffect(() => {
-    console.log("Payment dialog state changed:", { 
-      showTakePaymentDialog,
-      paymentDialogData
-    });
-    
-    // Verify data integrity when dialog is opened
-    if (showTakePaymentDialog && !paymentDialogData?.isValid) {
-      console.error("Take payment dialog opened with invalid data!");
-      // Auto-close dialog if data is invalid
-      setShowTakePaymentDialog(false);
-      toast.error("Payment dialog data validation failed");
-    }
-  }, [showTakePaymentDialog, paymentDialogData]);
   
   // Set up properties for plan action dialogs
   const [showCancelDialog, setShowCancelDialog] = useState(false);
