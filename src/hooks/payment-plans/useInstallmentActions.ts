@@ -18,19 +18,20 @@ export const useInstallmentActions = (
   // Use the payment reschedule actions hook with proper destructuring
   const rescheduleActions = usePaymentRescheduleActions(planId, onPaymentUpdated);
 
-  const handleMarkAsPaid = (paymentId: string) => {
+  const handleMarkAsPaid = (paymentId: string, installmentDetails?: PlanInstallment) => {
     console.log("[useInstallmentActions] Opening mark as paid dialog for", paymentId);
     
-    // Find the selected installment
-    setSelectedInstallment({ 
-      id: paymentId, 
-      paidDate: null,
-      amount: 0,
-      dueDate: '',
-      status: '',
-      paymentNumber: 0,
-      totalPayments: 0
-    } as PlanInstallment);
+    // Set the selected installment with the provided details if available
+    if (installmentDetails) {
+      // Use the actual installment data that was passed in
+      setSelectedInstallment(installmentDetails);
+    } else {
+      // Just set the ID if no details provided - simplified approach
+      setSelectedInstallment({ 
+        id: paymentId,
+        status: 'pending'
+      } as PlanInstallment);
+    }
     
     setShowMarkAsPaidDialog(true);
   };

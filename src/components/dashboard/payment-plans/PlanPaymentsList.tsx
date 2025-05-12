@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   Table, 
@@ -15,7 +16,7 @@ import { toast } from '@/hooks/use-toast';
 
 interface PlanPaymentsListProps {
   installments: PlanInstallment[];
-  onMarkAsPaid: (paymentId: string) => void;
+  onMarkAsPaid: (paymentId: string, installmentDetails: PlanInstallment) => void;
   onReschedule: (paymentId: string) => void;
   onTakePayment?: (paymentId: string, installmentDetails: PlanInstallment) => void;
 }
@@ -62,10 +63,11 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
   );
 
   // Create wrapper functions to log when actions are triggered
-  const handleMarkAsPaid = (paymentId: string) => {
+  const handleMarkAsPaid = (paymentId: string, installment: PlanInstallment) => {
     console.log("PlanPaymentsList: Mark as paid clicked for payment:", paymentId);
+    console.log("PlanPaymentsList: Installment details:", installment);
     toast.info(`Initiating Mark as Paid workflow for payment ${paymentId}`);
-    onMarkAsPaid(paymentId);
+    onMarkAsPaid(paymentId, installment);
   };
 
   const handleReschedule = (paymentId: string) => {

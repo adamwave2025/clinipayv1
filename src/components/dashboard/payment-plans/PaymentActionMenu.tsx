@@ -16,7 +16,7 @@ import { formatCurrency } from '@/utils/formatters';
 interface PaymentActionMenuProps {
   paymentId: string;
   installment: PlanInstallment;
-  onMarkAsPaid: (id: string) => void;
+  onMarkAsPaid: (id: string, installmentDetails: PlanInstallment) => void;
   onReschedule: (id: string) => void;
   onTakePayment?: (id: string, installmentDetails: PlanInstallment) => void;
 }
@@ -66,7 +66,8 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
             e.stopPropagation();
             console.log("PaymentActionMenu: Mark as paid clicked for ID:", paymentId);
             toast.info(`Mark as Paid action triggered for payment ${paymentId}`);
-            onMarkAsPaid(paymentId);
+            // Pass both the ID and the installment details
+            onMarkAsPaid(paymentId, installment);
           }}
           className="cursor-pointer"
         >

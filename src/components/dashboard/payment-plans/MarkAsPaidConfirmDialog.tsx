@@ -1,10 +1,10 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import { formatCurrency } from '@/utils/formatters';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
+import { formatCurrency } from '@/utils/formatters';
 
 interface MarkAsPaidConfirmDialogProps {
   open: boolean;
@@ -21,20 +21,6 @@ const MarkAsPaidConfirmDialog: React.FC<MarkAsPaidConfirmDialogProps> = ({
   isLoading,
   installment
 }) => {
-  // Add logging to debug the component rendering and props
-  useEffect(() => {
-    console.log('MarkAsPaidConfirmDialog - Props:', {
-      open,
-      isLoading,
-      installment: installment ? {
-        id: installment.id,
-        amount: installment.amount,
-        paymentNumber: installment.paymentNumber,
-        totalPayments: installment.totalPayments
-      } : null
-    });
-  }, [open, isLoading, installment]);
-
   const handleConfirm = async () => {
     console.log('Confirming mark as paid');
     await onConfirm();
@@ -46,11 +32,11 @@ const MarkAsPaidConfirmDialog: React.FC<MarkAsPaidConfirmDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Mark Payment as Paid</DialogTitle>
           <DialogDescription>
-            Are you sure you want to mark this payment as manually paid?
+            This will record that this payment was received manually outside of the system.
           </DialogDescription>
         </DialogHeader>
 
-        {installment && (
+        {installment && installment.amount > 0 && installment.paymentNumber > 0 && (
           <div className="py-4">
             <div className="space-y-2">
               <div className="flex justify-between">
