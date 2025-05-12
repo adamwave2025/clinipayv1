@@ -114,7 +114,7 @@ export async function addToNotificationQueue(
           status: 'failed' as NotificationStatus,
           last_attempt: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          error_message: safeString(webhookResult.error),
+          error_message: safeString(webhookResult.error || ''),
           response_data: errorDetails as unknown as Json
         })
         .eq('id', notificationId);
@@ -132,8 +132,8 @@ export async function addToNotificationQueue(
         success: true, 
         notification_id: notificationId, 
         webhook_success: false,
-        webhook_error: safeString(webhookResult.error),
-        error: safeString(webhookResult.error),
+        webhook_error: safeString(webhookResult.error || ''),
+        error: safeString(webhookResult.error || ''),
         status_code: webhookResult.status_code
       };
     }
