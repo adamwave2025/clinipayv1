@@ -1,184 +1,193 @@
+
+import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
+import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { toast } from 'sonner';
-import { PlanPauseService } from './plan-operations/PlanPauseService';
-import { PlanResumeService } from './plan-operations/PlanResumeService';
-import { PlanCancelService } from './plan-operations/PlanCancelService';
-import { PlanRescheduleService } from './plan-operations/PlanRescheduleService';
-import { PlanPaymentService } from './plan-operations/PlanPaymentService';
 
 /**
- * Consolidated service for plan operations like pausing, resuming, cancelling
- * This service acts as a facade to the specialized service classes.
+ * Service for performing operations on payment plans
  */
 export class PlanOperationsService {
   /**
-   * Resume a paused plan
-   * @param plan The plan to resume
-   * @param resumeDate Optional date to resume the plan (defaults to tomorrow)
-   * @returns Promise<boolean> indicating success or failure
+   * Cancel a payment plan
    */
-  static async resumePlan(plan: Plan, resumeDate?: Date): Promise<boolean> {
+  static async cancelPlan(plan: Plan): Promise<boolean> {
     try {
-      const result = await PlanResumeService.resumePlan(plan, resumeDate);
-      
-      if (!result) {
-        toast.error('Failed to resume plan');
+      if (!plan || !plan.id) {
+        console.error('Cannot cancel plan: Invalid plan object');
+        return false;
       }
       
-      return result;
-    } catch (error) {
-      console.error('Error in resumePlan:', error);
-      toast.error(`Failed to resume plan: ${error instanceof Error ? error.message : String(error)}`);
+      // Update the plan status to cancelled
+      const { error } = await supabase
+        .from('plans')
+        .update({ status: 'cancelled' })
+        .eq('id', plan.id);
+      
+      if (error) {
+        console.error('Error cancelling plan:', error);
+        throw error;
+      }
+      
+      // Log activity
+      await this.logPlanActivity(plan.id, 'plan_cancelled', { 
+        planId: plan.id,
+        planName: plan.title || plan.planName 
+      });
+      
+      return true;
+    } catch (err) {
+      console.error('Error in cancelPlan:', err);
       return false;
     }
   }
   
   /**
    * Pause a payment plan
-   * @param plan The plan to pause
-   * @returns boolean indicating success or failure
    */
   static async pausePlan(plan: Plan): Promise<boolean> {
     try {
-      const result = await PlanPauseService.pausePlan(plan);
-      
-      if (!result) {
-        toast.error('Failed to pause plan');
+      if (!plan || !plan.id) {
+        console.error('Cannot pause plan: Invalid plan object');
+        return false;
       }
       
-      return result;
-    } catch (error) {
-      console.error('Error in pausePlan:', error);
-      toast.error(`Failed to pause plan: ${error instanceof Error ? error.message : String(error)}`);
+      // Update the plan status to paused
+      const { error } = await supabase
+        .from('plans')
+        .update({ status: 'paused' })
+        .eq('id', plan.id);
+      
+      if (error) {
+        console.error('Error pausing plan:', error);
+        throw error;
+      }
+      
+      // Log activity
+      await this.logPlanActivity(plan.id, 'plan_paused', { 
+        planId: plan.id,
+        planName: plan.title || plan.planName 
+      });
+      
+      return true;
+    } catch (err) {
+      console.error('Error in pausePlan:', err);
       return false;
     }
   }
   
   /**
-   * Cancel a payment plan
-   * @param plan The plan to cancel
-   * @returns boolean indicating success or failure
+   * Resume a payment plan
    */
-  static async cancelPlan(plan: Plan): Promise<boolean> {
+  static async resumePlan(plan: Plan, resumeDate: Date): Promise<boolean> {
     try {
-      const result = await PlanCancelService.cancelPlan(plan);
-      
-      if (!result) {
-        toast.error('Failed to cancel plan');
+      if (!plan || !plan.id) {
+        console.error('Cannot resume plan: Invalid plan object');
+        return false;
       }
       
-      return result;
-    } catch (error) {
-      console.error('Error in cancelPlan:', error);
-      toast.error(`Failed to cancel plan: ${error instanceof Error ? error.message : String(error)}`);
+      // Format date for database
+      const formattedDate = resumeDate.toISOString();
+      
+      // Update the plan status to active and set next due date
+      const { error } = await supabase
+        .from('plans')
+        .update({ 
+          status: 'active',
+          next_due_date: formattedDate
+        })
+        .eq('id', plan.id);
+      
+      if (error) {
+        console.error('Error resuming plan:', error);
+        throw error;
+      }
+      
+      // Log activity
+      await this.logPlanActivity(plan.id, 'plan_resumed', { 
+        planId: plan.id,
+        planName: plan.title || plan.planName,
+        resumeDate: formattedDate
+      });
+      
+      return true;
+    } catch (err) {
+      console.error('Error in resumePlan:', err);
       return false;
     }
   }
   
   /**
-   * Reschedule a payment plan with a new start date
-   * @param plan The plan to reschedule
-   * @param newStartDate The new start date for the plan
-   * @returns boolean indicating success or failure
+   * Mark a payment as paid
    */
-  static async reschedulePlan(plan: Plan, newStartDate: Date): Promise<boolean> {
+  static async markAsPaid(installmentId: string, planId: string): Promise<boolean> {
     try {
-      const result = await PlanRescheduleService.reschedulePlan(plan, newStartDate);
-      
-      if (!result) {
-        toast.error('Failed to reschedule plan');
+      if (!installmentId) {
+        console.error('Cannot mark as paid: Invalid installment ID');
+        return false;
       }
       
-      return result;
-    } catch (error) {
-      console.error('Error in reschedulePlan:', error);
-      toast.error(`Failed to reschedule plan: ${error instanceof Error ? error.message : String(error)}`);
+      // Get current date
+      const now = new Date();
+      const paidDate = now.toISOString();
+      
+      // Update the payment schedule item as paid
+      const { error } = await supabase
+        .from('payment_schedule')
+        .update({ 
+          status: 'paid',
+          paid_date: paidDate
+        })
+        .eq('id', installmentId);
+      
+      if (error) {
+        console.error('Error marking payment as paid:', error);
+        throw error;
+      }
+      
+      // Log activity if we have a plan ID
+      if (planId) {
+        await this.logPlanActivity(planId, 'payment_marked_paid', { 
+          installmentId,
+          paidDate
+        });
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('Error in markAsPaid:', err);
       return false;
     }
   }
   
   /**
-   * Reschedule an individual payment to a new date
-   * @param paymentId The payment ID to reschedule
-   * @param newDate The new date for the payment
-   * @returns Object indicating success or failure
+   * Log an activity for a plan
    */
-  static async reschedulePayment(paymentId: string, newDate: Date): Promise<{ success: boolean, error?: any }> {
+  private static async logPlanActivity(planId: string, actionType: string, details: any): Promise<void> {
     try {
-      const result = await PlanPaymentService.reschedulePayment(paymentId, newDate);
+      // Get clinic ID for the plan
+      const { data: planData } = await supabase
+        .from('plans')
+        .select('clinic_id, patient_id')
+        .eq('id', planId)
+        .single();
       
-      if (!result.success) {
-        toast.error('Failed to reschedule payment');
+      if (!planData) {
+        console.error('Could not find plan for activity logging');
+        return;
       }
       
-      return result;
-    } catch (error) {
-      console.error('Error in reschedulePayment:', error);
-      toast.error(`Failed to reschedule payment: ${error instanceof Error ? error.message : String(error)}`);
-      return { success: false, error };
-    }
-  }
-  
-  /**
-   * Mark a payment as paid (manual payment)
-   * @param paymentId The payment ID to mark as paid
-   * @returns Object indicating success or failure
-   */
-  static async markAsPaid(paymentId: string): Promise<{ success: boolean, error?: any }> {
-    return await PlanOperationsService.recordManualPayment(paymentId);
-  }
-  
-  /**
-   * Record a manual payment for an installment
-   * @param paymentId The payment ID to mark as paid
-   * @returns Object indicating success or failure
-   */
-  static async recordManualPayment(paymentId: string): Promise<{ success: boolean, error?: any }> {
-    try {
-      // Use PlanPaymentService to record the manual payment
-      const result = await PlanPaymentService.recordManualPayment(paymentId);
-      
-      if (!result.success) {
-        toast.error('Failed to record payment');
-      }
-      
-      return result;
-    } catch (error) {
-      console.error('Error in recordManualPayment:', error);
-      toast.error(`Failed to record payment: ${error instanceof Error ? error.message : String(error)}`);
-      return { success: false, error };
-    }
-  }
-  
-  /**
-   * Record a refund for a payment
-   * @param paymentId The payment ID to refund
-   * @param amount The refund amount
-   * @param isFullRefund Whether this is a full refund
-   * @returns Object indicating success or failure
-   */
-  static async recordPaymentRefund(paymentId: string, amount: number, isFullRefund: boolean): Promise<{ success: boolean, error?: any }> {
-    try {
-      return await PlanPaymentService.recordPaymentRefund(paymentId, amount, isFullRefund);
-    } catch (error) {
-      console.error('Error in recordPaymentRefund:', error);
-      toast.error(`Failed to record refund: ${error instanceof Error ? error.message : String(error)}`);
-      return { success: false, error };
-    }
-  }
-  
-  /**
-   * Send a payment reminder for an installment
-   * @param installmentId The installment ID to send a reminder for
-   * @returns Object indicating success or failure
-   */
-  static async sendPaymentReminder(installmentId: string): Promise<{ success: boolean, error?: any }> {
-    try {
-      return await PlanPaymentService.sendPaymentReminder(installmentId);
-    } catch (error) {
-      console.error('Error in sendPaymentReminder:', error);
-      toast.error(`Failed to send payment reminder: ${error instanceof Error ? error.message : String(error)}`);
-      return { success: false, error };
+      // Insert activity record
+      await supabase.from('payment_activity').insert({
+        plan_id: planId,
+        clinic_id: planData.clinic_id,
+        patient_id: planData.patient_id,
+        action_type: actionType,
+        details: details,
+        performed_at: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('Error logging plan activity:', err);
     }
   }
 }

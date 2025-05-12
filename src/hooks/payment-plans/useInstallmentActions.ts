@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -11,22 +10,24 @@ import { PlanInstallment } from '@/utils/paymentPlanUtils';
  */
 const mapToPlanInstallment = (data: any): PlanInstallment => {
   return {
-    id: data.id,
-    amount: data.amount,
-    planId: data.plan_id,
-    dueDate: data.due_date,
+    id: data.id || '',
+    planId: data.plan_id || '',
+    amount: data.amount || 0,
+    dueDate: data.due_date || '',
     paidDate: data.paid_date || null,
-    status: data.status,
-    paymentNumber: data.payment_number,
-    totalPayments: data.total_payments,
+    status: data.status || 'pending',
+    originalStatus: data.original_status,
+    paymentNumber: data.payment_number || 0,
+    totalPayments: data.total_payments || 0,
     paymentRequestId: data.payment_request_id,
-    // Add any other fields needed for PlanInstallment
+    paymentId: data.payment_id,
+    manualPayment: data.manualPayment || false
   };
 };
 
 export const useInstallmentActions = (
   planId: string, 
-  refreshPlanState?: (planId: string) => Promise<void>
+  refreshFunction: (planId: string) => Promise<void>
 ) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedInstallment, setSelectedInstallment] = useState<PlanInstallment | null>(null);
@@ -43,64 +44,62 @@ export const useInstallmentActions = (
   
   // Handler for opening the Mark as Paid dialog
   const handleMarkAsPaid = (paymentId: string) => {
-    console.log("handleMarkAsPaid called for payment ID:", paymentId);
+    console.log("useInstallmentActions: handleMarkAsPaid called with ID:", paymentId);
     
-    if (!planId) {
-      console.error("Cannot mark as paid: No plan ID available");
-      toast.error("Cannot process payment: Missing plan ID");
-      return;
-    }
+    // Fetch the installment data
+    setIsProcessing(true);
     
-    // Find the installment by ID to display details in the confirmation
     supabase
       .from('payment_schedule')
       .select('*')
       .eq('id', paymentId)
       .single()
-      .then(({ data, error }) => {
+      .then(({ data: installmentData, error }) => {
         if (error) {
-          console.error("Error fetching installment:", error);
-          toast.error("Failed to get payment details");
+          console.error('Error fetching installment data:', error);
+          toast.error('Error loading payment data');
+          setIsProcessing(false);
           return;
         }
         
-        // Map to PlanInstallment type before setting it
-        setSelectedInstallment(mapToPlanInstallment(data));
-        
-        // Open the confirmation dialog
+        console.log('Fetched installment data:', installmentData);
+        setSelectedInstallment(mapToPlanInstallment(installmentData));
         setShowMarkAsPaidDialog(true);
+        setIsProcessing(false);
+      })
+      .catch(error => {
+        console.error('Unexpected error in handleMarkAsPaid:', error);
+        toast.error('Unexpected error occurred');
+        setIsProcessing(false);
       });
   };
   
   // Handler for confirming Mark as Paid
   const confirmMarkAsPaid = async () => {
-    if (!selectedInstallment || !planId) {
-      toast.error("No payment selected");
+    if (!selectedInstallment) {
+      toast.error('No payment selected');
       return;
     }
     
+    console.log("useInstallmentActions: confirmMarkAsPaid called for installment:", selectedInstallment.id);
     setIsProcessing(true);
     
     try {
-      // Use the service to record a manual payment
-      const result = await PlanOperationsService.recordManualPayment(selectedInstallment.id);
+      // Use the PlanOperationsService to mark the payment as paid
+      const success = await PlanOperationsService.markAsPaid(selectedInstallment.id, planId);
       
-      if (result.success) {
-        toast.success("Payment marked as paid successfully");
-        
+      if (success) {
+        toast.success('Payment marked as paid');
         // Close the dialog
         setShowMarkAsPaidDialog(false);
-        
-        // Refresh the plan state to update UI
-        if (refreshPlanState) {
-          await refreshPlanState(planId);
-        }
+        // Refresh the plan data to show the update
+        await refreshFunction(planId);
       } else {
-        toast.error("Failed to mark payment as paid");
+        toast.error('Failed to mark payment as paid');
       }
     } catch (error) {
-      console.error("Error marking payment as paid:", error);
-      toast.error("An error occurred while processing your request");
+      console.error('Error in confirmMarkAsPaid:', error);
+      toast.error('An error occurred while processing your request');
     } finally {
       setIsProcessing(false);
     }
@@ -108,26 +107,33 @@ export const useInstallmentActions = (
   
   // Handler for opening the Reschedule Payment dialog
   const handleOpenReschedule = (paymentId: string) => {
-    console.log("handleOpenReschedule called for payment ID:", paymentId);
+    console.log("useInstallmentActions: handleOpenReschedule called with ID:", paymentId);
     
-    // Find the installment by ID
+    // Fetch the installment data
+    setIsProcessing(true);
+    
     supabase
       .from('payment_schedule')
       .select('*')
       .eq('id', paymentId)
       .single()
-      .then(({ data, error }) => {
+      .then(({ data: installmentData, error }) => {
         if (error) {
-          console.error("Error fetching installment:", error);
-          toast.error("Failed to get payment details");
+          console.error('Error fetching installment data:', error);
+          toast.error('Error loading payment data');
+          setIsProcessing(false);
           return;
         }
         
-        // Map to PlanInstallment type before setting it
-        setSelectedInstallment(mapToPlanInstallment(data));
-        
-        // Open the reschedule dialog
+        console.log('Fetched installment data for reschedule:', installmentData);
+        setSelectedInstallment(mapToPlanInstallment(installmentData));
         setRescheduleDialog(true);
+        setIsProcessing(false);
+      })
+      .catch(error => {
+        console.error('Unexpected error in handleOpenReschedule:', error);
+        toast.error('Unexpected error occurred');
+        setIsProcessing(false);
       });
   };
   
@@ -153,8 +159,8 @@ export const useInstallmentActions = (
         setRescheduleDialog(false);
         
         // Refresh the plan state to update UI
-        if (refreshPlanState) {
-          await refreshPlanState(planId);
+        if (refreshFunction) {
+          await refreshFunction(planId);
         }
       } else {
         toast.error("Failed to reschedule payment");
@@ -168,32 +174,43 @@ export const useInstallmentActions = (
   };
   
   // Handler for taking a payment via the payment portal
-  const handleTakePayment = (paymentId: string, installmentDetails?: PlanInstallment) => {
-    console.log("handleTakePayment called for payment ID:", paymentId);
+  const handleTakePayment = (paymentId: string, installmentDetails?: any) => {
+    console.log("useInstallmentActions: handleTakePayment called with ID:", paymentId);
     
-    if (!installmentDetails) {
-      // Try to fetch the installment details if not provided
-      supabase
-        .from('payment_schedule')
-        .select('*')
-        .eq('id', paymentId)
-        .single()
-        .then(({ data, error }) => {
-          if (error) {
-            console.error("Error fetching installment:", error);
-            toast.error("Failed to get payment details");
-            return;
-          }
-          
-          // Map to PlanInstallment type before setting
-          setSelectedInstallment(mapToPlanInstallment(data));
-          setShowTakePaymentDialog(true);
-        });
-    } else {
-      // Use the provided installment details directly
-      setSelectedInstallment(installmentDetails);
+    // If we have installment details directly, use them
+    if (installmentDetails) {
+      console.log('Using provided installment details:', installmentDetails);
+      setSelectedInstallment(mapToPlanInstallment(installmentDetails));
       setShowTakePaymentDialog(true);
+      return;
     }
+    
+    // Otherwise fetch the installment data
+    setIsProcessing(true);
+    
+    supabase
+      .from('payment_schedule')
+      .select('*')
+      .eq('id', paymentId)
+      .single()
+      .then(({ data: installmentData, error }) => {
+        if (error) {
+          console.error('Error fetching installment data:', error);
+          toast.error('Error loading payment data');
+          setIsProcessing(false);
+          return;
+        }
+        
+        console.log('Fetched installment data for payment:', installmentData);
+        setSelectedInstallment(mapToPlanInstallment(installmentData));
+        setShowTakePaymentDialog(true);
+        setIsProcessing(false);
+      })
+      .catch(error => {
+        console.error('Unexpected error in handleTakePayment:', error);
+        toast.error('Unexpected error occurred');
+        setIsProcessing(false);
+      });
   };
 
   return {

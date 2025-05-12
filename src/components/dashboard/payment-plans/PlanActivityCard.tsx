@@ -70,12 +70,12 @@ const PlanActivityCard: React.FC<PlanActivityCardProps> = ({ activities, isLoadi
       {activities.map((activity) => (
         <div key={activity.id} className="flex items-start space-x-3">
           <div className="mt-0.5">
-            {getActivityIcon(activity.type)}
+            {getActivityIcon(activity.actionType)}
           </div>
           <div>
-            <p className="text-sm">{activity.description}</p>
+            <p className="text-sm">{activity.description || activity.actionType.replace(/_/g, ' ')}</p>
             <p className="text-xs text-muted-foreground">
-              {formatDate(activity.timestamp)}
+              {formatDate(activity.timestamp || activity.performedAt)}
             </p>
           </div>
         </div>

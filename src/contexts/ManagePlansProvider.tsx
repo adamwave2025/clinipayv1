@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext, { PaymentDialogData } from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -502,4 +503,3 @@ export const ManagePlansProvider: React.FC<{
   );
 };
 
-export default ManagePlansProvider;

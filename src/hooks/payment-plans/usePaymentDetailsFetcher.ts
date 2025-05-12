@@ -14,9 +14,9 @@ export const usePaymentDetailsFetcher = () => {
     
     try {
       console.log('Installation in fetchPaymentDetails:', installment);
-      console.log('Payment ID:', installment.paymentId);
-      console.log('Payment Request ID:', installment.paymentRequestId);
-      console.log('Manual payment flag:', installment.manualPayment);
+      console.log('Payment ID:', installment.paymentId || 'Not set');
+      console.log('Payment Request ID:', installment.paymentRequestId || 'Not set');
+      console.log('Manual payment flag:', installment.manualPayment || false);
       
       // Determine if this is a payment plan payment
       // If we have totalPayments and paymentNumber, it's likely a plan payment

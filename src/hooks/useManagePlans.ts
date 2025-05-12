@@ -73,7 +73,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    selectedInstallment: viewDetailsInstallment, // Renamed to avoid conflict
+    selectedInstallment: viewDetailsInstallment,
     setSelectedInstallment: setViewDetailsInstallment,
     handleViewPaymentDetails
   } = useInstallmentHandler();
@@ -97,7 +97,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     
     try {
       // 1. Refresh the plans list to get updated plan status
-      await fetchPaymentPlans();
+      await fetchPaymentPlans(user?.id || ''); // Pass a default empty string if user ID is undefined
       
       // 2. If this is for the currently selected plan, refresh its details too
       if (selectedPlan && selectedPlan.id === planId) {
