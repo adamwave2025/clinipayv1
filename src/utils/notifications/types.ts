@@ -23,6 +23,11 @@ export type RecipientType = 'patient' | 'clinic';
 export type FlatJsonValue = string | number | boolean | null;
 
 /**
+ * Safe record type for storing flat JSON data without recursion
+ */
+export type FlatJsonRecord = Record<string, FlatJsonValue>;
+
+/**
  * Response type for notification operations with only primitive values
  * No recursive types allowed to prevent infinite type instantiation
  */

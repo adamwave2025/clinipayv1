@@ -1,7 +1,7 @@
 
 import { StandardNotificationPayload } from '@/types/notification';
 import { supabase } from '@/integrations/supabase/client';
-import { RecipientType, WebhookResult, WebhookErrorDetails } from './types';
+import { RecipientType, WebhookResult, WebhookErrorDetails, FlatJsonRecord } from './types';
 import { Json } from '@/integrations/supabase/types';
 import { safeString, createErrorDetails } from './json-utils';
 

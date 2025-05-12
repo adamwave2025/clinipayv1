@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { StandardNotificationPayload } from '@/types/notification';
-import { NotificationResponse, NotificationStatus, RecipientType, FlatJsonValue } from './types';
+import { NotificationResponse, NotificationStatus, RecipientType, FlatJsonValue, FlatJsonRecord } from './types';
 import { Json } from '@/integrations/supabase/types';
 import { callWebhookDirectly } from './webhook-client';
 import { createPrimitivePayload, createErrorDetails, safeString } from './json-utils';
@@ -25,12 +25,12 @@ export async function addToNotificationQueue(
     const primitivePayload = createPrimitivePayload(payload);
     let notificationId: string | null = null;
     
-    // Insert into notification queue 
+    // Insert into notification queue with explicit type casting to avoid deep instantiation
     const { data, error } = await supabase
       .from('notification_queue')
       .insert({
         type,
-        payload: primitivePayload as Json, 
+        payload: primitivePayload as unknown as Json, 
         recipient_type,
         clinic_id,
         reference_id,
@@ -63,12 +63,12 @@ export async function addToNotificationQueue(
       console.log(`⚠️ CRITICAL SUCCESS: Webhook call successful for notification ${notificationId}`);
       
       // Create a simple response details object with primitive values
-      const responseDetails: Record<string, FlatJsonValue> = {
+      const responseDetails: FlatJsonRecord = {
         status: webhookResult.status_code || 200,
         responseBody: webhookResult.response_body || ''
       };
       
-      // Update the queue item to mark it as processed
+      // Update the queue item to mark it as processed with explicit casting
       const { error: updateError } = await supabase
         .from('notification_queue')
         .update({ 
@@ -76,7 +76,7 @@ export async function addToNotificationQueue(
           processed_at: new Date().toISOString(),
           last_attempt: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          response_data: responseDetails as Json
+          response_data: responseDetails as unknown as Json
         })
         .eq('id', notificationId);
       
@@ -100,14 +100,14 @@ export async function addToNotificationQueue(
       console.error(`⚠️ CRITICAL ERROR: Direct webhook call failed for notification ${notificationId}:`, webhookResult.error);
       
       // Create a record with only primitive values for error details
-      const errorDetails: Record<string, FlatJsonValue> = {
+      const errorDetails: FlatJsonRecord = {
         status: webhookResult.status_code || 0,
         error: safeString(webhookResult.error),
         responseBody: safeString(webhookResult.response_body),
         recipientType: recipient_type
       };
       
-      // Update the notification record with the error
+      // Update the notification record with the error using explicit casting
       const { error: updateError } = await supabase
         .from('notification_queue')
         .update({ 
@@ -115,7 +115,7 @@ export async function addToNotificationQueue(
           last_attempt: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           error_message: safeString(webhookResult.error),
-          response_data: errorDetails as Json
+          response_data: errorDetails as unknown as Json
         })
         .eq('id', notificationId);
         

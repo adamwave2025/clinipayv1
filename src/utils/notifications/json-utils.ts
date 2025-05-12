@@ -1,5 +1,5 @@
 
-import { FlatJsonValue } from './types';
+import { FlatJsonValue, FlatJsonRecord } from './types';
 import { StandardNotificationPayload } from '@/types/notification';
 
 /**
@@ -75,8 +75,8 @@ export function safeString(value: any, maxLength: number = 255): string {
 /**
  * Creates a record with only primitive values suitable for database storage
  */
-export function createErrorDetails(details: Record<string, any>): Record<string, FlatJsonValue> {
-  const result: Record<string, FlatJsonValue> = {};
+export function createErrorDetails(details: Record<string, any>): FlatJsonRecord {
+  const result: FlatJsonRecord = {};
   
   // Extract only primitive values with length limits for strings
   Object.keys(details).forEach(key => {
