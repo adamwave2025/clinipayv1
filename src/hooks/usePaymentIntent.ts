@@ -11,7 +11,10 @@ export function usePaymentIntent() {
 
   const createPaymentIntent = async ({
     linkData,
-    formData
+    formData,
+    payment_schedule_id, // Add this parameter
+    planId, // Add this parameter
+    planStatus // Add this parameter
   }: {
     linkData: PaymentLinkData;
     formData: {
@@ -19,6 +22,9 @@ export function usePaymentIntent() {
       email: string;
       phone?: string;
     };
+    payment_schedule_id?: string; // Make it optional
+    planId?: string; // Make it optional
+    planStatus?: string; // Make it optional
   }) => {
     if (!linkData) {
       toast.error('Payment details are missing');
@@ -53,7 +59,9 @@ export function usePaymentIntent() {
         amountInPence: amount,
         isRequest: linkData.isRequest ? 'Yes' : 'No',
         clinicId: linkData.clinic.id,
-        paymentLinkId: linkData.id
+        paymentLinkId: linkData.id,
+        paymentScheduleId: payment_schedule_id || 'none',
+        planId: planId || 'none'
       });
       
       // Add extra validation to ensure amount is never zero or negative
@@ -73,15 +81,17 @@ export function usePaymentIntent() {
       console.log('Calling create-payment-intent edge function with amount:', amount);
       
       // Call the create-payment-intent edge function with the CORRECT amount
-      // Add a timeout promise to handle edge function freezing
       const invokePromise = supabase.functions.invoke(
         'create-payment-intent', 
         {
           body: JSON.stringify({
-            amount: amount, // Already in cents for Stripe
+            amount: amount,
             clinicId: linkData.clinic.id,
             paymentLinkId: linkData.isRequest ? null : linkData.id,
             requestId: linkData.isRequest ? linkData.id : null,
+            payment_schedule_id: payment_schedule_id || null, // Pass the payment_schedule_id
+            planId: planId || null, // Pass the planId
+            planStatus: planStatus || null, // Pass the planStatus
             paymentMethod: {
               billing_details: {
                 name: formData.name,

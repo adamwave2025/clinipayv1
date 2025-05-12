@@ -2,19 +2,25 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { CheckCircle } from 'lucide-react';
+import { useInstallmentPayment } from '@/hooks/payment-plans/useInstallmentPayment';
+import { ElementsProvider } from '@/components/payment/StripeProvider';
+import StripeCardElement from '@/components/payment/form/StripeCardElement';
 
-// Only validate card fields since patient info is read-only
+// Form schema for patient and payment details
 const paymentFormSchema = z.object({
-  cardNumber: z.string().min(16, "Valid card number is required"),
-  expiry: z.string().min(5, "Valid expiry date is required"),
-  cvc: z.string().min(3, "Valid CVC is required"),
+  name: z.string().min(2, "Patient name is required"),
+  email: z.string().email("Valid email is required"),
+  phone: z.string().optional(),
+  stripeCard: z.object({
+    complete: z.boolean().optional(),
+    empty: z.boolean().optional()
+  }).optional(),
 });
 
 type PaymentFormValues = z.infer<typeof paymentFormSchema>;
@@ -27,18 +33,19 @@ interface TakePaymentDialogProps {
   patientEmail?: string;
   patientPhone?: string;
   amount?: number;
+  onPaymentProcessed?: () => Promise<void>;
 }
 
 const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   open,
   onOpenChange,
-  paymentId = "payment-123", // Default dummy value
-  patientName = "John Smith",
-  patientEmail = "john@example.com",
+  paymentId = "",
+  patientName = "",
+  patientEmail = "",
   patientPhone = "",
-  amount = 50000 // £500 in pence
+  amount = 50000, // £500 in pence
+  onPaymentProcessed = async () => {}
 }) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
   
   // Format amount for display (from pence to pounds)
@@ -47,26 +54,39 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     currency: 'GBP' 
   }).format(amount / 100);
   
+  // Use our custom hook for processing installment payments
+  const { 
+    handlePaymentSubmit,
+    isProcessing,
+    isLoading,
+    isStripeReady
+  } = useInstallmentPayment(paymentId, amount, onPaymentProcessed);
+  
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
-      cardNumber: '',
-      expiry: '',
-      cvc: ''
+      name: patientName || '',
+      email: patientEmail || '',
+      phone: patientPhone || '',
+      stripeCard: undefined,
     },
   });
 
-  // Mock submit function - just for UI demonstration
-  const handleSubmit = (data: PaymentFormValues) => {
-    setIsSubmitting(true);
-    
-    // Simulate API call delay
-    setTimeout(() => {
-      console.log("Form submitted with data:", data);
-      toast.success("Payment processed successfully!");
-      setPaymentComplete(true);
-      setIsSubmitting(false);
-    }, 1500);
+  // Submit handler that calls our payment processor
+  const onSubmit = async (data: PaymentFormValues) => {
+    try {
+      const result = await handlePaymentSubmit(data);
+      
+      if (result.success) {
+        setPaymentComplete(true);
+        form.reset();
+      } else {
+        toast.error(result.error || "Payment failed");
+      }
+    } catch (error: any) {
+      console.error("Payment submission error:", error);
+      toast.error(error.message || "Payment processing failed");
+    }
   };
   
   // Reset dialog state when it closes
@@ -74,6 +94,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     if (!newOpen) {
       setTimeout(() => {
         setPaymentComplete(false);
+        form.reset();
       }, 300);
     }
     onOpenChange(newOpen);
@@ -105,97 +126,104 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
             </div>
           </div>
         ) : (
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-              {/* Patient & Payment Information - Read-only */}
-              <div className="rounded-md bg-gray-50 p-4 mb-2">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-sm font-medium">Amount:</span>
-                  <span className="font-bold">{displayAmount}</span>
-                </div>
-                
-                <div className="text-sm space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Patient:</span>
-                    <span>{patientName}</span>
+          <ElementsProvider>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                {/* Patient & Payment Information - Read-only */}
+                <div className="rounded-md bg-gray-50 p-4 mb-2">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-sm font-medium">Amount:</span>
+                    <span className="font-bold">{displayAmount}</span>
                   </div>
                   
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Email:</span>
-                    <span>{patientEmail}</span>
-                  </div>
-                  
-                  {patientPhone && (
+                  <div className="text-sm space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Phone:</span>
-                      <span>{patientPhone}</span>
+                      <span className="text-gray-500">Patient:</span>
+                      <span>{patientName}</span>
                     </div>
-                  )}
+                    
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Email:</span>
+                      <span>{patientEmail}</span>
+                    </div>
+                    
+                    {patientPhone && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Phone:</span>
+                        <span>{patientPhone}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-              
-              {/* Card Details Section */}
-              <div>
-                <h3 className="text-sm font-medium mb-2">Card Details</h3>
                 
-                <FormField
-                  control={form.control}
-                  name="cardNumber"
-                  render={({ field }) => (
-                    <FormItem className="mb-2">
-                      <FormLabel>Card Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="4242 4242 4242 4242" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-2 gap-3">
+                {/* Card Details Section */}
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Card Details</h3>
+                  
                   <FormField
                     control={form.control}
-                    name="expiry"
+                    name="name"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Expiry Date</FormLabel>
+                      <FormItem className="hidden">
                         <FormControl>
-                          <Input placeholder="MM/YY" {...field} />
+                          <input type="hidden" {...field} />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
                   
                   <FormField
                     control={form.control}
-                    name="cvc"
+                    name="email"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>CVC</FormLabel>
+                      <FormItem className="hidden">
                         <FormControl>
-                          <Input placeholder="123" {...field} />
+                          <input type="hidden" {...field} />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
+                  
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem className="hidden">
+                        <FormControl>
+                          <input type="hidden" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="stripeCard"
+                    render={({ field }) => (
+                      <StripeCardElement 
+                        isLoading={isLoading || isProcessing}
+                        onChange={(e) => {
+                          field.onChange(e.complete ? { complete: true } : { empty: true });
+                        }}
+                      />
+                    )}
+                  />
                 </div>
-              </div>
-              
-              <Button 
-                type="submit"
-                className="w-full mt-2" 
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Processing..." : "Process Payment"}
-              </Button>
-              
-              <div className="text-xs text-center text-gray-500">
-                <p>This is a secure payment processed by CliniPay</p>
-              </div>
-            </form>
-          </Form>
+                
+                <Button 
+                  type="submit"
+                  className="w-full mt-2" 
+                  disabled={isLoading || isProcessing || !isStripeReady}
+                >
+                  {isLoading || isProcessing ? "Processing..." : "Process Payment"}
+                </Button>
+                
+                <div className="text-xs text-center text-gray-500">
+                  <p>This is a secure payment processed by CliniPay</p>
+                </div>
+              </form>
+            </Form>
+          </ElementsProvider>
         )}
       </DialogContent>
     </Dialog>

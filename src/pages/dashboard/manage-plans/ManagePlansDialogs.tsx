@@ -135,7 +135,7 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* Take payment dialog - With patient phone number */}
+      {/* Take payment dialog - With patient details */}
       <TakePaymentDialog
         open={showTakePaymentDialog}
         onOpenChange={(open) => {
@@ -146,6 +146,8 @@ export const ManagePlansDialogs = () => {
         patientEmail={selectedPlan.patientEmail}
         patientPhone={selectedPlan.patients?.phone || ''}
         amount={selectedInstallment?.amount || 50000} // Default to £500 if no amount
+        paymentId={selectedInstallment?.id}
+        onPaymentProcessed={onPaymentUpdated}
       />
       
       {paymentToRefund && (

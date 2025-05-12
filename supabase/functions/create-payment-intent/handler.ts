@@ -6,10 +6,15 @@ import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 export async function handleCreatePaymentIntent(req: Request) {
   try {
     const body = await req.json();
-    const { amount, clinicId, paymentLinkId, requestId, paymentMethod, planId, planStatus } = body;
+    const { amount, clinicId, paymentLinkId, requestId, paymentMethod, planId, planStatus, payment_schedule_id } = body;
 
     console.log(`Creating payment for clinic ${clinicId}, amount: ${amount}`);
     console.log(`Payment request status: ${requestId ? 'payment request' : 'direct payment'}, Plan ID: ${planId || 'null'}, Plan status: ${planStatus || 'null'}`);
+    
+    // Log payment_schedule_id if provided
+    if (payment_schedule_id) {
+      console.log(`Payment for payment schedule: ${payment_schedule_id}`);
+    }
 
     // Validate the amount
     if (!amount || typeof amount !== "number" || amount <= 0) {
@@ -103,7 +108,7 @@ export async function handleCreatePaymentIntent(req: Request) {
       });
     }
 
-    // Create a PaymentIntent
+    // Create a PaymentIntent with payment_schedule_id in the metadata if provided
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: "gbp",
@@ -121,7 +126,8 @@ export async function handleCreatePaymentIntent(req: Request) {
         patientPhone: paymentMethod?.billing_details?.phone || "",
         customAmount: body.customAmount?.toString() || "",
         planId: planId || "",
-        planStatus: planStatus || ""
+        planStatus: planStatus || "",
+        payment_schedule_id: payment_schedule_id || "", // Include payment_schedule_id in metadata
       },
       transfer_data: {
         destination: clinic.stripe_account_id,

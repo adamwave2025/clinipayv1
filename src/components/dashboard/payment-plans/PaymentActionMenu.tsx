@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { formatCurrency } from '@/utils/formatters';
 
@@ -34,7 +34,7 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
     e.stopPropagation();
     
     if (onTakePayment) {
-      // Just pass the ID and installment directly without complex validation
+      // Pass the ID and installment directly 
       onTakePayment(paymentId, installment);
     }
   };

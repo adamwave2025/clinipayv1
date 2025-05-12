@@ -92,7 +92,11 @@ export function useInstallmentPayment(
           name: formData.name,
           email: formData.email,
           phone: formData.phone
-        }
+        },
+        // Pass payment_schedule_id to include in metadata
+        payment_schedule_id: paymentId,
+        planId: paymentData.plan_id,
+        planStatus: paymentData.plans.status
       });
       
       if (!intentResult.success) {
