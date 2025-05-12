@@ -144,29 +144,34 @@ export const ManagePlansProvider: React.FC<{
     handleTakePayment: originalHandleTakePayment,  // Rename to avoid conflict
     confirmMarkAsPaid,
     showTakePaymentDialog,
-    setShowTakePaymentDialog
+    setShowTakePaymentDialog,
+    selectedInstallment: installmentActionsSelectedInstallment,
+    setSelectedInstallment
   } = useInstallmentActions(
     selectedPlan?.id || '',
     refreshInstallments
   );
   
-  // Create a simplified take payment handler
+  // Create a fixed and improved take payment handler
   const handleTakePayment = (paymentId: string, installmentDetails: PlanInstallment) => {
-    console.log("Enhanced handleTakePayment called with:", paymentId);
+    console.log("Enhanced handleTakePayment called with:", paymentId, installmentDetails);
     
-    // Clear any previous payment data
-    setPaymentDialogData(null);
+    // First, set the selected installment directly to ensure the dialog has the data
+    setSelectedInstallment(installmentDetails);
     
-    // Prepare the basic payment data
+    // Next, prepare the payment data
     const isValid = preparePaymentData(paymentId, installmentDetails);
     
-    // Open the dialog if we have basic data
+    // Open the dialog if data validation passed
     if (isValid) {
       console.log("Opening payment dialog for:", paymentId);
-      setShowTakePaymentDialog(true);
+      // Add a small delay to ensure state is updated
+      setTimeout(() => {
+        setShowTakePaymentDialog(true);
+      }, 10);
     } else {
       console.error("Failed to prepare payment data");
-      toast.error("Cannot open payment dialog: Missing basic data");
+      toast.error("Cannot open payment dialog: Invalid data");
     }
   };
   
@@ -363,6 +368,7 @@ export const ManagePlansProvider: React.FC<{
         showTakePaymentDialog,
         setShowTakePaymentDialog,
         onPaymentUpdated,
+        selectedInstallment: installmentActionsSelectedInstallment,
         
         // Refund properties
         refundDialogOpen,

@@ -78,7 +78,7 @@ export const useInstallmentActions = (
     // Only show the dialog once the state is updated
     setTimeout(() => {
       setShowTakePaymentDialog(true);
-    }, 0);
+    }, 10);
   };
   
   const confirmMarkAsPaid = async () => {
@@ -116,6 +116,7 @@ export const useInstallmentActions = (
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
     selectedInstallment,
+    setSelectedInstallment, // Add this to expose the setter
     // Take payment dialog state
     showTakePaymentDialog,
     setShowTakePaymentDialog,

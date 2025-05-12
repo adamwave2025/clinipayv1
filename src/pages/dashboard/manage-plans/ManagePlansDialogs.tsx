@@ -53,7 +53,10 @@ export const ManagePlansDialogs = () => {
     // Add the take payment dialog props
     showTakePaymentDialog,
     setShowTakePaymentDialog,
-    onPaymentUpdated
+    onPaymentUpdated,
+    
+    // Payment dialog data
+    paymentDialogData
   } = useManagePlansContext();
 
   // Early return if no plan is selected
@@ -62,10 +65,13 @@ export const ManagePlansDialogs = () => {
     return null;
   }
   
-  // Log the state of selectedInstallment for debugging
+  // Log the state of dialogData and selectedInstallment for debugging
   useEffect(() => {
     if (showTakePaymentDialog) {
-      console.log("TakePaymentDialog opened with selectedInstallment:", selectedInstallment);
+      console.log("[ManagePlansDialogs] TakePaymentDialog should be opening with:", {
+        selectedInstallment,
+        dialogShowing: showTakePaymentDialog
+      });
     }
   }, [showTakePaymentDialog, selectedInstallment]);
 
@@ -143,7 +149,7 @@ export const ManagePlansDialogs = () => {
       />
 
       {/* Take payment dialog - Enhanced version with better validation */}
-      {selectedInstallment && (
+      {selectedInstallment && showTakePaymentDialog && (
         <TakePaymentDialog
           open={showTakePaymentDialog}
           onOpenChange={(open) => {

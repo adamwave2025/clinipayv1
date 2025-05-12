@@ -59,7 +59,11 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   // Validate the payment ID early
   useEffect(() => {
     if (open) {
-      console.log("TakePaymentDialog opened with paymentId:", paymentId);
+      console.log("TakePaymentDialog opened with:", { 
+        paymentId, 
+        patientName, 
+        amount
+      });
       
       if (!paymentId || typeof paymentId !== 'string' || paymentId.trim() === '') {
         console.error("Invalid payment ID provided to TakePaymentDialog:", paymentId);
@@ -68,7 +72,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
         setValidationError(null);
       }
     }
-  }, [open, paymentId]);
+  }, [open, paymentId, patientName, amount]);
   
   // Create the form outside of payment processing logic
   const form = useForm<PaymentFormValues>({
