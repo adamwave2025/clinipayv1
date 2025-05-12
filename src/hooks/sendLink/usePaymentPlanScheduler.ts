@@ -1,5 +1,4 @@
 
-// Add this file if it doesn't exist, otherwise update it
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -206,8 +205,8 @@ export function usePaymentPlanScheduler() {
           patient_email: formData.patientEmail,
           patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,
           status: 'sent',
-          message: formData.message || `Payment plan: ${selectedPlan.title || 'Payment Plan'} - Installment 1 of ${paymentCount}`,
-          is_payment_plan: true  // Changed from is_plan_installment to is_payment_plan
+          message: formData.message || `Payment plan: ${selectedPlan.title || 'Payment Plan'} - Installment 1 of ${paymentCount}`
+          // Removed is_payment_plan field which was causing the error
         })
         .select()
         .single();

@@ -149,8 +149,8 @@ export function usePaymentLinkSender() {
           patient_email: formData.patientEmail,
           patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,
           status: 'sent',
-          message: formData.message || null,
-          is_payment_plan: isPaymentPlan  // Flag this as part of a payment plan for better tracking
+          message: formData.message || null
+          // Removed is_payment_plan field which was causing the error
         })
         .select();
 
