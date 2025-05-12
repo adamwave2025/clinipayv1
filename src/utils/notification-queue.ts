@@ -93,8 +93,13 @@ export async function addToNotificationQueue(
     
     // Add financial details if present, but only with primitive values
     if (payload.payment.financial_details) {
+      // Fix for spread operator error - create a new object instead of spreading
       primitivePayload.payment = {
-        ...primitivePayload.payment,
+        reference: payload.payment.reference,
+        amount: payload.payment.amount,
+        refund_amount: payload.payment.refund_amount || null,
+        payment_link: payload.payment.payment_link || null,
+        message: payload.payment.message,
         financial_details: {
           gross_amount: payload.payment.financial_details.gross_amount,
           stripe_fee: payload.payment.financial_details.stripe_fee,
@@ -244,7 +249,7 @@ export async function addToNotificationQueue(
       const elapsedTime = Date.now() - startTime;
       console.log(`⏱️ Total notification processing time: ${elapsedTime}ms (failed)`);
       
-      // Return a flat object structure with primitive values only
+      // Fix for infinite type recursion - Use a flat structure with all primitive values
       return { 
         success: true, 
         notification_id: notificationId, 
@@ -258,7 +263,7 @@ export async function addToNotificationQueue(
       };
     }
   } catch (error) {
-    // Create a completely flat error response with only primitive values
+    // Fix for infinite type recursion - Create a completely flat error response with only primitive values
     const errorMessage = error instanceof Error ? error.message.substring(0, 255) : 'Unknown error';
     const errorStack = error instanceof Error ? 
       error.stack ? error.stack.substring(0, 255) : undefined : 
