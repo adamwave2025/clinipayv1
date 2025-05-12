@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { usePaymentRescheduleActions } from './usePaymentRescheduleActions';
-import { PlanInstallment } from '@/utils/paymentPlanTypes';
+import { PlanInstallment } from '@/utils/paymentPlanUtils';
 
 export const useInstallmentActions = (
   planId: string,
