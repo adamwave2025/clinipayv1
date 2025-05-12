@@ -10,7 +10,7 @@ import { Json } from '@/integrations/supabase/types';
 export async function callWebhookDirectly(
   payload: StandardNotificationPayload,
   recipient_type: 'patient' | 'clinic'
-): Promise<{ success: boolean; error?: string; details?: any }> {
+): Promise<{ success: boolean; error?: string; details?: Record<string, any> }> {
   try {
     console.log('⚠️ CRITICAL: Calling webhook directly with payload:', JSON.stringify(payload, null, 2));
     
@@ -97,14 +97,14 @@ export async function callWebhookDirectly(
       const errorDetails = {
         status: response.status,
         statusText: response.statusText,
-        responseBody: errorText,
-        webhook: webhookUrl,
+        responseBody: errorText.substring(0, 255), // Limit string length
+        webhook: webhookUrl.substring(0, 255), // Limit string length
         recipientType: recipient_type
       };
       console.error(`⚠️ CRITICAL ERROR: Webhook call failed:`, JSON.stringify(errorDetails, null, 2));
       return { 
         success: false, 
-        error: `Webhook responded with ${response.status}: ${errorText}`, 
+        error: `Webhook responded with ${response.status}: ${errorText.substring(0, 255)}`, // Limit string length
         details: errorDetails 
       };
     }
@@ -119,11 +119,17 @@ export async function callWebhookDirectly(
     }
 
     console.log(`✅ Webhook call succeeded with status: ${response.status}`);
-    return { success: true, details: { status: response.status, responseBody } };
+    return { 
+      success: true, 
+      details: { 
+        status: response.status, 
+        responseBody: responseBody ? responseBody.substring(0, 255) : undefined // Limit string length
+      } 
+    };
   } catch (error) {
-    // Enhance error reporting
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error calling webhook';
-    const errorStack = error instanceof Error ? error.stack : undefined;
+    // Enhance error reporting but ensure we only use simple types
+    const errorMessage = error instanceof Error ? error.message.substring(0, 255) : 'Unknown error calling webhook';
+    const errorStack = error instanceof Error ? error.stack?.substring(0, 255) : undefined;
     
     console.error('⚠️ CRITICAL ERROR: Exception in webhook call:', errorMessage);
     if (errorStack) console.error('Error stack:', errorStack);

@@ -25,7 +25,7 @@ export type RecipientType = 'patient' | 'clinic';
 
 /**
  * Common response type for notification operations
- * FIX: Simplified to use only flat primitive properties to avoid recursive type references
+ * Simplified to use only flat primitive properties to avoid recursive type references
  */
 export interface NotificationResponse {
   success: boolean;

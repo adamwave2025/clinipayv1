@@ -157,7 +157,7 @@ export async function addToNotificationQueue(
       const elapsedTime = Date.now() - startTime;
       console.log(`⏱️ Total notification processing time: ${elapsedTime}ms (failed)`);
       
-      // FIX: Return a completely flat structure to avoid type recursion
+      // FIXED: Return a completely flat structure with only primitive values
       return { 
         success: true, 
         notification_id: notificationId, 
@@ -166,7 +166,8 @@ export async function addToNotificationQueue(
       };
     }
   } catch (error) {
-    // FIX: Use simple string representation for error instead of passing the error object
+    // FIXED: Convert the error to a simple string instead of using the error object directly
+    // This fixes the type recursion by ensuring we only use primitive types
     const errorMessage = error instanceof Error ? error.message.substring(0, 255) : 'Unknown error';
     
     console.error('⚠️ CRITICAL ERROR: Exception adding to notification queue:', errorMessage);
@@ -174,7 +175,7 @@ export async function addToNotificationQueue(
     const elapsedTime = Date.now() - startTime;
     console.log(`⏱️ Total notification processing time: ${elapsedTime}ms (exception)`);
     
-    // FIX: Return a simple flat object without any complex structures
+    // FIXED: Return a completely flat structure without nested objects or complex types
     return { 
       success: false, 
       error_message: errorMessage
