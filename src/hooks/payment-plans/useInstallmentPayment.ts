@@ -14,6 +14,7 @@ export function useInstallmentPayment(
   const [isLoading, setIsLoading] = useState(false);
   const [isStripeReady, setIsStripeReady] = useState(true);
   
+  // Get Stripe payment processors - these will return undefined/null if Stripe isn't ready
   const { processPayment, isProcessing } = useStripePayment();
   const { createPaymentIntent, isCreatingIntent } = usePaymentIntent();
 
@@ -21,6 +22,12 @@ export function useInstallmentPayment(
     if (!paymentId) {
       toast.error('Payment ID is required');
       return { success: false, error: 'Payment ID is required' };
+    }
+    
+    // Check if Stripe is ready
+    if (!processPayment) {
+      toast.error('Payment system is not ready');
+      return { success: false, error: 'Payment system is not ready' };
     }
     
     setIsLoading(true);
