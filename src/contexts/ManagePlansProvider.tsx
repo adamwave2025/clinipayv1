@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext, { PaymentDialogData } from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -109,7 +110,7 @@ export const ManagePlansProvider: React.FC<{
         paymentId: paymentId,
         patientName: selectedPlan.patientName || '',
         patientEmail: selectedPlan.patientEmail || '',
-        patientPhone: selectedPlan.patients?.phone || '', // Use optional chaining to safely access 'phone'
+        patientPhone: selectedPlan.patients?.phone || '', // Use optional chaining to safely access phone
         amount: installmentDetails.amount,
         isValid: true
       };

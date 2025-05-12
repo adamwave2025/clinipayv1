@@ -4,7 +4,7 @@ export interface Plan {
   clinicId: string;
   patientId: string;
   patientName?: string;
-  patientEmail?: string; // Add patientEmail property
+  patientEmail?: string;
   paymentLinkId: string;
   title: string;
   description?: string;
@@ -27,8 +27,9 @@ export interface Plan {
     id?: string;
     name?: string;
     email?: string;
+    phone?: string; // Added phone property to fix TypeScript error
   };
-  manualPayment?: boolean; // Add the missing manualPayment property
+  manualPayment?: boolean;
 }
 
 /**
@@ -40,7 +41,7 @@ export const formatPlanFromDb = (planData: any): Plan => {
     clinicId: planData.clinic_id,
     patientId: planData.patient_id,
     patientName: planData.patients?.name || '',
-    patientEmail: planData.patients?.email || '', // Add patientEmail mapping
+    patientEmail: planData.patients?.email || '',
     paymentLinkId: planData.payment_link_id,
     title: planData.title || planData.payment_links?.title || 'Payment Plan',
     description: planData.description,
@@ -67,3 +68,4 @@ export const formatPlanFromDb = (planData: any): Plan => {
     manualPayment: planData.manual_payment || false
   };
 };
+
