@@ -6,9 +6,9 @@ import { StandardNotificationPayload } from '@/types/notification';
  * Creates a simplified notification payload with only primitive values
  * Avoids nested structure problems by flattening complex objects
  */
-export function createPrimitivePayload(payload: StandardNotificationPayload): Record<string, any> {
+export function createPrimitivePayload(payload: StandardNotificationPayload): Record<string, FlatJsonValue> {
   // Create a flat structure with only necessary fields
-  const primitivePayload: Record<string, any> = {
+  const primitivePayload: Record<string, FlatJsonValue> = {
     // Notification basics
     notification_type: payload.notification_type,
     

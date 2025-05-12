@@ -19,13 +19,17 @@ export type RecipientType = 'patient' | 'clinic';
 /**
  * Simple type for flat property storage
  * Non-recursive, flat structure for database storage
+ * This explicit definition prevents excessive type instantiation
  */
 export type FlatJsonValue = string | number | boolean | null;
 
 /**
  * Safe record type for storing flat JSON data without recursion
+ * Explicitly non-recursive to prevent TypeScript from deep instantiation
  */
-export type FlatJsonRecord = Record<string, FlatJsonValue>;
+export type FlatJsonRecord = {
+  [key: string]: FlatJsonValue;
+};
 
 /**
  * Response type for notification operations with only primitive values

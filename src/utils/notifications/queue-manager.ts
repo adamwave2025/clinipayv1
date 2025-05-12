@@ -65,7 +65,7 @@ export async function addToNotificationQueue(
       // Create a simple response details object with primitive values
       const responseDetails: FlatJsonRecord = {
         status: webhookResult.status_code || 200,
-        responseBody: webhookResult.response_body || ''
+        responseBody: safeString(webhookResult.response_body || '')
       };
       
       // Update the queue item to mark it as processed with explicit casting
@@ -102,8 +102,8 @@ export async function addToNotificationQueue(
       // Create a record with only primitive values for error details
       const errorDetails: FlatJsonRecord = {
         status: webhookResult.status_code || 0,
-        error: safeString(webhookResult.error),
-        responseBody: safeString(webhookResult.response_body),
+        error: safeString(webhookResult.error || ''),
+        responseBody: safeString(webhookResult.response_body || ''),
         recipientType: recipient_type
       };
       
