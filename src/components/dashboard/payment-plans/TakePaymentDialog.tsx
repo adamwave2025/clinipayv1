@@ -9,7 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { CheckCircle } from 'lucide-react';
 import { useInstallmentPayment } from '@/hooks/payment-plans/useInstallmentPayment';
-import { ElementsProvider } from '@/components/payment/StripeProvider';
+import StripeProvider from '@/components/payment/StripeProvider';
 import StripeCardElement from '@/components/payment/form/StripeCardElement';
 
 // Form schema for patient and payment details
@@ -126,7 +126,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
             </div>
           </div>
         ) : (
-          <ElementsProvider>
+          <StripeProvider>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 {/* Patient & Payment Information - Read-only */}
@@ -223,7 +223,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
                 </div>
               </form>
             </Form>
-          </ElementsProvider>
+          </StripeProvider>
         )}
       </DialogContent>
     </Dialog>
