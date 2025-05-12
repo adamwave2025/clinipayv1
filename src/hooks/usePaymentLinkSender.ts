@@ -149,7 +149,8 @@ export function usePaymentLinkSender() {
           patient_email: formData.patientEmail,
           patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,
           status: 'sent',
-          message: formData.message || null
+          message: formData.message || null,
+          is_payment_plan: isPaymentPlan  // Flag this as part of a payment plan for better tracking
         })
         .select();
 
@@ -199,7 +200,7 @@ export function usePaymentLinkSender() {
           }
         };
 
-        console.log('Notification payload prepared:', JSON.stringify(notificationPayload, null, 2));
+        console.log('⚠️ CRITICAL - Notification payload prepared:', JSON.stringify(notificationPayload, null, 2));
         
         // Add a debug flag to the payload for payment plans
         if (isPaymentPlan) {
@@ -221,16 +222,21 @@ export function usePaymentLinkSender() {
             console.error("Error details:", JSON.stringify(error, null, 2));
             toast.warning("Payment link was sent, but notification delivery might be delayed");
           } else {
-            console.log("Payment request notification queued successfully");
+            console.log("⚠️ CRITICAL - Payment request notification queued successfully");
             
             try {
-              console.log("Processing notifications immediately...");
+              console.log("⚠️ CRITICAL - Processing notifications immediately...");
+              // Add a small delay to ensure the database has processed the queue entry
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
               const processResult = await processNotificationsNow();
-              console.log("Process notifications result:", processResult);
+              console.log("⚠️ CRITICAL - Process notifications result:", processResult);
               
               if (processResult.error) {
                 console.error("Error processing notifications:", processResult.error);
                 toast.warning("Payment link created, but there was an issue sending notifications");
+              } else {
+                console.log("✅ Notifications processed successfully!");
               }
             } catch (cronErr) {
               console.error("Exception triggering notification processing:", cronErr);

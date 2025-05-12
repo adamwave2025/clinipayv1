@@ -9,11 +9,18 @@ export const useManagePlans = () => {
   const { user } = useAuth();
   const { fetchPaymentPlans } = usePlanDataFetcher();
   
-  // Fix just the refreshData call in useManagePlans.ts
   const refreshData = async (userId?: string) => {
     try {
-      console.log('Refreshing payment plans data with userId:', userId || (user?.id || ''));
-      const fetchedPlans = await fetchPaymentPlans(userId || (user?.id || ''));
+      const targetUserId = userId || (user?.id || '');
+      console.log('Refreshing payment plans data with userId:', targetUserId);
+      
+      if (!targetUserId) {
+        console.warn('No user ID available for refreshing payment plans');
+        return [];
+      }
+      
+      const fetchedPlans = await fetchPaymentPlans(targetUserId);
+      console.log(`Successfully fetched ${fetchedPlans.length} plans for userId: ${targetUserId}`);
 
       return fetchedPlans;
     } catch (error) {

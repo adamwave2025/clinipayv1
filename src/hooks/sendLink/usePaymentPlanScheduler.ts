@@ -206,7 +206,8 @@ export function usePaymentPlanScheduler() {
           patient_email: formData.patientEmail,
           patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,
           status: 'sent',
-          message: formData.message || `Payment plan: ${selectedPlan.title || 'Payment Plan'} - Installment 1 of ${paymentCount}`
+          message: formData.message || `Payment plan: ${selectedPlan.title || 'Payment Plan'} - Installment 1 of ${paymentCount}`,
+          is_plan_installment: true  // Flag this as a plan installment for better tracking
         })
         .select()
         .single();
@@ -262,16 +263,22 @@ export function usePaymentPlanScheduler() {
         console.log('Created activity record for plan creation');
       }
 
-      // Manually trigger the notifications for the first payment
+      // Manually trigger the notifications for the first payment - use a more robust approach
       try {
-        console.log('Processing first payment notification immediately');
+        console.log('⚠️ CRITICAL: Processing first payment notification immediately');
         console.log('About to call processNotificationsNow()...');
+        
+        // Add a small delay to ensure the database has time to process the request
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         const processResult = await processNotificationsNow();
         console.log('Notification processing result:', processResult);
         
         if (!processResult.success) {
           console.warn('Warning: Notification processing returned an error:', processResult.error);
           toast.warning('Payment plan created, but notification might be delayed');
+        } else {
+          console.log('✅ Successfully processed notifications immediately');
         }
       } catch (notifyError) {
         console.error('Error processing notifications:', notifyError);
