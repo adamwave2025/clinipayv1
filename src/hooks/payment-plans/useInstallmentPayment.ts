@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useStripePayment } from '@/hooks/useStripePayment';
+import { useStripePayment } from '@/modules/payment/hooks/useStripePayment';
 import { usePaymentIntent } from '@/hooks/usePaymentIntent';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -18,7 +18,10 @@ export function useInstallmentPayment(
   const { processPayment, isProcessing } = useStripePayment();
   const { createPaymentIntent, isCreatingIntent } = usePaymentIntent();
 
-  const handlePaymentSubmit = async (formData: PaymentFormValues): Promise<{ success: boolean; error?: string }> => {
+  const handlePaymentSubmit = async (
+    formData: PaymentFormValues, 
+    isCardComplete: boolean = false
+  ): Promise<{ success: boolean; error?: string }> => {
     // Enhanced validation for payment ID
     if (!paymentId) {
       console.error('Payment ID is required but was not provided');
@@ -31,6 +34,13 @@ export function useInstallmentPayment(
       console.error('Invalid payment ID format:', paymentId);
       toast.error('Invalid payment ID format');
       return { success: false, error: 'Invalid payment ID format' };
+    }
+    
+    // Validate card completion
+    if (!isCardComplete) {
+      console.error('Card details are incomplete');
+      toast.error('Please complete your card details');
+      return { success: false, error: 'Card details are incomplete' };
     }
     
     // Check if Stripe is ready
@@ -131,6 +141,7 @@ export function useInstallmentPayment(
       }
       
       // 4. Process the payment with Stripe
+      // Use the confirmed card completion state passed from the component
       const paymentResult = await processPayment({
         clientSecret: intentResult.clientSecret,
         formData: {

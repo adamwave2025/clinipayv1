@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -49,6 +49,8 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
 }) => {
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isCardComplete, setIsCardComplete] = useState(false);
+  const cardElementRef = useRef<{ complete: boolean } | null>(null);
   
   // Format amount for display (from pence to pounds)
   const displayAmount = new Intl.NumberFormat('en-GB', { 
@@ -96,6 +98,31 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       isStripeReady
     } = useInstallmentPayment(paymentId, amount, onPaymentProcessed);
     
+    // Track card completion state
+    const handleCardChange = (event: any) => {
+      console.log('Card element change:', { 
+        isEmpty: event.empty, 
+        isComplete: event.complete
+      });
+      
+      setIsCardComplete(event.complete);
+      // Store card state in ref to preserve during rerenders
+      cardElementRef.current = {
+        complete: event.complete
+      };
+      
+      // Update the form state
+      form.setValue('stripeCard', {
+        complete: event.complete,
+        empty: event.empty
+      });
+      
+      // Clear form error when card becomes complete
+      if (event.complete) {
+        form.clearErrors('stripeCard');
+      }
+    };
+    
     // Submit handler that calls our payment processor
     const onSubmit = async (data: PaymentFormValues) => {
       try {
@@ -107,7 +134,20 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
           return;
         }
         
-        const result = await handlePaymentSubmit(data);
+        // Check if card is complete using the ref and current state
+        const isCardReady = cardElementRef.current?.complete || isCardComplete;
+        
+        if (!isCardReady) {
+          console.error("Card details are incomplete");
+          form.setError('stripeCard', {
+            type: 'manual',
+            message: 'Please complete your card details'
+          });
+          toast.error("Please enter complete card details");
+          return;
+        }
+        
+        const result = await handlePaymentSubmit(data, isCardReady);
         
         if (result.success) {
           setPaymentComplete(true);
@@ -169,10 +209,8 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
             </div>
           </div>
           
-          {/* Card Details Section */}
+          {/* Card Details Section - Removed duplicate header */}
           <div>
-            <h3 className="text-sm font-medium mb-2">Card Details</h3>
-            
             <FormField
               control={form.control}
               name="name"
@@ -212,15 +250,20 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
             <FormField
               control={form.control}
               name="stripeCard"
-              render={({ field }) => (
+              render={() => (
                 <StripeCardElement 
                   isLoading={isLoading || isProcessing}
-                  onChange={(e) => {
-                    field.onChange(e.complete ? { complete: true } : { empty: true });
-                  }}
+                  onChange={handleCardChange}
                 />
               )}
             />
+            
+            {/* Display validation error for card */}
+            {form.formState.errors.stripeCard && (
+              <p className="text-sm font-medium text-destructive mt-2">
+                {form.formState.errors.stripeCard.message}
+              </p>
+            )}
           </div>
           
           <Button 
@@ -245,6 +288,8 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       setTimeout(() => {
         setPaymentComplete(false);
         setValidationError(null);
+        setIsCardComplete(false);
+        cardElementRef.current = null;
         form.reset();
       }, 300);
     }
