@@ -6,6 +6,7 @@ import { PlanRescheduleService } from './plan-operations/PlanRescheduleService';
 import { PlanCancelService } from './plan-operations/PlanCancelService';
 import { PlanPauseService } from './plan-operations/PlanPauseService';
 import { format } from 'date-fns';
+import { PlanPaymentService } from './plan-operations/PlanPaymentService';
 
 /**
  * Service for performing operations on payment plans
@@ -207,32 +208,23 @@ export class PlanOperationsService {
         return false;
       }
       
-      // Get current date
-      const now = new Date();
-      const paidDate = format(now, 'yyyy-MM-dd');
+      console.log(`Marking installment ${installmentId} as paid for plan ${planId}`);
       
-      // Update the payment schedule item as paid
-      const { error } = await supabase
-        .from('payment_schedule')
-        .update({ 
-          status: 'paid',
-          paid_date: paidDate // This field may not exist in your schema - check!
-        })
-        .eq('id', installmentId);
+      // Use the PlanPaymentService for consistent implementation
+      // This method handles all the necessary operations including:
+      // - Creating a payment record
+      // - Checking for associated payment requests
+      // - Updating the payment schedule status
+      // - Updating the plan progress and metrics
+      // - Recording activity
+      const result = await PlanPaymentService.recordManualPayment(installmentId);
       
-      if (error) {
-        console.error('Error marking payment as paid:', error);
+      if (!result.success) {
+        console.error('Failed to record manual payment:', result.error);
         return false;
       }
       
-      // Log activity if we have a plan ID
-      if (planId) {
-        await this.logPlanActivity(planId, 'payment_marked_paid', { 
-          installmentId,
-          paidDate
-        });
-      }
-      
+      console.log('Payment successfully marked as paid');
       return true;
     } catch (err) {
       console.error('Error in markAsPaid:', err);
