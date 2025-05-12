@@ -369,7 +369,7 @@ export const ManagePlansProvider: React.FC<{
         showTakePaymentDialog,
         setShowTakePaymentDialog,
         onPaymentUpdated,
-        selectedInstallment, // Use our primary selectedInstallment state from useInstallmentActions
+        selectedInstallment, // Primary selectedInstallment state (from useInstallmentActions)
         
         // Refund properties
         refundDialogOpen,
