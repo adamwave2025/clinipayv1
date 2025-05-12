@@ -23,7 +23,16 @@ export const useInstallmentActions = (
     toast.info(`Opening Mark as Paid dialog for payment ${paymentId}`);
     
     // Find the selected installment
-    setSelectedInstallment({ id: paymentId } as PlanInstallment);
+    setSelectedInstallment({ 
+      id: paymentId, 
+      paidDate: null, // Add the required paidDate property
+      amount: 0,
+      dueDate: '',
+      status: '',
+      paymentNumber: 0,
+      totalPayments: 0
+    } as PlanInstallment);
+    
     setShowMarkAsPaidDialog(true);
   };
   
@@ -45,13 +54,14 @@ export const useInstallmentActions = (
     }
     
     // First set the payment data to ensure it's available immediately
-    const validatedPaymentData = {
+    const validatedPaymentData: PlanInstallment = {
       id: paymentId,
       amount: installmentDetails.amount,
       paymentNumber: installmentDetails.paymentNumber || 1,
       totalPayments: installmentDetails.totalPayments || 1,
       dueDate: installmentDetails.dueDate || new Date().toISOString(),
-      status: installmentDetails.status || 'pending'
+      status: installmentDetails.status || 'pending',
+      paidDate: installmentDetails.paidDate || null // Add the required paidDate property
     };
     
     console.log("[useInstallmentActions] Setting validated payment data:", validatedPaymentData);

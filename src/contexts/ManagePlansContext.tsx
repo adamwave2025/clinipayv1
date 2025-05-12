@@ -31,9 +31,6 @@ export interface ManagePlansContextType {
   paymentData: Payment | null;
   selectedInstallment: PlanInstallment | null;
   
-  // Add explicit paymentData property for payment processing
-  paymentData: PlanInstallment | null;
-  
   // View mode toggle state
   isViewMode: boolean;
   setIsViewMode: (isViewMode: boolean) => void;

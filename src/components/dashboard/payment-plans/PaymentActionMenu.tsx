@@ -48,7 +48,8 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
         paymentNumber: installment.paymentNumber || 1,
         totalPayments: installment.totalPayments || 1,
         dueDate: installment.dueDate || new Date().toISOString(),
-        status: installment.status || 'pending'
+        status: installment.status || 'pending',
+        paidDate: installment.paidDate || null // Add the required paidDate property
       };
     } catch (err) {
       console.error("PaymentActionMenu: Failed to create validated installment:", err);
