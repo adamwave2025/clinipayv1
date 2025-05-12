@@ -1,8 +1,6 @@
 
 import { StandardNotificationPayload } from '@/types/notification';
-
-// Default webhook URL for services integration
-const DEFAULT_WEBHOOK_URL = 'https://services.leadconnector.com/payment/webhook';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Directly call webhook with notification payload
@@ -28,10 +26,31 @@ export async function callWebhookDirectly(
       }
     }
 
-    // Use default webhook URL
-    const webhookUrl = DEFAULT_WEBHOOK_URL;
+    // Determine which webhook URL to use based on recipient_type
+    let webhookUrl: string | null = null;
     
-    console.log(`📤 Sending notification to webhook: ${webhookUrl}`);
+    // First try to get webhook URL from system_settings
+    const { data: webhookSettings, error: settingsError } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', recipient_type === 'patient' ? 'patient_notification_webhook' : 'clinic_notification_webhook')
+      .maybeSingle();
+      
+    if (!settingsError && webhookSettings?.value) {
+      webhookUrl = webhookSettings.value;
+      console.log(`📤 Found webhook URL in system_settings for ${recipient_type} notifications`);
+    } else {
+      console.log(`⚠️ No webhook URL found in system_settings for ${recipient_type} notifications, trying environment fallback`);
+    }
+    
+    // If no webhook URL in system_settings, use default service domain
+    if (!webhookUrl) {
+      // Default fallback to Lead Connector standard webhook
+      webhookUrl = 'https://services.leadconnector.com/payment/webhook';
+      console.log(`📤 Using default webhook URL: ${webhookUrl}`);
+    }
+    
+    console.log(`📤 Sending ${recipient_type} notification to webhook: ${webhookUrl}`);
 
     // Make direct HTTP call to webhook
     const response = await fetch(webhookUrl, {
