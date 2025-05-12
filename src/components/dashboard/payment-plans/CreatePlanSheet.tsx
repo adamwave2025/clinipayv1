@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { toast } from 'sonner';
 import { 
@@ -21,7 +22,7 @@ interface CreatePlanSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   createPaymentLink: (data: any) => Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }>;
-  onPlanCreated?: () => void; // Add callback for when a plan is created
+  onPlanCreated?: () => void; // Callback for when a plan is created
 }
 
 const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
@@ -48,8 +49,8 @@ const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
     setIsLoading(false);
     onOpenChange(false); // Close the sheet
     
-    // Keep only this single success toast
-    toast.success('Payment plan created successfully');
+    // We've removed the toast message from here to avoid duplicate messages
+    // The parent component will handle showing the success message
     
     // Call the onPlanCreated callback if provided
     if (onPlanCreated) {

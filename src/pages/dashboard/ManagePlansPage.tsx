@@ -100,6 +100,17 @@ const ManagePlansPageContent: React.FC = () => {
     setTemplateRefreshTrigger(prev => prev + 1);
   }, []);
   
+  // New function that combines refreshing templates and setting view to active plans
+  const handlePlanCreated = useCallback(() => {
+    console.log('Plan created, refreshing templates and showing active plans view');
+    // First refresh the templates data (important to keep templates up to date)
+    setTemplateRefreshTrigger(prev => prev + 1);
+    // Then switch to active plans view (this is the key fix)
+    setIsTemplateView(false);
+    // Show success toast to confirm the action
+    toast.success("Payment plan created successfully");
+  }, []);
+  
   const handleCreatePlanClick = () => {
     console.log("ManagePlansPage: handleCreatePlanClick");
     toast.info("Opening Create Plan form");
@@ -143,7 +154,7 @@ const ManagePlansPageContent: React.FC = () => {
         open={createSheetOpen}
         onOpenChange={setCreateSheetOpen}
         createPaymentLink={createPaymentLink}
-        onPlanCreated={refreshTemplates}
+        onPlanCreated={handlePlanCreated} // Now using the new combined callback
       />
       
       {/* Use the Toaster component from our UI components */}
