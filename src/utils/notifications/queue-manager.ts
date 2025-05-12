@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { StandardNotificationPayload } from '@/types/notification';
-import { NotificationResponse, NotificationStatus, RecipientType } from './types';
+import { NotificationResponse, NotificationStatus, RecipientType, FlatJsonValue } from './types';
 import { Json } from '@/integrations/supabase/types';
 import { callWebhookDirectly } from './webhook-client';
 import { createPrimitivePayload, createErrorDetails, safeString } from './json-utils';
@@ -133,6 +133,7 @@ export async function addToNotificationQueue(
         notification_id: notificationId, 
         webhook_success: false,
         webhook_error: safeString(webhookResult.error),
+        error: safeString(webhookResult.error), // Add the error property to match the expected type
         status_code: webhookResult.status_code
       };
     }
@@ -148,7 +149,8 @@ export async function addToNotificationQueue(
     // Return a simple flat structure
     return { 
       success: false, 
-      error_message: errorMessage
+      error_message: errorMessage,
+      error: errorMessage // Add the error property to match the expected type
     };
   }
 }
