@@ -105,7 +105,7 @@ export async function addToNotificationQueue(
       console.error(`⚠️ CRITICAL ERROR: Direct webhook call failed for notification ${notificationId}:`, webhookResult.error);
       
       // Create a simplified error details object with only primitive values
-      const errorDetails: PrimitiveJsonObject = {
+      const errorDetails: Record<string, string | number> = {
         status: 0,
         statusText: '',
         responseBody: '',
@@ -144,7 +144,7 @@ export async function addToNotificationQueue(
           last_attempt: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           error_message: webhookResult.error ? webhookResult.error.substring(0, 255) : 'Unknown error',
-          response_data: errorDetails as Json
+          response_data: errorDetails as unknown as Json
         })
         .eq('id', notificationId);
         
