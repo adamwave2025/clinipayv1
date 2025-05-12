@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext, { PaymentDialogData } from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -60,7 +61,7 @@ export const ManagePlansProvider: React.FC<{
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    selectedInstallment,
+    selectedInstallment: viewDetailsSelectedInstallment,  // Rename to avoid conflict
     handleViewPaymentDetails
   } = useInstallmentHandler();
   
@@ -145,7 +146,7 @@ export const ManagePlansProvider: React.FC<{
     confirmMarkAsPaid,
     showTakePaymentDialog,
     setShowTakePaymentDialog,
-    selectedInstallment: installmentActionsSelectedInstallment,
+    selectedInstallment,  // This is our primary selectedInstallment state
     setSelectedInstallment
   } = useInstallmentActions(
     selectedPlan?.id || '',
@@ -334,7 +335,7 @@ export const ManagePlansProvider: React.FC<{
         showPaymentDetails,
         setShowPaymentDetails,
         paymentData,
-        selectedInstallment,
+        selectedInstallment: viewDetailsSelectedInstallment,
         
         // Payment dialog data
         paymentDialogData,
@@ -368,7 +369,7 @@ export const ManagePlansProvider: React.FC<{
         showTakePaymentDialog,
         setShowTakePaymentDialog,
         onPaymentUpdated,
-        selectedInstallment: installmentActionsSelectedInstallment,
+        selectedInstallment, // Use our primary selectedInstallment state from useInstallmentActions
         
         // Refund properties
         refundDialogOpen,
