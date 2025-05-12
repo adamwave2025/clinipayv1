@@ -17,23 +17,27 @@ import CreatePlanConfirmDialog from '../links/CreatePlanConfirmDialog';
 import { PaymentLink } from '@/types/payment';
 import { PaymentLinkService } from '@/services/PaymentLinkService';
 import { getUserClinicId } from '@/utils/userUtils';
+import { useNavigate } from 'react-router-dom';
 
 interface CreatePlanSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   createPaymentLink: (data: any) => Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }>;
   onPlanCreated?: () => void; // Callback for when a plan is created
+  forceActiveView?: () => void; // New prop to force active view
 }
 
 const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
   open,
   onOpenChange,
   createPaymentLink,
-  onPlanCreated
+  onPlanCreated,
+  forceActiveView
 }) => {
   const [isLoading, setIsLoading] = React.useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
   const [pendingFormData, setPendingFormData] = React.useState<LinkFormData | null>(null);
+  const navigate = useNavigate();
   
   // Reset state when the dialog opens or closes
   React.useEffect(() => {
@@ -44,22 +48,32 @@ const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
     }
   }, [open]);
   
-  // Handle successful plan creation
+  // Handle successful plan creation with multiple redundant navigation methods
   const handleLinkGenerated = () => {
-    console.log('Plan creation successful, closing sheet and calling callback');
+    console.log('Plan creation successful, closing sheet and handling navigation');
     setIsLoading(false);
     
     // Close the sheet
-    onOpenChange(false); 
+    onOpenChange(false);
     
-    // Important: Call onPlanCreated callback with a slight delay 
-    // to ensure sheet closing animation completes first
+    // Direct navigation attempt first for immediate feedback
+    navigate('/dashboard/manage-plans?view=active', { replace: true });
+    
+    // Use the forceActiveView direct callback if provided for secondary approach
+    if (forceActiveView) {
+      setTimeout(() => {
+        console.log('Using forceActiveView callback');
+        forceActiveView();
+      }, 10);
+    }
+    
+    // Finally use the onPlanCreated callback which handles view state
     setTimeout(() => {
       if (onPlanCreated) {
         console.log('Executing onPlanCreated callback');
         onPlanCreated();
       }
-    }, 100);
+    }, 30);
   };
   
   // Show confirmation dialog before creating the plan
