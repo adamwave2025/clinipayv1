@@ -1,307 +1,58 @@
 
+// Add this file if it doesn't exist, otherwise update it
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { format, isSameDay } from 'date-fns';
 import { toast } from 'sonner';
-import { recordPaymentPlanActivity } from '@/services/PaymentScheduleService';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { PaymentLink } from '@/types/payment';
-import { SendLinkFormData } from './useSendLinkFormState';
-import { useNavigate } from 'react-router-dom';
+import { processNotificationsNow } from '@/utils/notification-cron-setup';
 
 export function usePaymentPlanScheduler() {
   const [isSchedulingPlan, setIsSchedulingPlan] = useState(false);
-  const navigate = useNavigate();
-
-  const generatePaymentSchedule = (startDate: Date, frequency: string, count: number, amount: number) => {
-    const schedule = [];
-    let currentDate = new Date(startDate);
-    
-    // Use the full amount for each payment, not divided by count
-    const paymentAmount = amount;
-
-    for (let i = 1; i <= count; i++) {
-      schedule.push({
-        payment_number: i,
-        total_payments: count,
-        due_date: format(currentDate, 'yyyy-MM-dd'),
-        amount: paymentAmount,
-        payment_frequency: frequency
-      });
-
-      // Calculate next date based on frequency
-      if (frequency === 'weekly') {
-        const newDate = new Date(currentDate);
-        newDate.setDate(currentDate.getDate() + 7);
-        currentDate = newDate;
-      } else if (frequency === 'bi-weekly') {
-        const newDate = new Date(currentDate);
-        newDate.setDate(currentDate.getDate() + 14);
-        currentDate = newDate;
-      } else if (frequency === 'monthly') {
-        const newDate = new Date(currentDate);
-        newDate.setMonth(currentDate.getMonth() + 1);
-        currentDate = newDate;
-      }
-    }
-
-    return schedule;
-  };
-
-  const createPaymentRequest = async (
-    clinicId: string, 
-    patientId: string | null, 
-    paymentLinkId: string,
-    message: string,
-    status: 'sent' | 'scheduled' = 'sent',
-    patientName: string,
-    patientEmail: string,
-    patientPhone: string
-  ) => {
-    console.log('Creating payment request:', { clinicId, patientId, paymentLinkId, status });
-    
-    try {
-      if (!patientId) {
-        console.error('Cannot create payment request without patient ID');
-        throw new Error('Patient ID is required');
-      }
-      
-      // Create a payment request entry
-      const { data: paymentRequest, error: requestError } = await supabase
-        .from('payment_requests')
-        .insert({
-          clinic_id: clinicId,
-          patient_id: patientId,
-          patient_name: patientName,
-          patient_email: patientEmail,
-          patient_phone: patientPhone,
-          payment_link_id: paymentLinkId,
-          message: message,
-          status: status,
-          sent_at: status === 'sent' ? new Date().toISOString() : null,
-        })
-        .select()
-        .single();
-
-      if (requestError) {
-        console.error('Error creating payment request:', requestError);
-        throw new Error(`Failed to create payment request: ${requestError.message}`);
-      }
-
-      if (!paymentRequest) {
-        throw new Error('Payment request creation failed - no data returned');
-      }
-
-      console.log('Successfully created payment request:', paymentRequest.id);
-      return paymentRequest;
-    } catch (error: any) {
-      console.error('Error creating payment request:', error);
-      throw error;
-    }
-  };
-
-  const sendImmediatePayment = async (
-    paymentScheduleEntry: any,
-    clinicId: string,
-    patientId: string,
-    selectedLink: PaymentLink,
-    formattedAddress: string,
-    patientName: string,
-    patientEmail: string,
-    patientPhone: string,
-    existingPaymentRequestId?: string
-  ) => {
-    try {
-      let paymentRequest;
-
-      // Use existing payment request if provided, otherwise create a new one
-      if (existingPaymentRequestId) {
-        const { data, error } = await supabase
-          .from('payment_requests')
-          .select('*')
-          .eq('id', existingPaymentRequestId)
-          .single();
-
-        if (error) {
-          throw new Error(`Error retrieving existing payment request: ${error.message}`);
-        }
-        paymentRequest = data;
-        
-        // Ensure the request status is 'sent'
-        if (paymentRequest.status !== 'sent') {
-          const { error: updateError } = await supabase
-            .from('payment_requests')
-            .update({
-              status: 'sent',
-              sent_at: new Date().toISOString()
-            })
-            .eq('id', existingPaymentRequestId);
-            
-          if (updateError) {
-            throw new Error(`Error updating payment request status: ${updateError.message}`);
-          }
-        }
-
-        console.log('Using existing payment request:', paymentRequest.id);
-      } else {
-        // Create a new payment request
-        paymentRequest = await createPaymentRequest(
-          clinicId,
-          patientId,
-          selectedLink.id,
-          `Payment ${paymentScheduleEntry.payment_number} of ${paymentScheduleEntry.total_payments} is due.`,
-          'sent',
-          patientName,
-          patientEmail,
-          patientPhone
-        );
-        console.log('Created new payment request:', paymentRequest.id);
-      }
-
-      // Log the current payment schedule entry for debugging
-      console.log('Payment schedule entry being processed:', {
-        paymentNumber: paymentScheduleEntry.payment_number,
-        planId: paymentScheduleEntry.plan_id,
-        linkId: selectedLink.id,
-        patientId
-      });
-
-      // Update the corresponding schedule entry to link it to the payment request
-      // CRITICAL FIX: Add plan_id filter to ensure we only update the specific plan's schedule entries
-      const { error: updateError, data: updatedData } = await supabase
-        .from('payment_schedule')
-        .update({ 
-          payment_request_id: paymentRequest.id,
-          status: 'sent',
-          updated_at: new Date().toISOString()
-        })
-        .eq('payment_number', paymentScheduleEntry.payment_number)
-        .eq('payment_link_id', selectedLink.id)
-        .eq('patient_id', patientId)
-        .eq('plan_id', paymentScheduleEntry.plan_id) // CRITICAL FIX: Added plan_id filter
-        .select();
-
-      if (updateError) {
-        console.error('Error updating payment schedule:', updateError);
-        throw new Error(`Failed to update payment schedule: ${updateError.message}`);
-      }
-
-      // Log the updated data for better debugging
-      console.log('Updated payment schedule entries:', updatedData);
-
-      // Send notification
-      const notificationMethod = {
-        email: !!patientEmail,
-        sms: !!patientPhone
-      };
-
-      if (notificationMethod.email || notificationMethod.sms) {
-        // Get clinic data
-        const { data: clinicData, error: clinicError } = await supabase
-          .from('clinics')
-          .select('*')
-          .eq('id', clinicId)
-          .single();
-
-        if (clinicError) {
-          console.error('Error getting clinic data:', clinicError);
-          throw new Error('Failed to get clinic data');
-        }
-
-        const notificationPayload = {
-          notification_type: "payment_request",
-          notification_method: notificationMethod,
-          patient: {
-            name: patientName,
-            email: patientEmail,
-            phone: patientPhone
-          },
-          payment: {
-            reference: paymentRequest.id,
-            amount: paymentScheduleEntry.amount,
-            refund_amount: null,
-            payment_link: `https://clinipay.co.uk/payment/${paymentRequest.id}`,
-            message: `Payment ${paymentScheduleEntry.payment_number} of ${paymentScheduleEntry.total_payments} is due.`
-          },
-          clinic: {
-            name: clinicData.clinic_name || "Your healthcare provider",
-            email: clinicData.email,
-            phone: clinicData.phone,
-            address: formattedAddress
-          }
-        };
-
-        // Queue notification
-        const { error: notifError } = await supabase
-          .from("notification_queue")
-          .insert({
-            type: 'payment_request',
-            payload: notificationPayload,
-            recipient_type: 'patient',
-            payment_id: paymentRequest.id,
-            status: 'pending'
-          });
-
-        if (notifError) {
-          console.error('Error queuing notification:', notifError);
-          throw new Error(`Failed to queue notification: ${notifError.message}`);
-        }
-
-        // Process the notification
-        await supabase.functions.invoke('process-notification-queue');
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error sending immediate payment:', error);
-      return false;
-    }
-  };
+  const { user } = useAuth();
 
   const handleSchedulePaymentPlan = async (
     patientId: string,
-    formData: SendLinkFormData,
-    selectedLink: PaymentLink
+    formData: {
+      patientName: string;
+      patientEmail: string;
+      patientPhone: string;
+      startDate: string;
+      selectedLink: string;
+      message: string;
+    },
+    selectedPlan: PaymentLink
   ) => {
-    if (isSchedulingPlan) {
-      console.log('Schedule already in progress, preventing duplicate submission');
-      return { success: false };
+    if (!user) {
+      console.error('User not authenticated');
+      return { success: false, error: 'Authentication required' };
     }
 
-    try {
-      setIsSchedulingPlan(true);
-      console.log('Starting payment plan scheduling with patient ID:', patientId);
-      
-      if (!selectedLink || !selectedLink.paymentPlan || !selectedLink.paymentCount) {
-        console.error('Invalid payment plan selected:', selectedLink);
-        toast.error('Invalid payment plan selected');
-        setIsSchedulingPlan(false);
-        return { success: false };
-      }
+    setIsSchedulingPlan(true);
+    console.log('Starting payment plan scheduling process...');
 
-      // Get the clinic id from the user - we know patient ID is valid now
+    try {
+      // Get the clinic ID for the current user
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('clinic_id')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('id', user.id)
         .single();
 
-      if (userError || !userData?.clinic_id) {
-        toast.error('Failed to get clinic information');
-        setIsSchedulingPlan(false);
-        return { success: false };
+      if (userError) {
+        console.error('Error fetching user data:', userError);
+        throw new Error(`Failed to get clinic information: ${userError.message}`);
+      }
+
+      if (!userData.clinic_id) {
+        console.error('No clinic_id found for user:', user.id);
+        throw new Error('No clinic associated with this user');
       }
 
       const clinicId = userData.clinic_id;
+      console.log(`Using clinic ID: ${clinicId}`);
 
-      // Generate payment schedule
-      const schedule = generatePaymentSchedule(
-        formData.startDate,
-        selectedLink.paymentCycle || 'monthly', 
-        selectedLink.paymentCount, 
-        selectedLink.amount
-      );
-
-      // Format clinic address for notifications
+      // Get clinic details for the notification
       const { data: clinicData, error: clinicError } = await supabase
         .from('clinics')
         .select('*')
@@ -309,179 +60,237 @@ export function usePaymentPlanScheduler() {
         .single();
 
       if (clinicError) {
-        toast.error('Failed to get clinic information');
-        setIsSchedulingPlan(false);
-        return { success: false };
+        console.error('Error fetching clinic data:', clinicError);
+        throw new Error(`Failed to get clinic details: ${clinicError.message}`);
       }
 
-      const addressParts = [];
-      if (clinicData.address_line_1) addressParts.push(clinicData.address_line_1);
-      if (clinicData.address_line_2) addressParts.push(clinicData.address_line_2);
-      if (clinicData.city) addressParts.push(clinicData.city);
-      if (clinicData.postcode) addressParts.push(clinicData.postcode);
-      const formattedAddress = addressParts.join(", ");
-
-      // Check if first payment is due today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const firstPaymentDate = new Date(schedule[0].due_date);
-      const isFirstPaymentToday = isSameDay(firstPaymentDate, today);
-      
-      // Create first payment request only if it's due today
-      let firstPaymentRequest = null;
-      if (isFirstPaymentToday) {
-        try {
-          firstPaymentRequest = await createPaymentRequest(
-            clinicId,
-            patientId,
-            selectedLink.id,
-            `Payment 1 of ${selectedLink.paymentCount} is due.`,
-            'sent',
-            formData.patientName,
-            formData.patientEmail,
-            formData.patientPhone
-          );
-          console.log('Created first payment request for today:', firstPaymentRequest.id);
-        } catch (reqError: any) {
-          console.error('Error creating first payment request:', reqError);
-          // Continue with plan creation even if first payment request fails
-        }
+      // Validate the payment frequency
+      const paymentFrequency = selectedPlan.payment_cycle || 'monthly';
+      if (!['weekly', 'bi-weekly', 'monthly'].includes(paymentFrequency)) {
+        console.error('Invalid payment frequency:', paymentFrequency);
+        throw new Error(`Invalid payment frequency: ${paymentFrequency}`);
       }
-      
-      // Create a new plan record in the plans table
-      const totalAmount = selectedLink.amount * selectedLink.paymentCount;
-      const firstPaymentDueDate = schedule[0].due_date;
-      
+
+      // Calculate total amount and installment amount
+      const totalAmount = selectedPlan.plan_total_amount || selectedPlan.amount || 0;
+      const paymentCount = selectedPlan.payment_count || 1;
+      const installmentAmount = Math.floor(totalAmount / paymentCount);
+
+      console.log('Payment plan details:', {
+        totalAmount,
+        paymentCount,
+        installmentAmount,
+        paymentFrequency
+      });
+
+      // Ensure valid dates and amounts
+      if (!formData.startDate) {
+        throw new Error('Start date is required');
+      }
+
+      if (totalAmount <= 0 || installmentAmount <= 0) {
+        throw new Error('Invalid payment amount');
+      }
+
+      // Create the plan record
+      console.log('Creating payment plan with start date:', formData.startDate);
       const { data: planData, error: planError } = await supabase
         .from('plans')
         .insert({
           clinic_id: clinicId,
           patient_id: patientId,
-          payment_link_id: selectedLink.id,
-          title: selectedLink.title || 'Payment Plan',
-          description: selectedLink.description,
-          status: 'pending',
+          payment_link_id: selectedPlan.id,
+          title: selectedPlan.title || 'Payment Plan',
+          description: selectedPlan.description || formData.message || 'Payment Plan',
           total_amount: totalAmount,
-          installment_amount: selectedLink.amount,
-          total_installments: selectedLink.paymentCount,
+          installment_amount: installmentAmount,
+          total_installments: paymentCount,
           paid_installments: 0,
-          payment_frequency: selectedLink.paymentCycle || 'monthly',
           progress: 0,
-          start_date: format(formData.startDate, 'yyyy-MM-dd'),
-          next_due_date: firstPaymentDueDate,
-          created_by: (await supabase.auth.getUser()).data.user?.id
+          payment_frequency: paymentFrequency,
+          start_date: formData.startDate,
+          next_due_date: formData.startDate,
+          status: 'pending',
+          created_by: user.id
         })
         .select()
         .single();
 
-      if (planError || !planData) {
-        toast.error('Failed to create payment plan');
-        setIsSchedulingPlan(false);
-        return { success: false };
+      if (planError) {
+        console.error('Error creating payment plan:', planError);
+        throw new Error(`Failed to create payment plan: ${planError.message}`);
       }
 
-      console.log('Created plan record:', planData);
-      
-      // Create a timestamp to identify this batch of schedule entries
-      const batchCreationTime = new Date().toISOString();
-      
-      // Create schedule entries
-      const scheduleEntries = schedule.map((entry, index) => {
-        const isFirst = index === 0;
-        const status = (isFirst && isFirstPaymentToday) ? 'sent' : 'pending';
+      if (!planData) {
+        throw new Error('Failed to create payment plan: No data returned');
+      }
+
+      const planId = planData.id;
+      console.log('Payment plan created successfully:', planId);
+
+      // Now create the payment schedule
+      const schedulePromises = [];
+      let currentDate = new Date(formData.startDate);
+
+      for (let i = 1; i <= paymentCount; i++) {
+        // Format date as ISO string but cut off the time part
+        const dueDate = currentDate.toISOString().split('T')[0];
+
+        console.log(`Creating installment ${i}/${paymentCount} due on ${dueDate}`);
         
-        return {
+        const scheduleItem = {
+          plan_id: planId,
           clinic_id: clinicId,
           patient_id: patientId,
-          payment_link_id: selectedLink.id,
-          plan_id: planData.id,
-          payment_request_id: (isFirst && isFirstPaymentToday && firstPaymentRequest) ? firstPaymentRequest.id : null,
-          amount: entry.amount,
-          due_date: entry.due_date,
-          payment_number: entry.payment_number,
-          total_payments: entry.total_payments,
-          payment_frequency: entry.payment_frequency,
-          status: status,
-          created_at: batchCreationTime,
-          updated_at: batchCreationTime
+          payment_link_id: selectedPlan.id,
+          amount: installmentAmount,
+          due_date: dueDate,
+          payment_frequency: paymentFrequency,
+          status: 'pending',
+          payment_number: i,
+          total_payments: paymentCount
         };
-      });
-
-      // Insert all schedule entries
-      const { error: scheduleError } = await supabase
-        .from('payment_schedule')
-        .insert(scheduleEntries);
-
-      if (scheduleError) {
-        toast.error('Failed to schedule payment plan');
-        setIsSchedulingPlan(false);
-        return { success: false };
-      }
-
-      // Record the "Plan Created" activity
-      try {
-        await recordPaymentPlanActivity({
-          planId: planData.id, 
-          actionType: 'plan_created',
-          details: {
-            start_date: format(formData.startDate, 'yyyy-MM-dd'),
-            installments: selectedLink.paymentCount,
-            frequency: selectedLink.paymentCycle || 'monthly',
-            total_amount: totalAmount,
-            installment_amount: selectedLink.amount,
-            patient_name: formData.patientName,
-            patient_email: formData.patientEmail
-          }
-        });
-      } catch (activityError: any) {
-        console.error('Error recording plan activity:', activityError);
-      }
-
-      // If the first payment is due today, send it immediately but don't show a separate toast
-      if (isFirstPaymentToday && firstPaymentRequest) {
-        const firstPayment = schedule[0];
         
-        try {
-          const sentSuccessfully = await sendImmediatePayment(
-            firstPayment,
-            clinicId,
-            patientId,
-            selectedLink,
-            formattedAddress,
-            formData.patientName,
-            formData.patientEmail,
-            formData.patientPhone,
-            firstPaymentRequest.id
-          );
-          
-          if (!sentSuccessfully) {
-            console.warn('First payment notification may not have been sent properly');
-          }
-        } catch (sendError: any) {
-          console.error('Error sending first payment:', sendError);
-          // Continue with success flow despite this error
+        schedulePromises.push(
+          supabase
+            .from('payment_schedule')
+            .insert(scheduleItem)
+            .select()
+        );
+
+        // Advance the date based on payment frequency
+        switch (paymentFrequency) {
+          case 'weekly':
+            currentDate.setDate(currentDate.getDate() + 7);
+            break;
+          case 'bi-weekly':
+            currentDate.setDate(currentDate.getDate() + 14);
+            break;
+          case 'monthly':
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            break;
         }
       }
 
-      // No success toast here - we'll let the parent component handle that
+      // Wait for all schedule items to be created
+      const scheduleResults = await Promise.all(schedulePromises);
       
-      // Redirect to payment plans page with view=active parameter
-      navigate('/dashboard/payment-plans?view=active');
+      // Check for errors in creating schedule items
+      const scheduleErrors = scheduleResults
+        .filter(result => result.error)
+        .map(result => result.error);
+      
+      if (scheduleErrors.length > 0) {
+        console.error('Errors creating payment schedule items:', scheduleErrors);
+        throw new Error(`Failed to create one or more schedule items`);
+      }
 
-      return { success: true };
+      // Get the first payment schedule item for the initial payment request
+      const firstPaymentSchedule = scheduleResults[0].data?.[0];
+      
+      if (!firstPaymentSchedule) {
+        console.error('Failed to retrieve first payment schedule');
+        throw new Error('Failed to create initial payment schedule');
+      }
+      
+      console.log('First payment schedule created:', firstPaymentSchedule);
+
+      // Now create a payment request for the first installment
+      const { data: paymentRequestData, error: paymentRequestError } = await supabase
+        .from('payment_requests')
+        .insert({
+          clinic_id: clinicId,
+          patient_id: patientId,
+          payment_link_id: selectedPlan.id,
+          patient_name: formData.patientName,
+          patient_email: formData.patientEmail,
+          patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,
+          status: 'sent',
+          message: formData.message || `Payment plan: ${selectedPlan.title || 'Payment Plan'} - Installment 1 of ${paymentCount}`
+        })
+        .select()
+        .single();
+
+      if (paymentRequestError) {
+        console.error('Error creating payment request:', paymentRequestError);
+        throw new Error(`Failed to create payment request: ${paymentRequestError.message}`);
+      }
+
+      if (!paymentRequestData) {
+        throw new Error('Failed to create payment request: No data returned');
+      }
+
+      console.log('Created payment request for first installment:', paymentRequestData);
+
+      // Update the first payment schedule with the request ID
+      const { error: updateError } = await supabase
+        .from('payment_schedule')
+        .update({ payment_request_id: paymentRequestData.id })
+        .eq('id', firstPaymentSchedule.id);
+
+      if (updateError) {
+        console.error('Error updating payment schedule with request ID:', updateError);
+        // Non-fatal error, we can continue
+      } else {
+        console.log('Updated payment schedule with request ID');
+      }
+
+      // Create an activity record for this plan creation
+      const { error: activityError } = await supabase
+        .from('payment_activity')
+        .insert({
+          clinic_id: clinicId,
+          patient_id: patientId,
+          payment_link_id: selectedPlan.id,
+          plan_id: planId,
+          action_type: 'plan_created',
+          performed_by_user_id: user.id,
+          details: {
+            plan_id: planId,
+            total_amount: totalAmount,
+            installment_amount: installmentAmount,
+            payment_count: paymentCount,
+            start_date: formData.startDate,
+            payment_frequency: paymentFrequency
+          }
+        });
+
+      if (activityError) {
+        console.error('Error creating activity record:', activityError);
+        // Non-fatal error, we can continue
+      } else {
+        console.log('Created activity record for plan creation');
+      }
+
+      // Manually trigger the notifications for the first payment
+      try {
+        console.log('Processing first payment notification immediately');
+        const processResult = await processNotificationsNow();
+        console.log('Notification processing result:', processResult);
+      } catch (notifyError) {
+        console.error('Error processing notifications:', notifyError);
+        // Non-fatal error, we can continue
+      }
+
+      return { 
+        success: true, 
+        planId: planId,
+        paymentRequestId: paymentRequestData.id
+      };
+
     } catch (error: any) {
-      console.error('Error scheduling payment plan:', error);
-      toast.error(`Failed to schedule payment plan: ${error.message}`);
-      return { success: false };
+      console.error('Error in handleSchedulePaymentPlan:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Failed to schedule payment plan'
+      };
     } finally {
       setIsSchedulingPlan(false);
     }
   };
 
   return {
-    isSchedulingPlan,
     handleSchedulePaymentPlan,
-    sendImmediatePayment,
-    createPaymentRequest
+    isSchedulingPlan
   };
 }

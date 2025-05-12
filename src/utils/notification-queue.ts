@@ -90,12 +90,19 @@ export async function addToNotificationQueue(
     
     if (webhookError) {
       console.error('Error checking webhook configuration:', webhookError);
+      return { success: false, error: webhookError };
     } else {
       if (!webhooks || webhooks.length < 2) {
         console.warn('Notification webhooks not fully configured in system_settings:');
         console.log('Found webhooks:', webhooks);
+        return { success: false, error: 'Notification webhooks not fully configured' };
       } else {
-        console.log('Notification webhooks are configured correctly:', webhooks);
+        console.log('Notification webhooks are configured correctly:', webhooks.map(w => w.key));
+        
+        // Log the webhook URLs for debugging (value contains the URL)
+        for (const webhook of webhooks) {
+          console.log(`${webhook.key}: ${webhook.value ? 'Set' : 'Not set'}`);
+        }
       }
     }
     
@@ -109,11 +116,13 @@ export async function addToNotificationQueue(
       
       if (permissionError) {
         console.error('Permission check failed for notification_queue table:', permissionError);
+        return { success: false, error: permissionError };
       } else {
         console.log('Successfully accessed notification_queue table, permissions OK');
       }
     } catch (permErr) {
       console.error('Exception during permission check:', permErr);
+      return { success: false, error: permErr };
     }
     
     // Add clinic_id to the payload itself instead of as a separate column
@@ -127,7 +136,7 @@ export async function addToNotificationQueue(
     
     // Add to notification queue - properly convert to Json type
     console.log('Attempting to insert notification...');
-    const { data, error } = await supabase
+    const insertResult = await supabase
       .from("notification_queue")
       .insert({
         type,
@@ -138,20 +147,20 @@ export async function addToNotificationQueue(
       })
       .select();
 
-    if (error) {
-      console.error("Error queueing notification:", error);
-      console.error("Error details:", JSON.stringify(error, null, 2));
+    if (insertResult.error) {
+      console.error("Error queueing notification:", insertResult.error);
+      console.error("Error details:", JSON.stringify(insertResult.error, null, 2));
       
       // Check if this is a permissions issue
-      if (error.code === 'PGRST301' || error.message?.includes('permission denied')) {
+      if (insertResult.error.code === 'PGRST301' || insertResult.error.message?.includes('permission denied')) {
         console.error("This appears to be a permissions error - check RLS policies");
       }
       
-      return { success: false, error };
+      return { success: false, error: insertResult.error };
     }
 
-    console.log(`${recipientType} notification queued successfully:`, data);
-    return { success: true, data };
+    console.log(`${recipientType} notification queued successfully:`, insertResult.data);
+    return { success: true, data: insertResult.data };
   } catch (err: any) {
     console.error("Critical error during notification queueing:", err);
     return { success: false, error: err.message };
