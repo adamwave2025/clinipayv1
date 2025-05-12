@@ -168,7 +168,15 @@ export async function addToNotificationQueue(
         notification_id: notificationId, 
         webhook_success: false,
         webhook_error: webhookResult.error,
-        error_details: webhookResult.details
+        // Instead of returning the full details object which causes TypeScript issues,
+        // return a new plain object with only the properties we need
+        error_details: {
+          status: errorDetails.status,
+          statusText: errorDetails.statusText,
+          responseBody: errorDetails.responseBody,
+          webhook: errorDetails.webhook,
+          recipientType: errorDetails.recipientType
+        }
       };
     }
   } catch (error) {
