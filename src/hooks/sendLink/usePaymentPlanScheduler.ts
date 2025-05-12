@@ -207,7 +207,7 @@ export function usePaymentPlanScheduler() {
           patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,
           status: 'sent',
           message: formData.message || `Payment plan: ${selectedPlan.title || 'Payment Plan'} - Installment 1 of ${paymentCount}`,
-          is_plan_installment: true  // Flag this as a plan installment for better tracking
+          is_payment_plan: true  // Changed from is_plan_installment to is_payment_plan
         })
         .select()
         .single();
