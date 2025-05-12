@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { generatePaymentReference } from '@/utils/paymentUtils';
+import { generatePaymentReference, generateManualPaymentReference } from '@/utils/paymentUtils';
 import { PlanStatusService } from '@/services/PlanStatusService';
 import { PlanPaymentMetrics } from '@/services/plan-status/PlanPaymentMetrics';
 
@@ -137,9 +137,9 @@ export class PlanPaymentService {
         // Continue even if we can't fetch patient details - just log the error
       }
       
-      // Generate a payment reference
-      const paymentRef = generatePaymentReference();
-      console.log('Generated payment reference:', paymentRef);
+      // Generate a payment reference for manual payments
+      const paymentRef = generateManualPaymentReference();
+      console.log('Generated manual payment reference:', paymentRef);
       
       // Create a payment record for the manual payment
       const { data: payment, error: paymentError } = await supabase
