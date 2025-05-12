@@ -66,3 +66,21 @@ export interface WebhookErrorDetails {
   webhook: string;
   recipientType: string;
 }
+
+/**
+ * Simple structure for notification query results
+ * Used to avoid recursive type instantiation with Supabase queries
+ */
+export interface NotificationQueryResult {
+  id: string;
+  status: NotificationStatus;
+}
+
+/**
+ * Database query result type - explicitly non-recursive
+ * Used for properly typing database responses
+ */
+export interface DatabaseQueryResult<T> {
+  data: T | null;
+  error: any;
+}

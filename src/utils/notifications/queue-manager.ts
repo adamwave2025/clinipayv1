@@ -1,6 +1,15 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { StandardNotificationPayload } from '@/types/notification';
-import { NotificationResponse, NotificationStatus, RecipientType, FlatJsonValue, FlatJsonRecord } from './types';
+import { 
+  NotificationResponse, 
+  NotificationStatus, 
+  RecipientType, 
+  FlatJsonValue, 
+  FlatJsonRecord, 
+  NotificationQueryResult,
+  DatabaseQueryResult
+} from './types';
 import { Json } from '@/integrations/supabase/types';
 import { callWebhookDirectly } from './webhook-client';
 import { createPrimitivePayload, createErrorDetails, safeString } from './json-utils';
@@ -163,8 +172,8 @@ export async function checkNotificationExists(
   reference_id: string
 ): Promise<boolean> {
   try {
-    // Explicitly typed query with minimal column selection to avoid deep type instantiation
-    const { data, error } = await supabase
+    // Use explicit column selection and explicit typing to avoid deep type instantiation
+    const result: DatabaseQueryResult<NotificationQueryResult> = await supabase
       .from('notification_queue')
       .select('id, status')
       .eq('type', type)
@@ -172,13 +181,17 @@ export async function checkNotificationExists(
       .eq('reference_id', reference_id)
       .order('created_at', { ascending: false })
       .limit(1)
-      .maybeSingle() as { data: NotificationQueryResult | null, error: any };
+      .maybeSingle();
+    
+    // Destructure with explicit typing to avoid deep instantiation
+    const { data, error } = result;
     
     if (error) {
       console.error('Error checking for existing notification:', error);
       return false;
     }
     
+    // Check if we have a notification that's already been sent or is pending
     if (data && (data.status === 'sent' || data.status === 'pending')) {
       console.log(`Found existing notification for reference ${reference_id}, status: ${data.status}`);
       return true;
