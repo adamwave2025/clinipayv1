@@ -46,17 +46,20 @@ const CreatePlanSheet: React.FC<CreatePlanSheetProps> = ({
   
   // Handle successful plan creation
   const handleLinkGenerated = () => {
+    console.log('Plan creation successful, closing sheet and calling callback');
     setIsLoading(false);
-    onOpenChange(false); // Close the sheet
     
-    // We've removed the toast message from here to avoid duplicate messages
-    // The parent component will handle showing the success message
+    // Close the sheet
+    onOpenChange(false); 
     
-    // Call the onPlanCreated callback if provided
-    if (onPlanCreated) {
-      console.log('Calling onPlanCreated callback');
-      onPlanCreated();
-    }
+    // Important: Call onPlanCreated callback with a slight delay 
+    // to ensure sheet closing animation completes first
+    setTimeout(() => {
+      if (onPlanCreated) {
+        console.log('Executing onPlanCreated callback');
+        onPlanCreated();
+      }
+    }, 100);
   };
   
   // Show confirmation dialog before creating the plan

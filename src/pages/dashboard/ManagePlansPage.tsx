@@ -14,7 +14,7 @@ import CreatePlanSheet from '@/components/dashboard/payment-plans/CreatePlanShee
 import PlanTemplatesView from '@/components/dashboard/payment-plans/PlanTemplatesView';
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { Toaster } from "@/components/ui/sonner";
 
@@ -76,7 +76,8 @@ const PaymentDetailsDialogWrapper = () => {
 };
 
 const ManagePlansPageContent: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const viewParam = searchParams.get('view');
   
   const [isTemplateView, setIsTemplateView] = useState(false);
@@ -86,13 +87,31 @@ const ManagePlansPageContent: React.FC = () => {
   // Add a function to refresh the templates view
   const [templateRefreshTrigger, setTemplateRefreshTrigger] = useState(0);
   
-  // Check URL parameters on component mount
+  // Check URL parameters on component mount and on viewParam changes
   useEffect(() => {
-    // Set isTemplateView to false if view=active is in the URL
+    console.log('URL view param changed:', viewParam);
+    // Set isTemplateView based on URL parameter
     if (viewParam === 'active') {
+      console.log('Setting view to active plans based on URL');
       setIsTemplateView(false);
+    } else if (viewParam === 'templates') {
+      console.log('Setting view to templates based on URL');
+      setIsTemplateView(true);
     }
   }, [viewParam]);
+  
+  // Update URL when isTemplateView changes
+  useEffect(() => {
+    console.log('isTemplateView state changed to:', isTemplateView);
+    // Update URL to match the current view without triggering a full page reload
+    const newParams = new URLSearchParams(searchParams);
+    if (isTemplateView) {
+      newParams.set('view', 'templates');
+    } else {
+      newParams.set('view', 'active');
+    }
+    setSearchParams(newParams);
+  }, [isTemplateView, setSearchParams]);
   
   // Create a callback function to trigger template refresh
   const refreshTemplates = useCallback(() => {
@@ -100,16 +119,25 @@ const ManagePlansPageContent: React.FC = () => {
     setTemplateRefreshTrigger(prev => prev + 1);
   }, []);
   
-  // New function that combines refreshing templates and setting view to active plans
+  // Enhanced function for handling plan creation with better state control
   const handlePlanCreated = useCallback(() => {
-    console.log('Plan created, refreshing templates and showing active plans view');
-    // First refresh the templates data (important to keep templates up to date)
+    console.log('Plan created, handling state transitions...');
+    
+    // First refresh the templates data to keep templates up to date
     setTemplateRefreshTrigger(prev => prev + 1);
-    // Then switch to active plans view (this is the key fix)
-    setIsTemplateView(false);
+    
+    // Force navigation to ensure we're on the active plans view
+    navigate('/dashboard/manage-plans?view=active', { replace: true });
+    
+    // Set local state to match (with slight delay to ensure it happens after navigation)
+    setTimeout(() => {
+      console.log('Setting isTemplateView to false');
+      setIsTemplateView(false);
+    }, 10);
+    
     // Show success toast to confirm the action
     toast.success("Payment plan created successfully");
-  }, []);
+  }, [navigate]);
   
   const handleCreatePlanClick = () => {
     console.log("ManagePlansPage: handleCreatePlanClick");
@@ -119,15 +147,20 @@ const ManagePlansPageContent: React.FC = () => {
 
   const handleViewTemplatesClick = () => {
     console.log("ManagePlansPage: handleViewTemplatesClick");
-    toast.info("Switching to Templates view");
+    navigate('/dashboard/manage-plans?view=templates');
     setIsTemplateView(true);
+    toast.info("Switching to Templates view");
   };
   
   const handleBackToPlans = () => {
     console.log("ManagePlansPage: handleBackToPlans");
-    toast.info("Returning to Patient Plans view");
+    navigate('/dashboard/manage-plans?view=active');
     setIsTemplateView(false);
+    toast.info("Returning to Patient Plans view");
   };
+
+  // Log current state for debugging
+  console.log('Current view state:', { isTemplateView, viewParam });
 
   return (
     <>
@@ -154,16 +187,15 @@ const ManagePlansPageContent: React.FC = () => {
         open={createSheetOpen}
         onOpenChange={setCreateSheetOpen}
         createPaymentLink={createPaymentLink}
-        onPlanCreated={handlePlanCreated} // Now using the new combined callback
+        onPlanCreated={handlePlanCreated}
       />
       
-      {/* Use the Toaster component from our UI components */}
       <Toaster />
     </>
   );
 };
 
-// Render a ManagePlansProvider that wraps the content and passes setIsTemplateView
+// Render a ManagePlansProvider that wraps the content
 const ManagePlansPage: React.FC = () => {
   console.log("Rendering ManagePlansPage");
   
