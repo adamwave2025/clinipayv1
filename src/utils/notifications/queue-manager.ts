@@ -1,18 +1,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { StandardNotificationPayload } from '@/types/notification';
-import { 
-  NotificationResponse, 
-  NotificationStatus, 
-  RecipientType, 
-  FlatJsonValue, 
-  FlatJsonRecord, 
-  NotificationQueryResult,
-  DatabaseQueryResult
-} from './types';
+import { NotificationResponse, NotificationStatus, RecipientType } from './types';
 import { Json } from '@/integrations/supabase/types';
 import { callWebhookDirectly } from './webhook-client';
-import { createPrimitivePayload, createErrorDetails, safeString } from './json-utils';
+import { createPrimitivePayload, safeString } from './json-utils';
 
 /**
  * Add an item to the notification queue for processing and immediately call webhook
@@ -71,12 +63,12 @@ export async function addToNotificationQueue(
       console.log(`⚠️ CRITICAL SUCCESS: Webhook call successful for notification ${notificationId}`);
       
       // Create a simple response details object with primitive values
-      const responseDetails: FlatJsonRecord = {
+      const responseDetails: Record<string, any> = {
         status: webhookResult.status_code || 200,
         responseBody: safeString(webhookResult.response_body || '')
       };
       
-      // Update the queue item to mark it as processed with explicit casting
+      // Update the queue item to mark it as processed
       const { error: updateError } = await supabase
         .from('notification_queue')
         .update({ 
@@ -108,14 +100,14 @@ export async function addToNotificationQueue(
       console.error(`⚠️ CRITICAL ERROR: Direct webhook call failed for notification ${notificationId}:`, webhookResult.error);
       
       // Create a record with only primitive values for error details
-      const errorDetails: FlatJsonRecord = {
+      const errorDetails: Record<string, any> = {
         status: webhookResult.status_code || 0,
         error: safeString(webhookResult.error || ''),
         responseBody: safeString(webhookResult.response_body || ''),
         recipientType: recipient_type
       };
       
-      // Update the notification record with the error using explicit casting
+      // Update the notification record with the error
       const { error: updateError } = await supabase
         .from('notification_queue')
         .update({ 
@@ -172,19 +164,15 @@ export async function checkNotificationExists(
   reference_id: string
 ): Promise<boolean> {
   try {
-    // Use explicit column selection and explicit typing to avoid deep type instantiation
-    const result: DatabaseQueryResult<NotificationQueryResult> = await supabase
+    // Use a direct, simple query to avoid type recursion
+    const { data, error } = await supabase
       .from('notification_queue')
       .select('id, status')
       .eq('type', type)
       .eq('recipient_type', recipient_type)
       .eq('reference_id', reference_id)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    
-    // Destructure with explicit typing to avoid deep instantiation
-    const { data, error } = result;
+      .limit(1);
     
     if (error) {
       console.error('Error checking for existing notification:', error);
@@ -192,9 +180,12 @@ export async function checkNotificationExists(
     }
     
     // Check if we have a notification that's already been sent or is pending
-    if (data && (data.status === 'sent' || data.status === 'pending')) {
-      console.log(`Found existing notification for reference ${reference_id}, status: ${data.status}`);
-      return true;
+    if (data && data.length > 0) {
+      const notification = data[0];
+      if (notification.status === 'sent' || notification.status === 'pending') {
+        console.log(`Found existing notification for reference ${reference_id}, status: ${notification.status}`);
+        return true;
+      }
     }
     
     return false;

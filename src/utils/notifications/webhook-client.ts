@@ -1,13 +1,12 @@
 
 import { StandardNotificationPayload } from '@/types/notification';
 import { supabase } from '@/integrations/supabase/client';
-import { RecipientType, WebhookResult, WebhookErrorDetails, FlatJsonRecord } from './types';
-import { Json } from '@/integrations/supabase/types';
-import { safeString, createErrorDetails } from './json-utils';
+import { RecipientType, WebhookResult } from './types';
+import { safeString } from './json-utils';
 
 /**
  * Directly call webhook with notification payload
- * Returns simplified objects with primitive values to avoid type recursion
+ * Returns a simple object with primitive values
  */
 export async function callWebhookDirectly(
   payload: StandardNotificationPayload,
@@ -38,7 +37,7 @@ export async function callWebhookDirectly(
       .from('system_settings')
       .select('value')
       .eq('key', recipient_type === 'patient' ? 'patient_notification_webhook' : 'clinic_notification_webhook')
-      .maybeSingle();
+      .single();
       
     if (!settingsError && webhookSettings?.value) {
       webhookUrl = webhookSettings.value;
@@ -58,7 +57,7 @@ export async function callWebhookDirectly(
           .from('system_settings')
           .select('value')
           .eq('key', envKey)
-          .maybeSingle();
+          .single();
           
         if (!secretError && secretData?.value) {
           webhookUrl = secretData.value;
@@ -98,15 +97,7 @@ export async function callWebhookDirectly(
       const errorText = await response.text();
       const errorResponse = safeString(errorText);
       
-      const errorDetails: WebhookErrorDetails = {
-        status: response.status,
-        statusText: safeString(response.statusText),
-        responseBody: errorResponse,
-        webhook: safeString(webhookUrl),
-        recipientType: recipient_type
-      };
-      
-      console.error(`⚠️ CRITICAL ERROR: Webhook call failed:`, JSON.stringify(errorDetails, null, 2));
+      console.error(`⚠️ CRITICAL ERROR: Webhook call failed: status=${response.status}, response=${errorResponse}`);
       
       return { 
         success: false, 
@@ -172,7 +163,7 @@ export async function verifyWebhookConfiguration(): Promise<{
       .from('system_settings')
       .select('value')
       .eq('key', 'patient_notification_webhook')
-      .maybeSingle();
+      .single();
       
     if (patientWebhook?.value && typeof patientWebhook.value === 'string' && patientWebhook.value.trim() !== '') {
       result.patient = true;
@@ -187,7 +178,7 @@ export async function verifyWebhookConfiguration(): Promise<{
       .from('system_settings')
       .select('value')
       .eq('key', 'clinic_notification_webhook')
-      .maybeSingle();
+      .single();
       
     if (clinicWebhook?.value && typeof clinicWebhook.value === 'string' && clinicWebhook.value.trim() !== '') {
       result.clinic = true;

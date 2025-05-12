@@ -1,14 +1,12 @@
 
-import { FlatJsonValue, FlatJsonRecord } from './types';
 import { StandardNotificationPayload } from '@/types/notification';
 
 /**
  * Creates a simplified notification payload with only primitive values
- * Avoids nested structure problems by flattening complex objects
  */
-export function createPrimitivePayload(payload: StandardNotificationPayload): Record<string, FlatJsonValue> {
+export function createPrimitivePayload(payload: StandardNotificationPayload): Record<string, any> {
   // Create a flat structure with only necessary fields
-  const primitivePayload: Record<string, FlatJsonValue> = {
+  const primitivePayload: Record<string, any> = {
     // Notification basics
     notification_type: payload.notification_type,
     
@@ -70,25 +68,4 @@ export function safeString(value: any, maxLength: number = 255): string {
   } catch (err) {
     return 'Value cannot be converted to string';
   }
-}
-
-/**
- * Creates a record with only primitive values suitable for database storage
- */
-export function createErrorDetails(details: Record<string, any>): FlatJsonRecord {
-  const result: FlatJsonRecord = {};
-  
-  // Extract only primitive values with length limits for strings
-  Object.keys(details).forEach(key => {
-    const value = details[key];
-    if (value === null) {
-      result[key] = null;
-    } else if (typeof value === 'boolean' || typeof value === 'number') {
-      result[key] = value;
-    } else {
-      result[key] = safeString(value);
-    }
-  });
-  
-  return result;
 }
