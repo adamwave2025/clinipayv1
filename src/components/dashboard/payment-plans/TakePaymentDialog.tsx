@@ -8,6 +8,8 @@ import { useInstallmentPayment } from '@/hooks/payment-plans/useInstallmentPayme
 import StripeProvider from '@/components/payment/StripeProvider';
 import StripeCardElement from '@/components/payment/form/StripeCardElement';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useForm } from 'react-hook-form';
+import { Form } from '@/components/ui/form';
 
 interface TakePaymentDialogProps {
   open: boolean;
@@ -18,6 +20,11 @@ interface TakePaymentDialogProps {
   patientPhone?: string;
   amount?: number;
   onPaymentProcessed?: () => Promise<void>;
+}
+
+// Simple form values type
+interface PaymentFormValues {
+  stripeCard?: { complete?: boolean };
 }
 
 const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
@@ -33,6 +40,13 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isCardComplete, setIsCardComplete] = useState(false);
+  
+  // Initialize form
+  const form = useForm<PaymentFormValues>({
+    defaultValues: {
+      stripeCard: undefined
+    }
+  });
   
   // Format amount for display (from pence to pounds)
   const displayAmount = new Intl.NumberFormat('en-GB', { 
@@ -65,6 +79,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
         setPaymentComplete(false);
         setValidationError(null);
         setIsCardComplete(false);
+        form.reset(); // Reset form when dialog closes
       }, 300);
     }
     onOpenChange(newOpen);
@@ -93,9 +108,12 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       // Update both state and ref to track card completion
       setIsCardComplete(event.complete);
       cardCompleteRef.current = event.complete;
+      
+      // Update form value
+      form.setValue('stripeCard', event.complete ? { complete: true } : undefined);
     }, []);
     
-    const handleSubmitPayment = useCallback(async () => {
+    const handleSubmitPayment = useCallback(async (formData: PaymentFormValues) => {
       if (isProcessing || isLoading || !isStripeReady) {
         console.log("Payment already in progress or not ready");
         return;
@@ -152,56 +170,62 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     }
 
     return (
-      <div className="space-y-4">
-        {/* Patient & Payment Information - Read-only */}
-        <div className="rounded-md bg-gray-50 p-4 mb-2">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-sm font-medium">Amount:</span>
-            <span className="font-bold">{displayAmount}</span>
+      <Form {...form}>
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          form.handleSubmit((data) => handleSubmitPayment(data))(e);
+        }} className="space-y-4">
+          {/* Patient & Payment Information - Read-only */}
+          <div className="rounded-md bg-gray-50 p-4 mb-2">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-sm font-medium">Amount:</span>
+              <span className="font-bold">{displayAmount}</span>
+            </div>
+            
+            <div className="text-sm space-y-1">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Patient:</span>
+                <span>{patientName}</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-gray-500">Email:</span>
+                <span>{patientEmail}</span>
+              </div>
+              
+              {patientPhone && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Phone:</span>
+                  <span>{patientPhone}</span>
+                </div>
+              )}
+            </div>
           </div>
           
-          <div className="text-sm space-y-1">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Patient:</span>
-              <span>{patientName}</span>
-            </div>
-            
-            <div className="flex justify-between">
-              <span className="text-gray-500">Email:</span>
-              <span>{patientEmail}</span>
-            </div>
-            
-            {patientPhone && (
-              <div className="flex justify-between">
-                <span className="text-gray-500">Phone:</span>
-                <span>{patientPhone}</span>
-              </div>
-            )}
+          {/* Simplified card element implementation */}
+          <div className="mt-4">
+            <StripeCardElement 
+              isLoading={isLoading || isProcessing}
+              onChange={handleCardChange}
+              label="Card Details"
+              className="mb-4"
+            />
           </div>
-        </div>
-        
-        {/* Simplified card element implementation */}
-        <div className="mt-4">
-          <StripeCardElement 
-            isLoading={isLoading || isProcessing}
-            onChange={handleCardChange}
-            label="Card Details"
-            className="mb-4"
-          />
-        </div>
-        
-        <Button 
-          className="w-full mt-2" 
-          disabled={isLoading || isProcessing || !isStripeReady || !isCardComplete}
-          onClick={handleSubmitPayment}
-        >
-          {isLoading || isProcessing ? "Processing..." : "Process Payment"}
-        </Button>
-        
-        <div className="text-xs text-center text-gray-500">
-          <p>This is a secure payment processed by CliniPay</p>
-        </div>
-      </div>
+          
+          <Button 
+            className="w-full mt-2" 
+            disabled={isLoading || isProcessing || !isStripeReady || !isCardComplete}
+            onClick={form.handleSubmit(handleSubmitPayment)}
+            type="button"
+          >
+            {isLoading || isProcessing ? "Processing..." : "Process Payment"}
+          </Button>
+          
+          <div className="text-xs text-center text-gray-500">
+            <p>This is a secure payment processed by CliniPay</p>
+          </div>
+        </form>
+      </Form>
     );
   });
   
