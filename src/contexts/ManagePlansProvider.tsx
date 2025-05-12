@@ -61,7 +61,7 @@ export const ManagePlansProvider: React.FC<{
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    selectedInstallment: viewDetailsSelectedInstallment,  // Rename to avoid conflict
+    selectedInstallment: viewDetailsSelectedInstallment,  // Renamed to avoid conflict
     handleViewPaymentDetails
   } = useInstallmentHandler();
   
@@ -335,7 +335,7 @@ export const ManagePlansProvider: React.FC<{
         showPaymentDetails,
         setShowPaymentDetails,
         paymentData,
-        selectedInstallment: viewDetailsSelectedInstallment,
+        selectedInstallment: viewDetailsSelectedInstallment,  // Use the renamed variable here
         
         // Payment dialog data
         paymentDialogData,
@@ -369,7 +369,7 @@ export const ManagePlansProvider: React.FC<{
         showTakePaymentDialog,
         setShowTakePaymentDialog,
         onPaymentUpdated,
-        selectedInstallment, // Primary selectedInstallment state (from useInstallmentActions)
+        selectedInstallment,  // Primary selectedInstallment state from useInstallmentActions
         
         // Refund properties
         refundDialogOpen,
