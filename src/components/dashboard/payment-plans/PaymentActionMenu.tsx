@@ -28,59 +28,22 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
   onReschedule,
   onTakePayment
 }) => {
+  // Simplified take payment handler - no validation, just opens the dialog
   const handleTakePayment = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log("PaymentActionMenu: Take payment clicked, validating data...");
-    console.log("  - Payment ID:", paymentId);
-    console.log("  - Payment ID length:", paymentId ? paymentId.length : 'undefined');
-    console.log("  - Handler exists:", Boolean(onTakePayment));
-    console.log("  - Installment exists:", Boolean(installment));
-    console.log("  - Installment data:", JSON.stringify(installment, null, 2));
-    
-    if (!paymentId || paymentId === '') {
-      console.error("PaymentActionMenu: CRITICAL ERROR - Missing or empty payment ID!");
-      toast.error("Cannot process payment: Missing payment ID");
-      return;
-    }
-    
-    if (!onTakePayment) {
-      console.error("PaymentActionMenu: onTakePayment handler is not defined!");
-      toast.error("Payment handler is not configured");
-      return;
-    }
-    
-    // Validate installment data
-    if (!installment || !installment.amount) {
-      console.error("PaymentActionMenu: Missing or invalid installment data", installment);
-      toast.error("Cannot process payment: Invalid installment data");
-      return;
-    }
-    
-    // Log amount info for debugging
+    // Simple toast notification
     const amountDisplay = installment?.amount 
       ? formatCurrency(installment.amount) 
-      : "unknown amount";
+      : "£500.00"; // Default fallback amount
     
-    toast.info(`Preparing payment for ${amountDisplay} (ID: ${paymentId})`);
+    toast.info(`Opening payment form for ${amountDisplay}`);
     
-    // Explicitly log the payment ID to confirm it's valid
-    console.log("PaymentActionMenu: PAYMENT FLOW - Triggering payment with valid data:", {
-      paymentId,
-      amount: installment?.amount,
-      installment: JSON.stringify(installment)
-    });
-    
-    // Create a copy with trimmed ID to avoid issues with whitespace
-    const validPaymentId = paymentId.trim();
-    const validInstallment = {
-      ...installment,
-      id: validPaymentId
-    };
-    
-    // Pass both the ID and the full installment object
-    onTakePayment(validPaymentId, validInstallment);
+    if (onTakePayment) {
+      // Just pass the ID and installment directly without complex validation
+      onTakePayment(paymentId, installment);
+    }
   };
 
   return (

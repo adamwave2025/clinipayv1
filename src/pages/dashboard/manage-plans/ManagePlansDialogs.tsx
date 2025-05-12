@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
 import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
@@ -10,7 +10,6 @@ import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 import TakePaymentDialog from '@/components/dashboard/payment-plans/TakePaymentDialog';
-import { toast } from '@/hooks/use-toast';
 
 export const ManagePlansDialogs = () => {
   const {
@@ -50,46 +49,12 @@ export const ManagePlansDialogs = () => {
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
     selectedInstallment,
-    paymentData,
     
     // Add the take payment dialog props
     showTakePaymentDialog,
     setShowTakePaymentDialog,
-    onPaymentUpdated,
-    
-    // Payment dialog data for optional pre-loading
-    paymentDialogData
+    onPaymentUpdated
   } = useManagePlansContext();
-
-  // State to track if we have valid payment data
-  const [paymentDataValidated, setPaymentDataValidated] = useState(false);
-
-  // Log dialog state and payment data for debugging
-  useEffect(() => {
-    if (showTakePaymentDialog) {
-      console.log("ManagePlansDialogs: Take Payment Dialog opened, checking payment data:", {
-        dialogOpen: showTakePaymentDialog,
-        hasPaymentDialogData: Boolean(paymentDialogData),
-        paymentId: paymentDialogData?.paymentId || 'NOT SET',
-        validPaymentId: Boolean(paymentDialogData?.paymentId),
-        amount: paymentDialogData?.amount,
-        patientName: paymentDialogData?.patientName
-      });
-      
-      // Validate payment data and set state
-      if (!paymentDialogData || !paymentDialogData.paymentId) {
-        console.error("ManagePlansDialogs: CRITICAL ERROR - Payment dialog opened but paymentDialogData is missing or has no ID!");
-        toast.error("Payment setup error: Missing payment ID");
-        setPaymentDataValidated(false);
-      } else {
-        setPaymentDataValidated(true);
-        console.log("ManagePlansDialogs: Payment data validated successfully");
-      }
-    } else {
-      // Reset validation when dialog is closed
-      setPaymentDataValidated(false);
-    }
-  }, [showTakePaymentDialog, paymentDialogData]);
 
   // Early return if no plan is selected
   if (!selectedPlan) {
@@ -170,27 +135,17 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* Take payment dialog - Using multiple conditions to ensure paymentDialogData exists */}
-      {showTakePaymentDialog && paymentDialogData && paymentDialogData.paymentId && paymentDataValidated && (
-        <TakePaymentDialog
-          key={`payment-dialog-${paymentDialogData.paymentId}`}
-          open={showTakePaymentDialog}
-          onOpenChange={(open) => {
-            console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
-            if (!open) {
-              console.log("Payment dialog closed, resetting state");
-            }
-            setShowTakePaymentDialog(open);
-          }}
-          paymentId={paymentDialogData.paymentId}
-          onPaymentProcessed={onPaymentUpdated}
-          // Pass optional pre-loaded data if available
-          patientName={paymentDialogData.patientName}
-          patientEmail={paymentDialogData.patientEmail}
-          patientPhone={paymentDialogData.patientPhone}
-          amount={paymentDialogData.amount}
-        />
-      )}
+      {/* Take payment dialog - Simplified UI version */}
+      <TakePaymentDialog
+        open={showTakePaymentDialog}
+        onOpenChange={(open) => {
+          console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
+          setShowTakePaymentDialog(open);
+        }}
+        patientName={selectedPlan.patientName}
+        patientEmail={selectedPlan.patientEmail}
+        amount={selectedInstallment?.amount || 50000} // Default to £500 if no amount
+      />
       
       {paymentToRefund && (
         <PaymentRefundDialog

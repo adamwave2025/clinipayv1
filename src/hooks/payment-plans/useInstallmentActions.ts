@@ -44,63 +44,16 @@ export const useInstallmentActions = (
     console.log("[useInstallmentActions] After calling handleOpenRescheduleDialog");
   };
   
-  // Modified to not directly open the dialog
+  // Simplified to just open the dialog without complex validation
   const handleTakePayment = (paymentId: string, installmentDetails: PlanInstallment) => {
-    console.log("[useInstallmentActions] PAYMENT FLOW - Take payment requested for ID:", paymentId);
+    console.log("[useInstallmentActions] Take payment requested for ID:", paymentId);
     
-    // Validate payment ID
-    if (!paymentId || typeof paymentId !== 'string' || paymentId.trim() === '') {
-      console.error("[useInstallmentActions] CRITICAL ERROR - Invalid payment ID:", paymentId);
-      toast.error("Cannot take payment: Missing or invalid payment ID");
-      return;
-    }
+    // Set installment data for the dialog
+    setSelectedInstallment(installmentDetails);
+    setPaymentData(installmentDetails);
     
-    // Validate installment details
-    if (!installmentDetails) {
-      console.error("[useInstallmentActions] Missing installment details");
-      toast.error("Cannot take payment: Missing payment details");
-      return;
-    }
-    
-    if (!installmentDetails.amount || typeof installmentDetails.amount !== 'number') {
-      console.error("[useInstallmentActions] Missing or invalid amount in installment:", installmentDetails);
-      toast.error("Cannot take payment: Invalid payment amount");
-      return;
-    }
-    
-    // Log with formatted currency for clarity
-    const formattedAmount = new Intl.NumberFormat('en-GB', { 
-      style: 'currency', 
-      currency: 'GBP' 
-    }).format(installmentDetails.amount / 100);
-    
-    console.log(`[useInstallmentActions] Processing payment of ${formattedAmount}, paymentID: ${paymentId}`);
-    toast.info(`Preparing payment of ${formattedAmount}`);
-    
-    // First set the payment data to ensure it's available immediately
-    const validatedPaymentData: PlanInstallment = {
-      id: paymentId.trim(),
-      amount: installmentDetails.amount,
-      paymentNumber: installmentDetails.paymentNumber || 1,
-      totalPayments: installmentDetails.totalPayments || 1,
-      dueDate: installmentDetails.dueDate || new Date().toISOString(),
-      status: installmentDetails.status || 'pending',
-      paidDate: installmentDetails.paidDate || null
-    };
-    
-    console.log("[useInstallmentActions] PAYMENT FLOW - Setting validated payment data:", validatedPaymentData);
-    
-    // Set payment data first, then selectedInstallment for consistency
-    setPaymentData(validatedPaymentData);
-    setSelectedInstallment(validatedPaymentData);
-    
-    // Only show the dialog after data is set - IMPORTANT: show the dialog AFTER data is ready
-    console.log("[useInstallmentActions] PAYMENT FLOW - Opening payment dialog for ID:", paymentId);
-    
-    // Add a slight delay to ensure state updates have propagated
-    setTimeout(() => {
-      setShowTakePaymentDialog(true);
-    }, 50);
+    // Show the dialog
+    setShowTakePaymentDialog(true);
   };
   
   // Helper function to format currency (kept for consistency)
