@@ -19,13 +19,23 @@ export function useInstallmentPayment(
   const { createPaymentIntent, isCreatingIntent } = usePaymentIntent();
 
   const handlePaymentSubmit = async (formData: PaymentFormValues): Promise<{ success: boolean; error?: string }> => {
+    // Enhanced validation for payment ID
     if (!paymentId) {
+      console.error('Payment ID is required but was not provided');
       toast.error('Payment ID is required');
       return { success: false, error: 'Payment ID is required' };
     }
     
+    // Validate payment ID format
+    if (typeof paymentId !== 'string' || paymentId.trim() === '') {
+      console.error('Invalid payment ID format:', paymentId);
+      toast.error('Invalid payment ID format');
+      return { success: false, error: 'Invalid payment ID format' };
+    }
+    
     // Check if Stripe is ready
     if (!processPayment) {
+      console.error('Stripe payment system is not ready');
       toast.error('Payment system is not ready');
       return { success: false, error: 'Payment system is not ready' };
     }
@@ -62,6 +72,8 @@ export function useInstallmentPayment(
         return { success: false, error: 'Could not retrieve payment details' };
       }
       
+      console.log('Retrieved payment schedule data:', paymentData);
+      
       // 2. Get clinic details
       const { data: clinicData, error: clinicError } = await supabase
         .from('clinics')
@@ -93,6 +105,13 @@ export function useInstallmentPayment(
         isRequest: false
       };
       
+      console.log('Creating payment intent with data:', {
+        linkId: paymentLinkData.id,
+        amount: paymentLinkData.amount,
+        payment_schedule_id: paymentId,
+        planId: paymentData.plan_id
+      });
+      
       const intentResult = await createPaymentIntent({
         linkData: paymentLinkData,
         formData: {
@@ -100,7 +119,7 @@ export function useInstallmentPayment(
           email: formData.email,
           phone: formData.phone
         },
-        // Pass payment_schedule_id to include in metadata
+        // Pass payment_schedule_id to include in metadata - this is critical!
         payment_schedule_id: paymentId,
         planId: paymentData.plan_id,
         planStatus: paymentData.plans.status

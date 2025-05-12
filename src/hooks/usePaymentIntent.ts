@@ -12,9 +12,9 @@ export function usePaymentIntent() {
   const createPaymentIntent = async ({
     linkData,
     formData,
-    payment_schedule_id, // Add this parameter
-    planId, // Add this parameter
-    planStatus // Add this parameter
+    payment_schedule_id, // Accept payment_schedule_id explicitly
+    planId,
+    planStatus
   }: {
     linkData: PaymentLinkData;
     formData: {
@@ -22,9 +22,9 @@ export function usePaymentIntent() {
       email: string;
       phone?: string;
     };
-    payment_schedule_id?: string; // Make it optional
-    planId?: string; // Make it optional
-    planStatus?: string; // Make it optional
+    payment_schedule_id?: string; // Make it optional but typed
+    planId?: string;
+    planStatus?: string;
   }) => {
     if (!linkData) {
       toast.error('Payment details are missing');
@@ -53,53 +53,69 @@ export function usePaymentIntent() {
     try {
       console.log('Initiating payment process for link ID:', linkData.id);
       
-      // IMPORTANT: Ensure we have a valid amount
-      const amount = linkData.amount || 0;
+      if (payment_schedule_id) {
+        console.log('Processing payment for payment schedule ID:', payment_schedule_id);
+      }
+      
+      // IMPORTANT: linkData.amount is already in pence (cents) from the database
       console.log('Payment details:', {
-        amountInPence: amount,
+        amountInPence: linkData.amount,
         isRequest: linkData.isRequest ? 'Yes' : 'No',
         clinicId: linkData.clinic.id,
         paymentLinkId: linkData.id,
-        paymentScheduleId: payment_schedule_id || 'none',
+        payment_schedule_id: payment_schedule_id || 'none',
         planId: planId || 'none'
       });
       
       // Add extra validation to ensure amount is never zero or negative
-      if (!amount || amount <= 0) {
-        console.error('Invalid zero or negative payment amount detected:', amount);
+      if (!linkData.amount || linkData.amount <= 0) {
+        console.error('Invalid zero or negative payment amount detected:', linkData.amount);
         toast.error('Invalid payment amount');
         return { success: false, error: 'Invalid payment amount (zero or negative)' };
       }
       
       // Validate the amount to catch potential errors
-      if (!validatePenceAmount(amount, 'usePaymentIntent')) {
-        console.error('Invalid payment amount detected:', amount);
+      if (!validatePenceAmount(linkData.amount, 'usePaymentIntent')) {
+        console.error('Invalid payment amount detected:', linkData.amount);
         toast.error('Invalid payment amount');
         return { success: false, error: 'Invalid payment amount' };
       }
       
-      console.log('Calling create-payment-intent edge function with amount:', amount);
+      console.log('Calling create-payment-intent edge function with amount:', linkData.amount);
       
-      // Call the create-payment-intent edge function with the CORRECT amount
+      // Create the request body with optional payment_schedule_id
+      const requestBody: any = {
+        amount: linkData.amount, // Already in cents for Stripe
+        clinicId: linkData.clinic.id,
+        paymentLinkId: linkData.isRequest ? null : linkData.id,
+        requestId: linkData.isRequest ? linkData.id : null,
+        paymentMethod: {
+          billing_details: {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone || undefined
+          }
+        }
+      };
+      
+      // Only add these fields if they are provided
+      if (payment_schedule_id) {
+        requestBody.payment_schedule_id = payment_schedule_id;
+      }
+      
+      if (planId) {
+        requestBody.planId = planId;
+      }
+      
+      if (planStatus) {
+        requestBody.planStatus = planStatus;
+      }
+      
+      // Call the create-payment-intent edge function with all necessary data
       const invokePromise = supabase.functions.invoke(
         'create-payment-intent', 
         {
-          body: JSON.stringify({
-            amount: amount,
-            clinicId: linkData.clinic.id,
-            paymentLinkId: linkData.isRequest ? null : linkData.id,
-            requestId: linkData.isRequest ? linkData.id : null,
-            payment_schedule_id: payment_schedule_id || null, // Pass the payment_schedule_id
-            planId: planId || null, // Pass the planId
-            planStatus: planStatus || null, // Pass the planStatus
-            paymentMethod: {
-              billing_details: {
-                name: formData.name,
-                email: formData.email,
-                phone: formData.phone || undefined
-              }
-            }
-          })
+          body: JSON.stringify(requestBody)
         }
       );
       
@@ -132,7 +148,7 @@ export function usePaymentIntent() {
       }
       
       console.log('Associated payment link ID:', paymentIntentData.paymentLinkId);
-      // Success! Return the data
+      // Removed success toast notification
       
       return {
         success: true,

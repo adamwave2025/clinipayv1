@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { usePaymentRescheduleActions } from './usePaymentRescheduleActions';
-import { PlanInstallment } from '@/utils/paymentPlanUtils';
+import { PlanInstallment } from '@/utils/paymentPlanTypes';
 
 export const useInstallmentActions = (
   planId: string,
@@ -42,24 +42,43 @@ export const useInstallmentActions = (
     console.log("[useInstallmentActions] After calling handleOpenRescheduleDialog");
   };
   
-  // Simplified to just open the dialog without complex validation or toast notifications
+  // Improved validation and data handling for the take payment action
   const handleTakePayment = (paymentId: string, installmentDetails: PlanInstallment) => {
     console.log("[useInstallmentActions] Take payment requested for ID:", paymentId);
     
-    // Set installment data for the dialog
+    // Validate payment ID early
+    if (!paymentId || typeof paymentId !== 'string' || paymentId.trim() === '') {
+      console.error("[useInstallmentActions] Invalid payment ID:", paymentId);
+      toast.error("Cannot process payment: Invalid payment ID");
+      return;
+    }
+    
+    // Validate installment details
+    if (!installmentDetails || typeof installmentDetails !== 'object') {
+      console.error("[useInstallmentActions] Invalid installment details:", installmentDetails);
+      toast.error("Cannot process payment: Missing payment details");
+      return;
+    }
+    
+    if (!installmentDetails.amount || typeof installmentDetails.amount !== 'number') {
+      console.error("[useInstallmentActions] Invalid amount in installment:", installmentDetails);
+      toast.error("Cannot process payment: Invalid payment amount");
+      return;
+    }
+    
+    // Update state BEFORE showing dialog - critical fix!
     setSelectedInstallment(installmentDetails);
     setPaymentData(installmentDetails);
     
-    // Show the dialog
-    setShowTakePaymentDialog(true);
-  };
-  
-  // Helper function to format currency (kept for consistency)
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('en-GB', { 
-      style: 'currency', 
-      currency: 'GBP' 
-    }).format(amount / 100);
+    console.log("[useInstallmentActions] Payment data set, opening dialog with:", { 
+      id: paymentId,
+      amount: installmentDetails.amount
+    });
+    
+    // Only show the dialog once the state is updated
+    setTimeout(() => {
+      setShowTakePaymentDialog(true);
+    }, 0);
   };
   
   const confirmMarkAsPaid = async () => {

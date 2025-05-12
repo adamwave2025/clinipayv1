@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -7,10 +7,11 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle } from 'lucide-react';
 import { useInstallmentPayment } from '@/hooks/payment-plans/useInstallmentPayment';
 import StripeProvider from '@/components/payment/StripeProvider';
 import StripeCardElement from '@/components/payment/form/StripeCardElement';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Form schema for patient and payment details
 const paymentFormSchema = z.object({
@@ -47,12 +48,27 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   onPaymentProcessed = async () => {}
 }) => {
   const [paymentComplete, setPaymentComplete] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   
   // Format amount for display (from pence to pounds)
   const displayAmount = new Intl.NumberFormat('en-GB', { 
     style: 'currency', 
     currency: 'GBP' 
   }).format(amount / 100);
+  
+  // Validate the payment ID early
+  useEffect(() => {
+    if (open) {
+      console.log("TakePaymentDialog opened with paymentId:", paymentId);
+      
+      if (!paymentId || typeof paymentId !== 'string' || paymentId.trim() === '') {
+        console.error("Invalid payment ID provided to TakePaymentDialog:", paymentId);
+        setValidationError("Invalid payment ID. Cannot process payment.");
+      } else {
+        setValidationError(null);
+      }
+    }
+  }, [open, paymentId]);
   
   // Create the form outside of payment processing logic
   const form = useForm<PaymentFormValues>({
@@ -65,7 +81,8 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     },
   });
   
-  // Use a component to wrap payment processing logic
+  // Use a component to wrap payment processing logic so it only loads when the dialog is open
+  // This prevents unnecessary processing when the dialog is closed
   const PaymentProcessor = () => {
     // Move the hook inside this component to ensure it's only called when StripeProvider is ready
     const { 
@@ -78,6 +95,14 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     // Submit handler that calls our payment processor
     const onSubmit = async (data: PaymentFormValues) => {
       try {
+        console.log("Submitting payment with payment ID:", paymentId);
+        
+        if (!paymentId || typeof paymentId !== 'string' || paymentId.trim() === '') {
+          console.error("Payment ID is missing or invalid:", paymentId);
+          toast.error("Payment ID is required");
+          return;
+        }
+        
         const result = await handlePaymentSubmit(data);
         
         if (result.success) {
@@ -91,6 +116,24 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
         toast.error(error.message || "Payment processing failed");
       }
     };
+    
+    if (validationError) {
+      return (
+        <div className="py-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{validationError}</AlertDescription>
+          </Alert>
+          <Button 
+            className="w-full mt-6"
+            onClick={() => onOpenChange(false)}
+          >
+            Close
+          </Button>
+        </div>
+      );
+    }
     
     return (
       <Form {...form}>
@@ -197,6 +240,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     if (!newOpen) {
       setTimeout(() => {
         setPaymentComplete(false);
+        setValidationError(null);
         form.reset();
       }, 300);
     }

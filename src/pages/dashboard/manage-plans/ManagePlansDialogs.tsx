@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
 import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
@@ -61,6 +61,13 @@ export const ManagePlansDialogs = () => {
     console.log('No selectedPlan, returning null from ManagePlansDialogs');
     return null;
   }
+  
+  // Log the state of selectedInstallment for debugging
+  useEffect(() => {
+    if (showTakePaymentDialog) {
+      console.log("TakePaymentDialog opened with selectedInstallment:", selectedInstallment);
+    }
+  }, [showTakePaymentDialog, selectedInstallment]);
 
   return (
     <>
@@ -135,20 +142,22 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* Take payment dialog - With patient details */}
-      <TakePaymentDialog
-        open={showTakePaymentDialog}
-        onOpenChange={(open) => {
-          console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
-          setShowTakePaymentDialog(open);
-        }}
-        patientName={selectedPlan.patientName}
-        patientEmail={selectedPlan.patientEmail}
-        patientPhone={selectedPlan.patients?.phone || ''}
-        amount={selectedInstallment?.amount || 50000} // Default to £500 if no amount
-        paymentId={selectedInstallment?.id}
-        onPaymentProcessed={onPaymentUpdated}
-      />
+      {/* Take payment dialog - Enhanced version with better validation */}
+      {selectedInstallment && (
+        <TakePaymentDialog
+          open={showTakePaymentDialog}
+          onOpenChange={(open) => {
+            console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
+            setShowTakePaymentDialog(open);
+          }}
+          patientName={selectedPlan.patientName || ''}
+          patientEmail={selectedPlan.patientEmail || ''}
+          patientPhone={selectedPlan.patients?.phone || ''}
+          amount={selectedInstallment.amount || 0}
+          paymentId={selectedInstallment.id || ''}
+          onPaymentProcessed={onPaymentUpdated}
+        />
+      )}
       
       {paymentToRefund && (
         <PaymentRefundDialog
