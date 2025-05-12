@@ -44,6 +44,7 @@ export interface ManagePlansContextType {
   // Payment dialog data - specific for take payment operations
   paymentDialogData: PaymentDialogData | null;
   setPaymentDialogData: (data: PaymentDialogData | null) => void;
+  preparePaymentData: (paymentId: string, installmentDetails: PlanInstallment) => boolean; 
   
   // View mode toggle state
   isViewMode: boolean;
@@ -62,7 +63,6 @@ export interface ManagePlansContextType {
   handleOpenReschedule: (paymentId: string) => void;
   handleReschedulePayment: (date: Date) => void;
   handleTakePayment: (paymentId: string, installmentDetails?: any) => void;
-  preparePaymentData: (paymentId: string, installmentDetails: PlanInstallment) => boolean; // New validation method
   
   // Mark as paid confirmation dialog
   showMarkAsPaidDialog: boolean;

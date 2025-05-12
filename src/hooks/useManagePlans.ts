@@ -1,7 +1,7 @@
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Plan } from '@/utils/planTypes';
-import { ManagePlansContextType } from '@/contexts/ManagePlansContext';
+import { ManagePlansContextType, PaymentDialogData } from '@/contexts/ManagePlansContext';
 import { usePlanCore } from './payment-plans/usePlanCore';
 import { usePlanFiltering } from './payment-plans/usePlanFiltering';
 import { useActionHandlers } from './payment-plans/useActionHandlers';
@@ -13,6 +13,8 @@ import { usePlanPauseActions } from './payment-plans/usePlanPauseActions';
 import { usePlanResumeActions } from './payment-plans/usePlanResumeActions';
 import { usePlanRescheduleActions } from './payment-plans/usePlanRescheduleActions';
 import { usePaymentRescheduleActions } from './payment-plans/usePaymentRescheduleActions';
+import { PlanInstallment } from '@/utils/paymentPlanUtils';
+import { toast } from '@/hooks/use-toast';
 
 export const useManagePlans = (): ManagePlansContextType => {
   // Use the core plan management hook
@@ -96,12 +98,61 @@ export const useManagePlans = (): ManagePlansContextType => {
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
-    showTakePaymentDialog, // Include these properties from the hook
+    showTakePaymentDialog,
     setShowTakePaymentDialog,
     rescheduleDialog: installmentRescheduleDialog,
     setRescheduleDialog: setInstallmentRescheduleDialog,
     handleReschedulePayment: installmentReschedulePayment
   } = useInstallmentActions(selectedPlan?.id || '', refreshInstallments);
+  
+  // Add state for payment dialog data
+  const [paymentDialogData, setPaymentDialogData] = useState<PaymentDialogData | null>(null);
+  
+  // Add function to prepare and validate payment data
+  const preparePaymentData = (paymentId: string, installmentDetails: PlanInstallment): boolean => {
+    console.log("useManagePlans: Preparing payment data for:", paymentId);
+    
+    try {
+      // Validate the installment data
+      if (!installmentDetails || typeof installmentDetails !== 'object') {
+        console.error("Invalid installment details provided:", installmentDetails);
+        toast.error("Cannot process payment: Missing installment details");
+        return false;
+      }
+      
+      if (!installmentDetails.amount || typeof installmentDetails.amount !== 'number') {
+        console.error("Invalid amount in installment:", installmentDetails);
+        toast.error("Cannot process payment: Invalid payment amount");
+        return false;
+      }
+      
+      if (!selectedPlan) {
+        console.error("No selected plan available for payment");
+        toast.error("Cannot process payment: No plan selected");
+        return false;
+      }
+      
+      // Create the validated dialog data
+      const newPaymentData: PaymentDialogData = {
+        paymentId: paymentId,
+        patientName: selectedPlan.patientName || '',
+        patientEmail: selectedPlan.patientEmail || '',
+        patientPhone: selectedPlan.patients?.phone || '',
+        amount: installmentDetails.amount,
+        isValid: true
+      };
+      
+      console.log("Setting validated payment dialog data:", newPaymentData);
+      
+      // Set the validated data
+      setPaymentDialogData(newPaymentData);
+      return true;
+    } catch (error) {
+      console.error("Error preparing payment data:", error);
+      toast.error("Failed to prepare payment data");
+      return false;
+    }
+  };
   
   // Use specialized action hooks
   const cancelActions = usePlanCancelActions(selectedPlan, setShowPlanDetails);
@@ -150,6 +201,11 @@ export const useManagePlans = (): ManagePlansContextType => {
     paymentData,
     selectedInstallment,
     
+    // Add the payment dialog data and related functions
+    paymentDialogData,
+    setPaymentDialogData,
+    preparePaymentData,
+    
     // View mode state
     isViewMode,
     setIsViewMode,
@@ -177,7 +233,7 @@ export const useManagePlans = (): ManagePlansContextType => {
     // Take payment dialog state and handlers
     showTakePaymentDialog,
     setShowTakePaymentDialog,
-    onPaymentUpdated,  // Add this missing property
+    onPaymentUpdated,
     
     // Refund properties
     refundDialogOpen,
