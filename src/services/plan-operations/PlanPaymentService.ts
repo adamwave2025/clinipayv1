@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { generatePaymentReference } from '@/utils/paymentUtils';
+import { PlanStatusService } from '@/services/PlanStatusService';
+import { PlanPaymentMetrics } from '@/services/plan-status/PlanPaymentMetrics';
 
 /**
  * Service for handling payment-related operations within plans
@@ -98,6 +100,16 @@ export class PlanPaymentService {
   
   /**
    * Record a manual payment for an installment
+   * 
+   * =====================================================================
+   * IMPORTANT: "MARK AS PAID" FUNCTIONALITY - DO NOT MODIFY UNLESS FIXING 
+   * ISSUES SPECIFICALLY WITH THE MARK AS PAID FEATURE
+   * =====================================================================
+   * 
+   * This function handles marking a payment as manually paid in the system.
+   * It creates payment records, updates payment schedule status, and updates
+   * the plan progress. It also checks if this is the final payment in a plan
+   * and will mark the plan as completed if all installments are now paid.
    */
   static async recordManualPayment(paymentId: string): Promise<{ success: boolean, error?: any }> {
     try {
@@ -194,7 +206,7 @@ export class PlanPaymentService {
         // Get current plan data
         const { data: planData, error: planError } = await supabase
           .from('plans')
-          .select('paid_installments, total_installments, progress')
+          .select('paid_installments, total_installments, progress, status')
           .eq('id', scheduleEntry.plan_id)
           .single();
           
@@ -205,18 +217,53 @@ export class PlanPaymentService {
           const newPaidInstallments = (planData.paid_installments || 0) + 1;
           const newProgress = Math.round((newPaidInstallments / planData.total_installments) * 100);
           
-          // Update the plan
+          // =====================================================================
+          // IMPORTANT: Check if this is the final payment that completes the plan
+          // =====================================================================
+          let newStatus = planData.status;
+          let nextDueDate = null;
+          
+          // If this payment completes the plan, set status to completed
+          if (newPaidInstallments >= planData.total_installments) {
+            console.log(`Plan ${scheduleEntry.plan_id} is now complete. Setting status to completed.`);
+            newStatus = 'completed';
+            // When plan is completed, next_due_date should be null (consistent with webhook behavior)
+            nextDueDate = null;
+          } else {
+            // If not completed, calculate the next due date
+            const { data: nextPaymentData, error: nextPaymentError } = await supabase
+              .from('payment_schedule')
+              .select('due_date')
+              .eq('plan_id', scheduleEntry.plan_id)
+              .eq('status', 'pending')
+              .order('due_date', { ascending: true })
+              .limit(1)
+              .single();
+              
+            if (!nextPaymentError && nextPaymentData) {
+              nextDueDate = nextPaymentData.due_date;
+            }
+          }
+          
+          // Update the plan with the new status, progress and next due date
           const { error: planUpdateError } = await supabase
             .from('plans')
             .update({
               paid_installments: newPaidInstallments,
               progress: newProgress,
+              status: newStatus,
+              next_due_date: nextDueDate,
               updated_at: new Date().toISOString()
             })
             .eq('id', scheduleEntry.plan_id);
             
           if (planUpdateError) {
             console.error('Error updating plan progress:', planUpdateError);
+          } else {
+            console.log(`Plan ${scheduleEntry.plan_id} updated: status=${newStatus}, progress=${newProgress}%, paid=${newPaidInstallments}/${planData.total_installments}`);
+            
+            // Use PlanPaymentMetrics to ensure accurate metrics are maintained
+            await PlanPaymentMetrics.updatePlanPaymentMetrics(scheduleEntry.plan_id);
           }
         }
         
