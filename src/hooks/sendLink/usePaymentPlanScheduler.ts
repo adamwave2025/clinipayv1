@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, isSameDay } from 'date-fns';
@@ -156,8 +157,17 @@ export function usePaymentPlanScheduler() {
         console.log('Created new payment request:', paymentRequest.id);
       }
 
+      // Log the current payment schedule entry for debugging
+      console.log('Payment schedule entry being processed:', {
+        paymentNumber: paymentScheduleEntry.payment_number,
+        planId: paymentScheduleEntry.plan_id,
+        linkId: selectedLink.id,
+        patientId
+      });
+
       // Update the corresponding schedule entry to link it to the payment request
-      const { error: updateError } = await supabase
+      // CRITICAL FIX: Add plan_id filter to ensure we only update the specific plan's schedule entries
+      const { error: updateError, data: updatedData } = await supabase
         .from('payment_schedule')
         .update({ 
           payment_request_id: paymentRequest.id,
@@ -166,12 +176,17 @@ export function usePaymentPlanScheduler() {
         })
         .eq('payment_number', paymentScheduleEntry.payment_number)
         .eq('payment_link_id', selectedLink.id)
-        .eq('patient_id', patientId);
+        .eq('patient_id', patientId)
+        .eq('plan_id', paymentScheduleEntry.plan_id) // CRITICAL FIX: Added plan_id filter
+        .select();
 
       if (updateError) {
         console.error('Error updating payment schedule:', updateError);
         throw new Error(`Failed to update payment schedule: ${updateError.message}`);
       }
+
+      // Log the updated data for better debugging
+      console.log('Updated payment schedule entries:', updatedData);
 
       // Send notification
       const notificationMethod = {

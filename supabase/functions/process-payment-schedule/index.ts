@@ -67,7 +67,7 @@ serve(async (req) => {
     // Process each due payment
     for (const payment of duePayments) {
       try {
-        console.log(`🔄 Processing payment #${payment.payment_number} of ${payment.total_payments} for clinic: ${payment.clinic_id}`);
+        console.log(`🔄 Processing payment #${payment.payment_number} of ${payment.total_payments} for clinic: ${payment.clinic_id}, plan: ${payment.plan_id}`);
 
         // Create a payment request
         const { data: paymentRequest, error: requestError } = await supabase
