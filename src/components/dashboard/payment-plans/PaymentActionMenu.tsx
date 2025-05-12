@@ -28,7 +28,7 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
   onReschedule,
   onTakePayment
 }) => {
-  // Simplified take payment handler - just open the dialog, no toast
+  // Simplified take payment handler - no toast, just open the dialog
   const handleTakePayment = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();

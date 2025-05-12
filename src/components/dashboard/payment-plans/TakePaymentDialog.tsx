@@ -107,7 +107,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
         ) : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-              {/* Patient & Payment Information - Now read-only */}
+              {/* Patient & Payment Information - Read-only */}
               <div className="rounded-md bg-gray-50 p-4 mb-2">
                 <div className="flex justify-between items-center mb-3">
                   <span className="text-sm font-medium">Amount:</span>
