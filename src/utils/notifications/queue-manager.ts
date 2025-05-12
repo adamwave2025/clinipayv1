@@ -43,12 +43,12 @@ export async function addToNotificationQueue(
 
     if (error) {
       console.error('⚠️ CRITICAL ERROR: Failed to add to notification queue:', error);
-      return { success: false, error_message: error.message };
+      return { success: false, error_message: error.message, error: error.message };
     }
 
     if (!data || data.length === 0) {
       console.error('⚠️ CRITICAL ERROR: No data returned from notification queue insertion');
-      return { success: false, error_message: 'No data returned' };
+      return { success: false, error_message: 'No data returned', error: 'No data returned' };
     }
 
     const queuedItem = data[0];
@@ -133,7 +133,7 @@ export async function addToNotificationQueue(
         notification_id: notificationId, 
         webhook_success: false,
         webhook_error: safeString(webhookResult.error),
-        error: safeString(webhookResult.error), // Add the error property to match the expected type
+        error: safeString(webhookResult.error),
         status_code: webhookResult.status_code
       };
     }
@@ -150,7 +150,7 @@ export async function addToNotificationQueue(
     return { 
       success: false, 
       error_message: errorMessage,
-      error: errorMessage // Add the error property to match the expected type
+      error: errorMessage
     };
   }
 }

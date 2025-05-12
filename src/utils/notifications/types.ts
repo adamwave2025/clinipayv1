@@ -30,7 +30,7 @@ export interface NotificationResponse {
   success: boolean;
   notification_id?: string;
   error_message?: string;
-  error?: string; // Add the error property that's being referenced
+  error?: string;
   webhook_success?: boolean;
   webhook_error?: string;
   status_code?: number;
