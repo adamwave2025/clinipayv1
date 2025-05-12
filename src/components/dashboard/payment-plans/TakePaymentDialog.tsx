@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { Form, FormField, FormItem, FormControl, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -21,7 +21,9 @@ const paymentFormSchema = z.object({
   stripeCard: z.object({
     complete: z.boolean().optional(),
     empty: z.boolean().optional()
-  }).optional(),
+  }).refine(data => data.complete === true, {
+    message: "Please complete your card details"
+  }),
 });
 
 type PaymentFormValues = z.infer<typeof paymentFormSchema>;
@@ -86,10 +88,9 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       stripeCard: undefined,
     },
   });
-  
-  // Use a component to wrap payment processing logic so it only loads when the dialog is open
-  // This prevents unnecessary processing when the dialog is closed
-  const PaymentProcessor = () => {
+
+  // Use a memoized component to wrap payment processing logic to prevent unnecessary re-renders
+  const PaymentProcessor = React.memo(() => {
     // Move the hook inside this component to ensure it's only called when StripeProvider is ready
     const { 
       handlePaymentSubmit,
@@ -115,7 +116,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       form.setValue('stripeCard', {
         complete: event.complete,
         empty: event.empty
-      });
+      }, { shouldValidate: true });
       
       // Clear form error when card becomes complete
       if (event.complete) {
@@ -209,67 +210,59 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
             </div>
           </div>
           
-          {/* Card Details Section - Removed duplicate header */}
-          <div>
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem className="hidden">
-                  <FormControl>
-                    <input type="hidden" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem className="hidden">
-                  <FormControl>
-                    <input type="hidden" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem className="hidden">
-                  <FormControl>
-                    <input type="hidden" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="stripeCard"
-              render={() => (
-                <StripeCardElement 
-                  isLoading={isLoading || isProcessing}
-                  onChange={handleCardChange}
-                />
-              )}
-            />
-            
-            {/* Display validation error for card */}
-            {form.formState.errors.stripeCard && (
-              <p className="text-sm font-medium text-destructive mt-2">
-                {form.formState.errors.stripeCard.message}
-              </p>
+          {/* Hidden fields for patient info */}
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormControl>
+                  <input type="hidden" {...field} />
+                </FormControl>
+              </FormItem>
             )}
-          </div>
+          />
+          
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormControl>
+                  <input type="hidden" {...field} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormControl>
+                  <input type="hidden" {...field} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          
+          {/* Card Element - No header, the component includes its own label */}
+          <FormField
+            control={form.control}
+            name="stripeCard"
+            render={() => (
+              <StripeCardElement 
+                isLoading={isLoading || isProcessing}
+                onChange={handleCardChange}
+              />
+            )}
+          />
           
           <Button 
             type="submit"
             className="w-full mt-2" 
-            disabled={isLoading || isProcessing || !isStripeReady}
+            disabled={isLoading || isProcessing || !isStripeReady || !isCardComplete}
           >
             {isLoading || isProcessing ? "Processing..." : "Process Payment"}
           </Button>
@@ -280,7 +273,10 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
         </form>
       </Form>
     );
-  };
+  });
+  
+  // Prevent unnecessary re-renders by setting displayName
+  PaymentProcessor.displayName = 'PaymentProcessor';
   
   // Reset dialog state when it closes
   const handleOpenChange = (newOpen: boolean) => {

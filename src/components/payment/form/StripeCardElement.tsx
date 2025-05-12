@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { CardElement } from '@stripe/react-stripe-js';
 import { FormControl, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
@@ -7,9 +6,33 @@ interface StripeCardElementProps {
   onChange?: (event: any) => void;
   isLoading?: boolean;
   label?: string;
+  className?: string;
 }
 
-const StripeCardElement = ({ onChange, isLoading = false, label = "Card Details" }: StripeCardElementProps) => {
+// Create a stable version of the card element that resists re-renders
+const StripeCardElement = ({ 
+  onChange, 
+  isLoading = false, 
+  label = "Card Details",
+  className = ""
+}: StripeCardElementProps) => {
+  // Keep track of whether the card has been mounted
+  const hasBeenMounted = useRef(false);
+  // Store the latest onChange callback
+  const onChangeRef = useRef(onChange);
+  // Store card state
+  const cardStateRef = useRef<{
+    empty: boolean;
+    complete: boolean;
+    error?: { message: string } | null;
+  }>({ empty: true, complete: false });
+
+  // Update the ref when the onChange prop changes
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  // Configure card element options
   const cardElementOptions = {
     style: {
       base: {
@@ -27,35 +50,50 @@ const StripeCardElement = ({ onChange, isLoading = false, label = "Card Details"
     hidePostalCode: true,
   };
 
+  // Handle card changes
   const handleCardChange = (event: any) => {
-    // Enhanced logging for card validation status
+    // Store the latest card state
+    cardStateRef.current = {
+      empty: event.empty,
+      complete: event.complete,
+      error: event.error
+    };
+
+    // Enhanced logging
     console.log('Card element change:', { 
       isEmpty: event.empty, 
       isComplete: event.complete, 
       hasError: event.error ? true : false,
-      errorMessage: event.error?.message || 'No error'
+      errorMessage: event.error?.message || 'No error',
+      hasBeenMounted: hasBeenMounted.current
     });
     
-    // Forward the event to parent component
-    if (onChange) {
-      onChange(event);
+    // Call parent onChange if it exists
+    if (onChangeRef.current) {
+      onChangeRef.current(event);
+    }
+
+    // Mark as mounted after first change
+    if (!hasBeenMounted.current) {
+      hasBeenMounted.current = true;
     }
   };
 
   return (
-    <FormItem>
-      <FormLabel>{label}</FormLabel>
+    <FormItem className={className}>
+      {label && <FormLabel>{label}</FormLabel>}
       <div 
         className={`mt-1 p-3 border rounded-md ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
         aria-disabled={isLoading}
+        data-testid="stripe-card-element-container"
       >
         <FormControl>
           <CardElement 
-            options={cardElementOptions} 
-            onChange={handleCardChange} 
             id="card-element"
-            // Note: Removed disabled prop as it's not supported by Stripe's CardElement
-            // Instead, we control the disabled state via the parent div's classes
+            options={cardElementOptions} 
+            onChange={handleCardChange}
+            // We don't use disabled since it's not supported by Stripe
+            // Instead we control via parent div's classes and aria-disabled
           />
         </FormControl>
       </div>
@@ -64,4 +102,4 @@ const StripeCardElement = ({ onChange, isLoading = false, label = "Card Details"
   );
 };
 
-export default StripeCardElement;
+export default React.memo(StripeCardElement);

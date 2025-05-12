@@ -1,14 +1,15 @@
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
 
 export function useStripePayment() {
   const [isProcessing, setIsProcessing] = useState(false);
+  const processingRef = useRef(false);
   const stripe = useStripe();
   const elements = useElements();
 
-  const processPayment = async ({
+  const processPayment = useCallback(async ({
     clientSecret,
     formData
   }: {
@@ -30,9 +31,18 @@ export function useStripePayment() {
       return { success: false, error: 'Card information incomplete' };
     }
 
+    // Prevent duplicate processing
+    if (processingRef.current || isProcessing) {
+      console.log('Payment processing already in progress');
+      return { success: false, error: 'Payment already in progress' };
+    }
+
     setIsProcessing(true);
+    processingRef.current = true;
     
     try {
+      console.log('Confirming card payment with Stripe...');
+      
       // Confirm the card payment with Stripe
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
         clientSecret, 
@@ -70,6 +80,7 @@ export function useStripePayment() {
         throw new Error(`Payment status: ${paymentIntent.status}`);
       }
 
+      console.log('Payment successful:', paymentIntent.id);
       return { 
         success: true, 
         paymentIntent,
@@ -83,10 +94,11 @@ export function useStripePayment() {
       };
     } finally {
       setIsProcessing(false);
+      processingRef.current = false;
     }
-  };
+  }, [stripe, elements, isProcessing]);
 
-  const processApplePayPayment = async ({
+  const processApplePayPayment = useCallback(async ({
     clientSecret,
     paymentMethod
   }: {
@@ -98,7 +110,14 @@ export function useStripePayment() {
       return { success: false, error: 'Stripe not initialized' };
     }
 
+    // Prevent duplicate processing
+    if (processingRef.current || isProcessing) {
+      console.log('Payment processing already in progress');
+      return { success: false, error: 'Payment already in progress' };
+    }
+
     setIsProcessing(true);
+    processingRef.current = true;
     
     try {
       // Confirm the payment with the payment method from Apple Pay
@@ -142,8 +161,9 @@ export function useStripePayment() {
       };
     } finally {
       setIsProcessing(false);
+      processingRef.current = false;
     }
-  };
+  }, [stripe, isProcessing]);
 
   return {
     isProcessing,

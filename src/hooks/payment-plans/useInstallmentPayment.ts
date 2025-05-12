@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useStripePayment } from '@/modules/payment/hooks/useStripePayment';
 import { usePaymentIntent } from '@/hooks/usePaymentIntent';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +18,7 @@ export function useInstallmentPayment(
   const { processPayment, isProcessing } = useStripePayment();
   const { createPaymentIntent, isCreatingIntent } = usePaymentIntent();
 
-  const handlePaymentSubmit = async (
+  const handlePaymentSubmit = useCallback(async (
     formData: PaymentFormValues, 
     isCardComplete: boolean = false
   ): Promise<{ success: boolean; error?: string }> => {
@@ -170,7 +170,7 @@ export function useInstallmentPayment(
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [paymentId, amount, processPayment, createPaymentIntent, onPaymentProcessed]);
 
   return {
     isProcessing: isProcessing || isCreatingIntent,
