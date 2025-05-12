@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
+import { formatCurrency } from '@/utils/formatters';
 
 interface PaymentActionMenuProps {
   paymentId: string;
@@ -39,9 +40,14 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
       return;
     }
     
-    // Simply pass the ID and installment to the handler
-    // The TakePaymentDialog will handle validation and loading internally
-    toast.info(`Take Payment action triggered for payment ${paymentId}`);
+    // Log amount info for debugging
+    const amountDisplay = installment?.amount 
+      ? formatCurrency(installment.amount) 
+      : "unknown amount";
+    
+    toast.info(`Opening payment dialog for ${amountDisplay}`);
+    
+    // Pass both the ID and the full installment object
     onTakePayment(paymentId, installment);
   };
 

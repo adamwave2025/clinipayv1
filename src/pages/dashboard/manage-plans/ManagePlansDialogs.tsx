@@ -64,18 +64,23 @@ export const ManagePlansDialogs = () => {
   // Track the current payment ID for the dialog
   const [currentPaymentId, setCurrentPaymentId] = useState<string | null>(null);
   
-  // Update payment ID when dialog opens
+  // Update payment ID when dialog opens or paymentDialogData changes
   useEffect(() => {
     if (showTakePaymentDialog) {
-      // Use the ID from paymentDialogData if available
+      console.log("Dialog open, checking for payment ID");
+      
       if (paymentDialogData?.paymentId) {
+        console.log(`Setting currentPaymentId to ${paymentDialogData.paymentId} from paymentDialogData`);
         setCurrentPaymentId(paymentDialogData.paymentId);
+      } else if (selectedInstallment?.id) {
+        console.log(`Setting currentPaymentId to ${selectedInstallment.id} from selectedInstallment`);
+        setCurrentPaymentId(selectedInstallment.id);
       }
     } else {
       // Clear ID when dialog closes
       setCurrentPaymentId(null);
     }
-  }, [showTakePaymentDialog, paymentDialogData]);
+  }, [showTakePaymentDialog, paymentDialogData, selectedInstallment]);
 
   // Early return if no plan is selected
   if (!selectedPlan) {
@@ -156,16 +161,16 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* Improved payment dialog with internal data loading */}
-      {showTakePaymentDialog && currentPaymentId && (
+      {/* Take payment dialog - Simplified rendering logic to always render when showTakePaymentDialog is true */}
+      {showTakePaymentDialog && (
         <TakePaymentDialog
-          key={`payment-dialog-${currentPaymentId}`}
+          key={`payment-dialog-${paymentDialogData?.paymentId || currentPaymentId || 'new'}`}
           open={showTakePaymentDialog}
           onOpenChange={(open) => {
             console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
             setShowTakePaymentDialog(open);
           }}
-          paymentId={currentPaymentId}
+          paymentId={paymentDialogData?.paymentId || currentPaymentId || ''}
           onPaymentProcessed={onPaymentUpdated}
           // Pass optional pre-loaded data if available
           patientName={paymentDialogData?.patientName}

@@ -49,20 +49,39 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   const [patientEmail, setPatientEmail] = useState(initialPatientEmail || '');
   const [patientPhone, setPatientPhone] = useState(initialPatientPhone || '');
   const [amount, setAmount] = useState<number | undefined>(initialAmount);
+  const [hasValidId, setHasValidId] = useState(!!paymentId);
 
-  // Effect to load payment data when dialog opens
+  // Effect to validate payment ID and potentially handle early errors
   useEffect(() => {
-    if (open && paymentId) {
+    console.log("TakePaymentDialog - Received paymentId:", paymentId);
+    
+    if (!paymentId) {
+      console.error("Missing payment ID in TakePaymentDialog");
+      setDataError("No payment ID provided. Cannot process payment.");
+      setHasValidId(false);
+      toast.error("Missing payment ID");
+    } else {
+      setHasValidId(true);
+      setDataError(null);
+    }
+  }, [paymentId]);
+
+  // Effect to load payment data when dialog opens and we have a valid ID
+  useEffect(() => {
+    if (open && hasValidId) {
       // Only load data if we don't already have it
       if (!initialAmount || !initialPatientName) {
         loadPaymentData();
       }
     }
-  }, [open, paymentId, initialAmount, initialPatientName]);
+  }, [open, hasValidId, initialAmount, initialPatientName]);
 
   // Function to load payment data
   const loadPaymentData = async () => {
-    if (!paymentId) return;
+    if (!paymentId) {
+      setDataError("Cannot load payment data: Missing payment ID");
+      return;
+    }
     
     setIsLoadingData(true);
     setDataError(null);
@@ -106,6 +125,10 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
 
   const handlePaymentFormSubmit = async (formData: PaymentFormValues) => {
     try {
+      if (!paymentId) {
+        throw new Error("Cannot process payment: Missing payment ID");
+      }
+      
       if (!amount || amount <= 0) {
         throw new Error(`Cannot process payment: Invalid amount ${amount}`);
       }
@@ -149,6 +172,37 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       return "Invalid amount";
     }
   }, [amount]);
+
+  // If missing payment ID, show error dialog
+  if (!hasValidId) {
+    return (
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Error</DialogTitle>
+          </DialogHeader>
+          <div className="p-6 space-y-4">
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Unable to Process Payment</AlertTitle>
+              <AlertDescription>
+                A valid payment ID is required to process this payment. 
+                Please try again or contact support.
+              </AlertDescription>
+            </Alert>
+            <div className="flex justify-end">
+              <Button 
+                onClick={() => handleOpenChange(false)}
+                variant="default"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   // Render the data loading state
   if (isLoadingData) {
