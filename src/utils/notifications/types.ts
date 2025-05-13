@@ -1,4 +1,5 @@
 
+
 /**
  * Define the recipient type for notifications
  */
@@ -26,7 +27,7 @@ export interface WebhookResult {
 }
 
 /**
- * Simplified notification payload structure with runtime validation
+ * Simplified notification payload structure with minimal typing
  */
 export interface NotificationPayload {
   notification_type: string;
@@ -66,3 +67,4 @@ export interface NotificationPayload {
 
 // Re-export the types for backward compatibility
 export type StandardNotificationPayload = NotificationPayload;
+

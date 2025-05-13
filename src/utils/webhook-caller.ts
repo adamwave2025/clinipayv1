@@ -1,4 +1,5 @@
 
+
 import { StandardNotificationPayload } from '@/types/notification';
 import { RecipientType, WebhookResult } from './notifications/types';
 
@@ -42,3 +43,4 @@ export async function verifyWebhookConfiguration(): Promise<{
     clinic: true
   };
 }
+

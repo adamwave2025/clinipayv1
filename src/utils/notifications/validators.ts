@@ -45,8 +45,6 @@ export function isValidNotificationPayload(payload: any): payload is Notificatio
     return false;
   }
 
-  // Additional validation can be added based on your requirements
-
   return true;
 }
 
@@ -58,7 +56,7 @@ export function isValidNotificationPayload(payload: any): payload is Notificatio
  * @returns A properly typed notification payload
  */
 export function safelyParseNotificationPayload(data: any): NotificationPayload {
-  // Make a shallow copy of the data
+  // Make a shallow copy of the data to avoid reference issues
   const payload = { ...data };
   
   // Ensure numerical values are numbers
@@ -92,6 +90,7 @@ export function safelyParseNotificationPayload(data: any): NotificationPayload {
     console.warn('Warning: Invalid notification payload structure', payload);
   }
 
+  // Use type assertion to bypass deep type instantiation
   return payload as NotificationPayload;
 }
 

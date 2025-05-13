@@ -16,6 +16,6 @@ export interface NotificationMethod {
 }
 
 /**
- * Re-export the notification types from our new implementation
+ * Re-export the notification types from our new implementation properly using 'export type'
  */
-export { NotificationPayload as StandardNotificationPayload } from '@/utils/notifications/types';
+export type { NotificationPayload as StandardNotificationPayload } from '@/utils/notifications/types';
