@@ -1,5 +1,4 @@
 
-import { StandardNotificationPayload } from '@/types/notification';
 import { NotificationResponse, RecipientType } from './notifications/types';
 
 /**
@@ -8,7 +7,7 @@ import { NotificationResponse, RecipientType } from './notifications/types';
  */
 export async function addToNotificationQueue(
   type: string,
-  payload: StandardNotificationPayload,
+  payload: any, // Using any to break type dependency chains
   recipient_type: RecipientType,
   clinic_id: string,
   reference_id?: string,
@@ -54,7 +53,7 @@ export async function checkNotificationExists(
  * Returns a success response without actually calling any external service
  */
 export async function callWebhookDirectly(
-  payload: StandardNotificationPayload,
+  payload: any, // Using any to break type dependency chains
   recipient_type: RecipientType
 ): Promise<{
   success: boolean;

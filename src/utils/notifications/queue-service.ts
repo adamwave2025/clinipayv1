@@ -17,7 +17,7 @@ import { isValidNotificationPayload, preparePayloadForStorage, safelyParseNotifi
  */
 export async function addToNotificationQueue(
   type: string,
-  payload: NotificationPayload,
+  payload: any, // Using any to break type dependency chain
   recipient_type: RecipientType,
   clinic_id: string,
   reference_id?: string,
@@ -76,7 +76,7 @@ export async function addToNotificationQueue(
   
   // Now call the webhook directly for immediate processing
   try {
-    // Using the raw payload directly without conversion
+    // Using the runtime-validated payload directly
     const webhookResult = await callWebhookDirectly(payload, recipient_type);
     
     // Update the notification record with the result
@@ -175,11 +175,16 @@ export async function processNotificationsNow(): Promise<{
   // Process each notification
   for (const notification of pendingNotifications) {
     try {
-      // Parse the payload safely without complex type relationships
-      const safePayload = safelyParseNotificationPayload(notification.payload);
+      // Use our safe parsing function to handle the payload correctly
+      const payload = notification.payload ? safelyParseNotificationPayload(notification.payload) : null;
       
+      if (!payload) {
+        throw new Error('Invalid or missing payload');
+      }
+      
+      // Now pass the runtime-validated payload to the webhook service
       const webhookResult = await callWebhookDirectly(
-        safePayload,
+        payload,
         notification.recipient_type as RecipientType
       );
       
