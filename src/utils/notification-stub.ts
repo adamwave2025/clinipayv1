@@ -1,4 +1,5 @@
 
+
 import { RecipientType } from './notifications/types';
 
 /**
@@ -14,6 +15,7 @@ export async function addToNotificationQueue(
   payment_id?: string
 ): Promise<{
   success: boolean;
+  error?: string;
   notification_id?: string;
   webhook_success?: boolean;
   webhook_error?: string;
@@ -115,3 +117,4 @@ export async function processNotificationsNow(): Promise<{
     failed: 0
   };
 }
+

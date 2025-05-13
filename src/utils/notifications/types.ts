@@ -1,4 +1,5 @@
 
+
 /**
  * Define the recipient type for notifications
  */
@@ -66,3 +67,4 @@ export interface NotificationPayload {
 
 // Re-export the types for backward compatibility
 export type StandardNotificationPayload = NotificationPayload;
+
