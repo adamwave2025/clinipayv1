@@ -163,13 +163,15 @@ export async function processNotificationsNow(): Promise<{
   // Process each notification
   for (const notification of pendingNotifications) {
     try {
-      // Get the payload and properly cast it to the expected type
-      // We need to treat it as unknown first to avoid the type error
-      const rawPayload = notification.payload as unknown;
-      const payload = rawPayload as StandardNotificationPayload;
+      // First convert to unknown then to StandardNotificationPayload to avoid typing issues
+      // This breaks the deep type instantiation chain
+      const payload = notification.payload as unknown;
+      
+      // Now we can safely cast to our expected type
+      const typedPayload = payload as StandardNotificationPayload;
       
       const webhookResult = await callWebhookDirectly(
-        payload,
+        typedPayload,
         notification.recipient_type as RecipientType
       );
       
