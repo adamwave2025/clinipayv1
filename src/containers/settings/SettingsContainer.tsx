@@ -24,8 +24,10 @@ const SettingsContainer = () => {
   const initialTabParam = searchParams.get('tab');
   const initialTab = VALID_TABS.includes(initialTabParam as string) ? initialTabParam : 'profile';
   
-  // Use React state for tab switching to prevent URL dependency issues
-  const [activeTab, setActiveTab] = useState(initialTab);
+  // React state is the source of truth, not URL params
+  const [activeTab, setActiveTab] = useState(initialTab || 'profile');
+  const [lastStableTab, setLastStableTab] = useState(initialTab || 'profile');
+  const [isChangingTab, setIsChangingTab] = useState(false);
   
   const { 
     clinicData, 
@@ -38,17 +40,54 @@ const SettingsContainer = () => {
 
   // Update URL when tab changes, but don't depend on URL for state
   const handleTabChange = useCallback((value: string) => {
+    if (!VALID_TABS.includes(value)) {
+      console.warn(`Invalid tab value: ${value}, defaulting to profile`);
+      value = 'profile';
+    }
+    
+    // Mark that we're in the process of changing tabs to prevent oscillation
+    setIsChangingTab(true);
     setActiveTab(value);
+    setLastStableTab(value);
+    
     // Update URL without triggering a re-render
     setSearchParams({ tab: value }, { replace: true });
+    
+    // Clear the changing state after a timeout to prevent rapid changes
+    setTimeout(() => {
+      setIsChangingTab(false);
+    }, 100);
   }, [setSearchParams]);
   
   // Sync URL with state on initial load and when URL changes externally
+  // Only update if we're not in the middle of changing tabs
   useEffect(() => {
-    if (initialTabParam && VALID_TABS.includes(initialTabParam)) {
-      setActiveTab(initialTabParam);
+    if (isChangingTab) return;
+    
+    const tabParam = searchParams.get('tab');
+    
+    if (tabParam && VALID_TABS.includes(tabParam) && tabParam !== activeTab) {
+      console.log(`URL tab changed to ${tabParam}, updating state`);
+      setActiveTab(tabParam);
+      setLastStableTab(tabParam);
+    } else if (!tabParam && activeTab !== 'profile') {
+      // If no tab param, default to profile
+      console.log(`No tab param, defaulting to profile`);
+      setActiveTab('profile');
+      setLastStableTab('profile');
+      // Update URL to include tab=profile
+      setSearchParams({ tab: 'profile' }, { replace: true });
     }
-  }, [initialTabParam]);
+  }, [searchParams, activeTab, isChangingTab, setSearchParams]);
+
+  // If something goes wrong, fall back to the last stable tab
+  useEffect(() => {
+    if (!VALID_TABS.includes(activeTab)) {
+      console.warn(`Active tab ${activeTab} is invalid, falling back to ${lastStableTab}`);
+      setActiveTab(lastStableTab);
+      setSearchParams({ tab: lastStableTab }, { replace: true });
+    }
+  }, [activeTab, lastStableTab, setSearchParams]);
 
   if (dataLoading) {
     return (

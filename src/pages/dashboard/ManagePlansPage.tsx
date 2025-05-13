@@ -83,50 +83,78 @@ const ManagePlansPageContent: React.FC = () => {
   
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  
+  // Get view param from URL, but don't directly use it for rendering
   const viewParam = searchParams.get('view');
   
-  const [isTemplateView, setIsTemplateView] = useState(false);
+  // State is the source of truth, not URL parameters
+  const [isTemplateView, setIsTemplateView] = useState(() => {
+    // Initialize from URL on first render only
+    return viewParam === 'templates';
+  });
+  
+  // Track when we're actively changing views to prevent loops
+  const [isChangingView, setIsChangingView] = useState(false);
+  const [stableViewRef] = useState({ current: viewParam === 'templates' ? 'templates' : 'active' });
+  
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
   const { createPaymentLink } = usePaymentLinks();
   
   // Add a function to refresh the templates view
   const [templateRefreshTrigger, setTemplateRefreshTrigger] = useState(0);
   
-  // Check URL parameters on component mount and on viewParam changes
+  // Update URL when isTemplateView changes, but prevent loops
   useEffect(() => {
-    console.log('URL view param changed:', viewParam);
-    // Default to active plans if no view param is specified
-    if (!viewParam) {
-      console.log('No view param, defaulting to active plans view');
+    if (isChangingView) return;
+    
+    const newViewParam = isTemplateView ? 'templates' : 'active';
+    
+    if (viewParam !== newViewParam) {
+      console.log(`Updating URL to match view state: ${newViewParam}`);
+      
+      // Mark that we're changing view to prevent re-renders from URL changes
+      setIsChangingView(true);
+      
+      // Update URL without causing a full page reload
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('view', newViewParam);
+      setSearchParams(newParams, { replace: true });
+      
+      // Store the stable view
+      stableViewRef.current = newViewParam;
+      
+      // Clear changing state after a timeout
+      setTimeout(() => {
+        setIsChangingView(false);
+      }, 300);
+    }
+  }, [isTemplateView, setSearchParams, searchParams, viewParam, isChangingView, stableViewRef]);
+  
+  // Sync view state from URL only when URL changes and we're not changing views
+  useEffect(() => {
+    if (isChangingView) return;
+    
+    if (viewParam === 'templates' && !isTemplateView) {
+      console.log('URL indicates templates view, updating state');
+      setIsTemplateView(true);
+      stableViewRef.current = 'templates';
+    } else if (viewParam === 'active' && isTemplateView) {
+      console.log('URL indicates active plans view, updating state');
+      setIsTemplateView(false);
+      stableViewRef.current = 'active';
+    } else if (!viewParam) {
+      // Set a default if no view param provided
+      console.log('No view param detected, defaulting to active view');
+      setIsTemplateView(false);
+      
+      // Update URL to include the default view
       const newParams = new URLSearchParams(searchParams);
       newParams.set('view', 'active');
-      setSearchParams(newParams);
-      setIsTemplateView(false);
-      return;
+      setSearchParams(newParams, { replace: true });
+      
+      stableViewRef.current = 'active';
     }
-    
-    // Set isTemplateView based on URL parameter
-    if (viewParam === 'active') {
-      console.log('Setting view to active plans based on URL');
-      setIsTemplateView(false);
-    } else if (viewParam === 'templates') {
-      console.log('Setting view to templates based on URL');
-      setIsTemplateView(true);
-    }
-  }, [viewParam, searchParams, setSearchParams]);
-  
-  // Update URL when isTemplateView changes
-  useEffect(() => {
-    console.log('isTemplateView state changed to:', isTemplateView);
-    // Update URL to match the current view without triggering a full page reload
-    const newParams = new URLSearchParams(searchParams);
-    if (isTemplateView) {
-      newParams.set('view', 'templates');
-    } else {
-      newParams.set('view', 'active');
-    }
-    setSearchParams(newParams);
-  }, [isTemplateView, setSearchParams, searchParams]);
+  }, [viewParam, isTemplateView, searchParams, setSearchParams, isChangingView, stableViewRef]);
   
   // Create a callback function to trigger template refresh
   const refreshTemplates = useCallback(() => {
@@ -141,6 +169,9 @@ const ManagePlansPageContent: React.FC = () => {
     // First refresh the templates data to keep templates up to date
     setTemplateRefreshTrigger(prev => prev + 1);
     
+    // Set changing state to prevent loops
+    setIsChangingView(true);
+    
     // Force navigation with replace:true to ensure we reset navigation history
     navigate('/dashboard/manage-plans?view=active', { replace: true });
     
@@ -148,36 +179,66 @@ const ManagePlansPageContent: React.FC = () => {
     setTimeout(() => {
       console.log('Setting isTemplateView to false after navigation');
       setIsTemplateView(false);
+      stableViewRef.current = 'active';
+      
+      // Clear changing state
+      setIsChangingView(false);
       
       // Show success toast to confirm the action
       toast.success("Payment plan created successfully");
-    }, 50); // Increased delay for more reliable state transition
-  }, [navigate]);
+    }, 300); // Increased delay for more reliable state transition
+  }, [navigate, stableViewRef]);
   
-  const handleCreatePlanClick = () => {
+  const handleCreatePlanClick = useCallback(() => {
     console.log("ManagePlansPage: handleCreatePlanClick");
     setCreateSheetOpen(true);
-  };
+  }, []);
 
-  const handleViewTemplatesClick = () => {
+  const handleViewTemplatesClick = useCallback(() => {
     console.log("ManagePlansPage: handleViewTemplatesClick");
+    
+    // Set changing state to prevent loops
+    setIsChangingView(true);
+    
     // We're using replace:true to ensure clean navigation history
     navigate('/dashboard/manage-plans?view=templates', { replace: true });
+    
+    // Update state to match URL
     setIsTemplateView(true);
-  };
+    stableViewRef.current = 'templates';
+    
+    // Clear changing state after delay
+    setTimeout(() => {
+      setIsChangingView(false);
+    }, 300);
+  }, [navigate, stableViewRef]);
   
-  const handleBackToPlans = () => {
+  const handleBackToPlans = useCallback(() => {
     console.log("ManagePlansPage: handleBackToPlans");
+    
+    // Set changing state to prevent loops
+    setIsChangingView(true);
+    
     // We're using replace:true to ensure clean navigation history
     navigate('/dashboard/manage-plans?view=active', { replace: true });
+    
     // Force reset isTemplateView to prevent race conditions
+    setIsTemplateView(false);
+    stableViewRef.current = 'active';
+    
+    // Clear changing state after delay
     setTimeout(() => {
-      setIsTemplateView(false);
-    }, 10);
-  };
+      setIsChangingView(false);
+    }, 300);
+  }, [navigate, stableViewRef]);
 
   // Log current state for debugging
-  console.log('Current view state:', { isTemplateView, viewParam });
+  console.log('Current view state:', { 
+    isTemplateView, 
+    viewParam, 
+    stableView: stableViewRef.current,
+    isChangingView
+  });
 
   return (
     <>
@@ -207,8 +268,13 @@ const ManagePlansPageContent: React.FC = () => {
         onPlanCreated={handlePlanCreated}
         forceActiveView={() => {
           // Extra safety measure to ensure we go to active view
+          setIsChangingView(true);
           navigate('/dashboard/manage-plans?view=active', { replace: true });
           setIsTemplateView(false);
+          stableViewRef.current = 'active';
+          setTimeout(() => {
+            setIsChangingView(false);
+          }, 300);
         }}
       />
       
