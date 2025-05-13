@@ -4,7 +4,7 @@ import { StandardNotificationPayload } from '@/types/notification';
 import { Json } from '@/integrations/supabase/types';
 import { NotificationResponse, RecipientType } from './notifications/types';
 import { callWebhookDirectly } from './webhook-caller';
-import { createPrimitivePayload } from './notifications/json-utils';
+import { createPrimitivePayload, jsonToNotificationPayload, isValidNotificationPayload } from './notifications/json-utils';
 
 /**
  * Adds a notification to the queue and optionally processes it immediately
@@ -35,7 +35,7 @@ export async function addToNotificationQueue(
   
   // Create a notification record in the queue
   // Convert the StandardNotificationPayload to a Json compatible object
-  const jsonPayload = JSON.parse(JSON.stringify(payload)) as Json;
+  const jsonPayload = createPrimitivePayload(payload);
   
   const { data: notification, error } = await supabase
     .from('notification_queue')
@@ -163,15 +163,16 @@ export async function processNotificationsNow(): Promise<{
   // Process each notification
   for (const notification of pendingNotifications) {
     try {
-      // First convert to unknown then to StandardNotificationPayload to avoid typing issues
-      // This breaks the deep type instantiation chain
-      const payload = notification.payload as unknown;
+      // Safely convert the JSON payload to a typed notification payload
+      const safePayload = jsonToNotificationPayload(notification.payload);
       
-      // Now we can safely cast to our expected type
-      const typedPayload = payload as StandardNotificationPayload;
+      // Validate the payload to ensure it has the expected structure
+      if (!isValidNotificationPayload(safePayload)) {
+        throw new Error('Invalid notification payload structure');
+      }
       
       const webhookResult = await callWebhookDirectly(
-        typedPayload,
+        safePayload,
         notification.recipient_type as RecipientType
       );
       
