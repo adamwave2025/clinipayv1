@@ -1,23 +1,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { StandardNotificationPayload } from '@/types/notification';
+import { Json } from '@/integrations/supabase/types';
+import { NotificationResponse, RecipientType } from './notifications/types';
 import { callWebhookDirectly } from './webhook-caller';
-
-/**
- * Notification response interface
- */
-export interface NotificationResponse {
-  success: boolean;
-  notification_id?: string;
-  error?: string;
-  webhook_success?: boolean;
-  webhook_error?: string;
-}
-
-/**
- * Recipient type for notifications
- */
-export type RecipientType = 'patient' | 'clinic';
+import { createPrimitivePayload } from './notifications/json-utils';
 
 /**
  * Adds a notification to the queue and optionally processes it immediately
@@ -47,11 +34,14 @@ export async function addToNotificationQueue(
   });
   
   // Create a notification record in the queue
+  // Convert the StandardNotificationPayload to a Json compatible object
+  const jsonPayload = JSON.parse(JSON.stringify(payload)) as Json;
+  
   const { data: notification, error } = await supabase
     .from('notification_queue')
     .insert({
       type,
-      payload,
+      payload: jsonPayload,
       recipient_type,
       status: 'pending',
       error_message: null,
@@ -173,8 +163,10 @@ export async function processNotificationsNow(): Promise<{
   // Process each notification
   for (const notification of pendingNotifications) {
     try {
-      // Ensure payload is treated as StandardNotificationPayload
-      const payload = notification.payload as StandardNotificationPayload;
+      // Get the payload and properly cast it to the expected type
+      // We need to treat it as unknown first to avoid the type error
+      const rawPayload = notification.payload as unknown;
+      const payload = rawPayload as StandardNotificationPayload;
       
       const webhookResult = await callWebhookDirectly(
         payload,

@@ -41,4 +41,4 @@ export interface WebhookResult {
 }
 
 // Re-export StandardNotificationPayload from the types directory
-export { StandardNotificationPayload } from '@/types/notification';
+export type { StandardNotificationPayload } from '@/types/notification';
