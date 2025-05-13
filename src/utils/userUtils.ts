@@ -7,27 +7,44 @@ import { toast } from 'sonner';
  * 
  * @returns Promise with the clinic ID or null if not found
  */
-export async function getUserClinicId(): Promise<string | null> {
+export async function getUserClinicId(userId?: string): Promise<string | null> {
   try {
-    // Get the current authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // IMPROVED: Use provided userId if available, otherwise get current user
+    // This prevents unnecessary auth calls when we already have the user ID
+    let userIdToUse = userId;
     
-    if (userError || !user) {
-      console.error('Error getting authenticated user:', userError);
-      return null;
+    if (!userIdToUse) {
+      console.log('getUserClinicId: No userId provided, fetching current user');
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('Error getting authenticated user:', userError);
+        return null;
+      }
+      
+      if (!user) {
+        console.warn('getUserClinicId: No authenticated user found');
+        return null;
+      }
+      
+      userIdToUse = user.id;
     }
+    
+    console.log(`getUserClinicId: Fetching clinic ID for user: ${userIdToUse}`);
     
     // Fetch the user's record from the users table to get the clinic_id
     const { data, error } = await supabase
       .from('users')
       .select('clinic_id')
-      .eq('id', user.id)
+      .eq('id', userIdToUse)
       .single();
     
     if (error) {
       console.error('Error fetching clinic ID:', error);
       return null;
     }
+    
+    console.log(`getUserClinicId: Found clinic ID: ${data.clinic_id}`);
     
     return data.clinic_id;
   } catch (error) {

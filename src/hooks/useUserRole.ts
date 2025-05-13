@@ -10,13 +10,19 @@ export function useUserRole() {
 
   useEffect(() => {
     const fetchUserRole = async () => {
+      // Reset loading state when user changes
+      setLoading(true);
+      
       if (!user) {
+        console.log('useUserRole: No user available, clearing role');
         setRole(null);
         setLoading(false);
         return;
       }
 
       try {
+        console.log(`useUserRole: Fetching role for user ID: ${user.id}`);
+        
         // Query the users table to get the role
         const { data, error } = await supabase
           .from('users')
@@ -28,7 +34,9 @@ export function useUserRole() {
           console.error('Error fetching user role:', error);
           setRole(null);
         } else {
-          setRole(data?.role || 'clinic'); // Default to 'clinic' if no role is set
+          const userRole = data?.role || 'clinic'; // Default to 'clinic' if no role is set
+          console.log(`useUserRole: Retrieved role: ${userRole}`);
+          setRole(userRole);
         }
       } catch (error) {
         console.error('Unexpected error fetching user role:', error);

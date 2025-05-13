@@ -18,7 +18,10 @@ export const usePaymentPlans = () => {
   // Fetch payment plans when user is available or archive/template view changes
   useEffect(() => {
     if (user) {
+      console.log('usePaymentPlans: User available, fetching payment plans');
       fetchPaymentPlans();
+    } else {
+      console.log('usePaymentPlans: No user available, skipping plan fetch');
     }
   }, [user, isArchiveView, isTemplateView]);
 
@@ -31,9 +34,8 @@ export const usePaymentPlans = () => {
         return;
       }
       
-      // FIXED: The User type doesn't have clinic_id property, so we need to use getUserClinicId instead
-      // This gets the clinic ID from the users table in the database
-      let clinicId = await getUserClinicId();
+      // IMPROVED: Pass the user ID to getUserClinicId to avoid unnecessary auth calls
+      let clinicId = await getUserClinicId(user.id);
       
       if (!clinicId) {
         console.error('Could not determine clinic ID for payment plans');

@@ -20,18 +20,22 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
   const { role, loading: roleLoading } = useUserRole();
   const location = useLocation();
   
-  // Add debug logging
+  // Add comprehensive debug logging
   console.log('RoleBasedRoute:', { 
     path: location.pathname,
     user: user?.id, 
-    role, 
+    role,
     allowedRoles,
     authLoading,
-    roleLoading
+    roleLoading,
+    isAuthenticated: !!user,
+    isRoleAllowed: role ? allowedRoles.includes(role) : false
   });
   
-  // Show loading while checking auth state or role
+  // IMPROVED: Show loading while checking auth state OR role
+  // This ensures we never redirect prematurely while either is still loading
   if (authLoading || roleLoading) {
+    console.log('RoleBasedRoute: Still loading auth or role data, showing loading spinner');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -39,19 +43,20 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
     );
   }
 
-  // If user is not authenticated, redirect to sign-in
+  // IMPROVED: Only redirect to sign-in if auth has FINISHED loading and user is not authenticated
   if (!user) {
+    console.log('RoleBasedRoute: User not authenticated, redirecting to sign-in');
     return <Navigate to="/sign-in" state={{ from: location }} replace />;
   }
 
-  // If user's role is not allowed, redirect to the specified route
-  // Only redirect if we're not already on the redirectTo path (prevents loops)
+  // IMPROVED: Only check role after confirming we have a valid user AND role loading is complete
   if (!allowedRoles.includes(role || '') && location.pathname !== redirectTo) {
-    console.log(`Role ${role} not allowed, redirecting to ${redirectTo}`);
+    console.log(`RoleBasedRoute: Role ${role} not allowed, redirecting to ${redirectTo}`);
     return <Navigate to={redirectTo} replace />;
   }
 
   // If all checks pass, render the children
+  console.log('RoleBasedRoute: All checks passed, rendering children');
   return <>{children}</>;
 };
 

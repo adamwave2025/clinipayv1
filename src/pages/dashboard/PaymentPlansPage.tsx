@@ -11,13 +11,17 @@ import { usePaymentPlans } from '@/hooks/usePaymentPlans';
 import { useState } from 'react';
 import ArchivePlanDialog from '@/components/dashboard/payment-plans/ArchivePlanDialog';
 import { PaymentLink } from '@/types/payment';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PaymentPlansPage = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth(); // Add auth loading check
+  
   const {
     paymentPlans,
     filteredPlans,
-    isLoading,
+    isLoading: plansLoading,
     searchQuery,
     setSearchQuery,
     isArchiveView,
@@ -33,6 +37,9 @@ const PaymentPlansPage = () => {
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [planToArchive, setPlanToArchive] = useState<PaymentLink | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
+  
+  // Determine if we're still loading any critical data
+  const isLoading = authLoading || plansLoading;
 
   const handleCreatePlanClick = () => {
     navigate('/dashboard/manage-plans');
@@ -59,6 +66,20 @@ const PaymentPlansPage = () => {
       setPlanToArchive(null);
     }
   };
+  
+  // Show loading state if auth or plans are still loading
+  if (isLoading) {
+    return (
+      <DashboardLayout userType="clinic">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <LoadingSpinner size="lg" />
+            <p className="mt-4 text-muted-foreground">Loading payment plans...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout userType="clinic">
