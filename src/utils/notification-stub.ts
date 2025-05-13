@@ -1,5 +1,5 @@
 
-import { NotificationResponse, RecipientType } from './notifications/types';
+import { RecipientType } from './notifications/types';
 
 /**
  * Stub function that pretends to add an item to the notification queue
@@ -12,7 +12,12 @@ export async function addToNotificationQueue(
   clinic_id: string,
   reference_id?: string,
   payment_id?: string
-): Promise<NotificationResponse> {
+): Promise<{
+  success: boolean;
+  notification_id?: string;
+  webhook_success?: boolean;
+  webhook_error?: string;
+}> {
   console.log('NOTIFICATION SYSTEM DISABLED: Would have sent notification:', {
     type,
     recipient_type,
@@ -89,5 +94,24 @@ export async function verifyWebhookConfiguration(): Promise<{
     clinic: true,
     patientUrl: 'https://example.com/patient-notifications',
     clinicUrl: 'https://example.com/clinic-notifications'
+  };
+}
+
+/**
+ * Stub function that pretends to process notifications
+ * Returns a success response without actually processing anything
+ */
+export async function processNotificationsNow(): Promise<{
+  success: boolean;
+  processed: number;
+  failed: number;
+}> {
+  console.log('NOTIFICATION SYSTEM DISABLED: Would have processed pending notifications');
+  
+  // Return a success response with zero processed
+  return {
+    success: true,
+    processed: 0,
+    failed: 0
   };
 }
