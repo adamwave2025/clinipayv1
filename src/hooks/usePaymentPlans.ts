@@ -13,17 +13,22 @@ export const usePaymentPlans = () => {
   const [isArchiveView, setIsArchiveView] = useState(false);
   const [isTemplateView, setIsTemplateView] = useState(true); // Default to template view since we're on the templates page
   
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
-  // Fetch payment plans when user is available or archive/template view changes
+  // Fetch payment plans when user is available and no longer loading
   useEffect(() => {
-    if (user) {
-      console.log('usePaymentPlans: User available, fetching payment plans');
-      fetchPaymentPlans();
-    } else {
-      console.log('usePaymentPlans: No user available, skipping plan fetch');
-    }
-  }, [user, isArchiveView, isTemplateView]);
+    const loadPlans = async () => {
+      // Only proceed if we have a user and auth is no longer loading
+      if (user && !authLoading) {
+        console.log('usePaymentPlans: User available, fetching payment plans');
+        await fetchPaymentPlans();
+      } else {
+        console.log('usePaymentPlans: User not available or still loading, skipping plan fetch');
+      }
+    };
+    
+    loadPlans();
+  }, [user, authLoading, isArchiveView, isTemplateView]);
 
   const fetchPaymentPlans = async () => {
     setIsLoading(true);

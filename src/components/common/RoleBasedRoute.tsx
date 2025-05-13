@@ -20,6 +20,9 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
   const { role, loading: roleLoading } = useUserRole();
   const location = useLocation();
   
+  // Combined loading state - we're loading if EITHER auth OR role is still loading
+  const isLoading = authLoading || roleLoading;
+  
   // Add comprehensive debug logging
   console.log('RoleBasedRoute:', { 
     path: location.pathname,
@@ -28,13 +31,16 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
     allowedRoles,
     authLoading,
     roleLoading,
+    isLoading,
     isAuthenticated: !!user,
-    isRoleAllowed: role ? allowedRoles.includes(role) : false
+    isRoleAllowed: role ? allowedRoles.includes(role) : false,
+    redirectingToSignIn: !isLoading && !user,
+    redirectingToDashboard: !isLoading && user && role && !allowedRoles.includes(role)
   });
   
-  // IMPROVED: Show loading while checking auth state OR role
+  // CRITICAL: Show loading while checking auth state OR role
   // This ensures we never redirect prematurely while either is still loading
-  if (authLoading || roleLoading) {
+  if (isLoading) {
     console.log('RoleBasedRoute: Still loading auth or role data, showing loading spinner');
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -43,14 +49,19 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
     );
   }
 
-  // IMPROVED: Only redirect to sign-in if auth has FINISHED loading and user is not authenticated
+  // Only redirect to sign-in if BOTH auth AND role have FINISHED loading
+  // and we still don't have a user (meaning they're not authenticated)
   if (!user) {
     console.log('RoleBasedRoute: User not authenticated, redirecting to sign-in');
     return <Navigate to="/sign-in" state={{ from: location }} replace />;
   }
 
-  // IMPROVED: Only check role after confirming we have a valid user AND role loading is complete
-  if (!allowedRoles.includes(role || '') && location.pathname !== redirectTo) {
+  // IMPORTANT: Only check role access after confirming:
+  // 1. Both auth and role loading are complete (isLoading === false)
+  // 2. We have a valid user (user is not null)
+  // 3. We have a role value (which might be null but we've finished trying to get it)
+  // 4. The current location is not already the fallback destination
+  if (role && !allowedRoles.includes(role) && location.pathname !== redirectTo) {
     console.log(`RoleBasedRoute: Role ${role} not allowed, redirecting to ${redirectTo}`);
     return <Navigate to={redirectTo} replace />;
   }

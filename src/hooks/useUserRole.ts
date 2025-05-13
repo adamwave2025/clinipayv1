@@ -46,7 +46,13 @@ export function useUserRole() {
       }
     };
 
-    fetchUserRole();
+    // Only fetch the role if we have a user
+    if (user) {
+      fetchUserRole();
+    } else {
+      // Make sure we set loading to false if there's no user
+      setLoading(false);
+    }
   }, [user]);
 
   return { role, loading };

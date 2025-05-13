@@ -16,7 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const PaymentPlansPage = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth(); // Add auth loading check
+  const { user, loading: authLoading } = useAuth();
   
   const {
     paymentPlans,
@@ -67,14 +67,16 @@ const PaymentPlansPage = () => {
     }
   };
   
-  // Show loading state if auth or plans are still loading
+  // Show enhanced loading state if auth or plans are still loading
   if (isLoading) {
     return (
       <DashboardLayout userType="clinic">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <LoadingSpinner size="lg" />
-            <p className="mt-4 text-muted-foreground">Loading payment plans...</p>
+            <p className="mt-4 text-muted-foreground">
+              {authLoading ? "Verifying your account..." : "Loading payment plans..."}
+            </p>
           </div>
         </div>
       </DashboardLayout>

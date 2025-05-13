@@ -5,12 +5,12 @@ import { toast } from 'sonner';
 /**
  * Fetches the clinic ID associated with the authenticated user
  * 
+ * @param userId Optional userId parameter. If provided, will use that instead of fetching the current user.
  * @returns Promise with the clinic ID or null if not found
  */
 export async function getUserClinicId(userId?: string): Promise<string | null> {
   try {
-    // IMPROVED: Use provided userId if available, otherwise get current user
-    // This prevents unnecessary auth calls when we already have the user ID
+    // Check if a userId was provided directly (preferred)
     let userIdToUse = userId;
     
     if (!userIdToUse) {
@@ -41,6 +41,11 @@ export async function getUserClinicId(userId?: string): Promise<string | null> {
     
     if (error) {
       console.error('Error fetching clinic ID:', error);
+      return null;
+    }
+    
+    if (!data || !data.clinic_id) {
+      console.error('No clinic ID found for user:', userIdToUse);
       return null;
     }
     

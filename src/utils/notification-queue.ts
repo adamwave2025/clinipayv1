@@ -49,6 +49,25 @@ function toPrimitiveJson(data: unknown): PrimitiveJsonObject {
 }
 
 /**
+ * Response type for notification queue operations with flattened structure
+ * to avoid circular type references
+ */
+interface NotificationQueueResponse {
+  success: boolean;
+  notification_id?: string;
+  webhook_success?: boolean;
+  webhook_error?: string;
+  error_message?: string;
+  error_type?: string;
+  processing_time_ms?: number;
+  error_status?: number;
+  error_status_text?: string;
+  error_response?: string;
+  error_webhook?: string;
+  error_recipient?: string;
+}
+
+/**
  * Add an item to the notification queue for processing and immediately call webhook
  */
 export async function addToNotificationQueue(
@@ -58,7 +77,7 @@ export async function addToNotificationQueue(
   clinic_id: string,
   reference_id?: string,
   payment_id?: string
-) {
+): Promise<NotificationQueueResponse> {
   console.log(`⚠️ CRITICAL: Adding notification to queue: type=${type}, recipient=${recipient_type}, clinic=${clinic_id}, reference=${reference_id || 'none'}`);
   const startTime = Date.now();
   
@@ -137,12 +156,12 @@ export async function addToNotificationQueue(
 
     if (error) {
       console.error('⚠️ CRITICAL ERROR: Failed to add to notification queue:', error);
-      return { success: false, error: error.message };
+      return { success: false, error_message: error.message };
     }
 
     if (!data || data.length === 0) {
       console.error('⚠️ CRITICAL ERROR: No data returned from notification queue insertion');
-      return { success: false, error: 'No data returned' };
+      return { success: false, error_message: 'No data returned' };
     }
 
     const queuedItem = data[0];
@@ -250,7 +269,7 @@ export async function addToNotificationQueue(
       const elapsedTime = Date.now() - startTime;
       console.log(`⏱️ Total notification processing time: ${elapsedTime}ms (failed)`);
       
-      // Fix for infinite type recursion - Use a flat structure with all primitive values
+      // Use flat structure to avoid circular references
       return { 
         success: true, 
         notification_id: notificationId, 
@@ -264,7 +283,7 @@ export async function addToNotificationQueue(
       };
     }
   } catch (error) {
-    // Fix for infinite type recursion - Create a completely flat error response with only primitive values
+    // Create a completely flat error response with only primitive values
     const errorMessage = error instanceof Error ? error.message.substring(0, 255) : 'Unknown error';
     
     console.error('⚠️ CRITICAL ERROR: Exception adding to notification queue:', errorMessage);
