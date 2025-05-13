@@ -1,5 +1,5 @@
 
-import { toast as sonnerToast, type ToastT } from 'sonner';
+import { toast as sonnerToast, type Toast } from 'sonner';
 
 // Re-export the sonner toast
 export const toast = sonnerToast;
@@ -11,7 +11,7 @@ export function useToast() {
   // We provide an empty array as this is not used with sonner
   return {
     toast: sonnerToast,
-    toasts: [] as ToastT[], // Add the toasts property as an empty array
+    toasts: [] as any[], // Add the toasts property as an empty array
     dismiss: (toastId?: string | number) => {
       if (toastId) {
         sonnerToast.dismiss(toastId);
