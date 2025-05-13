@@ -83,6 +83,27 @@ export const ManagePlansDialogs = () => {
     });
   }, [showReschedulePaymentDialog, isProcessing]);
 
+  // Create a wrapper component for the TakePaymentDialog to ensure it only renders when needed
+  const PaymentDialogWrapper = () => {
+    if (!selectedInstallment || !showTakePaymentDialog) return null;
+    
+    return (
+      <TakePaymentDialog
+        open={showTakePaymentDialog}
+        onOpenChange={(open) => {
+          console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
+          setShowTakePaymentDialog(open);
+        }}
+        patientName={selectedPlan.patientName || ''}
+        patientEmail={selectedPlan.patientEmail || ''}
+        patientPhone={selectedPlan.patients?.phone || ''}
+        amount={selectedInstallment.amount || 0}
+        paymentId={selectedInstallment.id || ''}
+        onPaymentProcessed={onPaymentUpdated}
+      />
+    );
+  };
+
   return (
     <>
       <CancelPlanDialog
@@ -156,22 +177,8 @@ export const ManagePlansDialogs = () => {
         installment={selectedInstallment}
       />
 
-      {/* Take payment dialog - Enhanced version with better validation */}
-      {selectedInstallment && showTakePaymentDialog && (
-        <TakePaymentDialog
-          open={showTakePaymentDialog}
-          onOpenChange={(open) => {
-            console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
-            setShowTakePaymentDialog(open);
-          }}
-          patientName={selectedPlan.patientName || ''}
-          patientEmail={selectedPlan.patientEmail || ''}
-          patientPhone={selectedPlan.patients?.phone || ''}
-          amount={selectedInstallment.amount || 0}
-          paymentId={selectedInstallment.id || ''}
-          onPaymentProcessed={onPaymentUpdated}
-        />
-      )}
+      {/* Take payment dialog - Enhanced version with conditional rendering */}
+      <PaymentDialogWrapper />
       
       {paymentToRefund && (
         <PaymentRefundDialog
