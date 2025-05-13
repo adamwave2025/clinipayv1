@@ -201,7 +201,11 @@ serve(async (req) => {
     }
 
     const newStatus = isFullRefund ? 'refunded' : 'partially_refunded';
+    
+    // FIXED: Store the refund amount correctly in pence
+    // Convert from pounds to pence if a specific amount is provided, otherwise use the original payment amount
     const refundAmountToStore = isFullRefund ? payment.amount_paid : Math.round(refundAmount * 100);
+    
     const currentTimestamp = new Date().toISOString();
     
     console.log(`💾 Updating payment record to status: ${newStatus} (isFullRefund: ${isFullRefund})`);

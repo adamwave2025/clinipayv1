@@ -66,17 +66,20 @@ export async function handleRefundUpdated(refund: any, stripeClient: Stripe, sup
     
     // Check if this is a full or partial refund
     const paymentAmount = paymentData.amount_paid;
-    const refundAmount = refund.amount / 100; // Convert from cents to pounds
-    const isFullRefund = refundAmount >= paymentAmount;
     
-    console.log(`Refund amount: ${refundAmount}, Payment amount: ${paymentAmount}, Full refund: ${isFullRefund}`);
+    // FIXED: Store refund amount in pence to be consistent with the rest of the system
+    // Previously we were dividing by 100 which was incorrectly converting from pence to pounds
+    const refundAmountInPence = refund.amount; // Keep in pence, no division
+    const isFullRefund = refundAmountInPence >= paymentAmount;
+    
+    console.log(`Refund amount: ${refundAmountInPence}, Payment amount: ${paymentAmount}, Full refund: ${isFullRefund}`);
     
     // Update the payment record
     const { error: updateError } = await supabaseClient
       .from("payments")
       .update({
         status: isFullRefund ? 'refunded' : 'partially_refunded',
-        refund_amount: refundAmount,
+        refund_amount: refundAmountInPence, // Now correctly in pence
         refunded_at: new Date().toISOString()
       })
       .eq("id", paymentData.id);
@@ -112,7 +115,7 @@ export async function handleRefundUpdated(refund: any, stripeClient: Stripe, sup
     await NotificationService.queueRefundNotifications(
       supabaseClient,
       paymentData,
-      refundAmount
+      refundAmountInPence / 100 // Convert to pounds for display in notifications
     );
     
     console.log("Refund processing completed successfully");
