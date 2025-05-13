@@ -1,12 +1,15 @@
 
-// Export all notification functions from the stub implementation
+// Export all notification functions from this new implementation
 export { 
   addToNotificationQueue,
   checkNotificationExists,
-  processNotificationsNow,
+  processNotificationsNow
+} from './queue-service';
+
+export {
   callWebhookDirectly,
   verifyWebhookConfiguration
-} from '../notification-stub';
+} from './webhook-service';
 
 // Export types
 export type {

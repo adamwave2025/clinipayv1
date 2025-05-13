@@ -1,8 +1,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { NotificationPayload, NotificationResponse, RecipientType } from './types';
-import { callWebhookDirectly } from './webhook-service';
-import { isValidNotificationPayload, preparePayloadForStorage, safelyParseNotificationPayload } from './validators';
+import { StandardNotificationPayload } from '@/types/notification';
+import { Json } from '@/integrations/supabase/types';
+import { NotificationResponse, RecipientType } from './notifications/types';
+import { callWebhookDirectly } from './webhook-caller';
+import { createPrimitivePayload, jsonToNotificationPayload, isValidNotificationPayload } from './notifications/json-utils';
 
 /**
  * Adds a notification to the queue and optionally processes it immediately
@@ -17,7 +19,7 @@ import { isValidNotificationPayload, preparePayloadForStorage, safelyParseNotifi
  */
 export async function addToNotificationQueue(
   type: string,
-  payload: NotificationPayload,
+  payload: StandardNotificationPayload,
   recipient_type: RecipientType,
   clinic_id: string,
   reference_id?: string,
@@ -31,22 +33,10 @@ export async function addToNotificationQueue(
     payment_id
   });
   
-  // Validate payload structure
-  if (!isValidNotificationPayload(payload)) {
-    console.error('Invalid notification payload structure:', payload);
-    return {
-      success: false,
-      error: 'Invalid notification payload structure',
-      webhook_success: false,
-      webhook_error: 'Invalid payload'
-    };
-  }
-  
-  // Prepare payload for storage - this breaks any circular references
-  // and avoids the deep type instantiation issue
-  const jsonPayload = preparePayloadForStorage(payload);
-  
   // Create a notification record in the queue
+  // Convert the StandardNotificationPayload to a Json compatible object
+  const jsonPayload = createPrimitivePayload(payload);
+  
   const { data: notification, error } = await supabase
     .from('notification_queue')
     .insert({
@@ -55,8 +45,7 @@ export async function addToNotificationQueue(
       recipient_type,
       status: 'pending',
       error_message: null,
-      retry_count: 0,
-      reference_id
+      retry_count: 0
     })
     .select('id')
     .single();
@@ -76,7 +65,7 @@ export async function addToNotificationQueue(
   
   // Now call the webhook directly for immediate processing
   try {
-    // Using the raw payload directly without conversion
+    // Using the raw payload directly here to avoid type conversion issues
     const webhookResult = await callWebhookDirectly(payload, recipient_type);
     
     // Update the notification record with the result
@@ -175,8 +164,14 @@ export async function processNotificationsNow(): Promise<{
   // Process each notification
   for (const notification of pendingNotifications) {
     try {
-      // Parse the payload safely without complex type relationships
-      const safePayload = safelyParseNotificationPayload(notification.payload);
+      // Use our safe utility functions to handle the payload conversion
+      // First, convert from Json to StandardNotificationPayload using our utility
+      const safePayload = jsonToNotificationPayload(notification.payload);
+      
+      // Then, validate the payload structure to prevent runtime errors
+      if (!isValidNotificationPayload(safePayload)) {
+        throw new Error('Invalid notification payload structure');
+      }
       
       const webhookResult = await callWebhookDirectly(
         safePayload,

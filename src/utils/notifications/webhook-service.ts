@@ -1,6 +1,5 @@
 
 import { NotificationPayload, RecipientType, WebhookResult } from './types';
-import { isValidNotificationPayload } from './validators';
 
 /**
  * Sends a notification via webhook
@@ -10,19 +9,9 @@ import { isValidNotificationPayload } from './validators';
  * @returns Promise with webhook result
  */
 export async function callWebhookDirectly(
-  payload: any, // Using any to break the type dependency chain
+  payload: NotificationPayload,
   recipient_type: RecipientType
 ): Promise<WebhookResult> {
-  // Validate payload before processing
-  if (!isValidNotificationPayload(payload)) {
-    console.error('Invalid notification payload for webhook:', payload);
-    return {
-      success: false,
-      error: 'Invalid payload structure',
-      status_code: 400
-    };
-  }
-  
   // This is currently using the stub implementation, but in future could be replaced
   // with a real webhook call. For now, we'll just log and return success.
   console.log(`[WebhookService] Sending ${recipient_type} notification with payload:`, 
