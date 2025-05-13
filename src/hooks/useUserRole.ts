@@ -6,8 +6,9 @@ import { useAuth } from '@/contexts/AuthContext';
 const ROLE_CACHE_KEY = 'user_role_cache';
 const ROLE_CACHE_USER_KEY = 'user_role_cache_user';
 const ROLE_CACHE_EXPIRY_KEY = 'user_role_cache_expiry';
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // Extended to 24 hours
 const DEFAULT_ROLE = 'clinic'; // Default role if we can't determine it
+const MAX_RETRIES = 5;
 
 export function useUserRole() {
   const { user } = useAuth();
@@ -58,8 +59,22 @@ export function useUserRole() {
       console.warn('Error clearing role cache:', e);
     }
   }, []);
-
+  
+  // Get role with more aggressive caching and offline resilience
   useEffect(() => {
+    // Skip if we already have a valid role and user ID match
+    const cachedRole = localStorage.getItem(ROLE_CACHE_KEY);
+    const cachedUserId = localStorage.getItem(ROLE_CACHE_USER_KEY);
+    const expiryStr = localStorage.getItem(ROLE_CACHE_EXPIRY_KEY);
+    const expiry = expiryStr ? parseInt(expiryStr, 10) : 0;
+    
+    if (cachedRole && cachedUserId === user?.id && expiry > Date.now()) {
+      setRole(cachedRole);
+      setLoading(false);
+      setInitialFetchComplete(true);
+      return;
+    }
+    
     const fetchUserRole = async () => {
       // Don't fetch too frequently
       const now = Date.now();
@@ -79,18 +94,17 @@ export function useUserRole() {
         return;
       }
 
-      // If we already have a cached role for this user, don't fetch again
-      const cachedRole = localStorage.getItem(ROLE_CACHE_KEY);
-      const cachedUserId = localStorage.getItem(ROLE_CACHE_USER_KEY);
-      const expiryStr = localStorage.getItem(ROLE_CACHE_EXPIRY_KEY);
-      const expiry = expiryStr ? parseInt(expiryStr, 10) : 0;
-      
-      if (cachedRole && expiry > Date.now() && cachedUserId === user.id) {
-        console.log('Using cached role from storage:', cachedRole);
+      // Always use a cached role for this user if available, regardless of expiry
+      if (cachedRole && cachedUserId === user.id) {
+        console.log('Using cached role, might be expired but matches current user:', cachedRole);
         setRole(cachedRole);
         setLoading(false);
         setInitialFetchComplete(true);
-        return;
+        
+        // Continue with fetch to update cache in background, but don't block UI
+        if (expiry < Date.now()) {
+          console.log('Cached role expired, refreshing in background');
+        }
       }
 
       try {
@@ -107,16 +121,30 @@ export function useUserRole() {
         if (error) {
           console.error('Error fetching user role:', error);
           
-          if (fetchAttempts > 3) {
-            // After multiple attempts, fall back to a default role
+          // Handle network errors more gracefully
+          if (error.message?.includes('Failed to fetch') || !navigator.onLine) {
+            console.warn('Network error detected, using fallback role');
+            
+            // Use cached role for this user even if expired
+            if (cachedRole && cachedUserId === user.id) {
+              setRole(cachedRole);
+              // Extend the expiry time even though it's potentially stale
+              updateRoleCache(user.id, cachedRole);
+            } else if (fetchAttempts > MAX_RETRIES) {
+              // Last resort
+              setRole(DEFAULT_ROLE);
+              updateRoleCache(user.id, DEFAULT_ROLE);
+            }
+          } else if (fetchAttempts > MAX_RETRIES) {
             console.warn(`Falling back to default role (${DEFAULT_ROLE}) after ${fetchAttempts} failed attempts`);
             setRole(DEFAULT_ROLE);
-            // Cache the fallback role but with a shorter expiry
+            // Cache with short expiry
             updateRoleCache(user.id, DEFAULT_ROLE);
-          } else if (cachedRole) {
-            // If we have any cached role, use it even if expired
+          } else if (cachedRole && cachedUserId === user.id) {
+            // Use cached role even if expired
             console.log('Using expired cached role as fallback:', cachedRole);
             setRole(cachedRole);
+            // Don't update expiry
           } else {
             // Last resort fallback
             setRole(DEFAULT_ROLE);
@@ -128,13 +156,16 @@ export function useUserRole() {
           
           // Update the cache with the fetched role
           updateRoleCache(user.id, fetchedRole);
+          
+          // Reset fetch attempts on success
+          setFetchAttempts(0);
         }
       } catch (error) {
         console.error('Unexpected error fetching user role:', error);
         
         // Use cached value as fallback even if expired
-        if (cachedRole) {
-          console.log('Using expired cached role after fetch error:', cachedRole);
+        if (cachedRole && cachedUserId === user.id) {
+          console.log('Using cached role after fetch error:', cachedRole);
           setRole(cachedRole);
         } else {
           setRole(DEFAULT_ROLE);
@@ -145,8 +176,9 @@ export function useUserRole() {
       }
     };
 
-    // Use a timer to ensure we don't flood with requests
-    const timerId = setTimeout(fetchUserRole, 100);
+    // Fetch immediately the first time, then add a small delay for retries
+    const delay = fetchAttempts === 0 ? 0 : Math.min(fetchAttempts * 1000, 5000);
+    const timerId = setTimeout(fetchUserRole, delay);
     
     return () => {
       clearTimeout(timerId);

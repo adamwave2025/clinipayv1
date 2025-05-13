@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User, CreditCard, Bell, Shield } from 'lucide-react';
 import { useClinicData } from '@/hooks/useClinicData';
@@ -18,7 +18,11 @@ import { handlePaymentAction } from './PaymentActions';
 const VALID_TABS = ['profile', 'payments', 'notifications', 'security'];
 
 const SettingsContainer = () => {
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Track whether we're in the middle of a URL transition to prevent infinite loops
+  const isUpdatingUrlRef = React.useRef(false);
   
   // Get initial tab from URL or use default
   const initialTabParam = searchParams.get('tab');
@@ -26,8 +30,54 @@ const SettingsContainer = () => {
   
   // React state is the source of truth, not URL params
   const [activeTab, setActiveTab] = useState(initialTab || 'profile');
-  const [lastStableTab, setLastStableTab] = useState(initialTab || 'profile');
-  const [isChangingTab, setIsChangingTab] = useState(false);
+  
+  // Update URL when tab changes, without triggering a re-render from URL change
+  const handleTabChange = useCallback((value: string) => {
+    if (!VALID_TABS.includes(value)) {
+      console.warn(`Invalid tab value: ${value}, defaulting to profile`);
+      value = 'profile';
+    }
+    
+    // Set our state immediately
+    setActiveTab(value);
+    
+    // Set a flag to ignore the next URL change event
+    isUpdatingUrlRef.current = true;
+    
+    // Update URL
+    setSearchParams({ tab: value }, { replace: true });
+    
+    // Clear the flag after the URL update has been processed
+    setTimeout(() => {
+      isUpdatingUrlRef.current = false;
+    }, 300);
+  }, [setSearchParams]);
+  
+  // Sync from URL to state, but only when URL changes from external navigation
+  useEffect(() => {
+    // Skip if we're the ones who just updated the URL
+    if (isUpdatingUrlRef.current) {
+      return;
+    }
+    
+    const tabParam = searchParams.get('tab');
+    
+    // Only update state if URL param exists and doesn't match current state
+    if (tabParam && VALID_TABS.includes(tabParam) && tabParam !== activeTab) {
+      console.log(`Syncing tab state from URL: ${tabParam}`);
+      setActiveTab(tabParam);
+    } 
+    // If no tab param, default to profile by updating URL (not state, to avoid loops)
+    else if (!tabParam) {
+      // Update URL but don't trigger state change
+      isUpdatingUrlRef.current = true;
+      setSearchParams({ tab: activeTab || 'profile' }, { replace: true });
+      
+      setTimeout(() => {
+        isUpdatingUrlRef.current = false;
+      }, 300);
+    }
+  }, [location.search, searchParams, setSearchParams, activeTab]);
   
   const { 
     clinicData, 
@@ -37,57 +87,6 @@ const SettingsContainer = () => {
     uploadLogo,
     deleteLogo
   } = useClinicData();
-
-  // Update URL when tab changes, but don't depend on URL for state
-  const handleTabChange = useCallback((value: string) => {
-    if (!VALID_TABS.includes(value)) {
-      console.warn(`Invalid tab value: ${value}, defaulting to profile`);
-      value = 'profile';
-    }
-    
-    // Mark that we're in the process of changing tabs to prevent oscillation
-    setIsChangingTab(true);
-    setActiveTab(value);
-    setLastStableTab(value);
-    
-    // Update URL without triggering a re-render
-    setSearchParams({ tab: value }, { replace: true });
-    
-    // Clear the changing state after a timeout to prevent rapid changes
-    setTimeout(() => {
-      setIsChangingTab(false);
-    }, 100);
-  }, [setSearchParams]);
-  
-  // Sync URL with state on initial load and when URL changes externally
-  // Only update if we're not in the middle of changing tabs
-  useEffect(() => {
-    if (isChangingTab) return;
-    
-    const tabParam = searchParams.get('tab');
-    
-    if (tabParam && VALID_TABS.includes(tabParam) && tabParam !== activeTab) {
-      console.log(`URL tab changed to ${tabParam}, updating state`);
-      setActiveTab(tabParam);
-      setLastStableTab(tabParam);
-    } else if (!tabParam && activeTab !== 'profile') {
-      // If no tab param, default to profile
-      console.log(`No tab param, defaulting to profile`);
-      setActiveTab('profile');
-      setLastStableTab('profile');
-      // Update URL to include tab=profile
-      setSearchParams({ tab: 'profile' }, { replace: true });
-    }
-  }, [searchParams, activeTab, isChangingTab, setSearchParams]);
-
-  // If something goes wrong, fall back to the last stable tab
-  useEffect(() => {
-    if (!VALID_TABS.includes(activeTab)) {
-      console.warn(`Active tab ${activeTab} is invalid, falling back to ${lastStableTab}`);
-      setActiveTab(lastStableTab);
-      setSearchParams({ tab: lastStableTab }, { replace: true });
-    }
-  }, [activeTab, lastStableTab, setSearchParams]);
 
   if (dataLoading) {
     return (
