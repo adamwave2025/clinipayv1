@@ -49,8 +49,9 @@ export function usePaymentLinkSender() {
         throw new Error(requestError?.message || 'Failed to create payment request');
       }
       
-      // Create unique payment URL
-      const paymentUrl = `${window.location.origin}/payment/${linkData.unique_id}`;
+      // Create unique payment URL - use id if unique_id doesn't exist
+      // In our database structure, we need to use the ID directly
+      const paymentUrl = `${window.location.origin}/payment/${linkData.id}`;
       
       // Get clinic details
       const { data: userData } = await supabase.auth.getUser();
@@ -72,12 +73,12 @@ export function usePaymentLinkSender() {
           sms: true,
         },
         patient: {
-          name: `${patientData.first_name} ${patientData.last_name}`,
+          name: `${patientData.first_name || patientData.name || 'Patient'}`,
           email: patientData.email,
           phone: patientData.phone,
         },
         payment: {
-          reference: linkData.name,
+          reference: linkData.title || 'Payment Request', // Use title instead of name
           amount: paymentAmount,
           payment_link: paymentUrl,
           message: customMessage || linkData.description || '',
@@ -90,10 +91,12 @@ export function usePaymentLinkSender() {
         },
       };
       
+      // Fix the call to addToNotificationQueue by providing the right number of arguments
       const notificationResult = await addToNotificationQueue(
         'patient',
         requestData.id,
-        notificationPayload
+        notificationPayload,
+        'payment_link_sent' // Adding the required notification type parameter
       );
       
       if (!notificationResult.success) {

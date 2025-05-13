@@ -12,7 +12,8 @@ interface SendPaymentLinkParams {
 }
 
 export function usePaymentLinkSender() {
-  const { isLoading: isOriginalLoading, sendPaymentLink: originalSendPaymentLink } = useOriginalPaymentLinkSender();
+  // Note: The imported hook only exposes isSending, not isLoading
+  const { isSending: isOriginalLoading, sendPaymentLink: originalSendPaymentLink } = useOriginalPaymentLinkSender();
   const [isSending, setIsSending] = useState(false);
 
   const sendPaymentLink = async ({ formData, paymentLinks, patientId }: SendPaymentLinkParams) => {
@@ -29,16 +30,25 @@ export function usePaymentLinkSender() {
 
       console.log('Sending payment link for patient ID:', patientId);
       
-      // Now use the original send payment link function with enhanced parameters
-      const enhancedFormData = {
-        ...formData,
-        patientId // Add the patient ID to the form data
-      };
+      // Find the selected payment link
+      const selectedLink = paymentLinks.find(link => link.id === formData.selectedLink);
+      if (!selectedLink) {
+        console.error('Selected payment link not found');
+        toast.error('Selected payment link not found');
+        setIsSending(false);
+        return { success: false };
+      }
+
+      // Get the payment amount from either the link or custom amount
+      const paymentAmount = formData.customAmount ? parseFloat(formData.customAmount) : selectedLink.amount;
       
-      const result = await originalSendPaymentLink({ 
-        formData: enhancedFormData, 
-        paymentLinks
-      });
+      // Call the original sendPaymentLink with the correct number of arguments
+      const result = await originalSendPaymentLink(
+        { id: patientId, name: formData.patientName, email: formData.patientEmail, phone: formData.patientPhone },
+        formData.selectedLink,
+        paymentAmount,
+        formData.message || undefined
+      );
       
       // No toasts here - we'll show one comprehensive toast at the end in useSendLinkPageState
       return result;
@@ -52,6 +62,7 @@ export function usePaymentLinkSender() {
   };
 
   return {
+    // Rename to match what consuming code expects
     isLoading: isOriginalLoading || isSending,
     sendPaymentLink
   };
