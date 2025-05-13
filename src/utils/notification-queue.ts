@@ -1,12 +1,9 @@
-// Export real implementations directly
-export { 
+
+// Export all functions from the new notification system
+export {
   addToNotificationQueue,
   checkNotificationExists,
-  processNotificationsNow
-} from './notification-queue-impl';
-
-// Keep webhooks-related functions exported through webhook-caller.ts
-export {
+  processNotificationsNow,
   callWebhookDirectly,
   verifyWebhookConfiguration
-} from './webhook-caller';
+} from './notifications';
