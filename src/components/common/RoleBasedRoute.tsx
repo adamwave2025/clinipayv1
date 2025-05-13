@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -19,17 +18,24 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
   const { user, loading: authLoading } = useAuth();
   const { role, loading: roleLoading, initialFetchComplete } = useUserRole();
   const location = useLocation();
+  
+  // Keep track of routing state to prevent loops
   const [shouldRedirect, setShouldRedirect] = useState(false);
   const [redirectReason, setRedirectReason] = useState<string | null>(null);
   const redirectDebounceTimer = useRef<NodeJS.Timeout | null>(null);
   const previousPathRef = useRef<string>(location.pathname);
   const redirectAttempts = useRef<number>(0);
+  const lastRedirectTimeRef = useRef<number>(0);
+  
+  // Stable version of allowedRoles to avoid rerenders
+  const allowedRolesMemoized = useMemo(() => allowedRoles, [allowedRoles.join(',')]);
   
   // Check if current path (without query parameters) matches redirectTo
   const isOnRedirectPath = () => {
     // Extract base path without query params
     const currentBasePath = location.pathname;
     const redirectToBasePath = redirectTo.split('?')[0];
+    
     // Check if the current path starts with the redirect path (for nested routes)
     return currentBasePath === redirectToBasePath || 
            (redirectToBasePath !== '/dashboard' && currentBasePath.startsWith(redirectToBasePath));
@@ -40,24 +46,39 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
     path: location.pathname,
     user: user?.id, 
     role, 
-    allowedRoles,
+    allowedRoles: allowedRolesMemoized,
     authLoading,
     roleLoading,
     initialFetchComplete,
     shouldRedirect,
     redirectReason,
     isOnRedirectPath: isOnRedirectPath(),
-    redirectAttempts: redirectAttempts.current
+    redirectAttempts: redirectAttempts.current,
+    timeSinceLastRedirect: Date.now() - lastRedirectTimeRef.current
   });
   
-  // Reset redirect attempts when path changes
+  // Reset redirect attempts when path changes significantly
   useEffect(() => {
     if (previousPathRef.current !== location.pathname) {
+      // Only reset if it's a completely different path, not just query params changing
       console.log(`Path changed from ${previousPathRef.current} to ${location.pathname}, resetting redirect attempts`);
       redirectAttempts.current = 0;
       previousPathRef.current = location.pathname;
     }
   }, [location.pathname]);
+  
+  // Prevent rapid redirects (rate limiting)
+  const canRedirectNow = () => {
+    const now = Date.now();
+    const minTimeBetweenRedirects = 1000; // 1 second
+    
+    if (now - lastRedirectTimeRef.current < minTimeBetweenRedirects) {
+      console.log('Blocking rapid redirect - too soon since last redirect');
+      return false;
+    }
+    
+    return true;
+  };
   
   useEffect(() => {
     // Only evaluate redirect after loading is complete and initial fetch is done
@@ -67,31 +88,45 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
         clearTimeout(redirectDebounceTimer.current);
       }
       
-      // Set a small debounce to prevent rapid redirect changes
+      // Set a larger debounce to prevent rapid redirect changes
       redirectDebounceTimer.current = setTimeout(() => {
         // Prevent infinite redirect loops
-        if (redirectAttempts.current > 3) {
+        if (redirectAttempts.current > 5) {
           console.warn('Too many redirect attempts, stopping redirection loop');
           setShouldRedirect(false);
           setRedirectReason("Redirect loop detected, allowing access");
           return;
         }
         
+        // If we're on the redirect path, don't redirect again
+        if (isOnRedirectPath()) {
+          console.log('Already on redirect path, preventing further redirects');
+          setShouldRedirect(false);
+          setRedirectReason(null);
+          return;
+        }
+        
         if (!user) {
-          setShouldRedirect(true);
-          setRedirectReason('User not authenticated');
-          redirectAttempts.current++;
-        } else if (role && !allowedRoles.includes(role) && !isOnRedirectPath()) {
-          setShouldRedirect(true);
-          setRedirectReason(`Role ${role} not allowed, only ${allowedRoles.join(', ')} can access`);
-          redirectAttempts.current++;
+          if (canRedirectNow()) {
+            setShouldRedirect(true);
+            setRedirectReason('User not authenticated');
+            redirectAttempts.current++;
+            lastRedirectTimeRef.current = Date.now();
+          }
+        } else if (role && !allowedRolesMemoized.includes(role)) {
+          if (canRedirectNow()) {
+            setShouldRedirect(true);
+            setRedirectReason(`Role ${role} not allowed, only ${allowedRolesMemoized.join(', ')} can access`);
+            redirectAttempts.current++;
+            lastRedirectTimeRef.current = Date.now();
+          }
         } else {
           setShouldRedirect(false);
           setRedirectReason(null);
           // Reset redirect attempts when no redirect is needed
           redirectAttempts.current = 0;
         }
-      }, 300); // Increased from 100ms to 300ms for better stability
+      }, 500); // Increased from 300ms to 500ms for better stability
     }
     
     // Clean up timeout on unmount
@@ -100,7 +135,7 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
         clearTimeout(redirectDebounceTimer.current);
       }
     };
-  }, [user, role, allowedRoles, authLoading, roleLoading, initialFetchComplete, location.pathname, redirectTo]);
+  }, [user, role, allowedRolesMemoized, authLoading, roleLoading, initialFetchComplete, location.pathname, redirectTo]);
   
   // Show loading while checking auth state or role
   if (authLoading || roleLoading || !initialFetchComplete) {
