@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import { toast } from 'sonner';
 import { ClinicDataService, ClinicData } from '@/services/ClinicDataService';
 import { LogoService } from '@/services/LogoService';
@@ -12,7 +12,7 @@ export function useClinicData() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const { user } = useAuth();
+  const { user } = useUnifiedAuth();
 
   const fetchClinicData = async () => {
     if (!user) {

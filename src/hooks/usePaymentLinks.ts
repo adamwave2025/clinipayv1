@@ -1,199 +1,99 @@
 
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
-import { PaymentLink } from '@/types/payment';
-import { toast } from 'sonner';
 import { PaymentLinkService } from '@/services/PaymentLinkService';
-import { formatPaymentLinks } from '@/utils/paymentLinkFormatter';
-import { getUserClinicId } from '@/utils/userUtils';
-
-// Type guard to check if result has an error property
-const hasError = (result: { success: boolean } | { success: boolean; error: any }): 
-  result is { success: boolean; error: any } => {
-  return 'error' in result;
-};
+import { toast } from 'sonner';
 
 export function usePaymentLinks() {
-  const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
-  const [archivedLinks, setArchivedLinks] = useState<PaymentLink[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isArchiveLoading, setIsArchiveLoading] = useState(false);
+  const [links, setLinks] = useState<any[]>([]);
+  const [archivedLinks, setArchivedLinks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useUnifiedAuth();
+  const { clinicId } = useUnifiedAuth();
 
-  const fetchPaymentLinks = async () => {
-    if (!user) {
-      setIsLoading(false);
+  const fetchLinks = async () => {
+    if (!clinicId) {
+      console.log('No clinicId available, skipping link fetch');
+      setLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    setLoading(true);
     setError(null);
 
     try {
-      // Get the clinic ID associated with this user
-      const clinicId = await getUserClinicId();
+      const [activeLinks, archivedLinks] = await Promise.all([
+        PaymentLinkService.getActiveLinks(clinicId),
+        PaymentLinkService.getArchivedLinks(clinicId)
+      ]);
       
-      if (!clinicId) {
-        throw new Error('Could not determine your clinic ID. Please contact support.');
-      }
-      
-      const result = await PaymentLinkService.fetchLinks(clinicId);
-      
-      setPaymentLinks(formatPaymentLinks(result.activeLinks));
-      setArchivedLinks(formatPaymentLinks(result.archivedLinks));
-    } catch (error: any) {
-      console.error('Error fetching payment links:', error);
-      setError(error.message);
+      setLinks(activeLinks);
+      setArchivedLinks(archivedLinks);
+    } catch (err: any) {
+      console.error('Error fetching payment links:', err);
+      setError(err.message);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const archivePaymentLink = async (linkId: string) => {
-    if (!user) {
-      toast.error('You must be logged in to manage payment links');
-      return { success: false };
-    }
-
-    setIsArchiveLoading(true);
-    
+  const archiveLink = async (linkId: string) => {
     try {
       const result = await PaymentLinkService.archiveLink(linkId);
       
-      if (!result.success) {
-        // Use type guard to safely access error property
-        const errorMessage = hasError(result) ? result.error : 'Unknown error';
-        throw new Error(errorMessage);
+      if (result.success) {
+        toast.success('Payment link archived successfully');
+        fetchLinks(); // Refresh the links
+        return true;
+      } else {
+        toast.error(result.error || 'Failed to archive payment link');
+        return false;
       }
-      
-      toast.success('Payment link archived successfully');
-      return { success: true };
     } catch (error: any) {
-      toast.error(`Failed to archive payment link: ${error.message}`);
-      return { success: false, error: error.message };
-    } finally {
-      setIsArchiveLoading(false);
+      toast.error(`Error archiving payment link: ${error.message}`);
+      console.error('Error archiving payment link:', error);
+      return false;
     }
   };
 
-  const unarchivePaymentLink = async (linkId: string) => {
-    if (!user) {
-      toast.error('You must be logged in to manage payment links');
-      return { success: false };
-    }
-
-    setIsArchiveLoading(true);
-    
+  const unarchiveLink = async (linkId: string) => {
     try {
       const result = await PaymentLinkService.unarchiveLink(linkId);
       
-      if (!result.success) {
-        // Use type guard to safely access error property
-        const errorMessage = hasError(result) ? result.error : 'Unknown error';
-        throw new Error(errorMessage);
+      if (result.success) {
+        toast.success('Payment link restored successfully');
+        fetchLinks(); // Refresh the links
+        return true;
+      } else {
+        toast.error(result.error || 'Failed to restore payment link');
+        return false;
       }
-      
-      toast.success('Payment link unarchived successfully');
-      return { success: true };
     } catch (error: any) {
-      toast.error(`Failed to unarchive payment link: ${error.message}`);
-      return { success: false, error: error.message };
-    } finally {
-      setIsArchiveLoading(false);
+      toast.error(`Error restoring payment link: ${error.message}`);
+      console.error('Error restoring payment link:', error);
+      return false;
     }
   };
 
-  const createPaymentLink = async (linkData: Omit<PaymentLink, 'id' | 'url' | 'createdAt' | 'isActive'>) => {
-    if (!user) {
-      toast.error('You must be logged in to create payment links');
-      return { success: false };
-    }
-
-    try {
-      console.log('Original link data before processing:', linkData);
-      
-      // Get the clinic ID associated with this user
-      const clinicId = await getUserClinicId();
-      
-      if (!clinicId) {
-        toast.error('Could not determine your clinic ID');
-        return { success: false, error: 'Clinic ID not found' };
-      }
-      
-      // CRITICAL: Ensure paymentPlan is properly handled as a boolean value
-      // Check if this is explicitly a payment plan
-      const isPaymentPlan = linkData.paymentPlan === true;
-      
-      // Convert camelCase to snake_case for database compatibility
-      const dbLinkData: any = {
-        title: linkData.title,
-        amount: linkData.amount,
-        type: linkData.type,
-        description: linkData.description,
-        payment_plan: isPaymentPlan, // Explicitly set as boolean value
-        clinic_id: clinicId
-      };
-      
-      // Only add payment plan fields if it's a payment plan
-      if (isPaymentPlan) {
-        console.log('Preparing payment plan data with fields:', {
-          paymentCount: linkData.paymentCount,
-          paymentCycle: linkData.paymentCycle,
-          planTotalAmount: linkData.planTotalAmount
-        });
-        
-        // Validate required payment plan fields
-        if (!linkData.paymentCount) {
-          return { success: false, error: 'Payment count is required for payment plans' };
-        }
-        
-        if (!linkData.paymentCycle) {
-          return { success: false, error: 'Payment cycle is required for payment plans' };
-        }
-        
-        dbLinkData.payment_count = linkData.paymentCount;
-        dbLinkData.payment_cycle = linkData.paymentCycle;
-        dbLinkData.plan_total_amount = linkData.planTotalAmount;
-      }
-      
-      console.log('Converting to database format:', dbLinkData);
-      
-      const result = await PaymentLinkService.createLink(dbLinkData);
-      
-      if (!result || result.error) {
-        throw new Error(result?.error || 'Failed to create payment link');
-      }
-      
-      const formattedLink = formatPaymentLinks([result.data[0]])[0];
-      
-      // Refresh the payment links list
-      await fetchPaymentLinks();
-      
-      return { 
-        success: true, 
-        paymentLink: formattedLink,
-        data: result.data[0]
-      };
-    } catch (error: any) {
-      toast.error(`Failed to create payment link: ${error.message}`);
-      return { success: false, error: error.message };
-    }
+  const refresh = () => {
+    fetchLinks();
   };
 
+  // Fetch links when clinicId changes
   useEffect(() => {
-    fetchPaymentLinks();
-  }, [user]);
+    if (clinicId) {
+      fetchLinks();
+    }
+  }, [clinicId]);
 
   return {
-    paymentLinks,
+    links,
     archivedLinks,
-    isLoading,
-    isArchiveLoading,
+    loading,
     error,
-    fetchPaymentLinks,
-    createPaymentLink,
-    archivePaymentLink,
-    unarchivePaymentLink
+    archiveLink,
+    unarchiveLink,
+    refresh,
   };
 }

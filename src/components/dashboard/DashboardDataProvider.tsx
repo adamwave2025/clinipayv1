@@ -1,211 +1,86 @@
 
-import React, { useState, useEffect } from 'react';
-import { Payment, PaymentLink } from '@/types/payment';
-import { toast } from 'sonner';
+import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
-import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
-import DashboardContext, { useDashboardData } from '@/contexts/DashboardContext';
-import { usePayments } from '@/hooks/usePayments';
 import { usePaymentStats } from '@/hooks/usePaymentStats';
-import { PaymentRefundService } from '@/services/PaymentRefundService';
-import { formatCurrency } from '@/utils/formatters';
+import { usePayments } from '@/hooks/usePayments';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext'; 
+import { supabase } from '@/integrations/supabase/client';
+import { getUserClinicId } from '@/utils/userUtils';
 
-export { useDashboardData } from '@/contexts/DashboardContext';
+interface DashboardContextType {
+  recentPayments: any[];
+  paymentLinks: any[];
+  paymentStats: any;
+  isLoading: boolean;
+  refreshData: () => void;
+  error: string | null;
+}
 
-export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { 
-    paymentLinks: rawPaymentLinks, 
-    archivedLinks: rawArchivedLinks,
-    isLoading: isLoadingLinks,
-    isArchiveLoading,
-    archivePaymentLink: apiArchiveLink,
-    unarchivePaymentLink: apiUnarchiveLink
-  } = usePaymentLinks();
-  
-  const { payments, setPayments, isLoadingPayments, fetchPayments } = usePayments();
-  const { stats } = usePaymentStats();
-  const { user } = useUnifiedAuth();
+const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
 
-  const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
-  const [archivedLinks, setArchivedLinks] = useState<PaymentLink[]>([]);
+export const useDashboardContext = () => {
+  const context = useContext(DashboardContext);
+  if (context === undefined) {
+    throw new Error('useDashboardContext must be used within a DashboardDataProvider');
+  }
+  return context;
+};
 
+interface DashboardDataProviderProps {
+  children: ReactNode;
+}
+
+export const DashboardDataProvider: React.FC<DashboardDataProviderProps> = ({ children }) => {
+  const { user, clinicId } = useUnifiedAuth();
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Hook dependencies are managed through the clinic ID from UnifiedAuth
+  const { payments: recentPayments, loading: paymentsLoading, refresh: refreshPayments, error: paymentsError } = usePayments();
+  const { links: paymentLinks, loading: linksLoading, refresh: refreshLinks, error: linksError } = usePaymentLinks();
+  const { stats: paymentStats, loading: statsLoading, refresh: refreshStats, error: statsError } = usePaymentStats();
+
+  const isLoading = paymentsLoading || linksLoading || statsLoading || !isInitialized;
+
+  // Combine errors if any exist
   useEffect(() => {
-    // Filter out payment plans from raw links
-    setPaymentLinks(rawPaymentLinks.filter(link => !link.paymentPlan));
-    setArchivedLinks(rawArchivedLinks.filter(link => !link.paymentPlan));
-  }, [rawPaymentLinks, rawArchivedLinks]);
+    if (paymentsError || linksError || statsError) {
+      setError(paymentsError || linksError || statsError);
+    } else {
+      setError(null);
+    }
+  }, [paymentsError, linksError, statsError]);
 
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
-  const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
-  const [isProcessingRefund, setIsProcessingRefund] = useState(false);
-
+  // Initialize when the component mounts
   useEffect(() => {
-    if (paymentLinks.length > 0) {
-      fetchPayments(paymentLinks);
+    if (user && clinicId) {
+      setIsInitialized(true);
     }
-  }, [paymentLinks]);
+  }, [user, clinicId]);
 
-  const archivePaymentLink = async (linkId: string) => {
-    const linkToArchive = paymentLinks.find(link => link.id === linkId);
-    if (!linkToArchive) return { success: false, error: 'Link not found' };
-    
-    setPaymentLinks(prev => prev.filter(link => link.id !== linkId));
-    setArchivedLinks(prev => [...prev, {...linkToArchive, isActive: false}]);
-    
-    const result = await apiArchiveLink(linkId);
-    
-    if (!result.success) {
-      setPaymentLinks(prev => [...prev, linkToArchive]);
-      setArchivedLinks(prev => prev.filter(link => link.id !== linkId));
-      
-      toast.error(`Failed to archive link: ${result.error || 'Unknown error'}`);
-    }
-    
-    return result;
-  };
-  
-  const unarchivePaymentLink = async (linkId: string) => {
-    const linkToUnarchive = archivedLinks.find(link => link.id === linkId);
-    if (!linkToUnarchive) return { success: false, error: 'Link not found' };
-    
-    setArchivedLinks(prev => prev.filter(link => link.id !== linkId));
-    setPaymentLinks(prev => [...prev, {...linkToUnarchive, isActive: true}]);
-    
-    const result = await apiUnarchiveLink(linkId);
-    
-    if (!result.success) {
-      setArchivedLinks(prev => [...prev, linkToUnarchive]);
-      setPaymentLinks(prev => prev.filter(link => link.id !== linkId));
-      
-      toast.error(`Failed to unarchive link: ${result.error || 'Unknown error'}`);
-    }
-    
-    return result;
-  };
-
-  const openRefundDialog = (paymentId: string) => {
-    console.log('Opening refund dialog with payment ID:', paymentId);
-    setPaymentToRefund(paymentId);
-    setRefundDialogOpen(true);
-  };
-
-  const handleRefund = async (amount?: number, paymentId?: string) => {
-    // Use the provided paymentId if available, otherwise fall back to the state variable
-    const refundPaymentId = paymentId || paymentToRefund;
-    console.log('Handling refund for payment ID:', refundPaymentId, 'amount:', amount);
-    
-    if (!refundPaymentId) {
-      console.error('No payment ID provided for refund');
+  const refreshData = () => {
+    if (!user || !clinicId) {
+      console.log('[DASHBOARD] Cannot refresh - no user or clinic ID');
       return;
     }
     
-    // Create a unique ID for the toast to allow dismissal
-    const loadingToastId = toast.loading('Processing refund...');
-    
-    try {
-      setIsProcessingRefund(true);
-      
-      const payment = payments.find(p => p.id === refundPaymentId);
-      if (!payment) {
-        console.error('Payment not found for ID:', refundPaymentId);
-        throw new Error('Payment not found');
-      }
-      console.log('Found payment to refund:', payment);
-      
-      const refundAmount = amount || payment.amount;
-      const epsilon = 0.001;
-      const isFullRefund = Math.abs(payment.amount - refundAmount) < epsilon;
-
-      // Process the refund through the service
-      const result = await PaymentRefundService.processRefund(refundPaymentId, refundAmount);
-      
-      // Always dismiss the loading toast
-      toast.dismiss(loadingToastId);
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Refund processing failed');
-      }
-      
-      // Update the local state with the refunded payment
-      setPayments(PaymentRefundService.getUpdatedPaymentAfterRefund(
-        payments, 
-        refundPaymentId, 
-        refundAmount
-      ));
-      
-      // Show success message
-      toast.success(
-        isFullRefund 
-          ? 'Payment refunded successfully' 
-          : `Partial refund of ${formatCurrency(refundAmount)} processed successfully`
-      );
-      
-      // Stagger dialog closures to prevent UI freezing
-      // First close the refund dialog
-      setRefundDialogOpen(false);
-      
-      // Wait a small amount of time before closing the detail dialog
-      // This gives the UI time to process the first dialog closure
-      setTimeout(() => {
-        setDetailDialogOpen(false);
-        // Then clear the payment to refund state
-        setTimeout(() => {
-          setPaymentToRefund(null);
-          setIsProcessingRefund(false);
-        }, 50);
-      }, 100);
-      
-    } catch (error: any) {
-      // Always dismiss the loading toast
-      toast.dismiss(loadingToastId);
-      
-      console.error('Error refunding payment:', error);
-      toast.error(`Failed to refund payment: ${error.message}`);
-      
-      // Still need to reset state on error, but do it in a staggered way
-      setTimeout(() => {
-        setIsProcessingRefund(false);
-        setRefundDialogOpen(false);
-        setTimeout(() => {
-          setDetailDialogOpen(false);
-          setPaymentToRefund(null);
-        }, 50);
-      }, 100);
-    }
-  };
-
-  const handlePaymentClick = (payment: Payment) => {
-    setSelectedPayment(payment);
-    setDetailDialogOpen(true);
-  };
-
-  const value = {
-    payments,
-    paymentLinks,
-    archivedLinks,
-    stats,
-    selectedPayment,
-    detailDialogOpen,
-    refundDialogOpen,
-    paymentToRefund,
-    isLoading: isLoadingLinks || isLoadingPayments,
-    isProcessingRefund,
-    isArchiveLoading,
-    setDetailDialogOpen,
-    setRefundDialogOpen,
-    handlePaymentClick,
-    openRefundDialog,
-    handleRefund,
-    archivePaymentLink,
-    unarchivePaymentLink,
-    // Add rawPaymentLinks to the context so we can check for payment plans
-    rawPaymentLinks,
+    console.log('[DASHBOARD] Refreshing all dashboard data');
+    refreshPayments();
+    refreshLinks();
+    refreshStats();
   };
 
   return (
-    <DashboardContext.Provider value={value}>
+    <DashboardContext.Provider
+      value={{
+        recentPayments,
+        paymentLinks,
+        paymentStats,
+        isLoading,
+        refreshData,
+        error
+      }}
+    >
       {children}
     </DashboardContext.Provider>
   );

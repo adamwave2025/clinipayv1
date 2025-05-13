@@ -1,16 +1,16 @@
 
-import { toast as sonnerToast, type ToastT } from 'sonner';
+import { type ToastT } from "sonner";
+import { toast } from "sonner";
 
-// Re-export the sonner toast
-export const toast = sonnerToast;
+export type Toast = ToastT;
 
-// Define a consistent interface for the toast hook
+export {
+  toast,
+  type ToastT,
+};
+
 export function useToast() {
-  // Empty toasts array to satisfy the Toaster component's needs
-  const toasts: ToastT[] = [];
-  
   return {
-    toast,
-    toasts
+    toast
   };
 }

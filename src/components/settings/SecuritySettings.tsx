@@ -1,194 +1,155 @@
 
 import React, { useState } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import { Eye, EyeOff } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { useUpdatePassword } from '@/hooks/useUpdatePassword';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-
-// Schema for password validation
-const passwordSchema = z.object({
-  currentPassword: z.string().min(6, 'Current password is required'),
-  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
-  confirmPassword: z.string(),
-}).refine(data => data.newPassword === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
-type PasswordFormValues = z.infer<typeof passwordSchema>;
+import { toast } from 'sonner';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 
 const SecuritySettings = () => {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const { updatePassword, isUpdating, error } = useUpdatePassword();
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const form = useForm<PasswordFormValues>({
-    resolver: zodResolver(passwordSchema),
-    defaultValues: {
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    },
-  });
-
-  const onSubmit = async (values: PasswordFormValues) => {
-    const success = await updatePassword(values.currentPassword, values.newPassword);
+  const { user } = useUnifiedAuth();
+  
+  // Basic password validation checks
+  const hasMinLength = newPassword.length >= 8;
+  const hasUppercase = /[A-Z]/.test(newPassword);
+  const hasNumber = /[0-9]/.test(newPassword);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
+  const isValidNewPassword = hasMinLength && hasUppercase && hasNumber && hasSpecial;
+  const passwordsMatch = newPassword === confirmPassword;
+  
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user) {
+      toast.error('You must be logged in to change your password');
+      return;
+    }
+    
+    // Client-side validation
+    if (!currentPassword) {
+      toast.error('Please enter your current password');
+      return;
+    }
+    
+    if (!newPassword) {
+      toast.error('Please enter a new password');
+      return;
+    }
+    
+    if (!isValidNewPassword) {
+      toast.error('New password does not meet the security requirements');
+      return;
+    }
+    
+    if (!passwordsMatch) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    
+    // All validation passed, proceed with update
+    const success = await updatePassword(currentPassword, newPassword);
+    
     if (success) {
-      form.reset();
+      // Reset form fields
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     }
   };
 
-  const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
-    if (field === 'current') setShowCurrentPassword(!showCurrentPassword);
-    if (field === 'new') setShowNewPassword(!showNewPassword);
-    if (field === 'confirm') setShowConfirmPassword(!showConfirmPassword);
-  };
-
   return (
-    <Card className="card-shadow">
-      <CardContent className="p-6">
-        <h3 className="text-lg font-medium mb-4">Security Settings</h3>
-        
-        <div className="space-y-6">
-          <div>
-            <h4 className="font-medium mb-2">Change Password</h4>
-            <p className="text-sm text-gray-500 mb-4">
-              Update your password regularly to keep your account secure.
-            </p>
+    <Card>
+      <CardHeader>
+        <CardTitle>Security Settings</CardTitle>
+        <CardDescription>
+          Update your password and manage account security
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handlePasswordUpdate} className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="current-password">Current Password</Label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="••••••••"
+                disabled={isUpdating}
+                className="mt-1"
+              />
+            </div>
             
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="currentPassword"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel>Current Password</FormLabel>
-                      <div className="relative">
-                        <FormControl>
-                          <Input
-                            type={showCurrentPassword ? "text" : "password"}
-                            placeholder="••••••••"
-                            className="w-full input-focus pr-10"
-                            {...field}
-                          />
-                        </FormControl>
-                        <button
-                          type="button"
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                          onClick={() => togglePasswordVisibility('current')}
-                        >
-                          {showCurrentPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="newPassword"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel>New Password</FormLabel>
-                      <div className="relative">
-                        <FormControl>
-                          <Input
-                            type={showNewPassword ? "text" : "password"}
-                            placeholder="••••••••"
-                            className="w-full input-focus pr-10"
-                            {...field}
-                          />
-                        </FormControl>
-                        <button
-                          type="button"
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                          onClick={() => togglePasswordVisibility('new')}
-                        >
-                          {showNewPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel>Confirm New Password</FormLabel>
-                      <div className="relative">
-                        <FormControl>
-                          <Input
-                            type={showConfirmPassword ? "text" : "password"}
-                            placeholder="••••••••"
-                            className="w-full input-focus pr-10"
-                            {...field}
-                          />
-                        </FormControl>
-                        <button
-                          type="button"
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
-                          onClick={() => togglePasswordVisibility('confirm')}
-                        >
-                          {showConfirmPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                {error && (
-                  <div className="text-sm text-red-500 mt-2">{error}</div>
-                )}
-                
-                <Button 
-                  type="submit" 
-                  className="btn-gradient" 
-                  disabled={isUpdating}
-                >
-                  {isUpdating ? (
-                    <>
-                      <LoadingSpinner size="sm" /> Updating...
-                    </>
-                  ) : (
-                    'Update Password'
-                  )}
-                </Button>
-              </form>
-            </Form>
+            <div>
+              <Label htmlFor="new-password">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                disabled={isUpdating}
+                className="mt-1"
+              />
+              
+              {/* Password strength indicators */}
+              <div className="mt-2 space-y-1 text-xs">
+                <p className={hasMinLength ? "text-green-600" : "text-gray-500"}>
+                  ✓ At least 8 characters
+                </p>
+                <p className={hasUppercase ? "text-green-600" : "text-gray-500"}>
+                  ✓ At least one uppercase letter
+                </p>
+                <p className={hasNumber ? "text-green-600" : "text-gray-500"}>
+                  ✓ At least one number
+                </p>
+                <p className={hasSpecial ? "text-green-600" : "text-gray-500"}>
+                  ✓ At least one special character
+                </p>
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                disabled={isUpdating}
+                className="mt-1"
+              />
+              
+              {confirmPassword && (
+                <p className={`text-xs mt-1 ${passwordsMatch ? "text-green-600" : "text-red-500"}`}>
+                  {passwordsMatch ? "✓ Passwords match" : "✗ Passwords do not match"}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+          
+          {error && (
+            <div className="text-red-500 text-sm">
+              Error: {error}
+            </div>
+          )}
+          
+          <Button 
+            type="submit" 
+            disabled={isUpdating || !isValidNewPassword || !passwordsMatch || !currentPassword} 
+            className="w-full sm:w-auto"
+          >
+            {isUpdating ? 'Updating...' : 'Update Password'}
+          </Button>
+        </form>
       </CardContent>
     </Card>
   );
