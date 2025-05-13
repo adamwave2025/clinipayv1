@@ -18,52 +18,30 @@ export const formatPaymentLinks = (links: any[]): PaymentLink[] => {
     try {
       const formatted: PaymentLink = {
         id: link.id,
-        title: link.title,
-        description: link.description,
-        amount: link.amount,
-        status: link.status || (link.is_active ? 'active' : 'inactive'),
-        isActive: isPaymentLinkActive(link),
+        title: link.title || '',
+        amount: link.amount || 0,
+        type: link.payment_type || link.type || 'deposit', // Default to 'deposit' if type is missing
+        description: link.description || '',
+        url: link.url,
         createdAt: link.created_at,
-        expiresAt: link.expires_at,
-        patientId: link.patient_id,
-        patientName: link.patient_name || link.patients?.name,
-        patientEmail: link.patient_email || link.patients?.email,
-        paymentType: link.payment_type || link.type,
+        isActive: isPaymentLinkActive(link),
         paymentPlan: link.payment_plan || false,
-        paymentFrequency: link.payment_frequency || link.payment_cycle,
-        paymentCurrency: link.currency || 'GBP',
-        clinicId: link.clinic_id,
-        clinicName: link.clinic_name
-      };
-      
-      // Handle installments if present
-      if (link.installments) {
-        formatted.installments = link.installments;
-      }
-      
-      // Handle payment cycle data
-      if (link.payment_cycle) {
-        formatted.paymentCycle = link.payment_cycle;
-      }
-      
-      // Handle remaining fields from raw data
-      formatted.rawData = {
-        ...link
+        paymentCycle: link.payment_cycle || link.payment_frequency,
+        paymentCount: link.payment_count,
+        planTotalAmount: link.plan_total_amount
       };
       
       return formatted;
     } catch (error) {
       console.error('Error formatting payment link:', error, link);
-      // Return a minimal valid link to prevent errors
+      // Return a minimal valid link to prevent errors - with all required fields
       return {
         id: link.id || 'unknown',
         title: link.title || 'Error loading link',
         amount: link.amount || 0,
-        status: 'error',
-        isActive: false,
-        createdAt: link.created_at || new Date().toISOString(),
-        paymentType: 'unknown',
-        paymentCurrency: 'GBP'
+        type: 'deposit', // Ensure type is always provided as it's required
+        description: '',
+        createdAt: link.created_at
       };
     }
   });
