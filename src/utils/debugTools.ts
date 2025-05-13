@@ -1,186 +1,153 @@
 
 /**
- * Debug tools for troubleshooting navigation and authentication issues
+ * Debug tools for React applications
  */
 
-// Debug flags that can be enabled via localStorage
-export const DEBUG_FLAGS = {
-  AUTH: 'DEBUG_AUTH',
-  ROLES: 'DEBUG_ROLES',
-  ROUTES: 'DEBUG_ROUTES',
-  SETTINGS: 'DEBUG_SETTINGS',
-  NOTIFICATIONS: 'DEBUG_NOTIFICATIONS',
-  URL_PARAMS: 'DEBUG_URL_PARAMS'
+// Type for optional debug options
+interface DebugOptions {
+  verbose?: boolean;
+  includeStack?: boolean;
+  timestamp?: boolean;
+}
+
+/**
+ * Create a scoped logger for a specific component or module
+ * @param scope The name of the component or module
+ * @param options Debug options
+ */
+export const createScopedLogger = (scope: string, options: DebugOptions = {}) => {
+  const { verbose = false, includeStack = false, timestamp = true } = options;
+  
+  // Create a timestamp string for logging
+  const getTimestamp = (): string => {
+    if (!timestamp) return '';
+    const now = new Date();
+    return `[${now.toISOString()}] `;
+  };
+
+  return {
+    log: (message: string, ...args: any[]) => {
+      if (verbose) {
+        console.log(`${getTimestamp()}${scope}: ${message}`, ...args);
+      }
+    },
+    
+    info: (message: string, ...args: any[]) => {
+      console.info(`${getTimestamp()}${scope}: ${message}`, ...args);
+    },
+    
+    warn: (message: string, ...args: any[]) => {
+      console.warn(`${getTimestamp()}${scope}: ${message}`, ...args);
+      if (includeStack) {
+        console.warn(new Error().stack);
+      }
+    },
+    
+    error: (message: string, ...args: any[]) => {
+      console.error(`${getTimestamp()}${scope}: ${message}`, ...args);
+      if (includeStack) {
+        console.error(new Error().stack);
+      }
+    },
+    
+    group: (label: string) => {
+      console.group(`${getTimestamp()}${scope}: ${label}`);
+    },
+    
+    groupEnd: () => {
+      console.groupEnd();
+    },
+    
+    // Add a method to log component render
+    rendered: (props?: any) => {
+      if (verbose) {
+        if (props) {
+          console.log(`${getTimestamp()}${scope} rendered with:`, props);
+        } else {
+          console.log(`${getTimestamp()}${scope} rendered`);
+        }
+      }
+    }
+  };
 };
 
 /**
- * Enable a debug flag in localStorage
+ * Check if React hooks can be called in the current context
+ * This helps debug "Hooks can only be called inside a component" errors
  */
-export const enableDebugFlag = (flag: string): void => {
+export function checkReactHookContext(): boolean {
   try {
-    localStorage.setItem(flag, 'true');
-    console.log(`Debug flag ${flag} enabled`);
-  } catch (e) {
-    console.error(`Error enabling debug flag ${flag}:`, e);
-  }
-};
-
-/**
- * Disable a debug flag in localStorage
- */
-export const disableDebugFlag = (flag: string): void => {
-  try {
-    localStorage.removeItem(flag);
-    console.log(`Debug flag ${flag} disabled`);
-  } catch (e) {
-    console.error(`Error disabling debug flag ${flag}:`, e);
-  }
-};
-
-/**
- * Check if a debug flag is enabled
- */
-export const isDebugFlagEnabled = (flag: string): boolean => {
-  try {
-    return localStorage.getItem(flag) === 'true';
-  } catch (e) {
-    console.error(`Error checking debug flag ${flag}:`, e);
+    // Create a temporary component that uses a hook
+    const temp = () => {
+      // Access React API through window to avoid direct import issues
+      const React = (window as any).React;
+      if (!React || !React.useState) {
+        console.error('React not available in global scope or useState not defined');
+        return false;
+      }
+      
+      // Try to use useState hook - will throw if not in a component context
+      const [test, setTest] = React.useState(false);
+      return true;
+    };
+    
+    // Call the component
+    return temp();
+  } catch (err) {
+    console.error('Not in a valid React hooks context:', err);
     return false;
   }
-};
+}
 
 /**
- * Clear auth-related caches
- * Useful when troubleshooting authentication issues
+ * Check if we're in a React context
  */
-export const clearAuthCaches = (): void => {
+export function isInReactContext(): boolean {
+  // Access React API through window to avoid direct import issues
+  const React = (window as any).React;
+  if (!React) {
+    console.warn('React not found in global scope');
+    return false;
+  }
+  
+  // Check if basic React API is available
+  if (!React.createElement || !React.Fragment) {
+    console.warn('React API appears to be incomplete');
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Function to validate that all required React providers are present
+ * in the component tree above the current component
+ */
+export function validateReactProviders(): string[] {
+  const missingProviders: string[] = [];
+  
+  // Check for common providers
   try {
-    // Clear role cache
-    localStorage.removeItem('user_role_cache');
-    localStorage.removeItem('user_role_cache_user');
-    localStorage.removeItem('user_role_cache_expiry');
+    const React = (window as any).React;
+    if (!React) return ['React (global)'];
     
-    // Clear clinic ID cache
-    localStorage.removeItem('user_clinic_id');
-    localStorage.removeItem('user_clinic_id_expiry');
+    // More provider checks could be added here
     
-    console.log('Auth caches cleared successfully');
-  } catch (e) {
-    console.error('Error clearing auth caches:', e);
+    return missingProviders;
+  } catch (err) {
+    console.error('Error checking React providers:', err);
+    return ['Unknown (error during check)'];
   }
-};
+}
 
 /**
- * Clear navigation-related caches and loops
+ * Function to log React contexts that have missing providers
  */
-export const clearNavigationState = (): void => {
-  try {
-    // Reset any potential URL history or loop detection caches
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.removeItem('navigation_history');
-      sessionStorage.removeItem('navigation_loop_detected');
-    }
-    
-    console.log('Navigation state reset successfully');
-  } catch (e) {
-    console.error('Error clearing navigation state:', e);
+export function logMissingProviders(): void {
+  const missing = validateReactProviders();
+  if (missing.length > 0) {
+    console.warn('Missing React providers detected:', missing.join(', '));
+  } else {
+    console.log('No missing React providers detected');
   }
-};
-
-/**
- * Enable all debug flags
- */
-export const enableAllDebugFlags = (): void => {
-  Object.values(DEBUG_FLAGS).forEach(flag => enableDebugFlag(flag));
-  console.log('All debug flags enabled');
-};
-
-/**
- * Disable all debug flags
- */
-export const disableAllDebugFlags = (): void => {
-  Object.values(DEBUG_FLAGS).forEach(flag => disableDebugFlag(flag));
-  console.log('All debug flags disabled');
-};
-
-/**
- * Print the current state of all debug flags to console
- */
-export const printDebugFlags = (): void => {
-  console.group('Debug Flags Status:');
-  Object.values(DEBUG_FLAGS).forEach(flag => {
-    console.log(`${flag}: ${isDebugFlagEnabled(flag) ? 'Enabled' : 'Disabled'}`);
-  });
-  console.groupEnd();
-};
-
-/**
- * Reset all navigation and loop protection
- */
-export const resetNavigationLoopProtection = (): void => {
-  clearNavigationState();
-  
-  // For ManagePlansPage loop protection
-  if (typeof sessionStorage !== 'undefined') {
-    sessionStorage.removeItem('plans_navigation_loop');
-  }
-  
-  console.log('Navigation loop protection reset');
-  
-  // This often requires a page reload to take full effect
-  if (typeof window !== 'undefined') {
-    console.log('For this to take full effect, you may need to refresh the page');
-  }
-};
-
-/**
- * Run this function to enable debugging mode
- * Will activate all debug flags and clear caches
- */
-export const troubleshootNavigationIssues = (): void => {
-  enableAllDebugFlags();
-  clearAuthCaches();
-  clearNavigationState();
-  console.log('%cNavigation troubleshooting mode enabled', 'color: green; font-weight: bold');
-  console.log('Please refresh the page to see detailed debug logs');
-  console.log('You may need to sign out and sign back in for all changes to take effect');
-};
-
-/**
- * Quick fix for payment plans navigation loop issue
- */
-export const fixPaymentPlansNavigation = (): void => {
-  console.log('Applying Payment Plans navigation fix...');
-  
-  // Clear any stored navigation state that might be causing loops
-  clearNavigationState();
-  
-  // Clear role cache to force a fresh role check
-  localStorage.removeItem('user_role_cache');
-  localStorage.removeItem('user_role_cache_user');
-  localStorage.removeItem('user_role_cache_expiry');
-  
-  // Reset any page-specific loop detection
-  if (typeof sessionStorage !== 'undefined') {
-    sessionStorage.removeItem('plans_navigation_loop');
-  }
-  
-  // Enable diagnostics
-  enableDebugFlag(DEBUG_FLAGS.ROUTES);
-  enableDebugFlag(DEBUG_FLAGS.URL_PARAMS);
-  
-  console.log('Fix applied! Please refresh the page for changes to take effect.');
-  return 'Refresh the page to apply the fix.';
-};
-
-// Export the troubleshooting function as a global for easy access from console
-if (typeof window !== 'undefined') {
-  // @ts-ignore - Adding property to window
-  window.troubleshootNavigationIssues = troubleshootNavigationIssues;
-  // @ts-ignore - Adding property to window
-  window.clearAuthCaches = clearAuthCaches;
-  // @ts-ignore - Adding property to window
-  window.resetNavigationLoopProtection = resetNavigationLoopProtection;
-  // @ts-ignore - Adding property to window
-  window.fixPaymentPlansNavigation = fixPaymentPlansNavigation;
 }

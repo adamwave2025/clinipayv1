@@ -1,4 +1,3 @@
-
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -69,11 +68,11 @@ const queryClient = new QueryClient({
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Sonner />
-      <BrowserRouter>
-        <ScrollToTop />
-        <AuthProvider>
+    <BrowserRouter>
+      <ScrollToTop />
+      <AuthProvider>
+        <TooltipProvider>
+          <Sonner />
           <ConnectivityMonitor>
             <Routes>
               {/* Public Routes - Home page will redirect to dashboard if authenticated */}
@@ -82,6 +81,8 @@ const App = () => (
                   <HomePage />
                 </AuthRedirectWrapper>
               } />
+              
+              {/* Public Routes */}
               <Route path="/about" element={<AboutPage />} />
               <Route path="/fees" element={<FeesPage />} />
               <Route path="/contact" element={<ContactPage />} />
@@ -180,9 +181,9 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ConnectivityMonitor>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+        </TooltipProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 

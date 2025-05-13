@@ -3,6 +3,7 @@
  * Utility functions for working with plan activities
  */
 import { PaymentLink } from '../types/payment';
+import { PaymentLinkData } from '@/types/paymentLink';
 
 export interface PlanActivity {
   id: string;
@@ -40,7 +41,7 @@ export const formatPlanActivities = (activities: any[]): PlanActivity[] => {
 /**
  * Check if a payment link is active
  */
-export const isPaymentLinkActive = (link?: PaymentLink | null): boolean => {
+export const isPaymentLinkActive = (link?: PaymentLink | PaymentLinkData | null): boolean => {
   if (!link) return false;
   
   // Check for manual active/inactive flag
@@ -49,12 +50,12 @@ export const isPaymentLinkActive = (link?: PaymentLink | null): boolean => {
   }
   
   // For DB records, check is_active field
-  if (typeof link.is_active === 'boolean') {
+  if ('is_active' in link && typeof link.is_active === 'boolean') {
     return link.is_active;
   }
   
   // Check for status-based activity
-  if (link.status) {
+  if ('status' in link && link.status) {
     return !['cancelled', 'completed', 'archived'].includes(link.status.toLowerCase());
   }
   

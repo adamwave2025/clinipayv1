@@ -1,76 +1,54 @@
 
-/**
- * Utility functions for checking plan status
- */
 import { Plan } from './planTypes';
 
 /**
- * Check if a payment plan is paused
+ * Utility functions for determining plan status
+ */
+
+/**
+ * Check if a plan is paused
  */
 export const isPlanPaused = (plan: Plan | null): boolean => {
   if (!plan) return false;
-  
-  return plan.status?.toLowerCase() === 'paused';
+  return plan.status === 'paused';
 };
 
 /**
- * Check if a payment plan is completed
- */
-export const isPlanCompleted = (plan: Plan | null): boolean => {
-  if (!plan) return false;
-  
-  return plan.status?.toLowerCase() === 'completed';
-};
-
-/**
- * Check if a payment plan is cancelled
- */
-export const isPlanCancelled = (plan: Plan | null): boolean => {
-  if (!plan) return false;
-  
-  return plan.status?.toLowerCase() === 'cancelled';
-};
-
-/**
- * Check if a payment plan is active (not paused, completed, or cancelled)
+ * Check if a plan is active
  */
 export const isPlanActive = (plan: Plan | null): boolean => {
   if (!plan) return false;
-  
-  return !isPlanPaused(plan) && !isPlanCompleted(plan) && !isPlanCancelled(plan);
+  return ['active', 'pending'].includes(plan.status);
 };
 
 /**
- * Check if a payment plan has overdue payments
+ * Check if a plan is completed
  */
-export const hasPlanOverduePayments = (plan: Plan | null): boolean => {
+export const isPlanCompleted = (plan: Plan | null): boolean => {
   if (!plan) return false;
-  
-  return plan.status?.toLowerCase() === 'overdue';
+  return plan.status === 'completed';
 };
 
 /**
- * Get a human-readable status description for a plan
+ * Check if a plan is cancelled
  */
-export const getPlanStatusDescription = (plan: Plan | null): string => {
+export const isPlanCancelled = (plan: Plan | null): boolean => {
+  if (!plan) return false;
+  return plan.status === 'cancelled';
+};
+
+/**
+ * Get a human-readable status text
+ */
+export const getPlanStatusText = (plan: Plan | null): string => {
   if (!plan) return 'Unknown';
   
-  const status = plan.status?.toLowerCase() || '';
-  
-  switch (status) {
-    case 'active':
-      return 'Active';
-    case 'paused':
-      return 'Paused';
-    case 'completed':
-      return 'Completed';
-    case 'cancelled':
-      return 'Cancelled';
-    case 'overdue':
-      return 'Overdue';
-    case 'pending':
-      return 'Pending activation';
-    default:
-      return plan.status || 'Unknown';
+  switch (plan.status) {
+    case 'active': return 'Active';
+    case 'paused': return 'Paused';
+    case 'completed': return 'Completed';
+    case 'cancelled': return 'Cancelled';
+    case 'pending': return 'Pending';
+    default: return plan.status || 'Unknown';
   }
 };

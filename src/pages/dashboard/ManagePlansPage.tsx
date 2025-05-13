@@ -16,9 +16,17 @@ import PlanTemplatesView from '@/components/dashboard/payment-plans/PlanTemplate
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { Toaster } from "@/components/ui/sonner";
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { TooltipProvider } from '@/components/ui/tooltip';
+
+// Component state interface to make it more explicit
+interface ManagePlansPageState {
+  isTemplateView: boolean;
+  createSheetOpen: boolean;
+  templateRefreshTrigger: number;
+}
 
 const ManagePlansHeader: React.FC<{
   isTemplateView: boolean;
@@ -76,13 +84,6 @@ const PaymentDetailsDialogWrapper = () => {
     />
   );
 };
-
-// Component state interface to make it more explicit
-interface ManagePlansPageState {
-  isTemplateView: boolean;
-  createSheetOpen: boolean;
-  templateRefreshTrigger: number;
-}
 
 const ManagePlansPageContent: React.FC = () => {
   // Set document title for this page
@@ -324,7 +325,7 @@ const ManagePlansPageContent: React.FC = () => {
   }, []);
 
   return (
-    <>
+    <TooltipProvider>
       <ManagePlansHeader 
         isTemplateView={isTemplateView}
         onCreatePlanClick={handleCreatePlanClick}
@@ -363,7 +364,7 @@ const ManagePlansPageContent: React.FC = () => {
       />
       
       <Toaster />
-    </>
+    </TooltipProvider>
   );
 };
 
@@ -373,7 +374,9 @@ const ManagePlansPage: React.FC = () => {
     <DashboardLayout userType="clinic">
       <DashboardDataProvider>
         <ManagePlansProvider>
-          <ManagePlansPageContent />
+          <TooltipProvider>
+            <ManagePlansPageContent />
+          </TooltipProvider>
         </ManagePlansProvider>
       </DashboardDataProvider>
     </DashboardLayout>
