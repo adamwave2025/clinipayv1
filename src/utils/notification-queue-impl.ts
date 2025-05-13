@@ -65,6 +65,7 @@ export async function addToNotificationQueue(
   
   // Now call the webhook directly for immediate processing
   try {
+    // Using the raw payload directly here to avoid type conversion issues
     const webhookResult = await callWebhookDirectly(payload, recipient_type);
     
     // Update the notification record with the result
