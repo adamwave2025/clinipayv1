@@ -13,5 +13,13 @@ export interface NotificationResponse {
   webhook_error?: string;
 }
 
+// Add the missing WebhookResult type
+export interface WebhookResult {
+  success: boolean;
+  error?: string;
+  status_code?: number;
+  response_body?: string;
+}
+
 // Re-export the StandardNotificationPayload type
 export type { StandardNotificationPayload };

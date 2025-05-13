@@ -163,10 +163,11 @@ export async function processNotificationsNow(): Promise<{
   // Process each notification
   for (const notification of pendingNotifications) {
     try {
-      // Safely convert the JSON payload to a typed notification payload
+      // Use our safe utility functions to handle the payload conversion
+      // First, convert from Json to StandardNotificationPayload using our utility
       const safePayload = jsonToNotificationPayload(notification.payload);
       
-      // Validate the payload to ensure it has the expected structure
+      // Then, validate the payload structure to prevent runtime errors
       if (!isValidNotificationPayload(safePayload)) {
         throw new Error('Invalid notification payload structure');
       }
@@ -202,9 +203,9 @@ export async function processNotificationsNow(): Promise<{
         .from('notification_queue')
         .update({
           status: 'failed',
+          retry_count: notification.retry_count + 1,
           error_message: error.message || 'Unknown error during processing',
-          processed_at: new Date().toISOString(),
-          retry_count: notification.retry_count + 1
+          processed_at: new Date().toISOString()
         })
         .eq('id', notification.id);
     }
