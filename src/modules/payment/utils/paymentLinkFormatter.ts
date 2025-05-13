@@ -1,95 +1,70 @@
 
-import { PaymentLink } from '@/types/payment';
+/**
+ * Utility functions for formatting payment links
+ */
+import { PaymentLink } from '../types/payment';
+import { isPaymentLinkActive } from './planActivityUtils';
 
 /**
- * Formats payment links for display and adds additional properties
+ * Format payment links from API response
  */
-export function formatPaymentLinks(links: any[]): PaymentLink[] {
+export const formatPaymentLinks = (links: any[]): PaymentLink[] => {
   if (!links || !Array.isArray(links)) {
-    console.error('Invalid payment links data:', links);
+    console.warn('Invalid links data provided to formatPaymentLinks:', links);
     return [];
   }
-
+  
   return links.map(link => {
     try {
-      // Default link values to prevent rendering errors
-      const safeLink = {
-        id: link.id || '',
-        title: link.title || 'Untitled Link',
+      const formatted: PaymentLink = {
+        id: link.id,
+        title: link.title,
+        description: link.description,
+        amount: link.amount,
+        status: link.status || (link.is_active ? 'active' : 'inactive'),
+        isActive: isPaymentLinkActive(link),
+        createdAt: link.created_at,
+        expiresAt: link.expires_at,
+        patientId: link.patient_id,
+        patientName: link.patient_name || link.patients?.name,
+        patientEmail: link.patient_email || link.patients?.email,
+        paymentType: link.payment_type || link.type,
+        paymentPlan: link.payment_plan || false,
+        paymentFrequency: link.payment_frequency || link.payment_cycle,
+        paymentCurrency: link.currency || 'GBP',
+        clinicId: link.clinic_id,
+        clinicName: link.clinic_name
+      };
+      
+      // Handle installments if present
+      if (link.installments) {
+        formatted.installments = link.installments;
+      }
+      
+      // Handle payment cycle data
+      if (link.payment_cycle) {
+        formatted.paymentCycle = link.payment_cycle;
+      }
+      
+      // Handle remaining fields from raw data
+      formatted.rawData = {
+        ...link
+      };
+      
+      return formatted;
+    } catch (error) {
+      console.error('Error formatting payment link:', error, link);
+      // Return a minimal valid link to prevent errors
+      return {
+        id: link.id || 'unknown',
+        title: link.title || 'Error loading link',
         amount: link.amount || 0,
-        type: link.type || 'unknown',
-        description: link.description || '',
-        isActive: link.isActive !== undefined ? link.isActive : 
-                 (link.is_active !== undefined ? link.is_active : true),
-        created_at: link.created_at || new Date().toISOString(),
-        payment_plan: !!link.payment_plan,
-        patient: null,
-        payment_count: link.payment_count || null,
-        payment_cycle: link.payment_cycle || null,
-        plan_total_amount: link.plan_total_amount || null
-      };
-
-      // Add computed properties
-      return {
-        ...safeLink,
-        // Add any computed properties here
-        formattedDate: formatCreatedAt(safeLink.created_at),
-        typeLabel: formatTypeLabel(safeLink.type),
-        isActive: safeLink.isActive // Using the normalized isActive property
-      };
-    } catch (err) {
-      console.error('Error formatting payment link:', err, link);
-      // Return a safe default object to prevent UI crashes
-      return {
-        id: link.id || 'error-link',
-        title: 'Error: Malformed Link',
-        amount: 0,
-        type: 'unknown',
-        description: '',
+        status: 'error',
         isActive: false,
-        created_at: new Date().toISOString(),
-        formattedDate: 'Unknown date',
-        typeLabel: 'Unknown',
-        payment_plan: false,
-        patient: null,
-        payment_count: null,
-        payment_cycle: null,
-        plan_total_amount: null
+        createdAt: link.created_at || new Date().toISOString(),
+        paymentType: 'unknown',
+        paymentCurrency: 'GBP'
       };
     }
   });
-}
-
-function formatCreatedAt(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-GB', { 
-      day: 'numeric', 
-      month: 'short', 
-      year: 'numeric' 
-    }).format(date);
-  } catch (err) {
-    console.error('Error formatting date:', err);
-    return 'Unknown date';
-  }
-}
-
-function formatTypeLabel(type: string): string {
-  const typeMap: Record<string, string> = {
-    'treatment': 'Treatment',
-    'consultation': 'Consultation',
-    'deposit': 'Deposit',
-    'payment_plan': 'Payment Plan',
-    'unknown': 'Unknown'
-  };
-
-  return typeMap[type] || 'Other';
-}
-
-/**
- * Determines if a payment link is still active based on its status
- */
-export function isPaymentLinkActive(link: PaymentLink | null): boolean {
-  if (!link) return false;
-  return link.isActive === true;
-}
+};

@@ -1,49 +1,63 @@
 
-import { PaymentLink } from '@/types/payment';
-import { PaymentLinkData } from '../types/paymentLink';
-
 /**
- * Formats plan activities for display
+ * Utility functions for working with plan activities
  */
-export function formatPlanActivities(activities: any[]): PlanActivity[] {
-  if (!Array.isArray(activities)) {
-    console.warn('Invalid activities data, expected array but got:', typeof activities);
-    return [];
-  }
-  
-  return activities.map(activity => ({
-    id: activity.id || '',
-    type: activity.type || 'unknown',
-    message: activity.message || 'Unknown activity',
-    performedAt: activity.performed_at ? new Date(activity.performed_at) : new Date(),
-    performer: activity.performed_by || 'System',
-    planId: activity.plan_id || null,
-    metadata: activity.metadata || {}
-  }));
-}
-
-/**
- * Determines if a payment link is still active based on its status
- * Works with both PaymentLink and PaymentLinkData types
- */
-export function isPaymentLinkActive(link: PaymentLink | PaymentLinkData | null): boolean {
-  if (!link) return false;
-  
-  // Handle PaymentLink type (has isActive property)
-  if ('isActive' in link) {
-    return link.isActive === true;
-  }
-  
-  // Handle PaymentLinkData type (might have isActive property)
-  return link.isActive === true;
-}
+import { PaymentLink } from '../types/payment';
 
 export interface PlanActivity {
   id: string;
-  type: string;
+  planId: string;
+  activityType: 'payment' | 'status_change' | 'reminder' | 'system';
   message: string;
-  performedAt: Date;
-  performer: string;
-  planId: string | null;
-  metadata: Record<string, any>;
+  timestamp: string;
+  amount?: number;
+  status?: string;
+  paymentId?: string;
+  userId?: string;
+  metadata?: Record<string, any>;
+  isActive?: boolean;
 }
+
+/**
+ * Format plan activities for display
+ */
+export const formatPlanActivities = (activities: any[]): PlanActivity[] => {
+  return activities.map((activity) => ({
+    id: activity.id,
+    planId: activity.plan_id,
+    activityType: activity.activity_type,
+    message: activity.message,
+    timestamp: activity.created_at,
+    amount: activity.amount,
+    status: activity.status,
+    paymentId: activity.payment_id,
+    userId: activity.user_id,
+    metadata: activity.metadata,
+    isActive: true
+  }));
+};
+
+/**
+ * Check if a payment link is active
+ */
+export const isPaymentLinkActive = (link?: PaymentLink | null): boolean => {
+  if (!link) return false;
+  
+  // Check for manual active/inactive flag
+  if (typeof link.isActive === 'boolean') {
+    return link.isActive;
+  }
+  
+  // For DB records, check is_active field
+  if (typeof link.is_active === 'boolean') {
+    return link.is_active;
+  }
+  
+  // Check for status-based activity
+  if (link.status) {
+    return !['cancelled', 'completed', 'archived'].includes(link.status.toLowerCase());
+  }
+  
+  // Default to active if no determination can be made
+  return true;
+};

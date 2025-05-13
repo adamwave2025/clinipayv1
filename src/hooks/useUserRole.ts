@@ -7,25 +7,34 @@ import { toast } from 'sonner';
 // Debug settings - can be enabled via localStorage
 const DEBUG_ROLES = localStorage.getItem('DEBUG_ROLES') === 'true' || false;
 
-// Cache configuration
+// Enhanced cache configuration with version control
 const ROLE_CACHE_KEY = 'user_role_cache';
 const ROLE_CACHE_USER_KEY = 'user_role_cache_user';
 const ROLE_CACHE_EXPIRY_KEY = 'user_role_cache_expiry';
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const ROLE_CACHE_VERSION_KEY = 'user_role_cache_version';
+const CACHE_DURATION = 12 * 60 * 60 * 1000; // Reduced to 12 hours
+const CURRENT_CACHE_VERSION = '1.1'; // Increment when making breaking changes
 const DEFAULT_ROLE = 'clinic'; // Default role if we can't determine it
 const MAX_RETRIES = 3; // Reduced from 5 to prevent excessive retries
-const CIRCUIT_BREAKER_TIMEOUT = 30 * 1000; // Reduced to 30 seconds
+const CIRCUIT_BREAKER_TIMEOUT = 30 * 1000; // 30 seconds
 const RETRY_DELAY_BASE = 1000; // Base delay of 1 second
 
 export function useUserRole() {
   const { user, debugMode } = useAuth();
   const [role, setRole] = useState<string | null>(() => {
-    // Initialize from cache if available and not expired
+    // Initialize from cache if available, valid and not expired
     try {
       const cachedRole = localStorage.getItem(ROLE_CACHE_KEY);
       const cachedUserId = localStorage.getItem(ROLE_CACHE_USER_KEY);
       const expiryStr = localStorage.getItem(ROLE_CACHE_EXPIRY_KEY);
+      const cachedVersion = localStorage.getItem(ROLE_CACHE_VERSION_KEY);
       const expiry = expiryStr ? parseInt(expiryStr, 10) : 0;
+      
+      // Check cache version to invalidate old format caches
+      if (cachedVersion !== CURRENT_CACHE_VERSION) {
+        console.log('Cache version mismatch, clearing old cache');
+        return null;
+      }
       
       // If we have a cached role that's not expired and matches the current user
       if (cachedRole && expiry > Date.now() && cachedUserId === user?.id) {
@@ -74,11 +83,13 @@ export function useUserRole() {
       localStorage.setItem(ROLE_CACHE_KEY, roleValue);
       localStorage.setItem(ROLE_CACHE_USER_KEY, userId);
       localStorage.setItem(ROLE_CACHE_EXPIRY_KEY, expiry.toString());
+      localStorage.setItem(ROLE_CACHE_VERSION_KEY, CURRENT_CACHE_VERSION);
       
       logRoleEvent('Updated role cache', { 
         userId, 
         role: roleValue, 
-        expiresAt: new Date(expiry).toISOString() 
+        expiresAt: new Date(expiry).toISOString(),
+        version: CURRENT_CACHE_VERSION 
       });
     } catch (e) {
       console.warn('Error setting role cache:', e);
@@ -91,6 +102,7 @@ export function useUserRole() {
       localStorage.removeItem(ROLE_CACHE_KEY);
       localStorage.removeItem(ROLE_CACHE_USER_KEY);
       localStorage.removeItem(ROLE_CACHE_EXPIRY_KEY);
+      localStorage.removeItem(ROLE_CACHE_VERSION_KEY);
       logRoleEvent('Cleared role cache');
     } catch (e) {
       console.warn('Error clearing role cache:', e);
@@ -135,24 +147,6 @@ export function useUserRole() {
 
   // Fetch user role when user changes
   useEffect(() => {
-    // Skip if we already have a valid role and user ID match
-    const cachedRole = localStorage.getItem(ROLE_CACHE_KEY);
-    const cachedUserId = localStorage.getItem(ROLE_CACHE_USER_KEY);
-    const expiryStr = localStorage.getItem(ROLE_CACHE_EXPIRY_KEY);
-    const expiry = expiryStr ? parseInt(expiryStr, 10) : 0;
-    
-    // Valid cached role check - much simpler condition
-    if (cachedRole && cachedUserId === user?.id && expiry > Date.now()) {
-      setRole(cachedRole);
-      setLoading(false);
-      setInitialFetchComplete(true);
-      logRoleEvent('Using valid cached role', { 
-        role: cachedRole, 
-        expiresIn: Math.floor((expiry - Date.now()) / 60000) + ' minutes' 
-      });
-      return;
-    }
-    
     const fetchUserRole = async () => {
       // Throttle fetch attempts
       const now = Date.now();
@@ -170,15 +164,19 @@ export function useUserRole() {
         if (timeTripped < CIRCUIT_BREAKER_TIMEOUT) {
           logRoleEvent('Circuit breaker active, using cached or default role', {
             trippedFor: Math.floor(timeTripped / 1000) + 's',
-            cachedRoleAvailable: !!cachedRole && cachedUserId === user?.id
+            cachedRoleAvailable: !!localStorage.getItem(ROLE_CACHE_KEY)
           });
           
-          // Use expired cached role or default
+          // Use cached role if available
+          const cachedRole = localStorage.getItem(ROLE_CACHE_KEY);
+          const cachedUserId = localStorage.getItem(ROLE_CACHE_USER_KEY);
+          
           if (cachedRole && cachedUserId === user?.id) {
             setRole(cachedRole);
           } else {
             setRole(DEFAULT_ROLE);
           }
+          
           setLoading(false);
           setInitialFetchComplete(true);
           return;
@@ -202,6 +200,11 @@ export function useUserRole() {
       setFetchAttempts(prev => prev + 1);
       
       // Use cached role temporarily while we fetch fresh data
+      const cachedRole = localStorage.getItem(ROLE_CACHE_KEY);
+      const cachedUserId = localStorage.getItem(ROLE_CACHE_USER_KEY);
+      const expiryStr = localStorage.getItem(ROLE_CACHE_EXPIRY_KEY);
+      const expiry = expiryStr ? parseInt(expiryStr, 10) : 0;
+      
       if (cachedRole && cachedUserId === user.id) {
         logRoleEvent('Using cached role while fetching fresh data', { 
           role: cachedRole,
