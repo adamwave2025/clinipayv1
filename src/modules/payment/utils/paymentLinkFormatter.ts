@@ -1,5 +1,5 @@
 
-import { PaymentLink } from '../types/payment';
+import { PaymentLink } from '../types/paymentLink';
 
 export const formatPaymentLinks = (rawLinks: any[]): PaymentLink[] => {
   if (!Array.isArray(rawLinks)) {
@@ -19,13 +19,13 @@ export const formatPaymentLinks = (rawLinks: any[]): PaymentLink[] => {
         description: link.description || '',
         amount: link.amount,
         type: link.type || 'standard',
-        status: link.status || 'active',
-        createdAt: link.created_at ? new Date(link.created_at).toISOString() : undefined,
-        isActive: link.is_active !== false,
-        paymentPlan: isPaymentPlan,
-        paymentCount: isPaymentPlan ? link.payment_plan?.number_of_payments : undefined,
-        paymentCycle: isPaymentPlan ? link.payment_plan?.frequency : undefined,
-        planTotalAmount: isPaymentPlan ? link.payment_plan?.total_amount : undefined
+        clinic_id: link.clinic_id,
+        is_active: link.is_active !== false,
+        created_at: link.created_at ? new Date(link.created_at).toISOString() : new Date().toISOString(),
+        payment_plan: isPaymentPlan,
+        payment_count: isPaymentPlan ? link.payment_count : undefined,
+        payment_cycle: isPaymentPlan ? link.payment_cycle : undefined,
+        plan_total_amount: isPaymentPlan ? link.plan_total_amount : undefined
       };
     });
   } catch (error) {

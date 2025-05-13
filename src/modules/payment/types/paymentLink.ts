@@ -13,3 +13,35 @@ export interface PaymentLink {
   payment_cycle?: string;
   plan_total_amount?: number;
 }
+
+export interface PaymentLinkData {
+  id: string;
+  title?: string;
+  type?: string;
+  amount: number;
+  description?: string;
+  clinic: {
+    id: string;
+    name: string;
+    logo?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    stripeStatus: string;
+  };
+  status: string;
+  isActive?: boolean;
+  isRequest: boolean;
+  patientName?: string;
+  patientEmail?: string;
+  patientPhone?: string;
+  paymentId?: string;
+  paymentPlan?: boolean;
+  planTotalAmount?: number;
+  totalPaid?: number;
+  totalOutstanding?: number;
+  customAmount?: number;
+  hasOverduePayments?: boolean;
+  payment_link_id?: string;
+  isRescheduled?: boolean;
+}

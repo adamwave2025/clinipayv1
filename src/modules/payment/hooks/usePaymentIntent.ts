@@ -1,7 +1,6 @@
-
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { PaymentLinkData } from '../types/paymentLink';
+import { PaymentLinkData } from './index';
 import { validatePenceAmount } from '../services/CurrencyService';
 import { toast } from 'sonner';
 

@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { PaymentLinkData } from '../types/paymentLink';
+import { PaymentLinkData } from './index';
 import { validatePenceAmount } from '../services/CurrencyService';
 import { isPaymentLinkActive } from '../utils/planActivityUtils';
 
@@ -80,3 +79,6 @@ export function usePaymentLinkData(linkId: string | undefined | null) {
     error
   };
 }
+
+// Re-export the type for backwards compatibility
+export { PaymentLinkData } from './index';

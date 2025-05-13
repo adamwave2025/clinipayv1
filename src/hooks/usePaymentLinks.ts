@@ -36,6 +36,7 @@ export const usePaymentLinks = () => {
       
       setLinks(formattedActive);
       setArchivedLinks(formattedArchived);
+      setError('');
       
     } catch (err: any) {
       console.error('Error fetching payment links:', err);
@@ -53,7 +54,7 @@ export const usePaymentLinks = () => {
   }, [clinicId]);
 
   // Add the missing createPaymentLink function
-  const createPaymentLink = async (linkData: any) => {
+  const createPaymentLink = async (linkData: any): Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }> => {
     try {
       const result = await PaymentLinkService.createLink(linkData);
       if (result.success) {
@@ -107,7 +108,7 @@ export const usePaymentLinks = () => {
     error,
     archiveLink,
     unarchiveLink,
-    createPaymentLink, // Export the missing function
+    createPaymentLink,
     refresh
   };
 };

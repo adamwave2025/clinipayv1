@@ -13,4 +13,4 @@ export { usePaymentState } from './payments/usePaymentState';
 export * from './payments';
 
 // Export types
-export type { PaymentLinkData } from '../types/paymentLink';
+export { PaymentLink, PaymentLinkData } from '../types/paymentLink';
