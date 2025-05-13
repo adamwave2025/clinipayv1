@@ -1,5 +1,6 @@
 
 import { PaymentLink } from '@/types/payment';
+import { PaymentLinkData } from '../types/paymentLink';
 
 /**
  * Formats plan activities for display
@@ -23,10 +24,18 @@ export function formatPlanActivities(activities: any[]): PlanActivity[] {
 
 /**
  * Determines if a payment link is still active based on its status
+ * Works with both PaymentLink and PaymentLinkData types
  */
-export function isPaymentLinkActive(link: PaymentLink | null): boolean {
+export function isPaymentLinkActive(link: PaymentLink | PaymentLinkData | null): boolean {
   if (!link) return false;
-  return link.is_active === true;
+  
+  // Handle PaymentLink type (has isActive property)
+  if ('isActive' in link) {
+    return link.isActive === true;
+  }
+  
+  // Handle PaymentLinkData type (might have isActive property)
+  return link.isActive === true;
 }
 
 export interface PlanActivity {

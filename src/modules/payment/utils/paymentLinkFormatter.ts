@@ -19,7 +19,8 @@ export function formatPaymentLinks(links: any[]): PaymentLink[] {
         amount: link.amount || 0,
         type: link.type || 'unknown',
         description: link.description || '',
-        is_active: link.is_active !== undefined ? link.is_active : true,
+        isActive: link.isActive !== undefined ? link.isActive : 
+                 (link.is_active !== undefined ? link.is_active : true),
         created_at: link.created_at || new Date().toISOString(),
         payment_plan: !!link.payment_plan,
         patient: null,
@@ -34,7 +35,7 @@ export function formatPaymentLinks(links: any[]): PaymentLink[] {
         // Add any computed properties here
         formattedDate: formatCreatedAt(safeLink.created_at),
         typeLabel: formatTypeLabel(safeLink.type),
-        isActive: safeLink.is_active
+        isActive: safeLink.isActive // Using the normalized isActive property
       };
     } catch (err) {
       console.error('Error formatting payment link:', err, link);
@@ -45,11 +46,10 @@ export function formatPaymentLinks(links: any[]): PaymentLink[] {
         amount: 0,
         type: 'unknown',
         description: '',
-        is_active: false,
+        isActive: false,
         created_at: new Date().toISOString(),
         formattedDate: 'Unknown date',
         typeLabel: 'Unknown',
-        isActive: false,
         payment_plan: false,
         patient: null,
         payment_count: null,
@@ -91,5 +91,5 @@ function formatTypeLabel(type: string): string {
  */
 export function isPaymentLinkActive(link: PaymentLink | null): boolean {
   if (!link) return false;
-  return link.is_active === true;
+  return link.isActive === true;
 }
