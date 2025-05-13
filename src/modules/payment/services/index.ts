@@ -1,4 +1,4 @@
 
 // Export all payment services
 export * from './CurrencyService';
-export { addToNotificationQueue, checkNotificationExists } from '@/utils/notifications';
+// Don't re-export notification utils, import them directly from utils/notification-stub or utils/notifications

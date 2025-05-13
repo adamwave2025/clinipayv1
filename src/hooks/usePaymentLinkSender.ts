@@ -4,8 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
 import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
-import { addToNotificationQueue, checkNotificationExists } from '@/utils/notifications';
-import { verifyWebhookConfiguration } from '@/utils/notifications';
+import { addToNotificationQueue, checkNotificationExists, verifyWebhookConfiguration } from '@/utils/notifications';
 
 interface PaymentLinkSenderProps {
   formData: {

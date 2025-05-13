@@ -1,5 +1,5 @@
 
-// Re-export all functionality from the stub module
+// Re-export functionality directly from the stub module
 export { 
   addToNotificationQueue,
   checkNotificationExists,
