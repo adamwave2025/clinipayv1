@@ -1,36 +1,19 @@
 
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import PageHeader from '@/components/common/PageHeader';
 import DashboardContent from '@/components/dashboard/DashboardContent';
 import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
-import { useUserRole } from '@/hooks/useUserRole';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 
 const DashboardPage = () => {
   useDocumentTitle('Dashboard');
-  const { role, loading } = useUserRole();
-  const navigate = useNavigate();
+  const { role } = useUnifiedAuth();
   
-  useEffect(() => {
-    // If the user is an admin, redirect them to the admin dashboard
-    if (!loading && role === 'admin') {
-      navigate('/admin', { replace: true });
-    }
-  }, [role, loading, navigate]);
+  // No need for checking loading or redirect here - this is now handled by RoleRoute
+  console.log('[DASHBOARD PAGE] Rendering with role:', role);
   
-  // Show loading while checking role
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-  
-  // Only render if not admin (admin will be redirected)
   return (
     <DashboardLayout userType="clinic">
       <PageHeader 

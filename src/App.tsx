@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
+import { UnifiedAuthProvider } from "./contexts/UnifiedAuthContext";
 import ScrollToTop from "./components/common/ScrollToTop";
 import AuthRedirectWrapper from "./components/common/AuthRedirectWrapper";
 
@@ -48,9 +48,10 @@ import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 
 // Protected Route Components
-import ProtectedRoute from "./components/common/ProtectedRoute";
-import RoleBasedRoute from "./components/common/RoleBasedRoute";
-import AdminRedirect from "./pages/admin/AdminRedirect";
+import AuthRoute from "./components/auth/AuthRoute";
+import RoleRoute from "./components/auth/RoleRoute";
+import ClinicRoute from "./components/auth/ClinicRoute";
+import AdminRedirect from "./components/auth/AdminRedirect";
 
 const queryClient = new QueryClient();
 
@@ -60,7 +61,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <ScrollToTop />
-        <AuthProvider>
+        <UnifiedAuthProvider>
           <Routes>
             {/* Public Routes - Home page will redirect to dashboard if authenticated */}
             <Route path="/" element={
@@ -88,84 +89,84 @@ const App = () => (
             
             {/* Admin role check with redirect - For main dashboard */}
             <Route path="/dashboard" element={
-              <ProtectedRoute>
+              <AuthRoute>
                 <AdminRedirect fallbackComponent={<DashboardPage />} />
-              </ProtectedRoute>
+              </AuthRoute>
             } />
             
             {/* Protected Clinic Routes */}
             <Route path="/dashboard/create-link" element={
-              <RoleBasedRoute allowedRoles={['clinic']}>
+              <RoleRoute allowedRoles={['clinic']}>
                 <CreateLinkPage />
-              </RoleBasedRoute>
+              </RoleRoute>
             } />
             <Route path="/dashboard/send-link" element={
-              <RoleBasedRoute allowedRoles={['clinic']}>
+              <RoleRoute allowedRoles={['clinic']}>
                 <SendLinkPage />
-              </RoleBasedRoute>
+              </RoleRoute>
             } />
             <Route path="/dashboard/reusable-links" element={
-              <RoleBasedRoute allowedRoles={['clinic']}>
+              <RoleRoute allowedRoles={['clinic']}>
                 <ReusableLinksPage />
-              </RoleBasedRoute>
+              </RoleRoute>
             } />
             <Route path="/dashboard/settings" element={
-              <RoleBasedRoute allowedRoles={['clinic']}>
+              <RoleRoute allowedRoles={['clinic']}>
                 <SettingsPage />
-              </RoleBasedRoute>
+              </RoleRoute>
             } />
             <Route path="/dashboard/help" element={
-              <RoleBasedRoute allowedRoles={['clinic']}>
+              <RoleRoute allowedRoles={['clinic']}>
                 <HelpPage />
-              </RoleBasedRoute>
+              </RoleRoute>
             } />
             <Route path="/dashboard/payment-history" element={
-              <RoleBasedRoute allowedRoles={['clinic']}>
+              <RoleRoute allowedRoles={['clinic']}>
                 <PaymentHistoryPage />
-              </RoleBasedRoute>
+              </RoleRoute>
             } />
             <Route path="/dashboard/patients" element={
-              <RoleBasedRoute allowedRoles={['clinic']}>
+              <RoleRoute allowedRoles={['clinic']}>
                 <PatientsPage />
-              </RoleBasedRoute>
+              </RoleRoute>
             } />
             <Route path="/dashboard/manage-plans" element={
-              <RoleBasedRoute allowedRoles={['clinic']}>
+              <RoleRoute allowedRoles={['clinic']}>
                 <ManagePlansPage />
-              </RoleBasedRoute>
+              </RoleRoute>
             } />
             <Route path="/dashboard/payment-plans" element={
-              <RoleBasedRoute allowedRoles={['clinic']}>
+              <RoleRoute allowedRoles={['clinic']}>
                 <PaymentPlansPage />
-              </RoleBasedRoute>
+              </RoleRoute>
             } />
             
             {/* Protected Admin Routes */}
             <Route path="/admin" element={
-              <RoleBasedRoute allowedRoles={['admin']} redirectTo="/dashboard">
+              <RoleRoute allowedRoles={['admin']} redirectTo="/dashboard">
                 <AdminDashboardPage />
-              </RoleBasedRoute>
+              </RoleRoute>
             } />
             <Route path="/admin/clinics" element={
-              <RoleBasedRoute allowedRoles={['admin']} redirectTo="/dashboard">
+              <RoleRoute allowedRoles={['admin']} redirectTo="/dashboard">
                 <ClinicsPage />
-              </RoleBasedRoute>
+              </RoleRoute>
             } />
             <Route path="/admin/clinics/:clinicId" element={
-              <RoleBasedRoute allowedRoles={['admin']} redirectTo="/dashboard">
+              <RoleRoute allowedRoles={['admin']} redirectTo="/dashboard">
                 <ClinicProfilePage />
-              </RoleBasedRoute>
+              </RoleRoute>
             } />
             <Route path="/admin/settings" element={
-              <RoleBasedRoute allowedRoles={['admin']} redirectTo="/dashboard">
+              <RoleRoute allowedRoles={['admin']} redirectTo="/dashboard">
                 <AdminSettingsPage />
-              </RoleBasedRoute>
+              </RoleRoute>
             } />
             
             {/* Catch-all Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </AuthProvider>
+        </UnifiedAuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
