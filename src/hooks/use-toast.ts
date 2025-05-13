@@ -1,48 +1,35 @@
+import { toast as sonnerToast, Toaster } from 'sonner'
 
-import { toast as sonnerToast, Toaster } from "sonner";
-
-type ToastProps = {
+export type ToastProps = {
   title?: string;
   description?: string;
-  variant?: "default" | "destructive";
-};
-
-// Create a custom useToast hook that provides the toast functionality
-// Since sonner doesn't export useToaster, we'll create a minimal implementation
-export const useToast = () => {
-  // Return an empty toasts array since we're using the direct toast function
-  return { 
-    toasts: [] as any[] 
-  };
-};
+  variant?: 'default' | 'destructive';
+}
 
 export const toast = {
-  success: (message: string, options?: Omit<ToastProps, "variant">) => {
-    console.log("🟢 Toast Success:", message);
-    return sonnerToast.success(options?.title || "Success", {
-      description: message,
-      ...options
-    });
-  },
-  error: (message: string, options?: Omit<ToastProps, "variant">) => {
-    console.log("🔴 Toast Error:", message);
-    return sonnerToast.error(options?.title || "Error", {
-      description: message,
-      ...options
-    });
-  },
-  info: (message: string, options?: Omit<ToastProps, "variant">) => {
-    console.log("🔵 Toast Info:", message);
-    return sonnerToast.info(options?.title || "Info", {
-      description: message,
-      ...options
-    });
-  },
-  warning: (message: string, options?: Omit<ToastProps, "variant">) => {
-    console.log("🟠 Toast Warning:", message);
-    return sonnerToast.warning(options?.title || "Warning", {
-      description: message,
-      ...options
-    });
+  success: (message: string) => sonnerToast.success(message),
+  error: (message: string) => sonnerToast.error(message),
+  warning: (message: string) => sonnerToast.warning(message),
+  info: (message: string) => sonnerToast.info(message),
+  // Add the direct function version too with toast({title, description, variant})
+  // This is to support the old usage pattern
+  ...({ 
+    (props: ToastProps) => {
+      const { title, description, variant } = props
+
+      if (variant === 'destructive') {
+        return sonnerToast.error(title || '', { description })
+      }
+
+      return sonnerToast(title || '', { description })
+    }
+  } as any)
+}
+
+export const useToast = () => {
+  return {
+    toast,
   }
-};
+}
+
+export { Toaster }

@@ -74,7 +74,10 @@ const PlanDetails = () => {
         installments={installments}
         activities={activities}
         onMarkAsPaid={handleMarkAsPaid}
-        onReschedule={handleOpenReschedule}
+        onReschedule={(paymentId) => {
+          console.log('PlanDetails - Reschedule clicked for payment:', paymentId);
+          handleOpenReschedule(paymentId);
+        }}
         onTakePayment={handleTakePayment}
         isLoading={isLoadingActivities}
         isRefreshing={isRefreshing}
@@ -96,7 +99,10 @@ const PlanDetails = () => {
       
       <ReschedulePaymentDialog
         open={showReschedulePaymentDialog}
-        onOpenChange={setShowReschedulePaymentDialog}
+        onOpenChange={(open) => {
+          console.log(`PlanDetails - Setting reschedule payment dialog to ${open ? 'open' : 'closed'}`);
+          setShowReschedulePaymentDialog(open);
+        }}
         onConfirm={handleReschedulePayment}
         isLoading={isProcessing}
       />

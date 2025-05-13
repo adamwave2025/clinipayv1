@@ -25,7 +25,11 @@ export const usePaymentRescheduleActions = (
   
   const handleReschedulePayment = async (newDate: Date) => {
     if (!selectedPaymentId) {
-      toast.error('No payment selected for rescheduling');
+      toast({
+        title: "Error",
+        description: 'No payment selected for rescheduling',
+        variant: "destructive"
+      });
       return;
     }
     
@@ -38,7 +42,10 @@ export const usePaymentRescheduleActions = (
       const result = await PlanOperationsService.reschedulePayment(selectedPaymentId, newDate);
       
       if (result.success) {
-        toast.success('Payment rescheduled successfully');
+        toast({
+          title: "Success",
+          description: 'Payment rescheduled successfully'
+        });
         
         // Close dialog
         setShowReschedulePaymentDialog(false);
@@ -48,12 +55,20 @@ export const usePaymentRescheduleActions = (
           await onPaymentRescheduled(planId);
         }
       } else {
-        toast.error('Failed to reschedule payment');
+        toast({
+          title: "Error",
+          description: 'Failed to reschedule payment',
+          variant: "destructive"
+        });
         console.error('Error rescheduling payment:', result.error);
       }
     } catch (error) {
       console.error('Error in handleReschedulePayment:', error);
-      toast.error('An error occurred while rescheduling the payment');
+      toast({
+        title: "Error",
+        description: 'An error occurred while rescheduling the payment',
+        variant: "destructive"
+      });
     } finally {
       setIsProcessing(false);
       setSelectedPaymentId(null);

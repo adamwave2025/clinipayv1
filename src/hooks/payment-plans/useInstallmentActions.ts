@@ -1,10 +1,10 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { PlanInstallment, formatInstallmentFromDb } from '@/utils/paymentPlanUtils';
+import { usePaymentRescheduleActions } from './usePaymentRescheduleActions';
 
 /**
  * Maps database payment schedule data to PlanInstallment type
@@ -24,8 +24,13 @@ export const useInstallmentActions = (
   // Mark as Paid dialog state
   const [showMarkAsPaidDialog, setShowMarkAsPaidDialog] = useState(false);
   
-  // Reschedule Payment dialog state
-  const [rescheduleDialog, setRescheduleDialog] = useState(false);
+  // Use the reschedule actions hook directly to avoid duplicate state
+  const {
+    showReschedulePaymentDialog,
+    setShowReschedulePaymentDialog,
+    handleOpenRescheduleDialog: paymentRescheduleHandler,
+    handleReschedulePayment
+  } = usePaymentRescheduleActions(planId, refreshFunction);
   
   // Take Payment dialog state
   const [showTakePaymentDialog, setShowTakePaymentDialog] = useState(false);
@@ -99,11 +104,11 @@ export const useInstallmentActions = (
     }
   };
   
-  // Handler for opening the Reschedule Payment dialog
+  // Adapter function that calls the reschedule handler from usePaymentRescheduleActions
   const handleOpenReschedule = (paymentId: string) => {
     console.log("useInstallmentActions: handleOpenReschedule called with ID:", paymentId);
     
-    // Fetch the installment data
+    // Get the installment data first to display in the dialog
     setIsProcessing(true);
     
     try {
@@ -122,10 +127,11 @@ export const useInstallmentActions = (
           
           console.log('Fetched installment data for reschedule:', installmentData);
           setSelectedInstallment(mapToPlanInstallment(installmentData));
-          setRescheduleDialog(true);
+          // Call the handler from usePaymentRescheduleActions
+          paymentRescheduleHandler(paymentId);
           setIsProcessing(false);
         })
-        .then(undefined, (error: Error) => { // Using .then with second error handler instead of .catch
+        .then(undefined, (error: Error) => {
           console.error('Unexpected error in handleOpenReschedule:', error);
           toast.error('Unexpected error occurred');
           setIsProcessing(false);
@@ -133,43 +139,6 @@ export const useInstallmentActions = (
     } catch (error) {
       console.error('Error in handleOpenReschedule outer try block:', error);
       toast.error('Error occurred while fetching payment data');
-      setIsProcessing(false);
-    }
-  };
-  
-  // Handler for rescheduling a payment
-  const handleReschedulePayment = async (newDate: Date) => {
-    if (!selectedInstallment || !planId) {
-      toast.error("No payment selected for rescheduling");
-      return;
-    }
-    
-    setIsProcessing(true);
-    
-    try {
-      console.log("Rescheduling payment to:", newDate);
-      const result = await PlanOperationsService.reschedulePayment(
-        selectedInstallment.id,
-        newDate
-      );
-      
-      if (result.success) {
-        toast.success("Payment rescheduled successfully");
-        
-        // Close the dialog
-        setRescheduleDialog(false);
-        
-        // Refresh the plan state to update UI
-        if (refreshFunction) {
-          await refreshFunction(planId);
-        }
-      } else {
-        toast.error("Failed to reschedule payment");
-      }
-    } catch (error) {
-      console.error("Error rescheduling payment:", error);
-      toast.error("An error occurred while rescheduling the payment");
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -230,8 +199,8 @@ export const useInstallmentActions = (
     confirmMarkAsPaid,
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
-    rescheduleDialog,
-    setRescheduleDialog,
+    showReschedulePaymentDialog,
+    setShowReschedulePaymentDialog,
     handleReschedulePayment,
     showTakePaymentDialog,
     setShowTakePaymentDialog
