@@ -28,10 +28,10 @@ const PatientTableRow = ({ patient, onClick }: PatientTableRowProps) => {
         {patient.paymentCount || 0}
       </TableCell>
       <TableCell>
-        {formatCurrency(patient.totalSpent || 0)}
+        {formatCurrency(patient.total_spent || 0)}
       </TableCell>
       <TableCell>
-        {patient.lastPaymentDate ? formatDate(patient.lastPaymentDate) : 'N/A'}
+        {patient.last_payment_date ? formatDate(patient.last_payment_date) : 'N/A'}
       </TableCell>
     </TableRow>
   );

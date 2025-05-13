@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useDashboardData } from '@/components/dashboard/DashboardDataProvider';
+import { useDashboardData } from '@/contexts/DashboardContext';
 import { Payment } from '@/types/payment';
 
 export const useRefundState = () => {

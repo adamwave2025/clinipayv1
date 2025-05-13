@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { isWithinInterval, parseISO } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { useDashboardData } from '@/components/dashboard/DashboardDataProvider';
+import { useDashboardData } from '@/contexts/DashboardContext';
 import PaymentTable from '@/components/dashboard/payments/PaymentTable';
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';

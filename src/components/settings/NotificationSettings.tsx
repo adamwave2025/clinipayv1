@@ -38,8 +38,10 @@ const NotificationSettings = () => {
       
       if (result.success) {
         toast.success('Notification settings updated successfully');
-      } else {
+      } else if ('error' in result) {
         toast.error(`Failed to update notification settings: ${result.error || 'Unknown error'}`);
+      } else {
+        toast.error('Failed to update notification settings');
       }
     } catch (error: any) {
       toast.error(`Error updating notification settings: ${error.message}`);

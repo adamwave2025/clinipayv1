@@ -12,6 +12,9 @@ export interface Patient {
   total_spent: number;
   last_payment_date: string | null;
   created_at: string;
+  updated_at: string;
+  clinic_id: string;
+  paymentCount?: number;
 }
 
 export function usePatients() {
@@ -53,13 +56,14 @@ export function usePatients() {
 
           if (paymentsError) throw paymentsError;
 
-          const totalSpent = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
-          const lastPaymentDate = paymentsData.length > 0 ? paymentsData[0].paid_at : null;
+          const total_spent = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
+          const last_payment_date = paymentsData.length > 0 ? paymentsData[0].paid_at : null;
 
           return {
             ...patient,
-            total_spent: totalSpent,
-            last_payment_date: lastPaymentDate,
+            total_spent,
+            last_payment_date,
+            paymentCount: paymentsData.length
           };
         })
       );

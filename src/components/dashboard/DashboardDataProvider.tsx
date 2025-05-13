@@ -1,30 +1,13 @@
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import DashboardContext from '@/contexts/DashboardContext';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { usePaymentStats } from '@/hooks/usePaymentStats';
 import { usePayments } from '@/hooks/usePayments';
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext'; 
 import { supabase } from '@/integrations/supabase/client';
 import { getUserClinicId } from '@/utils/userUtils';
-
-interface DashboardContextType {
-  recentPayments: any[];
-  paymentLinks: any[];
-  paymentStats: any;
-  isLoading: boolean;
-  refreshData: () => void;
-  error: string | null;
-}
-
-const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
-
-export const useDashboardContext = () => {
-  const context = useContext(DashboardContext);
-  if (context === undefined) {
-    throw new Error('useDashboardContext must be used within a DashboardDataProvider');
-  }
-  return context;
-};
+import { Payment, PaymentLink, PaymentStats } from '@/types/payment';
 
 interface DashboardDataProviderProps {
   children: ReactNode;
@@ -34,13 +17,41 @@ export const DashboardDataProvider: React.FC<DashboardDataProviderProps> = ({ ch
   const { user, clinicId } = useUnifiedAuth();
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Payment state
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
+  const [isProcessingRefund, setIsProcessingRefund] = useState(false);
+  const [isArchiveLoading, setIsArchiveLoading] = useState(false);
 
   // Hook dependencies are managed through the clinic ID from UnifiedAuth
-  const { payments: recentPayments, loading: paymentsLoading, refresh: refreshPayments, error: paymentsError } = usePayments();
-  const { links: paymentLinks, loading: linksLoading, refresh: refreshLinks, error: linksError } = usePaymentLinks();
-  const { stats: paymentStats, loading: statsLoading, refresh: refreshStats, error: statsError } = usePaymentStats();
+  const { 
+    payments,
+    isLoadingPayments,
+    fetchPayments, 
+    error: paymentsError 
+  } = usePayments();
+  
+  const { 
+    links: paymentLinks,
+    archivedLinks, 
+    loading: linksLoading, 
+    refresh: refreshLinks, 
+    error: linksError,
+    archiveLink,
+    unarchiveLink
+  } = usePaymentLinks();
+  
+  const { 
+    stats, 
+    isLoadingStats, 
+    fetchStats, 
+    error: statsError 
+  } = usePaymentStats();
 
-  const isLoading = paymentsLoading || linksLoading || statsLoading || !isInitialized;
+  const isLoading = isLoadingPayments || linksLoading || isLoadingStats || !isInitialized;
 
   // Combine errors if any exist
   useEffect(() => {
@@ -58,6 +69,75 @@ export const DashboardDataProvider: React.FC<DashboardDataProviderProps> = ({ ch
     }
   }, [user, clinicId]);
 
+  const handlePaymentClick = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setDetailDialogOpen(true);
+  };
+
+  const openRefundDialog = (paymentId: string) => {
+    const payment = payments.find(p => p.id === paymentId);
+    if (payment) {
+      setSelectedPayment(payment);
+      setPaymentToRefund(paymentId);
+      setRefundDialogOpen(true);
+    }
+  };
+
+  const handleRefund = async (amount?: number, paymentId?: string) => {
+    const idToRefund = paymentId || paymentToRefund;
+    if (!idToRefund) return;
+    
+    setIsProcessingRefund(true);
+    
+    try {
+      // Call refund API or service
+      console.log(`Processing refund for payment ${idToRefund}, amount: ${amount}`);
+      
+      // After successful refund
+      fetchPayments();
+      fetchStats();
+      setRefundDialogOpen(false);
+      setPaymentToRefund(null);
+    } catch (error) {
+      console.error('Refund error:', error);
+      setError('Failed to process refund');
+    } finally {
+      setIsProcessingRefund(false);
+    }
+  };
+
+  const archivePaymentLink = async (linkId: string) => {
+    setIsArchiveLoading(true);
+    try {
+      const result = await archiveLink(linkId);
+      if (result) {
+        refreshLinks();
+        return { success: true };
+      }
+      return { success: false, error: 'Failed to archive link' };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    } finally {
+      setIsArchiveLoading(false);
+    }
+  };
+
+  const unarchivePaymentLink = async (linkId: string) => {
+    setIsArchiveLoading(true);
+    try {
+      const result = await unarchiveLink(linkId);
+      if (result) {
+        refreshLinks();
+        return { success: true };
+      }
+      return { success: false, error: 'Failed to unarchive link' };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    } finally {
+      setIsArchiveLoading(false);
+    }
+  };
+
   const refreshData = () => {
     if (!user || !clinicId) {
       console.log('[DASHBOARD] Cannot refresh - no user or clinic ID');
@@ -65,23 +145,38 @@ export const DashboardDataProvider: React.FC<DashboardDataProviderProps> = ({ ch
     }
     
     console.log('[DASHBOARD] Refreshing all dashboard data');
-    refreshPayments();
+    fetchPayments();
     refreshLinks();
-    refreshStats();
+    fetchStats();
   };
 
   return (
     <DashboardContext.Provider
       value={{
-        recentPayments,
+        payments,
         paymentLinks,
-        paymentStats,
+        archivedLinks,
+        stats,
+        selectedPayment,
+        detailDialogOpen,
+        refundDialogOpen,
+        paymentToRefund,
         isLoading,
-        refreshData,
-        error
+        isProcessingRefund,
+        isArchiveLoading,
+        setDetailDialogOpen,
+        setRefundDialogOpen,
+        handlePaymentClick,
+        openRefundDialog,
+        handleRefund,
+        archivePaymentLink,
+        unarchivePaymentLink,
+        rawPaymentLinks: paymentLinks
       }}
     >
       {children}
     </DashboardContext.Provider>
   );
 };
+
+export { useDashboardData } from '@/contexts/DashboardContext';

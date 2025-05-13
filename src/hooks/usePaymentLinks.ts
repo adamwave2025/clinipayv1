@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
-import { PaymentLinkService } from '@/services/PaymentLinkService';
+import { PaymentLinkService } from '@/modules/payment/services/PaymentLinkService';
 import { toast } from 'sonner';
 
 export function usePaymentLinks() {
@@ -23,13 +23,11 @@ export function usePaymentLinks() {
     setError(null);
 
     try {
-      const [activeLinks, archivedLinks] = await Promise.all([
-        PaymentLinkService.getActiveLinks(clinicId),
-        PaymentLinkService.getArchivedLinks(clinicId)
-      ]);
+      const activeLinks = await PaymentLinkService.getActiveLinks(clinicId);
+      const archivedLinksData = await PaymentLinkService.getArchivedLinks(clinicId);
       
       setLinks(activeLinks);
-      setArchivedLinks(archivedLinks);
+      setArchivedLinks(archivedLinksData);
     } catch (err: any) {
       console.error('Error fetching payment links:', err);
       setError(err.message);
@@ -76,6 +74,25 @@ export function usePaymentLinks() {
     }
   };
 
+  const createPaymentLink = async (linkData: any) => {
+    try {
+      const result = await PaymentLinkService.createPaymentLink(linkData);
+      
+      if (result.success) {
+        toast.success('Payment link created successfully');
+        fetchLinks(); // Refresh the links
+        return { success: true, data: result.data };
+      } else {
+        toast.error(result.error || 'Failed to create payment link');
+        return { success: false, error: result.error };
+      }
+    } catch (error: any) {
+      toast.error(`Error creating payment link: ${error.message}`);
+      console.error('Error creating payment link:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
   const refresh = () => {
     fetchLinks();
   };
@@ -95,5 +112,6 @@ export function usePaymentLinks() {
     archiveLink,
     unarchiveLink,
     refresh,
+    createPaymentLink
   };
 }
