@@ -14,10 +14,23 @@ const AdminRedirect: React.FC<AdminRedirectProps> = ({ fallbackComponent }) => {
   
   useEffect(() => {
     // After role is loaded, determine if we should redirect
-    if (!loading && role === 'admin') {
-      setShouldRedirect(true);
+    if (!loading) {
+      if (role === 'admin') {
+        console.log('User has admin role, should redirect to admin page');
+        setShouldRedirect(true);
+      } else {
+        console.log('User does not have admin role, rendering fallback component');
+        setShouldRedirect(false);
+      }
     }
   }, [role, loading]);
+  
+  // Add debug logging
+  console.log('AdminRedirect:', {
+    role,
+    loading,
+    shouldRedirect
+  });
   
   if (loading) {
     return (
