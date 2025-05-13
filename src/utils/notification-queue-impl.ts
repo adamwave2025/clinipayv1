@@ -1,7 +1,23 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { StandardNotificationPayload, NotificationResponse, RecipientType } from './notifications/types';
+import { StandardNotificationPayload } from '@/types/notification';
 import { callWebhookDirectly } from './webhook-caller';
+
+/**
+ * Notification response interface
+ */
+export interface NotificationResponse {
+  success: boolean;
+  notification_id?: string;
+  error?: string;
+  webhook_success?: boolean;
+  webhook_error?: string;
+}
+
+/**
+ * Recipient type for notifications
+ */
+export type RecipientType = 'patient' | 'clinic';
 
 /**
  * Adds a notification to the queue and optionally processes it immediately
@@ -157,9 +173,12 @@ export async function processNotificationsNow(): Promise<{
   // Process each notification
   for (const notification of pendingNotifications) {
     try {
+      // Ensure payload is treated as StandardNotificationPayload
+      const payload = notification.payload as StandardNotificationPayload;
+      
       const webhookResult = await callWebhookDirectly(
-        notification.payload,
-        notification.recipient_type
+        payload,
+        notification.recipient_type as RecipientType
       );
       
       // Update the notification record

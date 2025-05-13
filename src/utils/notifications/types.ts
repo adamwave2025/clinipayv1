@@ -39,3 +39,6 @@ export interface WebhookResult {
   status_code?: number;
   response_body?: string;
 }
+
+// Re-export StandardNotificationPayload from the types directory
+export { StandardNotificationPayload } from '@/types/notification';
