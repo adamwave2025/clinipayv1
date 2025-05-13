@@ -1,92 +1,92 @@
 
 import React from 'react';
-import { MoreVertical, CheckCircle, CalendarIcon, CreditCard } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
+import { MoreVertical, CalendarCheck, CreditCard, RefreshCcw } from 'lucide-react';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
-import { formatCurrency } from '@/utils/formatters';
 
 interface PaymentActionMenuProps {
-  paymentId: string;
   installment: PlanInstallment;
-  onMarkAsPaid: (id: string, installmentDetails: PlanInstallment) => void;
-  onReschedule: (id: string) => void;
-  onTakePayment?: (id: string, installmentDetails: PlanInstallment) => void;
+  onMarkAsPaid: (paymentId: string) => void;
+  onReschedule: (paymentId: string) => void;
+  onTakePayment: (paymentId: string, installment: PlanInstallment) => void;
+  disableActions?: boolean;
+  className?: string;
 }
 
-const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({ 
-  paymentId, 
+const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
   installment,
-  onMarkAsPaid, 
+  onMarkAsPaid,
   onReschedule,
-  onTakePayment
+  onTakePayment,
+  disableActions = false,
+  className
 }) => {
-  // Simplified take payment handler - no toast, just open the dialog
-  const handleTakePayment = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (onTakePayment) {
-      // Pass the ID and installment directly 
-      onTakePayment(paymentId, installment);
-    }
+  // Determine if actions should be disabled based on payment status
+  const isPaid = installment.status === 'paid';
+  const isDisabled = disableActions || isPaid;
+  
+  const handleRescheduleClick = () => {
+    console.log('PaymentActionMenu: Reschedule clicked for payment:', installment.id);
+    onReschedule(installment.id);
+  };
+
+  const handleTakePaymentClick = () => {
+    console.log('PaymentActionMenu: Take payment clicked for payment:', installment.id);
+    onTakePayment(installment.id, installment);
+  };
+
+  const handleMarkAsPaidClick = () => {
+    console.log('PaymentActionMenu: Mark as paid clicked for payment:', installment.id);
+    onMarkAsPaid(installment.id);
   };
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+      <DropdownMenuTrigger asChild disabled={isPaid}>
+        <Button 
+          variant="ghost" 
+          className={cn(
+            "h-8 w-8 p-0", 
+            isPaid && "opacity-50 cursor-not-allowed",
+            className
+          )}
+          disabled={isPaid}
+        >
           <span className="sr-only">Open menu</span>
           <MoreVertical className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {onTakePayment && (
-          <DropdownMenuItem 
-            onClick={handleTakePayment}
-            className="cursor-pointer"
-          >
-            <CreditCard className="mr-2 h-4 w-4" />
-            <span>Take Payment</span>
-          </DropdownMenuItem>
-        )}
-        
-        {onTakePayment && <DropdownMenuSeparator />}
-        
-        <DropdownMenuItem 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log("PaymentActionMenu: Mark as paid clicked for ID:", paymentId);
-            // Removed toast notification
-            onMarkAsPaid(paymentId, installment);
-          }}
-          className="cursor-pointer"
+      <DropdownMenuContent align="end" className="w-[160px]">
+        <DropdownMenuItem
+          onClick={handleMarkAsPaidClick}
+          disabled={isDisabled}
+          className={isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
         >
-          <CheckCircle className="mr-2 h-4 w-4" />
-          <span>Mark as Paid</span>
+          <CreditCard className="mr-2 h-4 w-4" />
+          Mark as Paid
         </DropdownMenuItem>
-        
-        <DropdownMenuSeparator />
-        
-        <DropdownMenuItem 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log("PaymentActionMenu: Reschedule clicked for ID:", paymentId);
-            // Removed toast notification
-            onReschedule(paymentId);
-          }}
-          className="cursor-pointer"
+        <DropdownMenuItem
+          onClick={handleTakePaymentClick}
+          disabled={isDisabled}
+          className={isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          <span>Reschedule Payment</span>
+          <CreditCard className="mr-2 h-4 w-4" />
+          Take Payment
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={handleRescheduleClick}
+          disabled={isDisabled}
+          className={isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
+        >
+          <CalendarCheck className="mr-2 h-4 w-4" />
+          Reschedule
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

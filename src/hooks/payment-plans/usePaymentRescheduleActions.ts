@@ -8,18 +8,18 @@ export const usePaymentRescheduleActions = (
   planId: string,
   onPaymentRescheduled?: (planId: string) => Promise<void>
 ) => {
-  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [showReschedulePaymentDialog, setShowReschedulePaymentDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   
   const handleOpenRescheduleDialog = (paymentId: string) => {
     console.log("usePaymentRescheduleActions: Opening reschedule dialog for payment", paymentId);
     setSelectedPaymentId(paymentId);
-    setShowRescheduleDialog(true);
-    console.log("usePaymentRescheduleActions: Dialog state after opening:", showRescheduleDialog);
+    setShowReschedulePaymentDialog(true);
+    console.log("usePaymentRescheduleActions: Dialog state after opening:", showReschedulePaymentDialog);
     // Using setTimeout to check the state after the React update cycle
     setTimeout(() => {
-      console.log("usePaymentRescheduleActions: Dialog state after timeout:", showRescheduleDialog);
+      console.log("usePaymentRescheduleActions: Dialog state after timeout:", showReschedulePaymentDialog);
     }, 0);
   };
   
@@ -41,7 +41,7 @@ export const usePaymentRescheduleActions = (
         toast.success('Payment rescheduled successfully');
         
         // Close dialog
-        setShowRescheduleDialog(false);
+        setShowReschedulePaymentDialog(false);
         
         // Refresh data if callback provided
         if (onPaymentRescheduled && planId) {
@@ -61,8 +61,10 @@ export const usePaymentRescheduleActions = (
   };
 
   return {
-    showRescheduleDialog,
-    setShowRescheduleDialog,
+    showRescheduleDialog: showReschedulePaymentDialog, // Keep old name for backwards compatibility
+    setShowRescheduleDialog: setShowReschedulePaymentDialog, // Keep old name for backwards compatibility
+    showReschedulePaymentDialog,
+    setShowReschedulePaymentDialog,
     isProcessing,
     selectedPaymentId,
     handleOpenRescheduleDialog,

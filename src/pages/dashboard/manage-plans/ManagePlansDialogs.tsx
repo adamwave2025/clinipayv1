@@ -124,8 +124,8 @@ export const ManagePlansDialogs = () => {
         showDialog={showReschedulePlanDialog}
         setShowDialog={setShowReschedulePlanDialog}
         onConfirm={handleReschedulePlan}
-        planName={selectedPlan.title || selectedPlan.planName || ''}
-        patientName={selectedPlan.patientName || ''}
+        planName={selectedPlan.title || selectedPlan.planName || 'Payment Plan'}
+        patientName={selectedPlan.patientName || 'Patient'}
         startDate={selectedPlan.startDate}
         isProcessing={isProcessing}
         isLoading={false}
