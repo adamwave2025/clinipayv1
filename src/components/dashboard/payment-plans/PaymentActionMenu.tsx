@@ -13,7 +13,7 @@ import { PlanInstallment } from '@/utils/paymentPlanUtils';
 
 interface PaymentActionMenuProps {
   installment: PlanInstallment;
-  onMarkAsPaid: (paymentId: string) => void;
+  onMarkAsPaid: (paymentId: string, installment: PlanInstallment) => void;
   onReschedule: (paymentId: string) => void;
   onTakePayment: (paymentId: string, installment: PlanInstallment) => void;
   disableActions?: boolean;
@@ -44,7 +44,7 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
 
   const handleMarkAsPaidClick = () => {
     console.log('PaymentActionMenu: Mark as paid clicked for payment:', installment.id);
-    onMarkAsPaid(installment.id);
+    onMarkAsPaid(installment.id, installment);
   };
 
   return (
