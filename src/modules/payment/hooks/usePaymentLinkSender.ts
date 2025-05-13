@@ -91,12 +91,13 @@ export function usePaymentLinkSender() {
         },
       };
       
-      // Fix the call to addToNotificationQueue by providing the right number of arguments
+      // Fix the call to addToNotificationQueue by providing the right parameters in the correct order
       const notificationResult = await addToNotificationQueue(
-        'patient',
-        requestData.id,
-        notificationPayload,
-        'payment_link_sent' // Adding the required notification type parameter
+        'payment_link_sent', // notificationType
+        notificationPayload, // payload
+        'patient', // recipientType
+        clinicData?.id, // clinicId (optional)
+        requestData.id // referenceId (optional)
       );
       
       if (!notificationResult.success) {
