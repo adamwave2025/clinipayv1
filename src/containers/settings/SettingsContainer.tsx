@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User, CreditCard, Bell, Shield } from 'lucide-react';
@@ -15,6 +15,9 @@ import NotificationSettings from '@/components/settings/NotificationSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
 import { handlePaymentAction } from './PaymentActions';
 
+// Debug setting - can be enabled via localStorage
+const DEBUG_SETTINGS = localStorage.getItem('DEBUG_SETTINGS') === 'true' || false;
+
 const VALID_TABS = ['profile', 'payments', 'notifications', 'security'];
 
 const SettingsContainer = () => {
@@ -22,7 +25,25 @@ const SettingsContainer = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Track whether we're in the middle of a URL transition to prevent infinite loops
-  const isUpdatingUrlRef = React.useRef(false);
+  const isUpdatingUrlRef = useRef(false);
+  
+  // Navigation protection - prevent redirect loops
+  const navigationProtectionRef = useRef({
+    urlUpdateCount: 0,
+    lastUpdateTime: 0,
+    blockedUpdates: 0
+  });
+  
+  // Debug logging function
+  const logSettingsEvent = (action: string, details?: any) => {
+    if (DEBUG_SETTINGS) {
+      console.group(`⚙️ Settings Event: ${action}`);
+      console.log(`Time: ${new Date().toISOString()}`);
+      console.log(`Path: ${location.pathname + location.search}`);
+      if (details) console.log('Details:', details);
+      console.groupEnd();
+    }
+  };
   
   // Get initial tab from URL or use default
   const initialTabParam = searchParams.get('tab');
@@ -33,16 +54,58 @@ const SettingsContainer = () => {
   
   // Update URL when tab changes, without triggering a re-render from URL change
   const handleTabChange = useCallback((value: string) => {
+    logSettingsEvent('Tab change requested', { 
+      newTab: value,
+      currentTab: activeTab,
+      urlUpdating: isUpdatingUrlRef.current
+    });
+    
     if (!VALID_TABS.includes(value)) {
       console.warn(`Invalid tab value: ${value}, defaulting to profile`);
       value = 'profile';
     }
     
+    // Only process if not already this tab to avoid loops
+    if (value === activeTab) {
+      logSettingsEvent('Tab change skipped - already on this tab', { tab: value });
+      return;
+    }
+    
+    // Check for potential navigation loop
+    const now = Date.now();
+    const navData = navigationProtectionRef.current;
+    const timeSinceLastUpdate = now - navData.lastUpdateTime;
+    
+    // If making too many updates in short succession, block to prevent loops
+    if (navData.urlUpdateCount > 5 && timeSinceLastUpdate < 3000) {
+      navData.blockedUpdates++;
+      logSettingsEvent('🚨 BLOCKED URL UPDATE - Potential loop detected', {
+        updateCount: navData.urlUpdateCount,
+        timeSinceFirst: timeSinceLastUpdate + 'ms',
+        blockedUpdates: navData.blockedUpdates
+      });
+      return;
+    }
+    
     // Set our state immediately
     setActiveTab(value);
     
+    // Reset counter if it's been a while
+    if (timeSinceLastUpdate > 5000) {
+      navData.urlUpdateCount = 0;
+    }
+    
+    // Update navigation protection data
+    navData.urlUpdateCount++;
+    navData.lastUpdateTime = now;
+    
     // Set a flag to ignore the next URL change event
     isUpdatingUrlRef.current = true;
+    
+    logSettingsEvent('Updating URL', { 
+      newTab: value,
+      updateCount: navData.urlUpdateCount
+    });
     
     // Update URL
     setSearchParams({ tab: value }, { replace: true });
@@ -50,32 +113,63 @@ const SettingsContainer = () => {
     // Clear the flag after the URL update has been processed
     setTimeout(() => {
       isUpdatingUrlRef.current = false;
-    }, 300);
-  }, [setSearchParams]);
+      logSettingsEvent('URL update complete, cleared flag', { tab: value });
+    }, 500);
+  }, [setSearchParams, activeTab]);
   
   // Sync from URL to state, but only when URL changes from external navigation
   useEffect(() => {
     // Skip if we're the ones who just updated the URL
     if (isUpdatingUrlRef.current) {
+      logSettingsEvent('Skipping URL sync - we just updated the URL');
       return;
     }
     
     const tabParam = searchParams.get('tab');
     
+    logSettingsEvent('URL changed externally', {
+      tabParam,
+      currentActiveTab: activeTab
+    });
+    
     // Only update state if URL param exists and doesn't match current state
     if (tabParam && VALID_TABS.includes(tabParam) && tabParam !== activeTab) {
-      console.log(`Syncing tab state from URL: ${tabParam}`);
+      logSettingsEvent('Syncing tab state from URL', { 
+        fromTab: activeTab,
+        toTab: tabParam
+      });
       setActiveTab(tabParam);
     } 
-    // If no tab param, default to profile by updating URL (not state, to avoid loops)
+    // If no tab param, update URL but don't trigger state change (to avoid loops)
     else if (!tabParam) {
+      // Check for loop protection
+      const navData = navigationProtectionRef.current;
+      const now = Date.now();
+      
+      if (navData.urlUpdateCount > 5 && (now - navData.lastUpdateTime < 3000)) {
+        navData.blockedUpdates++;
+        logSettingsEvent('🚨 BLOCKED DEFAULT URL UPDATE - Potential loop detected', {
+          updateCount: navData.urlUpdateCount,
+          timeSinceFirst: now - navData.lastUpdateTime + 'ms',
+          blockedUpdates: navData.blockedUpdates
+        });
+        return;
+      }
+      
       // Update URL but don't trigger state change
+      logSettingsEvent('No tab param found, updating URL to match state', { 
+        stateTab: activeTab || 'profile'
+      });
+      
       isUpdatingUrlRef.current = true;
+      navData.urlUpdateCount++;
+      navData.lastUpdateTime = now;
+      
       setSearchParams({ tab: activeTab || 'profile' }, { replace: true });
       
       setTimeout(() => {
         isUpdatingUrlRef.current = false;
-      }, 300);
+      }, 500);
     }
   }, [location.search, searchParams, setSearchParams, activeTab]);
   
