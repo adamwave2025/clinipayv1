@@ -17,6 +17,8 @@ export interface NotificationMethod {
 
 /**
  * Standard notification payload structure used across all notification types
+ * Modified to be compatible with Supabase's Json type requirements
+ * by ensuring all properties are serializable
  */
 export interface StandardNotificationPayload {
   notification_type: 'payment_success' | 'payment_failed' | 'payment_request' | 'refund';
@@ -49,4 +51,5 @@ export interface StandardNotificationPayload {
     message: string;
     code: string;
   };
+  [key: string]: any; // Add index signature to satisfy Json type requirements
 }

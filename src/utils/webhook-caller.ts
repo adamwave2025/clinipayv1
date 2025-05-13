@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 export async function callWebhookDirectly(
   payload: StandardNotificationPayload,
   recipient_type: 'patient' | 'clinic'
-): Promise<{ success: boolean; error?: string; details?: any }> {
+): Promise<{ success: boolean; error?: string }> {
   try {
     console.log('⚠️ CRITICAL: Calling webhook directly with payload:', JSON.stringify(payload, null, 2));
     
@@ -38,44 +38,16 @@ export async function callWebhookDirectly(
       
     if (!settingsError && webhookSettings?.value) {
       webhookUrl = webhookSettings.value;
-      console.log(`📤 Found webhook URL in system_settings for ${recipient_type} notifications: ${webhookUrl}`);
+      console.log(`📤 Found webhook URL in system_settings for ${recipient_type} notifications`);
     } else {
-      console.log(`⚠️ No webhook URL found in system_settings for ${recipient_type} notifications: ${settingsError?.message || 'No data'}, trying environment fallback`);
+      console.log(`⚠️ No webhook URL found in system_settings for ${recipient_type} notifications, trying environment fallback`);
     }
     
-    // If no webhook URL in system_settings, check the environment variable
-    if (!webhookUrl) {
-      const envKey = recipient_type === 'patient' ? 'PATIENT_NOTIFICATION' : 'CLINIC_NOTIFICATION';
-      console.log(`🔑 Looking for environment variable: ${envKey}`);
-      
-      // Try to get from Supabase secrets
-      try {
-        const { data: secretData, error: secretError } = await supabase
-          .from('system_settings')
-          .select('value')
-          .eq('key', envKey)
-          .maybeSingle();
-          
-        if (!secretError && secretData?.value) {
-          webhookUrl = secretData.value;
-          console.log(`🔐 Found webhook URL in secrets for ${recipient_type} notifications: ${webhookUrl.substring(0, 20)}...`);
-        } else {
-          console.log(`⚠️ No webhook URL found in secrets for ${recipient_type}: ${secretError?.message || 'No data'}`);
-        }
-      } catch (secretFetchError) {
-        console.error(`⚠️ Error fetching secret: ${envKey}`, secretFetchError);
-      }
-    }
-    
-    // If still no webhook URL, use default service domain as fallback
+    // If no webhook URL in system_settings, use default service domain
     if (!webhookUrl) {
       // Default fallback to Lead Connector standard webhook
       webhookUrl = 'https://services.leadconnector.com/payment/webhook';
-      console.log(`📤 Using default webhook URL as last resort: ${webhookUrl}`);
-    }
-    
-    if (!webhookUrl || webhookUrl.trim() === '') {
-      throw new Error(`No valid webhook URL found for ${recipient_type} notifications`);
+      console.log(`📤 Using default webhook URL: ${webhookUrl}`);
     }
     
     console.log(`📤 Sending ${recipient_type} notification to webhook: ${webhookUrl}`);
@@ -92,106 +64,14 @@ export async function callWebhookDirectly(
     // Check response
     if (!response.ok) {
       const errorText = await response.text();
-      const errorDetails = {
-        status: response.status,
-        statusText: response.statusText,
-        responseBody: errorText,
-        webhook: webhookUrl,
-        recipientType: recipient_type
-      };
-      console.error(`⚠️ CRITICAL ERROR: Webhook call failed:`, JSON.stringify(errorDetails, null, 2));
-      return { 
-        success: false, 
-        error: `Webhook responded with ${response.status}: ${errorText}`, 
-        details: errorDetails 
-      };
+      console.error(`⚠️ CRITICAL ERROR: Webhook call failed with status ${response.status}: ${errorText}`);
+      return { success: false, error: `Webhook responded with ${response.status}: ${errorText}` };
     }
 
-    // Try to get response body for additional logging
-    let responseBody;
-    try {
-      responseBody = await response.text();
-      console.log(`✅ Webhook response body: ${responseBody}`);
-    } catch (responseBodyError) {
-      console.log('⚠️ Could not retrieve response body, but webhook call was successful');
-    }
-
-    console.log(`✅ Webhook call succeeded with status: ${response.status}`);
-    return { success: true, details: { status: response.status, responseBody } };
+    console.log(`✅ Webhook response: ${response.status}`);
+    return { success: true };
   } catch (error) {
-    // Enhance error reporting
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error calling webhook';
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    
-    console.error('⚠️ CRITICAL ERROR: Exception in webhook call:', errorMessage);
-    if (errorStack) console.error('Error stack:', errorStack);
-    
-    return { 
-      success: false, 
-      error: errorMessage,
-      details: {
-        stack: errorStack,
-        recipientType: recipient_type,
-        payloadType: payload.notification_type
-      }
-    };
-  }
-}
-
-/**
- * Check if webhook URLs are properly configured in system_settings
- * Returns a status object indicating which webhooks are configured
- */
-export async function verifyWebhookConfiguration(): Promise<{
-  patient: boolean;
-  clinic: boolean;
-  patientUrl?: string;
-  clinicUrl?: string;
-}> {
-  const result = {
-    patient: false,
-    clinic: false,
-    patientUrl: undefined,
-    clinicUrl: undefined
-  };
-  
-  try {
-    console.log('🔍 Verifying webhook configuration...');
-    
-    // Check patient webhook
-    const { data: patientWebhook } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'patient_notification_webhook')
-      .maybeSingle();
-      
-    if (patientWebhook?.value && typeof patientWebhook.value === 'string' && patientWebhook.value.trim() !== '') {
-      result.patient = true;
-      result.patientUrl = patientWebhook.value;
-      console.log('✓ Patient webhook URL is configured');
-    } else {
-      console.log('✗ Patient webhook URL is not configured');
-    }
-    
-    // Check clinic webhook
-    const { data: clinicWebhook } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'clinic_notification_webhook')
-      .maybeSingle();
-      
-    if (clinicWebhook?.value && typeof clinicWebhook.value === 'string' && clinicWebhook.value.trim() !== '') {
-      result.clinic = true;
-      result.clinicUrl = clinicWebhook.value;
-      console.log('✓ Clinic webhook URL is configured');
-    } else {
-      console.log('✗ Clinic webhook URL is not configured');
-    }
-    
-    console.log('🔍 Webhook verification complete:', result);
-    return result;
-  } catch (error) {
-    console.error('⚠️ Error verifying webhook configuration:', error);
-    return result;
+    console.error('⚠️ CRITICAL ERROR: Exception in webhook call:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error calling webhook' };
   }
 }

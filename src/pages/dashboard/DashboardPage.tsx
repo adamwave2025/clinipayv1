@@ -6,47 +6,26 @@ import PageHeader from '@/components/common/PageHeader';
 import DashboardContent from '@/components/dashboard/DashboardContent';
 import { DashboardDataProvider } from '@/components/dashboard/DashboardDataProvider';
 import { useUserRole } from '@/hooks/useUserRole';
-import { useAuth } from '@/contexts/AuthContext';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const DashboardPage = () => {
   useDocumentTitle('Dashboard');
-  const { role, loading: roleLoading } = useUserRole();
-  const { user, loading: authLoading } = useAuth();
+  const { role, loading } = useUserRole();
   const navigate = useNavigate();
   
-  // Combined loading state
-  const isLoading = authLoading || roleLoading;
-  
   useEffect(() => {
-    // Only redirect after both auth and role are fully loaded
-    if (!isLoading && role === 'admin' && user) {
-      console.log('DashboardPage: User is admin, redirecting to admin dashboard');
+    // If the user is an admin, redirect them to the admin dashboard
+    if (!loading && role === 'admin') {
       navigate('/admin', { replace: true });
     }
-  }, [role, isLoading, navigate, user]);
-  
-  // Enhanced logging
-  console.log('DashboardPage:', {
-    authLoading,
-    roleLoading,
-    isLoading,
-    role,
-    user: user?.id,
-    redirectingToAdmin: !isLoading && role === 'admin'
-  });
+  }, [role, loading, navigate]);
   
   // Show loading while checking role
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-muted-foreground">
-            {authLoading ? "Verifying your account..." : "Checking user role..."}
-          </p>
-        </div>
+        <LoadingSpinner size="lg" />
       </div>
     );
   }

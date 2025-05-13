@@ -13,22 +13,14 @@ export const usePaymentPlans = () => {
   const [isArchiveView, setIsArchiveView] = useState(false);
   const [isTemplateView, setIsTemplateView] = useState(true); // Default to template view since we're on the templates page
   
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
 
-  // Fetch payment plans when user is available and no longer loading
+  // Fetch payment plans when user is available or archive/template view changes
   useEffect(() => {
-    const loadPlans = async () => {
-      // Only proceed if we have a user and auth is no longer loading
-      if (user && !authLoading) {
-        console.log('usePaymentPlans: User available, fetching payment plans');
-        await fetchPaymentPlans();
-      } else {
-        console.log('usePaymentPlans: User not available or still loading, skipping plan fetch');
-      }
-    };
-    
-    loadPlans();
-  }, [user, authLoading, isArchiveView, isTemplateView]);
+    if (user) {
+      fetchPaymentPlans();
+    }
+  }, [user, isArchiveView, isTemplateView]);
 
   const fetchPaymentPlans = async () => {
     setIsLoading(true);
@@ -39,8 +31,9 @@ export const usePaymentPlans = () => {
         return;
       }
       
-      // IMPROVED: Pass the user ID to getUserClinicId to avoid unnecessary auth calls
-      let clinicId = await getUserClinicId(user.id);
+      // FIXED: The User type doesn't have clinic_id property, so we need to use getUserClinicId instead
+      // This gets the clinic ID from the users table in the database
+      let clinicId = await getUserClinicId();
       
       if (!clinicId) {
         console.error('Could not determine clinic ID for payment plans');

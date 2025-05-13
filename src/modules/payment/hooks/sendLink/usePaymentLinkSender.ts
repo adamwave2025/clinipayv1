@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
 import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
+import { processNotificationsNow } from '@/utils/notification-cron-setup';
 import { addToNotificationQueue } from '@/utils/notification-queue';
 
 interface PaymentLinkSenderProps {
@@ -188,7 +189,7 @@ export function usePaymentLinkSender() {
         console.log('Notification payload prepared:', JSON.stringify(notificationPayload, null, 2));
 
         try {
-          const { success, error, webhook_success, webhook_error } = await addToNotificationQueue(
+          const { success, error } = await addToNotificationQueue(
             'payment_request',
             notificationPayload,
             'patient',
@@ -199,11 +200,16 @@ export function usePaymentLinkSender() {
           if (!success) {
             console.error("Failed to queue notification:", error);
             toast.warning("Payment link was sent, but notification delivery might be delayed");
-          } else if (!webhook_success) {
-            console.error("Failed to deliver notification via webhook:", webhook_error);
-            toast.warning("Payment link was sent, but notification delivery might be delayed");
           } else {
-            console.log("Payment request notification queued and sent successfully");
+            console.log("Payment request notification queued successfully");
+            
+            try {
+              console.log("Processing notifications immediately...");
+              const processResult = await processNotificationsNow();
+              console.log("Process notifications result:", processResult);
+            } catch (cronErr) {
+              console.error("Exception triggering notification processing:", cronErr);
+            }
           }
         } catch (notifyErr) {
           console.error("Critical error during notification queueing:", notifyErr);
