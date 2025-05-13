@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
@@ -73,6 +74,14 @@ export const ManagePlansDialogs = () => {
       });
     }
   }, [showTakePaymentDialog, selectedInstallment]);
+
+  // Add a debugging effect for the reschedule payment dialog
+  useEffect(() => {
+    console.log("[ManagePlansDialogs] ReschedulePaymentDialog state:", {
+      showReschedulePaymentDialog,
+      isProcessing
+    });
+  }, [showReschedulePaymentDialog, isProcessing]);
 
   return (
     <>
