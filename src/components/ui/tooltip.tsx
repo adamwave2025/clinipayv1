@@ -5,8 +5,13 @@ import * as React from "react"
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 
 import { cn } from "@/lib/utils"
+import { withTooltipSafety } from "@/hooks/useTooltipSafety"
 
-const TooltipProvider = TooltipPrimitive.Provider
+// Create the base TooltipProvider
+const BaseTooltipProvider = TooltipPrimitive.Provider
+
+// Wrap the provider with safety HOC
+const TooltipProvider = withTooltipSafety(BaseTooltipProvider)
 
 const Tooltip = TooltipPrimitive.Root
 

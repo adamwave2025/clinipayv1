@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { Toaster } from "@/components/ui/sonner";
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { useTooltipSafety } from '@/hooks/useTooltipSafety';
 
 // Component state interface to make it more explicit
 interface ManagePlansPageState {
@@ -88,6 +89,9 @@ const PaymentDetailsDialogWrapper = () => {
 const ManagePlansPageContent: React.FC = () => {
   // Set document title for this page
   useDocumentTitle('Manage Payment Plans');
+  
+  // Check tooltip safety
+  const { isTooltipSafe } = useTooltipSafety();
   
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -324,8 +328,22 @@ const ManagePlansPageContent: React.FC = () => {
     };
   }, []);
 
+  // Choose whether to use TooltipProvider based on safety check
+  const ContentWrapper = ({ children }: { children: React.ReactNode }) => {
+    if (!isTooltipSafe) {
+      // Skip using TooltipProvider if not safe
+      return <>{children}</>;
+    }
+    
+    return (
+      <TooltipProvider>
+        {children}
+      </TooltipProvider>
+    );
+  };
+
   return (
-    <TooltipProvider>
+    <ContentWrapper>
       <ManagePlansHeader 
         isTemplateView={isTemplateView}
         onCreatePlanClick={handleCreatePlanClick}
@@ -364,19 +382,26 @@ const ManagePlansPageContent: React.FC = () => {
       />
       
       <Toaster />
-    </TooltipProvider>
+    </ContentWrapper>
   );
 };
 
 // Render a ManagePlansProvider that wraps the content
 const ManagePlansPage: React.FC = () => {
+  // Check tooltip safety
+  const { isTooltipSafe } = useTooltipSafety();
+  
   return (
     <DashboardLayout userType="clinic">
       <DashboardDataProvider>
         <ManagePlansProvider>
-          <TooltipProvider>
+          {isTooltipSafe ? (
+            <TooltipProvider>
+              <ManagePlansPageContent />
+            </TooltipProvider>
+          ) : (
             <ManagePlansPageContent />
-          </TooltipProvider>
+          )}
         </ManagePlansProvider>
       </DashboardDataProvider>
     </DashboardLayout>
