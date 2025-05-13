@@ -175,16 +175,21 @@ export async function processNotificationsNow(): Promise<{
   // Process each notification
   for (const notification of pendingNotifications) {
     try {
-      // Use our safe parsing function to handle the payload correctly
-      const payload = notification.payload ? safelyParseNotificationPayload(notification.payload) : null;
+      // Breaking the type chain - use raw data without strong typing initially
+      const rawPayload = notification.payload ? JSON.parse(JSON.stringify(notification.payload)) : null;
       
-      if (!payload) {
+      if (!rawPayload) {
         throw new Error('Invalid or missing payload');
       }
       
-      // Now pass the runtime-validated payload to the webhook service
+      // Only validate the structure but don't create deep type dependencies
+      if (!isValidNotificationPayload(rawPayload)) {
+        throw new Error('Invalid notification payload structure');
+      }
+      
+      // Process with webhook service - pass as any to avoid complex type checking
       const webhookResult = await callWebhookDirectly(
-        payload,
+        rawPayload as any,
         notification.recipient_type as RecipientType
       );
       
