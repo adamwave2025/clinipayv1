@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -17,10 +17,18 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
   redirectTo = '/dashboard'
 }) => {
   const { user, loading: authLoading } = useAuth();
-  const { role, loading: roleLoading } = useUserRole();
+  const { role, loading: roleLoading, initialFetchComplete } = useUserRole();
   const location = useLocation();
   const [shouldRedirect, setShouldRedirect] = useState(false);
   const [redirectReason, setRedirectReason] = useState<string | null>(null);
+  const redirectDebounceTimer = useRef<NodeJS.Timeout | null>(null);
+  
+  // Check if current path (without query parameters) matches redirectTo
+  const isOnRedirectPath = () => {
+    // Extract base path without query params
+    const currentBasePath = location.pathname;
+    return currentBasePath === redirectTo;
+  };
   
   // Add debug logging
   console.log('RoleBasedRoute:', { 
@@ -30,28 +38,44 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
     allowedRoles,
     authLoading,
     roleLoading,
+    initialFetchComplete,
     shouldRedirect,
     redirectReason
   });
   
   useEffect(() => {
-    // Only evaluate redirect after loading is complete
-    if (!authLoading && !roleLoading) {
-      if (!user) {
-        setShouldRedirect(true);
-        setRedirectReason('User not authenticated');
-      } else if (role && !allowedRoles.includes(role) && location.pathname !== redirectTo) {
-        setShouldRedirect(true);
-        setRedirectReason(`Role ${role} not allowed, only ${allowedRoles.join(', ')} can access`);
-      } else {
-        setShouldRedirect(false);
-        setRedirectReason(null);
+    // Only evaluate redirect after loading is complete and initial fetch is done
+    if (!authLoading && !roleLoading && initialFetchComplete) {
+      // Clear any existing timer
+      if (redirectDebounceTimer.current) {
+        clearTimeout(redirectDebounceTimer.current);
       }
+      
+      // Set a small debounce to prevent rapid redirect changes
+      redirectDebounceTimer.current = setTimeout(() => {
+        if (!user) {
+          setShouldRedirect(true);
+          setRedirectReason('User not authenticated');
+        } else if (role && !allowedRoles.includes(role) && !isOnRedirectPath()) {
+          setShouldRedirect(true);
+          setRedirectReason(`Role ${role} not allowed, only ${allowedRoles.join(', ')} can access`);
+        } else {
+          setShouldRedirect(false);
+          setRedirectReason(null);
+        }
+      }, 100);
     }
-  }, [user, role, allowedRoles, authLoading, roleLoading, location.pathname, redirectTo]);
+    
+    // Clean up timeout on unmount
+    return () => {
+      if (redirectDebounceTimer.current) {
+        clearTimeout(redirectDebounceTimer.current);
+      }
+    };
+  }, [user, role, allowedRoles, authLoading, roleLoading, initialFetchComplete, location.pathname, redirectTo]);
   
   // Show loading while checking auth state or role
-  if (authLoading || roleLoading) {
+  if (authLoading || roleLoading || !initialFetchComplete) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size="lg" />
@@ -66,7 +90,7 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
   }
 
   // If redirect evaluation determined we should redirect
-  if (shouldRedirect && location.pathname !== redirectTo) {
+  if (shouldRedirect && !isOnRedirectPath()) {
     console.log(`${redirectReason}, redirecting to ${redirectTo}`);
     return <Navigate to={redirectTo} replace />;
   }

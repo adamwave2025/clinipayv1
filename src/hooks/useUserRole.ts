@@ -9,6 +9,7 @@ export function useUserRole() {
   const { user } = useAuth();
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialFetchComplete, setInitialFetchComplete] = useState(false);
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -16,6 +17,7 @@ export function useUserRole() {
         setRole(null);
         setLoading(false);
         localStorage.removeItem(ROLE_CACHE_KEY);
+        setInitialFetchComplete(true);
         return;
       }
 
@@ -23,7 +25,6 @@ export function useUserRole() {
       const cachedRole = localStorage.getItem(ROLE_CACHE_KEY);
       if (cachedRole) {
         setRole(cachedRole);
-        // Still fetch from the database to ensure we have the latest role
       }
 
       try {
@@ -54,11 +55,12 @@ export function useUserRole() {
         }
       } finally {
         setLoading(false);
+        setInitialFetchComplete(true);
       }
     };
 
     fetchUserRole();
   }, [user]);
 
-  return { role, loading };
+  return { role, loading, initialFetchComplete };
 }

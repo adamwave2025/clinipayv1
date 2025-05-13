@@ -1,6 +1,6 @@
 
 // Export all notification functions from the stub implementation
-export { 
+import { 
   addToNotificationQueue,
   checkNotificationExists,
   processNotificationsNow,
@@ -9,10 +9,28 @@ export {
 } from '../notification-stub';
 
 // Export types
-export type {
+import type {
   NotificationResponse,
   RecipientType,
   WebhookResult,
   NotificationPayload,
   StandardNotificationPayload
 } from './types';
+
+// Re-export functions
+export { 
+  addToNotificationQueue,
+  checkNotificationExists,
+  processNotificationsNow,
+  callWebhookDirectly,
+  verifyWebhookConfiguration
+};
+
+// Re-export types
+export type {
+  NotificationResponse,
+  RecipientType,
+  WebhookResult,
+  NotificationPayload,
+  StandardNotificationPayload
+};

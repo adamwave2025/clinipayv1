@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User, CreditCard, Bell, Shield } from 'lucide-react';
@@ -20,10 +20,12 @@ const VALID_TABS = ['profile', 'payments', 'notifications', 'security'];
 const SettingsContainer = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const initialTab = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(
-    VALID_TABS.includes(initialTab as string) ? initialTab : 'profile'
-  );
+  // Get initial tab from URL or use default
+  const initialTabParam = searchParams.get('tab');
+  const initialTab = VALID_TABS.includes(initialTabParam as string) ? initialTabParam : 'profile';
+  
+  // Use React state for tab switching to prevent URL dependency issues
+  const [activeTab, setActiveTab] = useState(initialTab);
   
   const { 
     clinicData, 
@@ -34,10 +36,19 @@ const SettingsContainer = () => {
     deleteLogo
   } = useClinicData();
 
-  const handleTabChange = (value: string) => {
+  // Update URL when tab changes, but don't depend on URL for state
+  const handleTabChange = useCallback((value: string) => {
     setActiveTab(value);
-    setSearchParams({ tab: value });
-  };
+    // Update URL without triggering a re-render
+    setSearchParams({ tab: value }, { replace: true });
+  }, [setSearchParams]);
+  
+  // Sync URL with state on initial load and when URL changes externally
+  useEffect(() => {
+    if (initialTabParam && VALID_TABS.includes(initialTabParam)) {
+      setActiveTab(initialTabParam);
+    }
+  }, [initialTabParam]);
 
   if (dataLoading) {
     return (
