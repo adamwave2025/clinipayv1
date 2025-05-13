@@ -1,63 +1,69 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-export class PaymentLinkService {
-  static async getActiveLinks(clinicId: string) {
+export const PaymentLinkService = {
+  /**
+   * Fetches both active and archived links for a clinic
+   */
+  fetchLinks: async (clinicId: string) => {
     try {
-      const { data, error } = await supabase
+      // Get active links
+      const { data: activeLinks, error: activeError } = await supabase
         .from('payment_links')
         .select('*')
         .eq('clinic_id', clinicId)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching active payment links:', error);
-      throw error;
-    }
-  }
-
-  static async getArchivedLinks(clinicId: string) {
-    try {
-      const { data, error } = await supabase
+        .eq('is_active', true);
+        
+      if (activeError) {
+        throw activeError;
+      }
+      
+      // Get archived links
+      const { data: archivedLinks, error: archivedError } = await supabase
         .from('payment_links')
         .select('*')
         .eq('clinic_id', clinicId)
-        .eq('is_active', false)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
+        .eq('is_active', false);
+        
+      if (archivedError) {
+        throw archivedError;
+      }
+      
+      return { activeLinks, archivedLinks };
     } catch (error) {
-      console.error('Error fetching archived payment links:', error);
-      throw error;
+      console.error('Error fetching payment links:', error);
+      return { activeLinks: [], archivedLinks: [], error };
     }
-  }
-
-  static async archiveLink(linkId: string) {
+  },
+  
+  /**
+   * Archives a payment link
+   */
+  archiveLink: async (linkId: string) => {
     try {
       const { data, error } = await supabase
         .from('payment_links')
         .update({ is_active: false })
         .eq('id', linkId);
-
+        
       if (error) throw error;
       return { success: true };
     } catch (error) {
       console.error('Error archiving payment link:', error);
       return { success: false, error: (error as Error).message };
     }
-  }
-
-  static async unarchiveLink(linkId: string) {
+  },
+  
+  /**
+   * Unarchives a payment link
+   */
+  unarchiveLink: async (linkId: string) => {
     try {
       const { data, error } = await supabase
         .from('payment_links')
         .update({ is_active: true })
         .eq('id', linkId);
-
+        
       if (error) throw error;
       return { success: true };
     } catch (error) {
@@ -65,20 +71,4 @@ export class PaymentLinkService {
       return { success: false, error: (error as Error).message };
     }
   }
-
-  static async createPaymentLink(linkData: any) {
-    try {
-      const { data, error } = await supabase
-        .from('payment_links')
-        .insert(linkData)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      console.error('Error creating payment link:', error);
-      return { success: false, error: (error as Error).message };
-    }
-  }
-}
+};

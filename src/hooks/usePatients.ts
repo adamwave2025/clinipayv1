@@ -1,92 +1,81 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
+import { getUserClinicId } from '@/utils/userUtils';
+import { toast } from 'sonner';
 
 export interface Patient {
   id: string;
   name: string;
-  email: string | null;
-  phone: string | null;
-  notes: string | null;
-  total_spent: number;
-  last_payment_date: string | null;
+  email?: string;
+  phone?: string;
+  clinic_id: string;
   created_at: string;
   updated_at: string;
-  clinic_id: string;
-  paymentCount?: number;
+  notes?: string;
+  total_spent?: number;
+  last_payment_date?: string;
+  paymentCount?: number; // For compatibility with components
 }
 
-export function usePatients() {
+export const usePatients = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [isLoadingPatients, setIsLoadingPatients] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, clinicId } = useUnifiedAuth();
 
   const fetchPatients = async () => {
-    if (!user || !clinicId) {
-      console.log('No user or clinicId available', { user, clinicId });
-      setIsLoadingPatients(false);
-      return;
-    }
-
-    setIsLoadingPatients(true);
+    setIsLoading(true);
     setError(null);
-
+    
     try {
-      // Fetch patients with their total payments
-      const { data: patientsData, error: patientsError } = await supabase
-        .from('patients')
-        .select('*')
-        .eq('clinic_id', clinicId)
-        .order('name');
-
-      if (patientsError) throw patientsError;
-
-      // Calculate total spent per patient (would be better as a DB function or view)
-      const patientsWithPayments: Patient[] = await Promise.all(
-        patientsData.map(async (patient) => {
-          // Get total payments for this patient
-          const { data: paymentsData, error: paymentsError } = await supabase
-            .from('payments')
-            .select('amount_paid, paid_at')
-            .eq('patient_id', patient.id)
-            .eq('status', 'paid')
-            .order('paid_at', { ascending: false });
-
-          if (paymentsError) throw paymentsError;
-
-          const total_spent = paymentsData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
-          const last_payment_date = paymentsData.length > 0 ? paymentsData[0].paid_at : null;
-
-          return {
-            ...patient,
-            total_spent,
-            last_payment_date,
-            paymentCount: paymentsData.length
-          };
-        })
-      );
-
-      setPatients(patientsWithPayments);
-    } catch (err: any) {
-      console.error('Error fetching patients:', err);
-      setError(err.message || 'Failed to load patients');
-      setPatients([]);
+      const clinicId = await getUserClinicId();
+      
+      if (!clinicId) {
+        setError('No clinic ID available');
+        return [];
+      }
+      
+      // Query patients with payment information via RPC function
+      const { data, error: fetchError } = await supabase
+        .rpc('get_patients_with_payment_info', { clinic_id_param: clinicId });
+        
+      if (fetchError) {
+        setError(fetchError.message);
+        throw fetchError;
+      }
+      
+      // Format the data to match our Patient interface
+      const formattedPatients = data.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        email: p.email,
+        phone: p.phone,
+        clinic_id: p.clinic_id,
+        created_at: p.created_at,
+        updated_at: p.updated_at,
+        notes: p.notes,
+        total_spent: p.total_spent || 0,
+        last_payment_date: p.last_payment_date,
+        paymentCount: p.payment_count || 0
+      }));
+      
+      setPatients(formattedPatients);
+      return formattedPatients;
+    } catch (e: any) {
+      console.error('Error fetching patients:', e);
+      setError(e.message || 'Failed to fetch patients');
+      toast.error('Failed to load patients');
+      return [];
     } finally {
-      setIsLoadingPatients(false);
+      setIsLoading(false);
     }
   };
 
-  const refetchPatients = () => {
-    fetchPatients();
+  return {
+    patients,
+    isLoading,
+    error,
+    fetchPatients,
+    setPatients
   };
-
-  useEffect(() => {
-    if (clinicId) {
-      fetchPatients();
-    }
-  }, [clinicId]);
-
-  return { patients, isLoadingPatients, error, refetchPatients };
-}
+};

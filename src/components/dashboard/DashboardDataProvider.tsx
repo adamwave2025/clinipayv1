@@ -171,7 +171,8 @@ export const DashboardDataProvider: React.FC<DashboardDataProviderProps> = ({ ch
         handleRefund,
         archivePaymentLink,
         unarchivePaymentLink,
-        rawPaymentLinks: paymentLinks
+        rawPaymentLinks: paymentLinks,
+        error
       }}
     >
       {children}
