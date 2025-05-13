@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, Loader2 } from "lucide-react";
@@ -39,13 +39,7 @@ const ReschedulePaymentDialog = ({
   
   const [date, setDate] = useState<Date>(tomorrow);
   
-  // Add debug logging for component lifecycle and prop changes
-  useEffect(() => {
-    console.log("ReschedulePaymentDialog - Props changed:", { open, isLoading });
-  }, [open, isLoading]);
-  
   const handleConfirm = () => {
-    console.log("ReschedulePaymentDialog - Confirming with date:", date);
     onConfirm(date);
   };
   
@@ -57,13 +51,7 @@ const ReschedulePaymentDialog = ({
   };
   
   return (
-    <Dialog 
-      open={open} 
-      onOpenChange={(newOpenState) => {
-        console.log("ReschedulePaymentDialog - Dialog open state changing to:", newOpenState);
-        onOpenChange(newOpenState);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Reschedule Payment</DialogTitle>

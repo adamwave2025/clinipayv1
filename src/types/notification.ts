@@ -16,6 +16,37 @@ export interface NotificationMethod {
 }
 
 /**
- * Re-export the notification types from our new implementation properly using 'export type'
+ * Standard notification payload structure used across all notification types
  */
-export type { NotificationPayload as StandardNotificationPayload } from '@/utils/notifications/types';
+export interface StandardNotificationPayload {
+  notification_type: 'payment_success' | 'payment_failed' | 'payment_request' | 'refund';
+  notification_method: NotificationMethod;
+  patient: {
+    name: string;
+    email?: string;
+    phone?: string;
+  };
+  payment: {
+    reference: string;
+    amount: number;
+    refund_amount?: number | null;
+    payment_link?: string;
+    message: string;
+    financial_details?: {
+      gross_amount: number;
+      stripe_fee: number;
+      platform_fee: number;
+      net_amount: number;
+    };
+  };
+  clinic: {
+    name: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+  };
+  error?: {
+    message: string;
+    code: string;
+  };
+}

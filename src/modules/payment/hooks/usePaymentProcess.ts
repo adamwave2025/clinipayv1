@@ -29,7 +29,6 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
     }
     
     // Check if the payment link is still active before proceeding
-    // Using the updated isPaymentLinkActive function that accepts PaymentLinkData
     if (!isPaymentLinkActive(linkData)) {
       console.log('Payment link is no longer active:', { 
         status: linkData.status,
@@ -128,7 +127,6 @@ export function usePaymentProcess(linkId: string | undefined, linkData: PaymentL
     }
     
     // Check if the payment link is still active before proceeding
-    // Using the updated isPaymentLinkActive function that accepts PaymentLinkData
     if (!isPaymentLinkActive(linkData)) {
       console.log('Payment link is no longer active:', { 
         status: linkData.status,

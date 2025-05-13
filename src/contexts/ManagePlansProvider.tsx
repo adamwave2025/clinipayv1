@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext, { PaymentDialogData } from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -226,14 +227,6 @@ export const ManagePlansProvider: React.FC<{
     selectedPlan?.id || '',
     refreshPlanState
   );
-
-  // Add debug logs for state changes
-  useEffect(() => {
-    console.log("ManagePlansProvider: Payment reschedule dialog state changed:", {
-      showReschedulePaymentDialog: paymentRescheduleActions.showReschedulePaymentDialog,
-      selectedPaymentId: paymentRescheduleActions.selectedPaymentId
-    });
-  }, [paymentRescheduleActions.showReschedulePaymentDialog, paymentRescheduleActions.selectedPaymentId]);
 
   // Apply filters to get the filtered plans
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -493,8 +486,8 @@ export const ManagePlansProvider: React.FC<{
         handleOpenRescheduleDialog,
         
         // Add payment rescheduling dialog properties
-        showReschedulePaymentDialog: paymentRescheduleActions.showReschedulePaymentDialog,
-        setShowReschedulePaymentDialog: paymentRescheduleActions.setShowReschedulePaymentDialog,
+        showReschedulePaymentDialog: paymentRescheduleActions.showRescheduleDialog,
+        setShowReschedulePaymentDialog: paymentRescheduleActions.setShowRescheduleDialog,
         
         hasOverduePayments,
         hasPaidPayments,
@@ -509,3 +502,4 @@ export const ManagePlansProvider: React.FC<{
     </ManagePlansContext.Provider>
   );
 };
+

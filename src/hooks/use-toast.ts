@@ -1,40 +1,48 @@
 
-import { toast as sonnerToast, Toaster } from 'sonner'
+import { toast as sonnerToast, Toaster } from "sonner";
 
-export type ToastProps = {
+type ToastProps = {
   title?: string;
   description?: string;
-  variant?: 'default' | 'destructive';
-}
-
-// Create a function that can be called directly as toast()
-const toastFunction = (props: ToastProps) => {
-  const { title, description, variant } = props;
-
-  if (variant === 'destructive') {
-    return sonnerToast.error(title || '', { description });
-  }
-
-  return sonnerToast(title || '', { description });
+  variant?: "default" | "destructive";
 };
 
-// Create the toast object with methods and function behavior
-export const toast = Object.assign(
-  toastFunction,
-  {
-    success: (message: string) => sonnerToast.success(message),
-    error: (message: string) => sonnerToast.error(message),
-    warning: (message: string) => sonnerToast.warning(message),
-    info: (message: string) => sonnerToast.info(message),
-  }
-);
-
-// Define the useToast hook with toasts property for compatibility
+// Create a custom useToast hook that provides the toast functionality
+// Since sonner doesn't export useToaster, we'll create a minimal implementation
 export const useToast = () => {
-  return {
-    toast,
-    toasts: [] // Empty array for compatibility with the toaster component
-  }
-}
+  // Return an empty toasts array since we're using the direct toast function
+  return { 
+    toasts: [] as any[] 
+  };
+};
 
-export { Toaster }
+export const toast = {
+  success: (message: string, options?: Omit<ToastProps, "variant">) => {
+    console.log("🟢 Toast Success:", message);
+    return sonnerToast.success(options?.title || "Success", {
+      description: message,
+      ...options
+    });
+  },
+  error: (message: string, options?: Omit<ToastProps, "variant">) => {
+    console.log("🔴 Toast Error:", message);
+    return sonnerToast.error(options?.title || "Error", {
+      description: message,
+      ...options
+    });
+  },
+  info: (message: string, options?: Omit<ToastProps, "variant">) => {
+    console.log("🔵 Toast Info:", message);
+    return sonnerToast.info(options?.title || "Info", {
+      description: message,
+      ...options
+    });
+  },
+  warning: (message: string, options?: Omit<ToastProps, "variant">) => {
+    console.log("🟠 Toast Warning:", message);
+    return sonnerToast.warning(options?.title || "Warning", {
+      description: message,
+      ...options
+    });
+  }
+};

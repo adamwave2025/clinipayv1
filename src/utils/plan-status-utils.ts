@@ -1,54 +1,24 @@
 
-import { Plan } from './planTypes';
+import { Plan } from '@/utils/planTypes';
+import { PlanStatusService } from '@/services/PlanStatusService';
 
 /**
- * Utility functions for determining plan status
- */
-
-/**
- * Check if a plan is paused
+ * Check if a plan is currently paused
  */
 export const isPlanPaused = (plan: Plan | null): boolean => {
-  if (!plan) return false;
-  return plan.status === 'paused';
+  return PlanStatusService.isPlanPaused(plan);
 };
 
 /**
- * Check if a plan is active
+ * Check if a plan is currently active
  */
 export const isPlanActive = (plan: Plan | null): boolean => {
-  if (!plan) return false;
-  return ['active', 'pending'].includes(plan.status);
+  return PlanStatusService.isPlanActive(plan);
 };
 
 /**
- * Check if a plan is completed
+ * Check if a plan is cancelled or completed
  */
-export const isPlanCompleted = (plan: Plan | null): boolean => {
-  if (!plan) return false;
-  return plan.status === 'completed';
-};
-
-/**
- * Check if a plan is cancelled
- */
-export const isPlanCancelled = (plan: Plan | null): boolean => {
-  if (!plan) return false;
-  return plan.status === 'cancelled';
-};
-
-/**
- * Get a human-readable status text
- */
-export const getPlanStatusText = (plan: Plan | null): string => {
-  if (!plan) return 'Unknown';
-  
-  switch (plan.status) {
-    case 'active': return 'Active';
-    case 'paused': return 'Paused';
-    case 'completed': return 'Completed';
-    case 'cancelled': return 'Cancelled';
-    case 'pending': return 'Pending';
-    default: return plan.status || 'Unknown';
-  }
+export const isPlanFinished = (plan: Plan | null): boolean => {
+  return PlanStatusService.isPlanFinished(plan);
 };

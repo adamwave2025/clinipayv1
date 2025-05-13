@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 export const usePlanRescheduleActions = (
   selectedPlan: Plan | null,

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   Table, 
@@ -61,16 +62,17 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
     }))
   );
 
-  // Create wrapper functions with consistent signatures
+  // Create wrapper functions without toast notifications
   const handleMarkAsPaid = (paymentId: string, installment: PlanInstallment) => {
     console.log("PlanPaymentsList: Mark as paid clicked for payment:", paymentId);
     console.log("PlanPaymentsList: Installment details:", installment);
-    // Pass both parameters to parent handler
+    // Removed toast notification
     onMarkAsPaid(paymentId, installment);
   };
 
   const handleReschedule = (paymentId: string) => {
     console.log("PlanPaymentsList: Reschedule clicked for payment:", paymentId);
+    // Removed toast notification
     onReschedule(paymentId);
   };
 
@@ -146,6 +148,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
                   <TableCell className="text-right">
                     {status !== 'paid' && (
                       <PaymentActionMenu
+                        paymentId={installment.id}
                         installment={installment}
                         onMarkAsPaid={handleMarkAsPaid}
                         onReschedule={handleReschedule}

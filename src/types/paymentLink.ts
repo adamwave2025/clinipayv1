@@ -27,7 +27,7 @@ export interface PaymentLinkData {
     address?: string;
     stripeStatus: string;
   };
-  status?: string;
+  status: string;
   isActive?: boolean; // Add the isActive property from is_active in DB
   isRequest: boolean;
   patientName?: string;
@@ -42,5 +42,4 @@ export interface PaymentLinkData {
   hasOverduePayments?: boolean;
   payment_link_id?: string;
   isRescheduled?: boolean;
-  is_active?: boolean; // Database format property
 }

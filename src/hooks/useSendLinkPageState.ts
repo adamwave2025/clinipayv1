@@ -5,7 +5,7 @@ import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { useSendLinkFormState } from './sendLink/useSendLinkFormState';
 import { usePatientManager } from './sendLink/usePatientManager';
 import { usePaymentPlanScheduler } from './sendLink/usePaymentPlanScheduler';
-import { usePaymentLinkSender } from './sendLink/usePaymentLinkSender';
+import { usePaymentLinkSender } from './usePaymentLinkSender';
 import { useFormValidation } from './sendLink/useFormValidation';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/utils/formatters';
@@ -21,7 +21,7 @@ export function useSendLinkPageState() {
   const formState = useSendLinkFormState();
   const patientManager = usePatientManager();
   const paymentPlanScheduler = usePaymentPlanScheduler();
-  const { isLoading: isSendingPaymentLink, sendPaymentLink } = usePaymentLinkSender();
+  const paymentLinkSender = usePaymentLinkSender();
   const formValidation = useFormValidation();
   
   const { 
@@ -32,6 +32,7 @@ export function useSendLinkPageState() {
 
   const { createOrGetPatient, creatingPatientInProgress } = patientManager;
   const { handleSchedulePaymentPlan, isSchedulingPlan } = paymentPlanScheduler;
+  const { isLoading: isSendingPaymentLink, sendPaymentLink } = paymentLinkSender;
   const { validateForm } = formValidation;
 
   // Separate payment links and payment plans

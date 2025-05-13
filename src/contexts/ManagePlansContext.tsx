@@ -63,10 +63,10 @@ export interface ManagePlansContextType {
   handleBackToPlans: () => void;
   
   // Add the missing handler methods
-  handleMarkAsPaid: (paymentId: string, installment: PlanInstallment) => void;
+  handleMarkAsPaid: (paymentId: string) => void;
   handleOpenReschedule: (paymentId: string) => void;
   handleReschedulePayment: (date: Date) => void;
-  handleTakePayment: (paymentId: string, installmentDetails: PlanInstallment) => void;
+  handleTakePayment: (paymentId: string, installmentDetails?: any) => void;
   
   // Mark as paid confirmation dialog
   showMarkAsPaidDialog: boolean;
@@ -77,9 +77,6 @@ export interface ManagePlansContextType {
   showTakePaymentDialog: boolean;
   setShowTakePaymentDialog: (show: boolean) => void;
   onPaymentUpdated: () => Promise<void>;
-  
-  // Add the primary selected installment state for payment actions
-  selectedInstallment: PlanInstallment | null;
   
   // Refund properties
   refundDialogOpen: boolean;
@@ -123,6 +120,9 @@ export interface ManagePlansContextType {
   // Plan state helpers
   isPlanPaused: (plan: Plan | null) => boolean;
   isProcessing: boolean;
+  
+  // Add the primary selected installment state for payment actions
+  selectedInstallment: PlanInstallment | null;
 }
 
 const ManagePlansContext = createContext<ManagePlansContextType | undefined>(undefined);

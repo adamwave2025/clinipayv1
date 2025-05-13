@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -5,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PaymentLink } from '@/types/payment';
 import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
 import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
-import { addToNotificationQueue, processNotificationsNow } from '@/utils/notification-queue';
+import { addToNotificationQueue } from '@/utils/notification-queue';
 
 export function usePaymentPlanScheduler() {
   const [isSchedulingPlan, setIsSchedulingPlan] = useState(false);
@@ -321,9 +322,6 @@ export function usePaymentPlanScheduler() {
             clinicId,
             paymentRequestData.id
           );
-
-          // Process notifications immediately to ensure delivery
-          await processNotificationsNow();
 
           if (!success) {
             console.error("⚠️ CRITICAL ERROR: Failed to queue payment plan notification:", error);

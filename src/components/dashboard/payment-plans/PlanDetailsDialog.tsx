@@ -39,7 +39,7 @@ interface PlanDetailsDialogProps {
   onResumePlan: () => void;
   onReschedulePlan: () => void;
   isPlanPaused: (plan: Plan | null) => boolean;
-  onMarkAsPaid?: (installmentId: string, installment: PlanInstallment) => void;
+  onMarkAsPaid?: (installmentId: string) => void;
   onReschedule?: (installmentId: string) => void;
   onTakePayment?: (installmentId: string, installmentDetails?: PlanInstallment) => void;
 }
@@ -181,12 +181,12 @@ const PlanDetailsDialog = ({
                           <TableCell className="text-right">
                             {installment.status !== 'paid' && (
                               <PaymentActionMenu
+                                paymentId={installment.id}
                                 installment={installment}
-                                onMarkAsPaid={onMarkAsPaid || ((id, inst) => {})}
+                                onMarkAsPaid={onMarkAsPaid || (() => {})}
                                 onReschedule={onReschedule || (() => {})}
                                 onTakePayment={onTakePayment ? 
-                                  (id: string, instDetails: PlanInstallment) => onTakePayment(id, instDetails) 
-                                  : ((id, inst) => {})}
+                                  (id: string, instDetails: PlanInstallment) => onTakePayment(id, instDetails) : undefined}
                               />
                             )}
                           </TableCell>

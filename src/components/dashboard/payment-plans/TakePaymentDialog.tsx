@@ -85,6 +85,69 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     }
     onOpenChange(newOpen);
   };
+  
+  // Use the installment payment hook
+  const { 
+    handlePaymentSubmit,
+    isProcessing,
+    isLoading,
+    isStripeReady
+  } = useInstallmentPayment(paymentId, amount, onPaymentProcessed);
+  
+  // Track card completion with a ref to prevent reset issues
+  const handleCardChange = (event: any) => {
+    console.log('Card element change:', { 
+      isEmpty: event.empty, 
+      isComplete: event.complete,
+      hasError: event.error ? true : false,
+      errorMessage: event.error?.message || 'No error' 
+    });
+    
+    // Update both state and ref to track card completion
+    setIsCardComplete(event.complete);
+    cardCompleteRef.current = event.complete;
+  };
+  
+  const handleSubmitPayment = async () => {
+    if (isProcessing || isLoading || !isStripeReady) {
+      console.log("Payment already in progress or not ready");
+      return;
+    }
+    
+    if (!cardCompleteRef.current) {
+      console.log("Card not complete, cannot process payment");
+      toast.error("Please enter complete card details");
+      return;
+    }
+    
+    console.log("Processing payment with:", {
+      paymentId,
+      name: patientName,
+      email: patientEmail,
+      cardComplete: cardCompleteRef.current
+    });
+    
+    try {
+      // Use the form data but rely on cardCompleteRef for card completion status
+      const formData = form.getValues();
+      
+      const result = await handlePaymentSubmit({
+        name: patientName,
+        email: patientEmail,
+        phone: patientPhone,
+        stripeCard: { complete: true }
+      }, cardCompleteRef.current);
+      
+      if (result.success) {
+        setPaymentComplete(true);
+      } else {
+        toast.error(result.error || "Payment failed");
+      }
+    } catch (error: any) {
+      console.error("Payment submission error:", error);
+      toast.error(error.message || "Payment processing failed");
+    }
+  };
 
   // Content when there's a validation error
   const renderValidationError = () => (
@@ -103,126 +166,62 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     </div>
   );
 
-  // StripePaymentForm component wrapped with StripeProvider
-  const StripePaymentForm = () => {
-    const { 
-      handlePaymentSubmit,
-      isProcessing,
-      isLoading,
-      isStripeReady
-    } = useInstallmentPayment(paymentId, amount, onPaymentProcessed);
-    
-    // Track card completion with a ref to prevent reset issues
-    const handleCardChange = (event: any) => {
-      console.log('Card element change:', { 
-        isEmpty: event.empty, 
-        isComplete: event.complete,
-        hasError: event.error ? true : false,
-        errorMessage: event.error?.message || 'No error' 
-      });
-      
-      // Update both state and ref to track card completion
-      setIsCardComplete(event.complete);
-      cardCompleteRef.current = event.complete;
-    };
-    
-    const handleSubmitPayment = async () => {
-      if (isProcessing || isLoading || !isStripeReady) {
-        console.log("Payment already in progress or not ready");
-        return;
-      }
-      
-      if (!cardCompleteRef.current) {
-        console.log("Card not complete, cannot process payment");
-        toast.error("Please enter complete card details");
-        return;
-      }
-      
-      console.log("Processing payment with:", {
-        paymentId,
-        name: patientName,
-        email: patientEmail,
-        cardComplete: cardCompleteRef.current
-      });
-      
-      try {
-        // Use the form data but rely on cardCompleteRef for card completion status
-        const formData = form.getValues();
-        
-        const result = await handlePaymentSubmit({
-          name: patientName,
-          email: patientEmail,
-          phone: patientPhone,
-          stripeCard: { complete: true }
-        }, cardCompleteRef.current);
-        
-        if (result.success) {
-          setPaymentComplete(true);
-        } else {
-          toast.error(result.error || "Payment failed");
-        }
-      } catch (error: any) {
-        console.error("Payment submission error:", error);
-        toast.error(error.message || "Payment processing failed");
-      }
-    };
-    
-    return (
-      <FormProvider {...form}>
-        <div className="space-y-4">
-          {/* Patient & Payment Information - Read-only */}
-          <div className="rounded-md bg-gray-50 p-4 mb-2">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-sm font-medium">Amount:</span>
-              <span className="font-bold">{displayAmount}</span>
+  // Payment form content
+  const renderPaymentForm = () => (
+    <FormProvider {...form}>
+      <div className="space-y-4">
+        {/* Patient & Payment Information - Read-only */}
+        <div className="rounded-md bg-gray-50 p-4 mb-2">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm font-medium">Amount:</span>
+            <span className="font-bold">{displayAmount}</span>
+          </div>
+          
+          <div className="text-sm space-y-1">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Patient:</span>
+              <span>{patientName}</span>
             </div>
             
-            <div className="text-sm space-y-1">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Patient:</span>
-                <span>{patientName}</span>
-              </div>
-              
-              <div className="flex justify-between">
-                <span className="text-gray-500">Email:</span>
-                <span>{patientEmail}</span>
-              </div>
-              
-              {patientPhone && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Phone:</span>
-                  <span>{patientPhone}</span>
-                </div>
-              )}
+            <div className="flex justify-between">
+              <span className="text-gray-500">Email:</span>
+              <span>{patientEmail}</span>
             </div>
-          </div>
-          
-          {/* Card element without form field to prevent reset issues */}
-          <div className="mt-4">
-            <StripeCardElement 
-              isLoading={isLoading || isProcessing}
-              onChange={handleCardChange}
-              label="Card Details"
-              className="mb-4"
-            />
-          </div>
-          
-          <Button 
-            className="w-full mt-2" 
-            disabled={isLoading || isProcessing || !isStripeReady || !isCardComplete}
-            onClick={handleSubmitPayment}
-            type="button"
-          >
-            {isLoading || isProcessing ? "Processing..." : "Process Payment"}
-          </Button>
-          
-          <div className="text-xs text-center text-gray-500">
-            <p>This is a secure payment processed by CliniPay</p>
+            
+            {patientPhone && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Phone:</span>
+                <span>{patientPhone}</span>
+              </div>
+            )}
           </div>
         </div>
-      </FormProvider>
-    );
-  };
+        
+        {/* Card element without form field to prevent reset issues */}
+        <div className="mt-4">
+          <StripeCardElement 
+            isLoading={isLoading || isProcessing}
+            onChange={handleCardChange}
+            label="Card Details"
+            className="mb-4"
+          />
+        </div>
+        
+        <Button 
+          className="w-full mt-2" 
+          disabled={isLoading || isProcessing || !isStripeReady || !isCardComplete}
+          onClick={handleSubmitPayment}
+          type="button"
+        >
+          {isLoading || isProcessing ? "Processing..." : "Process Payment"}
+        </Button>
+        
+        <div className="text-xs text-center text-gray-500">
+          <p>This is a secure payment processed by CliniPay</p>
+        </div>
+      </div>
+    </FormProvider>
+  );
 
   // Success content
   const renderSuccessContent = () => (
@@ -256,7 +255,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
           renderSuccessContent()
         ) : (
           <StripeProvider>
-            {validationError ? renderValidationError() : <StripePaymentForm />}
+            {validationError ? renderValidationError() : renderPaymentForm()}
           </StripeProvider>
         )}
       </DialogContent>
