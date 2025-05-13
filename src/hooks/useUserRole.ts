@@ -4,17 +4,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-// Debug setting - can be enabled via localStorage
+// Debug settings - can be enabled via localStorage
 const DEBUG_ROLES = localStorage.getItem('DEBUG_ROLES') === 'true' || false;
 
 // Cache configuration
 const ROLE_CACHE_KEY = 'user_role_cache';
 const ROLE_CACHE_USER_KEY = 'user_role_cache_user';
 const ROLE_CACHE_EXPIRY_KEY = 'user_role_cache_expiry';
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // Extended to 24 hours
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 const DEFAULT_ROLE = 'clinic'; // Default role if we can't determine it
-const MAX_RETRIES = 5;
-const CIRCUIT_BREAKER_TIMEOUT = 60 * 1000; // 60 seconds
+const MAX_RETRIES = 3; // Reduced from 5 to prevent excessive retries
+const CIRCUIT_BREAKER_TIMEOUT = 30 * 1000; // Reduced to 30 seconds
 const RETRY_DELAY_BASE = 1000; // Base delay of 1 second
 
 export function useUserRole() {
@@ -29,8 +29,9 @@ export function useUserRole() {
       
       // If we have a cached role that's not expired and matches the current user
       if (cachedRole && expiry > Date.now() && cachedUserId === user?.id) {
-        const logMsg = `Using cached role: ${cachedRole} (expires in ${Math.floor((expiry - Date.now()) / 60000)}min)`;
-        if (DEBUG_ROLES) console.log(`🔑 ${logMsg}`);
+        logRoleEvent(`Using cached role: ${cachedRole}`, { 
+          expiresIn: Math.floor((expiry - Date.now()) / 60000) + ' minutes' 
+        });
         return cachedRole;
       }
     } catch (e) {
@@ -54,7 +55,7 @@ export function useUserRole() {
   });
 
   // Debug logging function
-  const logRoleEvent = (action: string, details?: any) => {
+  const logRoleEvent = useCallback((action: string, details?: any) => {
     if (DEBUG_ROLES || debugMode) {
       console.group(`🔑 Role Event: ${action}`);
       console.log(`Time: ${new Date().toISOString()}`);
@@ -64,7 +65,7 @@ export function useUserRole() {
       if (details) console.log('Details:', details);
       console.groupEnd();
     }
-  };
+  }, [debugMode, role, user?.id]);
 
   // Create a utility function to update cache
   const updateRoleCache = useCallback((userId: string, roleValue: string) => {
@@ -77,14 +78,14 @@ export function useUserRole() {
       logRoleEvent('Updated role cache', { 
         userId, 
         role: roleValue, 
-        expiresAt: new Date(expiry).toISOString()
+        expiresAt: new Date(expiry).toISOString() 
       });
     } catch (e) {
       console.warn('Error setting role cache:', e);
     }
-  }, []);
+  }, [logRoleEvent]);
 
-  // Clear cache when user changes
+  // Clear cache when needed
   const clearRoleCache = useCallback(() => {
     try {
       localStorage.removeItem(ROLE_CACHE_KEY);
@@ -94,7 +95,7 @@ export function useUserRole() {
     } catch (e) {
       console.warn('Error clearing role cache:', e);
     }
-  }, []);
+  }, [logRoleEvent]);
 
   // Reset circuit breaker
   const resetCircuitBreaker = useCallback(() => {
@@ -109,7 +110,7 @@ export function useUserRole() {
     cb.trippedAt = 0;
     cb.consecutiveErrors = 0;
     cb.lastErrorMessage = '';
-  }, []);
+  }, [logRoleEvent]);
 
   // Trip the circuit breaker
   const tripCircuitBreaker = useCallback((errorMessage: string) => {
@@ -130,9 +131,9 @@ export function useUserRole() {
         resetCircuitBreaker();
       }
     }, CIRCUIT_BREAKER_TIMEOUT);
-  }, [resetCircuitBreaker]);
-  
-  // Get role with more aggressive caching and offline resilience
+  }, [logRoleEvent, resetCircuitBreaker]);
+
+  // Fetch user role when user changes
   useEffect(() => {
     // Skip if we already have a valid role and user ID match
     const cachedRole = localStorage.getItem(ROLE_CACHE_KEY);
@@ -140,6 +141,7 @@ export function useUserRole() {
     const expiryStr = localStorage.getItem(ROLE_CACHE_EXPIRY_KEY);
     const expiry = expiryStr ? parseInt(expiryStr, 10) : 0;
     
+    // Valid cached role check - much simpler condition
     if (cachedRole && cachedUserId === user?.id && expiry > Date.now()) {
       setRole(cachedRole);
       setLoading(false);
@@ -152,27 +154,26 @@ export function useUserRole() {
     }
     
     const fetchUserRole = async () => {
-      // Don't fetch too frequently
+      // Throttle fetch attempts
       const now = Date.now();
-      if (now - lastFetchTime < 2000 && fetchAttempts > 0) { // 2 second cooldown
-        logRoleEvent('Skipping role fetch, too soon since last attempt', {
+      if (now - lastFetchTime < 2000 && fetchAttempts > 0) {
+        logRoleEvent('Throttling role fetch', {
           timeSinceLastFetch: now - lastFetchTime + 'ms',
           attempts: fetchAttempts
         });
         return;
       }
       
-      // Check for circuit breaker
+      // Circuit breaker check
       if (circuitBreakerRef.current.isTripped) {
         const timeTripped = Date.now() - circuitBreakerRef.current.trippedAt;
         if (timeTripped < CIRCUIT_BREAKER_TIMEOUT) {
           logRoleEvent('Circuit breaker active, using cached or default role', {
             trippedFor: Math.floor(timeTripped / 1000) + 's',
-            maxTrippedTime: Math.floor(CIRCUIT_BREAKER_TIMEOUT / 1000) + 's',
             cachedRoleAvailable: !!cachedRole && cachedUserId === user?.id
           });
           
-          // Use cached role even if expired, or default
+          // Use expired cached role or default
           if (cachedRole && cachedUserId === user?.id) {
             setRole(cachedRole);
           } else {
@@ -182,14 +183,11 @@ export function useUserRole() {
           setInitialFetchComplete(true);
           return;
         } else {
-          // Circuit breaker timeout expired, reset it
           resetCircuitBreaker();
         }
       }
       
-      setLastFetchTime(now);
-      setFetchAttempts(prev => prev + 1);
-      
+      // No user, clear role
       if (!user) {
         logRoleEvent('No user, clearing role');
         setRole(null);
@@ -199,7 +197,11 @@ export function useUserRole() {
         return;
       }
 
-      // Always use a cached role for this user if available, regardless of expiry
+      // Update tracking variables
+      setLastFetchTime(now);
+      setFetchAttempts(prev => prev + 1);
+      
+      // Use cached role temporarily while we fetch fresh data
       if (cachedRole && cachedUserId === user.id) {
         logRoleEvent('Using cached role while fetching fresh data', { 
           role: cachedRole,
@@ -209,18 +211,20 @@ export function useUserRole() {
         setRole(cachedRole);
         setLoading(false);
         setInitialFetchComplete(true);
-        
-        // Continue with fetch to update cache in background, but don't block UI
-        if (expiry < Date.now()) {
-          logRoleEvent('Cached role expired, refreshing in background');
-        }
       }
 
       try {
-        logRoleEvent('Fetching user role from database', { userId: user.id, attempt: fetchAttempts });
-        setLoading(true);
+        // Show loading only if we're not using cached data
+        if (!cachedRole || cachedUserId !== user.id) {
+          setLoading(true);
+        }
         
-        // Query the users table to get the role
+        logRoleEvent('Fetching user role from database', { 
+          userId: user.id, 
+          attempt: fetchAttempts + 1
+        });
+        
+        // Query for the role
         const { data, error } = await supabase
           .from('users')
           .select('role')
@@ -238,45 +242,43 @@ export function useUserRole() {
             tripCircuitBreaker(error.message);
           }
           
-          // Handle network errors more gracefully
+          // Network error handling
           if (error.message?.includes('Failed to fetch') || !navigator.onLine) {
             logRoleEvent('Network error detected, using fallback role', { 
               networkStatus: navigator.onLine ? 'Reported online but request failed' : 'Offline',
               cachedRoleAvailable: !!cachedRole && cachedUserId === user.id
             });
             
-            // Use cached role for this user even if expired
+            // Use cached role as fallback, even if expired
             if (cachedRole && cachedUserId === user.id) {
               setRole(cachedRole);
-              // Extend the expiry time even though it's potentially stale
+              // Extend the expiry time
               updateRoleCache(user.id, cachedRole);
-            } else if (fetchAttempts > MAX_RETRIES) {
-              // Last resort
+            } else if (fetchAttempts >= MAX_RETRIES) {
+              // Last resort fallback
               setRole(DEFAULT_ROLE);
               updateRoleCache(user.id, DEFAULT_ROLE);
-              circuitBreakerRef.current.fallbackRoleUsed = true;
               
-              if (fetchAttempts === MAX_RETRIES + 1) {
-                // Only show this message once to avoid spamming
+              if (!circuitBreakerRef.current.fallbackRoleUsed) {
                 toast.error('Network connectivity issues detected. Using default permissions.');
+                circuitBreakerRef.current.fallbackRoleUsed = true;
               }
             }
-          } else if (fetchAttempts > MAX_RETRIES) {
+          } else if (fetchAttempts >= MAX_RETRIES) {
+            // Non-network error fallback after max retries
             logRoleEvent(`Falling back to default role after ${fetchAttempts} failed attempts`);
             setRole(DEFAULT_ROLE);
-            // Cache with short expiry
             updateRoleCache(user.id, DEFAULT_ROLE);
-            circuitBreakerRef.current.fallbackRoleUsed = true;
           } else if (cachedRole && cachedUserId === user.id) {
-            // Use cached role even if expired
+            // Use expired cached role as fallback
             logRoleEvent('Using expired cached role as fallback');
             setRole(cachedRole);
-            // Don't update expiry
           } else {
-            // Last resort fallback
+            // Absolute last resort
             setRole(DEFAULT_ROLE);
           }
         } else {
+          // Success path
           const fetchedRole = data?.role || DEFAULT_ROLE;
           logRoleEvent('Successfully fetched role from database', { 
             fetchedRole,
@@ -284,11 +286,7 @@ export function useUserRole() {
           });
           
           setRole(fetchedRole);
-          
-          // Update the cache with the fetched role
           updateRoleCache(user.id, fetchedRole);
-          
-          // Reset circuit breaker and fetch attempts on success
           resetCircuitBreaker();
           setFetchAttempts(0);
         }
@@ -298,15 +296,13 @@ export function useUserRole() {
         // Trip circuit breaker
         tripCircuitBreaker(error.message || 'Unknown error');
         
-        // Use cached value as fallback even if expired
+        // Use cached value as fallback
         if (cachedRole && cachedUserId === user.id) {
           logRoleEvent('Using cached role after fetch error');
           setRole(cachedRole);
         } else {
           setRole(DEFAULT_ROLE);
-          circuitBreakerRef.current.fallbackRoleUsed = true;
           
-          // Only toast on first fallback to avoid spamming
           if (!circuitBreakerRef.current.fallbackRoleUsed) {
             toast.error('Error retrieving your account type. Using default permissions.');
             circuitBreakerRef.current.fallbackRoleUsed = true;
@@ -318,8 +314,8 @@ export function useUserRole() {
       }
     };
 
-    // Fetch immediately the first time, then add a small delay for retries
-    const delay = fetchAttempts === 0 ? 0 : Math.min(RETRY_DELAY_BASE * Math.pow(1.5, fetchAttempts-1), 10000);
+    // Add backoff delay for retries
+    const delay = fetchAttempts === 0 ? 0 : Math.min(RETRY_DELAY_BASE * (fetchAttempts), 5000);
     
     logRoleEvent('Scheduling role fetch', { 
       delay: delay + 'ms', 
@@ -339,7 +335,8 @@ export function useUserRole() {
     fetchAttempts,
     lastFetchTime,
     resetCircuitBreaker,
-    tripCircuitBreaker
+    tripCircuitBreaker,
+    logRoleEvent
   ]);
 
   return { 

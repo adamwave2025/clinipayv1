@@ -24,15 +24,18 @@ const SettingsContainer = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Track whether we're in the middle of a URL transition to prevent infinite loops
-  const isUpdatingUrlRef = useRef(false);
+  // Get initial tab from URL or use default - simpler approach
+  const initialTabParam = searchParams.get('tab');
+  const initialTab = VALID_TABS.includes(initialTabParam as string) ? initialTabParam : 'profile';
   
-  // Navigation protection - prevent redirect loops
-  const navigationProtectionRef = useRef({
-    urlUpdateCount: 0,
-    lastUpdateTime: 0,
-    blockedUpdates: 0
-  });
+  // React state is the source of truth, not URL params
+  const [activeTab, setActiveTab] = useState(initialTab || 'profile');
+  
+  // Tracking for URL updates to prevent loops
+  const isUpdatingUrlRef = useRef(false);
+  const lastUrlUpdateTimeRef = useRef(0);
+  const urlUpdateCountRef = useRef(0);
+  const syncFromUrlDisabledRef = useRef(false);
   
   // Debug logging function
   const logSettingsEvent = (action: string, details?: any) => {
@@ -44,13 +47,6 @@ const SettingsContainer = () => {
       console.groupEnd();
     }
   };
-  
-  // Get initial tab from URL or use default
-  const initialTabParam = searchParams.get('tab');
-  const initialTab = VALID_TABS.includes(initialTabParam as string) ? initialTabParam : 'profile';
-  
-  // React state is the source of truth, not URL params
-  const [activeTab, setActiveTab] = useState(initialTab || 'profile');
   
   // Update URL when tab changes, without triggering a re-render from URL change
   const handleTabChange = useCallback((value: string) => {
@@ -71,68 +67,62 @@ const SettingsContainer = () => {
       return;
     }
     
-    // Check for potential navigation loop
-    const now = Date.now();
-    const navData = navigationProtectionRef.current;
-    const timeSinceLastUpdate = now - navData.lastUpdateTime;
+    // Update state first
+    setActiveTab(value);
     
-    // If making too many updates in short succession, block to prevent loops
-    if (navData.urlUpdateCount > 5 && timeSinceLastUpdate < 3000) {
-      navData.blockedUpdates++;
-      logSettingsEvent('🚨 BLOCKED URL UPDATE - Potential loop detected', {
-        updateCount: navData.urlUpdateCount,
-        timeSinceFirst: timeSinceLastUpdate + 'ms',
-        blockedUpdates: navData.blockedUpdates
+    // Check for URL update loop protection
+    const now = Date.now();
+    const timeSinceLastUpdate = now - lastUrlUpdateTimeRef.current;
+    
+    if (urlUpdateCountRef.current > 3 && timeSinceLastUpdate < 2000) {
+      logSettingsEvent('🚨 URL update loop detected - disabling URL sync', {
+        updateCount: urlUpdateCountRef.current,
+        timeSinceLastUpdate
       });
+      
+      syncFromUrlDisabledRef.current = true;
       return;
     }
     
-    // Set our state immediately
-    setActiveTab(value);
-    
     // Reset counter if it's been a while
     if (timeSinceLastUpdate > 5000) {
-      navData.urlUpdateCount = 0;
+      urlUpdateCountRef.current = 0;
     }
     
-    // Update navigation protection data
-    navData.urlUpdateCount++;
-    navData.lastUpdateTime = now;
+    // Update tracking data
+    urlUpdateCountRef.current++;
+    lastUrlUpdateTimeRef.current = now;
     
-    // Set a flag to ignore the next URL change event
+    // Set flag to ignore the next URL change event
     isUpdatingUrlRef.current = true;
     
     logSettingsEvent('Updating URL', { 
       newTab: value,
-      updateCount: navData.urlUpdateCount
+      updateCount: urlUpdateCountRef.current
     });
     
     // Update URL
     setSearchParams({ tab: value }, { replace: true });
     
-    // Clear the flag after the URL update has been processed
+    // Clear the flag after the URL update
     setTimeout(() => {
       isUpdatingUrlRef.current = false;
-      logSettingsEvent('URL update complete, cleared flag', { tab: value });
-    }, 500);
+    }, 200);
   }, [setSearchParams, activeTab]);
   
-  // Sync from URL to state, but only when URL changes from external navigation
+  // Sync from URL to state, but only when URL changes externally
   useEffect(() => {
-    // Skip if we're the ones who just updated the URL
-    if (isUpdatingUrlRef.current) {
-      logSettingsEvent('Skipping URL sync - we just updated the URL');
+    // Skip if we're the ones who just updated the URL or if sync is disabled
+    if (isUpdatingUrlRef.current || syncFromUrlDisabledRef.current) {
+      logSettingsEvent('Skipping URL sync', {
+        reason: isUpdatingUrlRef.current ? 'we just updated URL' : 'sync disabled due to loop'
+      });
       return;
     }
     
     const tabParam = searchParams.get('tab');
     
-    logSettingsEvent('URL changed externally', {
-      tabParam,
-      currentActiveTab: activeTab
-    });
-    
-    // Only update state if URL param exists and doesn't match current state
+    // If URL has valid tab that doesn't match current state, update state
     if (tabParam && VALID_TABS.includes(tabParam) && tabParam !== activeTab) {
       logSettingsEvent('Syncing tab state from URL', { 
         fromTab: activeTab,
@@ -140,38 +130,29 @@ const SettingsContainer = () => {
       });
       setActiveTab(tabParam);
     } 
-    // If no tab param, update URL but don't trigger state change (to avoid loops)
-    else if (!tabParam) {
-      // Check for loop protection
-      const navData = navigationProtectionRef.current;
-      const now = Date.now();
-      
-      if (navData.urlUpdateCount > 5 && (now - navData.lastUpdateTime < 3000)) {
-        navData.blockedUpdates++;
-        logSettingsEvent('🚨 BLOCKED DEFAULT URL UPDATE - Potential loop detected', {
-          updateCount: navData.urlUpdateCount,
-          timeSinceFirst: now - navData.lastUpdateTime + 'ms',
-          blockedUpdates: navData.blockedUpdates
-        });
-        return;
-      }
-      
-      // Update URL but don't trigger state change
+    // If no tab param but sync isn't disabled, add it
+    else if (!tabParam && !syncFromUrlDisabledRef.current) {
       logSettingsEvent('No tab param found, updating URL to match state', { 
         stateTab: activeTab || 'profile'
       });
       
       isUpdatingUrlRef.current = true;
-      navData.urlUpdateCount++;
-      navData.lastUpdateTime = now;
-      
       setSearchParams({ tab: activeTab || 'profile' }, { replace: true });
       
       setTimeout(() => {
         isUpdatingUrlRef.current = false;
-      }, 500);
+      }, 200);
     }
   }, [location.search, searchParams, setSearchParams, activeTab]);
+  
+  // Reset URL sync if user navigates away and back
+  useEffect(() => {
+    if (syncFromUrlDisabledRef.current) {
+      logSettingsEvent('Resetting URL sync disabled state on location change');
+      syncFromUrlDisabledRef.current = false;
+      urlUpdateCountRef.current = 0;
+    }
+  }, [location.pathname]);
   
   const { 
     clinicData, 

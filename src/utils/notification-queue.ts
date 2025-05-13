@@ -1,5 +1,5 @@
 
-// Export all functions from the new stub implementation
+// Export all functions from the stub implementation with clear documentation
 export {
   addToNotificationQueue,
   checkNotificationExists,

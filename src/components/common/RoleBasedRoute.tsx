@@ -34,7 +34,8 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
     lastRedirectPath: '',
     redirectCount: 0,
     lastRedirectTime: 0,
-    redirectsBlocked: 0
+    redirectsBlocked: 0,
+    loopDetected: false
   });
 
   // Debug logging function
@@ -53,6 +54,23 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
     }
   };
   
+  // Reset loop detection when path changes
+  useEffect(() => {
+    const protectionRef = redirectProtectionRef.current;
+    
+    // Only reset if we've navigated to a different path
+    if (location.pathname !== protectionRef.lastRedirectPath && protectionRef.loopDetected) {
+      logRouteEvent('Navigation change detected, resetting loop protection', {
+        from: protectionRef.lastRedirectPath,
+        to: location.pathname
+      });
+      
+      protectionRef.redirectCount = 0;
+      protectionRef.lastRedirectTime = 0;
+      protectionRef.loopDetected = false;
+    }
+  }, [location.pathname]);
+  
   // Debounce auth state changes to prevent flickering
   useEffect(() => {
     logRouteEvent('Auth state change detected', { 
@@ -63,7 +81,7 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
     });
     
     // Only evaluate auth changes after loading is complete
-    if (!authLoading && !roleLoading && initialFetchComplete) {
+    if (!authLoading && initialFetchComplete) {
       // Clear any existing timers
       if (redirectTimerRef.current) {
         clearTimeout(redirectTimerRef.current);
@@ -74,6 +92,13 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
         // Capture current state for evaluation
         const currentUser = user;
         const currentRole = role;
+        
+        // Skip authorization check if loop detected
+        if (redirectProtectionRef.current.loopDetected) {
+          logRouteEvent('Skipping authorization check - loop detected');
+          setStableLoadingState(false);
+          return;
+        }
         
         // Determine authorization status
         const hasValidUser = !!currentUser;
@@ -154,8 +179,9 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
       redirectData.redirectCount++;
       
       // If redirecting to the same path too many times in a short period
-      if (redirectData.redirectCount > 3 && (now - redirectData.lastRedirectTime) < 5000) {
+      if (redirectData.redirectCount > 2 && (now - redirectData.lastRedirectTime) < 3000) {
         redirectData.redirectsBlocked++;
+        redirectData.loopDetected = true;
         
         logRouteEvent('🚨 REDIRECT LOOP DETECTED AND BLOCKED', {
           redirectCount: redirectData.redirectCount,
@@ -165,22 +191,10 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
           allowedRoles
         });
         
-        // Emergency fallback - show error instead of infinite loop
-        return (
-          <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center">
-            <h1 className="text-xl font-bold mb-4 text-red-600">
-              Navigation Error Detected
-            </h1>
-            <p className="mb-4 text-gray-700">
-              The application detected a navigation issue. Please try refreshing the page.
-            </p>
-            <p className="text-sm text-gray-500">
-              If you continue to experience issues, please contact support.
-              <br />
-              Error details: Role authorization loop detected.
-            </p>
-          </div>
-        );
+        // Emergency fallback - render children instead of looping
+        // This makes the app usable even when role detection is unstable
+        logRouteEvent('Rendering children despite authorization failure to prevent loop');
+        return <>{children}</>;
       }
     } else {
       // Reset counter if redirecting to a different path

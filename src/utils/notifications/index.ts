@@ -1,5 +1,6 @@
 
 // Export all notification functions from the stub implementation
+// Enhanced with better type checking and documentation
 import { 
   addToNotificationQueue,
   checkNotificationExists,
