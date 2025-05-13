@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
 import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
-import { addToNotificationQueue, checkNotificationExists, verifyWebhookConfiguration } from '@/utils/notifications';
+import { addToNotificationQueue, checkNotificationExists, verifyWebhookConfiguration, processNotificationsNow } from '@/utils/notifications';
 
 interface PaymentLinkSenderProps {
   formData: {
@@ -231,6 +231,9 @@ export function usePaymentLinkSender() {
             userData.clinic_id,
             paymentRequest.id
           );
+
+          // Process notifications immediately to ensure delivery
+          await processNotificationsNow();
 
           if (!success) {
             console.error("⚠️ CRITICAL ERROR: Failed to queue notification:", error);
