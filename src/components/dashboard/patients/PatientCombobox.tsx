@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { usePatients, Patient } from '@/hooks/usePatients';
+import { usePatients } from '@/hooks/usePatients';
 import { Check, ChevronsUpDown, Plus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,13 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 
+interface Patient {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+}
+
 interface PatientComboboxProps {
   onSelect: (patient: Patient | null) => void;
   value?: string;
@@ -27,13 +34,8 @@ interface PatientComboboxProps {
 const PatientCombobox = ({ onSelect, value = '', onCreate }: PatientComboboxProps) => {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const { patients, isLoading, fetchPatients } = usePatients();
+  const { patients, isLoadingPatients } = usePatients();
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
-  
-  // Fetch patients when component mounts
-  useEffect(() => {
-    fetchPatients();
-  }, []);
   
   useEffect(() => {
     if (searchTerm.trim() === '') {
@@ -88,13 +90,13 @@ const PatientCombobox = ({ onSelect, value = '', onCreate }: PatientComboboxProp
             onValueChange={setSearchTerm} 
             className="h-9"
           />
-          {isLoading && (
+          {isLoadingPatients && (
             <div className="flex items-center justify-center p-4">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="ml-2">Loading patients...</span>
             </div>
           )}
-          {!isLoading && (
+          {!isLoadingPatients && (
             <CommandList>
               {filteredPatients.length === 0 && searchTerm !== '' && (
                 <CommandEmpty>

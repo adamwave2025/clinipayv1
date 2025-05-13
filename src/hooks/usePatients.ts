@@ -1,112 +1,150 @@
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { getUserClinicId } from '@/utils/userUtils';
-import { toast } from 'sonner';
 
 export interface Patient {
   id: string;
   name: string;
   email: string | null;
   phone: string | null;
-  clinic_id: string;
+  notes: string | null;
   created_at: string;
   updated_at: string;
-  notes?: string;
-  total_spent?: number;
-  last_payment_date?: string;
   paymentCount?: number;
+  totalSpent?: number;
+  lastPaymentDate?: string;
+  pendingRequestsCount?: number; // Number of pending payment requests
+  clinic_id?: string; // Added clinic_id property to fix TypeScript error
 }
 
-export const usePatients = () => {
+export function usePatients() {
+  const { user } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingPatients, setIsLoadingPatients] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchPatients = async () => {
-    setIsLoading(true);
+  
+  // Function to fetch patients data
+  const fetchPatients = useCallback(async () => {
+    if (!user) {
+      setIsLoadingPatients(false);
+      return;
+    }
+    
+    setIsLoadingPatients(true);
     setError(null);
     
     try {
-      const clinicId = await getUserClinicId();
+      // Get user's clinic_id
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('clinic_id')
+        .eq('id', user.id)
+        .single();
       
-      if (!clinicId) {
-        setError('No clinic ID available');
-        return [];
+      if (userError) throw userError;
+      if (!userData.clinic_id) {
+        setIsLoadingPatients(false);
+        setPatients([]);
+        return;
       }
       
-      // Using a direct query instead of RPC to avoid TypeScript issue
-      const { data, error: fetchError } = await supabase
+      // Fetch patients for this clinic
+      const { data: patientsData, error: patientsError } = await supabase
         .from('patients')
-        .select(`
-          id,
-          name,
-          email,
-          phone,
-          clinic_id,
-          created_at,
-          updated_at,
-          notes
-        `)
-        .eq('clinic_id', clinicId);
+        .select('*')
+        .eq('clinic_id', userData.clinic_id)
+        .order('name');
         
-      if (fetchError) {
-        setError(fetchError.message);
-        throw fetchError;
-      }
+      if (patientsError) throw patientsError;
       
-      // Fetch payment information separately
-      // This is simplified - ideally create a proper DB view or function for this
-      const patientData = data || [];
-      const enhancedPatients: Patient[] = await Promise.all(
-        patientData.map(async (patient) => {
-          // Get payment data for patient
-          const { data: paymentData } = await supabase
-            .from('payments')
-            .select('amount_paid, paid_at')
-            .eq('patient_id', patient.id)
-            .order('paid_at', { ascending: false });
-
-          let total_spent = 0;
-          let last_payment_date = null;
-          let paymentCount = 0;
-          
-          if (paymentData && paymentData.length > 0) {
-            paymentCount = paymentData.length;
-            total_spent = paymentData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
-            last_payment_date = paymentData[0].paid_at;
-          }
-          
-          return {
-            ...patient,
-            total_spent,
-            last_payment_date,
-            paymentCount
+      // Fetch payment statistics for each patient
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from('payments')
+        .select('patient_id, amount_paid, paid_at')
+        .eq('clinic_id', userData.clinic_id);
+        
+      if (paymentsError) throw paymentsError;
+      
+      // Fetch payment requests data
+      const { data: requestsData, error: requestsError } = await supabase
+        .from('payment_requests')
+        .select('patient_id, custom_amount, sent_at, status, payment_link_id, payment_links(amount)')
+        .eq('clinic_id', userData.clinic_id);
+        
+      if (requestsError) throw requestsError;
+      
+      // Process payment data to calculate statistics for each patient
+      const paymentStats = paymentsData.reduce((stats: Record<string, any>, payment) => {
+        if (!payment.patient_id) return stats;
+        
+        if (!stats[payment.patient_id]) {
+          stats[payment.patient_id] = {
+            paymentCount: 0,
+            totalSpent: 0,
+            lastPaymentDate: null,
+            pendingRequestsCount: 0
           };
-        })
-      );
+        }
+        
+        const stat = stats[payment.patient_id];
+        stat.paymentCount += 1;
+        stat.totalSpent += payment.amount_paid || 0;
+        
+        const paymentDate = new Date(payment.paid_at);
+        if (!stat.lastPaymentDate || paymentDate > new Date(stat.lastPaymentDate)) {
+          stat.lastPaymentDate = payment.paid_at;
+        }
+        
+        return stats;
+      }, {});
+      
+      // Process payment requests data
+      requestsData.forEach(request => {
+        if (!request.patient_id) return;
+        
+        if (!paymentStats[request.patient_id]) {
+          paymentStats[request.patient_id] = {
+            paymentCount: 0,
+            totalSpent: 0,
+            lastPaymentDate: null,
+            pendingRequestsCount: 0
+          };
+        }
+        
+        // Only count pending requests
+        if (request.status === 'sent') {
+          paymentStats[request.patient_id].pendingRequestsCount += 1;
+        }
+      });
+      
+      // Combine patient data with their payment statistics
+      const enhancedPatients = patientsData.map((patient: Patient) => ({
+        ...patient,
+        paymentCount: paymentStats[patient.id]?.paymentCount || 0,
+        totalSpent: paymentStats[patient.id]?.totalSpent || 0,
+        lastPaymentDate: paymentStats[patient.id]?.lastPaymentDate || null,
+        pendingRequestsCount: paymentStats[patient.id]?.pendingRequestsCount || 0
+      }));
       
       setPatients(enhancedPatients);
-      return enhancedPatients;
-    } catch (e: any) {
-      console.error('Error fetching patients:', e);
-      setError(e.message || 'Failed to fetch patients');
-      toast.error('Failed to load patients');
-      return [];
+    } catch (err: any) {
+      console.error('Error fetching patients:', err);
+      setError(err.message || 'Failed to load patients');
     } finally {
-      setIsLoading(false);
+      setIsLoadingPatients(false);
     }
-  };
-
-  // Rename refetchPatients to match what components are expecting
-  const refetchPatients = fetchPatients;
-
+  }, [user]);
+  
+  // Fetch patients data on component mount and when user changes
+  useEffect(() => {
+    fetchPatients();
+  }, [fetchPatients]);
+  
   return {
     patients,
-    isLoading, // renamed from isLoadingPatients to isLoading to match elsewhere
+    isLoadingPatients,
     error,
-    fetchPatients,
-    refetchPatients, // Added for compatibility
-    setPatients
+    refetchPatients: fetchPatients
   };
-};
+}

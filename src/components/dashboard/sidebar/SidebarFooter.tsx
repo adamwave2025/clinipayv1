@@ -3,10 +3,10 @@ import React from 'react';
 import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const SidebarFooter: React.FC = () => {
-  const { signOut } = useUnifiedAuth();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
   
   const handleSignOut = async () => {

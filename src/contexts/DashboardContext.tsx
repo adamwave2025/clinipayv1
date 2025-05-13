@@ -22,7 +22,6 @@ interface DashboardContextType {
   archivePaymentLink: (linkId: string) => Promise<{ success: boolean; error?: string }>;
   unarchivePaymentLink: (linkId: string) => Promise<{ success: boolean; error?: string }>;
   rawPaymentLinks: PaymentLink[]; // Added this to access the raw payment links including plans
-  error?: string | null; // Add error property
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);

@@ -1,31 +1,22 @@
 
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/components/layouts/AuthLayout';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const SignInPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { signIn, isAuthenticated, isLoading } = useUnifiedAuth();
-  const [localLoading, setLocalLoading] = useState(false);
+  const { signIn } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
-
-  // If the user is already authenticated, redirect them
-  useEffect(() => {
-    if (isAuthenticated && !isLoading) {
-      const from = location.state?.from?.pathname || '/dashboard';
-      navigate(from, { replace: true });
-    }
-  }, [isAuthenticated, isLoading, navigate, location]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -40,18 +31,17 @@ const SignInPage = () => {
       return;
     }
     
-    setLocalLoading(true);
+    setIsLoading(true);
     
     try {
       const { error } = await signIn(formData.email, formData.password);
       
       if (!error) {
-        toast.success('Signed in successfully');
-      } else {
-        toast.error(`Sign in failed: ${error.message}`);
+        // Toast is now only shown in useAuthActions.ts
+        navigate('/dashboard');
       }
     } finally {
-      setLocalLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -70,7 +60,7 @@ const SignInPage = () => {
             placeholder="you@example.com"
             value={formData.email}
             onChange={handleChange}
-            disabled={localLoading || isLoading}
+            disabled={isLoading}
             required
             className="w-full input-focus"
           />
@@ -90,7 +80,7 @@ const SignInPage = () => {
             placeholder="••••••••"
             value={formData.password}
             onChange={handleChange}
-            disabled={localLoading || isLoading}
+            disabled={isLoading}
             required
             className="w-full input-focus"
           />
@@ -99,9 +89,9 @@ const SignInPage = () => {
         <Button 
           type="submit" 
           className="w-full btn-gradient"
-          disabled={localLoading || isLoading}
+          disabled={isLoading}
         >
-          {(localLoading || isLoading) ? <LoadingSpinner size="sm" className="mr-2" /> : null}
+          {isLoading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
           Sign In
         </Button>
         

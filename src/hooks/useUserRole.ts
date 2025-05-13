@@ -1,17 +1,45 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 
-/**
- * Legacy hook to get user role - now uses the unified auth context
- * Kept for compatibility with existing code
- */
 export function useUserRole() {
-  const { role, isLoading, isFullyLoaded } = useUnifiedAuth();
-  
-  return { 
-    role, 
-    loading: isLoading || !isFullyLoaded 
-  };
+  const { user } = useAuth();
+  const [role, setRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (!user) {
+        setRole(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Query the users table to get the role
+        const { data, error } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching user role:', error);
+          setRole(null);
+        } else {
+          setRole(data?.role || 'clinic'); // Default to 'clinic' if no role is set
+        }
+      } catch (error) {
+        console.error('Unexpected error fetching user role:', error);
+        setRole(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserRole();
+  }, [user]);
+
+  return { role, loading };
 }

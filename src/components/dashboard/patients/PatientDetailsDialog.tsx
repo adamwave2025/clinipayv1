@@ -263,15 +263,15 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">Payment Summary</h3>
                 
-                  <div className="flex items-center space-x-2">
-                    <CreditCard className="h-5 w-5 text-gray-500" />
-                    <span>Total Spent: <strong>{formatCurrency(currentPatient.total_spent || 0)}</strong></span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-5 w-5 text-gray-500" />
-                    <span>Last Payment: <strong>{currentPatient.last_payment_date ? new Date(currentPatient.last_payment_date).toLocaleDateString() : 'N/A'}</strong></span>
-                  </div>
+                <div className="flex items-center space-x-2">
+                  <CreditCard className="h-5 w-5 text-gray-500" />
+                  <span>Total Spent: <strong>{formatCurrency(currentPatient.totalSpent || 0)}</strong></span>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-5 w-5 text-gray-500" />
+                  <span>Last Payment: <strong>{currentPatient.lastPaymentDate ? new Date(currentPatient.lastPaymentDate).toLocaleDateString() : 'N/A'}</strong></span>
+                </div>
               </div>
             </div>
             

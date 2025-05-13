@@ -4,16 +4,16 @@ import { usePaymentLinks } from '@/hooks/usePaymentLinks';
 import { PaymentLink } from '@/types/payment';
 
 export function useFilteredPaymentLinks() {
-  const { links, archivedLinks, loading, error, archiveLink, unarchiveLink, refresh } = usePaymentLinks();
+  const { paymentLinks, archivedLinks, isLoading, error, archivePaymentLink, unarchivePaymentLink, fetchPaymentLinks } = usePaymentLinks();
   const [searchQuery, setSearchQuery] = useState('');
   const [linkType, setLinkType] = useState('all');
   const [isArchiveView, setIsArchiveView] = useState(false);
 
   const filteredLinks = useMemo(() => {
     // Get active or archived links based on the current view
-    const linksToFilter = isArchiveView ? archivedLinks : links;
+    const links = isArchiveView ? archivedLinks : paymentLinks;
 
-    return linksToFilter.filter(link => {
+    return links.filter(link => {
       // Filter by search query
       const matchesSearch = 
         !searchQuery || 
@@ -30,11 +30,11 @@ export function useFilteredPaymentLinks() {
 
       return matchesSearch && matchesType && isNotPaymentPlan;
     });
-  }, [links, archivedLinks, searchQuery, linkType, isArchiveView]);
+  }, [paymentLinks, archivedLinks, searchQuery, linkType, isArchiveView]);
 
   return {
     filteredLinks,
-    isLoading: loading,
+    isLoading,
     error,
     searchQuery,
     setSearchQuery,
@@ -42,8 +42,8 @@ export function useFilteredPaymentLinks() {
     setLinkType,
     isArchiveView,
     setIsArchiveView,
-    archivePaymentLink: archiveLink,
-    unarchivePaymentLink: unarchiveLink,
-    fetchPaymentLinks: refresh
+    archivePaymentLink,
+    unarchivePaymentLink,
+    fetchPaymentLinks
   };
 }

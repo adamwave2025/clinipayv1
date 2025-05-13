@@ -1,8 +1,11 @@
+
 import React, { createContext, useContext } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { useUnifiedAuth } from './UnifiedAuthContext';
+import { useAuthState } from '@/hooks/useAuthState';
+import { useAuthActions } from '@/hooks/useAuthActions';
+import { useAuthTrigger } from '@/hooks/useAuthTrigger';
+import { toast } from 'sonner';
 
-// Keep the existing interface for backward compatibility
 interface AuthContextType {
   session: Session | null;
   user: User | null;
@@ -19,46 +22,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// AuthProvider now uses the UnifiedAuthProvider internally but exposes the same API
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Get our new auth implementation
-  const { 
-    session, 
-    user, 
-    isLoading: loading, 
-    signUp: newSignUp,
-    signIn: newSignIn,
-    signOut,
-    error
-  } = useUnifiedAuth();
+  const { session, user, loading } = useAuthState();
+  const { signUp, signIn, signOut } = useAuthActions();
   
-  // Adapt new signUp to match old interface
-  const signUp = async (email: string, password: string, clinicName: string) => {
-    try {
-      const result = await newSignUp(email, password, clinicName);
-      return { error: result.error };
-    } catch (err) {
-      return { error: err };
+  // Setup auth trigger - this ensures our handle_new_user function is properly setup
+  const authTriggerStatus = useAuthTrigger();
+  
+  // Show a warning toast if we hit max retries
+  React.useEffect(() => {
+    if (authTriggerStatus.retries > 0 && authTriggerStatus.setupError) {
+      console.warn('Auth trigger setup issues detected:', authTriggerStatus.setupError);
     }
-  };
-  
-  // Adapt new signIn to match old interface
-  const signIn = async (email: string, password: string) => {
-    try {
-      const result = await newSignIn(email, password);
-      return { error: result.error };
-    } catch (err) {
-      return { error: err };
-    }
-  };
-  
-  // Mock the auth trigger status - a placeholder to avoid breaking changes
-  // This would need proper reimplementation if it's actually used
-  const authTriggerStatus = {
-    isSetupComplete: true,
-    setupError: null,
-    retries: 0
-  };
+  }, [authTriggerStatus.retries, authTriggerStatus.setupError]);
 
   return (
     <AuthContext.Provider

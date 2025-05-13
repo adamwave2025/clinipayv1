@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { PaymentFormValues } from '../components/form/FormSchema';
 import { toast } from 'sonner';
-import { PaymentLinkData } from './index';
+import { PaymentLinkData } from '../types/paymentLink';
 import { useStripePayment } from './useStripePayment';
 import { usePaymentIntent } from './usePaymentIntent';
 import { usePaymentRecord } from './usePaymentRecord';

@@ -1,114 +1,199 @@
 
 import { useState, useEffect } from 'react';
-import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
-import { formatPaymentLinks } from '@/utils/paymentLinkFormatter';
-import { PaymentLinkService } from '@/services/PaymentLinkService';
+import { useAuth } from '@/contexts/AuthContext';
 import { PaymentLink } from '@/types/payment';
+import { toast } from 'sonner';
+import { PaymentLinkService } from '@/services/PaymentLinkService';
+import { formatPaymentLinks } from '@/utils/paymentLinkFormatter';
+import { getUserClinicId } from '@/utils/userUtils';
 
-export const usePaymentLinks = () => {
-  const [links, setLinks] = useState<PaymentLink[]>([]);
+// Type guard to check if result has an error property
+const hasError = (result: { success: boolean } | { success: boolean; error: any }): 
+  result is { success: boolean; error: any } => {
+  return 'error' in result;
+};
+
+export function usePaymentLinks() {
+  const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
   const [archivedLinks, setArchivedLinks] = useState<PaymentLink[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>('');
-  const { clinicId } = useUnifiedAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isArchiveLoading, setIsArchiveLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
-  const fetchLinks = async (overrideClinicId?: string) => {
-    const targetClinicId = overrideClinicId || clinicId;
-    
-    if (!targetClinicId) {
-      console.warn('No clinic ID available for links');
+  const fetchPaymentLinks = async () => {
+    if (!user) {
+      setIsLoading(false);
       return;
     }
-    
-    setLoading(true);
-    
+
+    setIsLoading(true);
+    setError(null);
+
     try {
-      // Use the PaymentLinkService to fetch links
-      const result = await PaymentLinkService.fetchLinks(targetClinicId);
+      // Get the clinic ID associated with this user
+      const clinicId = await getUserClinicId();
       
-      if (result.error) {
-        throw new Error(result.error);
+      if (!clinicId) {
+        throw new Error('Could not determine your clinic ID. Please contact support.');
       }
       
-      // Format both active and archived links
-      const formattedActive = formatPaymentLinks(result.activeLinks || []);
-      const formattedArchived = formatPaymentLinks(result.archivedLinks || []);
+      const result = await PaymentLinkService.fetchLinks(clinicId);
       
-      setLinks(formattedActive);
-      setArchivedLinks(formattedArchived);
-      setError('');
-      
-    } catch (err: any) {
-      console.error('Error fetching payment links:', err);
-      setError(err.message || 'Failed to fetch payment links');
+      setPaymentLinks(formatPaymentLinks(result.activeLinks));
+      setArchivedLinks(formatPaymentLinks(result.archivedLinks));
+    } catch (error: any) {
+      console.error('Error fetching payment links:', error);
+      setError(error.message);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  // Initial fetch when component mounts or clinic ID changes
-  useEffect(() => {
-    if (clinicId) {
-      fetchLinks();
+  const archivePaymentLink = async (linkId: string) => {
+    if (!user) {
+      toast.error('You must be logged in to manage payment links');
+      return { success: false };
     }
-  }, [clinicId]);
 
-  // Add the missing createPaymentLink function
-  const createPaymentLink = async (linkData: any): Promise<{ success: boolean, paymentLink?: PaymentLink, error?: string }> => {
-    try {
-      const result = await PaymentLinkService.createLink(linkData);
-      if (result.success) {
-        await fetchLinks();
-      }
-      return result;
-    } catch (err: any) {
-      console.error('Error creating payment link:', err);
-      return { success: false, error: err.message };
-    }
-  };
-
-  const archiveLink = async (linkId: string): Promise<boolean> => {
+    setIsArchiveLoading(true);
+    
     try {
       const result = await PaymentLinkService.archiveLink(linkId);
-      if (result.success) {
-        // Update the local state after archiving
-        await fetchLinks();
-        return true;
+      
+      if (!result.success) {
+        // Use type guard to safely access error property
+        const errorMessage = hasError(result) ? result.error : 'Unknown error';
+        throw new Error(errorMessage);
       }
-      return false;
-    } catch (err) {
-      console.error('Error archiving link:', err);
-      return false;
+      
+      toast.success('Payment link archived successfully');
+      return { success: true };
+    } catch (error: any) {
+      toast.error(`Failed to archive payment link: ${error.message}`);
+      return { success: false, error: error.message };
+    } finally {
+      setIsArchiveLoading(false);
     }
   };
 
-  const unarchiveLink = async (linkId: string): Promise<boolean> => {
+  const unarchivePaymentLink = async (linkId: string) => {
+    if (!user) {
+      toast.error('You must be logged in to manage payment links');
+      return { success: false };
+    }
+
+    setIsArchiveLoading(true);
+    
     try {
       const result = await PaymentLinkService.unarchiveLink(linkId);
-      if (result.success) {
-        // Update the local state after unarchiving
-        await fetchLinks();
-        return true;
+      
+      if (!result.success) {
+        // Use type guard to safely access error property
+        const errorMessage = hasError(result) ? result.error : 'Unknown error';
+        throw new Error(errorMessage);
       }
-      return false;
-    } catch (err) {
-      console.error('Error unarchiving link:', err);
-      return false;
+      
+      toast.success('Payment link unarchived successfully');
+      return { success: true };
+    } catch (error: any) {
+      toast.error(`Failed to unarchive payment link: ${error.message}`);
+      return { success: false, error: error.message };
+    } finally {
+      setIsArchiveLoading(false);
     }
   };
 
-  const refresh = () => {
-    fetchLinks();
+  const createPaymentLink = async (linkData: Omit<PaymentLink, 'id' | 'url' | 'createdAt' | 'isActive'>) => {
+    if (!user) {
+      toast.error('You must be logged in to create payment links');
+      return { success: false };
+    }
+
+    try {
+      console.log('Original link data before processing:', linkData);
+      
+      // Get the clinic ID associated with this user
+      const clinicId = await getUserClinicId();
+      
+      if (!clinicId) {
+        toast.error('Could not determine your clinic ID');
+        return { success: false, error: 'Clinic ID not found' };
+      }
+      
+      // CRITICAL: Ensure paymentPlan is properly handled as a boolean value
+      // Check if this is explicitly a payment plan
+      const isPaymentPlan = linkData.paymentPlan === true;
+      
+      // Convert camelCase to snake_case for database compatibility
+      const dbLinkData: any = {
+        title: linkData.title,
+        amount: linkData.amount,
+        type: linkData.type,
+        description: linkData.description,
+        payment_plan: isPaymentPlan, // Explicitly set as boolean value
+        clinic_id: clinicId
+      };
+      
+      // Only add payment plan fields if it's a payment plan
+      if (isPaymentPlan) {
+        console.log('Preparing payment plan data with fields:', {
+          paymentCount: linkData.paymentCount,
+          paymentCycle: linkData.paymentCycle,
+          planTotalAmount: linkData.planTotalAmount
+        });
+        
+        // Validate required payment plan fields
+        if (!linkData.paymentCount) {
+          return { success: false, error: 'Payment count is required for payment plans' };
+        }
+        
+        if (!linkData.paymentCycle) {
+          return { success: false, error: 'Payment cycle is required for payment plans' };
+        }
+        
+        dbLinkData.payment_count = linkData.paymentCount;
+        dbLinkData.payment_cycle = linkData.paymentCycle;
+        dbLinkData.plan_total_amount = linkData.planTotalAmount;
+      }
+      
+      console.log('Converting to database format:', dbLinkData);
+      
+      const result = await PaymentLinkService.createLink(dbLinkData);
+      
+      if (!result || result.error) {
+        throw new Error(result?.error || 'Failed to create payment link');
+      }
+      
+      const formattedLink = formatPaymentLinks([result.data[0]])[0];
+      
+      // Refresh the payment links list
+      await fetchPaymentLinks();
+      
+      return { 
+        success: true, 
+        paymentLink: formattedLink,
+        data: result.data[0]
+      };
+    } catch (error: any) {
+      toast.error(`Failed to create payment link: ${error.message}`);
+      return { success: false, error: error.message };
+    }
   };
 
-  return { 
-    links, 
-    archivedLinks, 
-    loading, 
+  useEffect(() => {
+    fetchPaymentLinks();
+  }, [user]);
+
+  return {
+    paymentLinks,
+    archivedLinks,
+    isLoading,
+    isArchiveLoading,
     error,
-    archiveLink,
-    unarchiveLink,
+    fetchPaymentLinks,
     createPaymentLink,
-    refresh
+    archivePaymentLink,
+    unarchivePaymentLink
   };
-};
+}
