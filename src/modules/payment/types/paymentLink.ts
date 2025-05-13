@@ -1,35 +1,15 @@
 
-export interface PaymentLinkData {
+export interface PaymentLink {
   id: string;
   title?: string;
-  amount: number;
-  status: string; // 'active', 'paid', 'cancelled', 'paused', 'overdue', 'rescheduled'
-  clinic: ClinicDetails;
-  patientName?: string;
-  patientEmail?: string;
-  patientPhone?: string;
-  message?: string;
-  isRequest: boolean;
-  paymentId?: string;
-  paymentPlan?: boolean;
-  planTotalAmount?: number;
-  totalPaid?: number;
-  totalOutstanding?: number;
-  payment_link_id?: string;
-  isActive?: boolean; // Add the isActive property from is_active in DB
-  isRescheduled?: boolean;
-  customAmount?: number;
-  hasOverduePayments?: boolean;
-  type?: string;
   description?: string;
-}
-
-export interface ClinicDetails {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  logo?: string;
-  stripeStatus: string;
+  amount: number;
+  type?: string;
+  is_active: boolean;
+  created_at: string;
+  clinic_id: string;
+  payment_plan?: boolean;
+  payment_count?: number;
+  payment_cycle?: string;
+  plan_total_amount?: number;
 }

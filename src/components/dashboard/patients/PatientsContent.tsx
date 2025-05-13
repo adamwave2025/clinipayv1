@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import PatientsTable from './PatientsTable';
 import PatientDetailsDialog from './PatientDetailsDialog';
@@ -11,11 +11,16 @@ import { Search, UserPlus } from 'lucide-react';
 import { usePatients, Patient } from '@/hooks/usePatients';
 
 const PatientsContent = () => {
-  const { patients, isLoadingPatients, error, refetchPatients } = usePatients();
+  const { patients, isLoading, error, fetchPatients } = usePatients();
   const [search, setSearch] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addPatientDialogOpen, setAddPatientDialogOpen] = useState(false);
+  
+  // Initial data fetch
+  useEffect(() => {
+    fetchPatients();
+  }, []);
   
   // Filter patients based on search term
   const filteredPatients = useMemo(() => {
@@ -36,7 +41,7 @@ const PatientsContent = () => {
   };
 
   const handleAddPatientSuccess = () => {
-    refetchPatients();
+    fetchPatients();
   };
 
   return (
@@ -63,7 +68,7 @@ const PatientsContent = () => {
             </Button>
           </div>
           
-          {isLoadingPatients ? (
+          {isLoading ? (
             <div className="flex justify-center py-8">
               <LoadingSpinner size="lg" />
             </div>

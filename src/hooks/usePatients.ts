@@ -7,15 +7,15 @@ import { toast } from 'sonner';
 export interface Patient {
   id: string;
   name: string;
-  email?: string;
-  phone?: string;
+  email: string | null;
+  phone: string | null;
   clinic_id: string;
   created_at: string;
   updated_at: string;
   notes?: string;
   total_spent?: number;
   last_payment_date?: string;
-  paymentCount?: number; // For compatibility with components
+  paymentCount?: number;
 }
 
 export const usePatients = () => {
@@ -35,32 +35,59 @@ export const usePatients = () => {
         return [];
       }
       
-      // Query patients with payment information via RPC function
+      // Using a direct query instead of RPC to avoid TypeScript issue
       const { data, error: fetchError } = await supabase
-        .rpc('get_patients_with_payment_info', { clinic_id_param: clinicId });
+        .from('patients')
+        .select(`
+          id,
+          name,
+          email,
+          phone,
+          clinic_id,
+          created_at,
+          updated_at,
+          notes
+        `)
+        .eq('clinic_id', clinicId);
         
       if (fetchError) {
         setError(fetchError.message);
         throw fetchError;
       }
       
-      // Format the data to match our Patient interface
-      const formattedPatients = data.map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        email: p.email,
-        phone: p.phone,
-        clinic_id: p.clinic_id,
-        created_at: p.created_at,
-        updated_at: p.updated_at,
-        notes: p.notes,
-        total_spent: p.total_spent || 0,
-        last_payment_date: p.last_payment_date,
-        paymentCount: p.payment_count || 0
-      }));
+      // Fetch payment information separately
+      // This is simplified - ideally create a proper DB view or function for this
+      const patientData = data || [];
+      const enhancedPatients: Patient[] = await Promise.all(
+        patientData.map(async (patient) => {
+          // Get payment data for patient
+          const { data: paymentData } = await supabase
+            .from('payments')
+            .select('amount_paid, paid_at')
+            .eq('patient_id', patient.id)
+            .order('paid_at', { ascending: false });
+
+          let total_spent = 0;
+          let last_payment_date = null;
+          let paymentCount = 0;
+          
+          if (paymentData && paymentData.length > 0) {
+            paymentCount = paymentData.length;
+            total_spent = paymentData.reduce((sum, payment) => sum + (payment.amount_paid || 0), 0);
+            last_payment_date = paymentData[0].paid_at;
+          }
+          
+          return {
+            ...patient,
+            total_spent,
+            last_payment_date,
+            paymentCount
+          };
+        })
+      );
       
-      setPatients(formattedPatients);
-      return formattedPatients;
+      setPatients(enhancedPatients);
+      return enhancedPatients;
     } catch (e: any) {
       console.error('Error fetching patients:', e);
       setError(e.message || 'Failed to fetch patients');
@@ -71,11 +98,15 @@ export const usePatients = () => {
     }
   };
 
+  // Rename refetchPatients to match what components are expecting
+  const refetchPatients = fetchPatients;
+
   return {
     patients,
-    isLoading,
+    isLoading, // renamed from isLoadingPatients to isLoading to match elsewhere
     error,
     fetchPatients,
+    refetchPatients, // Added for compatibility
     setPatients
   };
 };

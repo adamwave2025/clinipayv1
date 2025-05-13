@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -84,7 +83,7 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
       <div className="space-y-2">
         <Label htmlFor="patientName">Patient Name*</Label>
         <PatientCombobox 
-          onSelect={onPatientSelect}
+          onSelect={(patient) => patient && onPatientSelect(patient)}
           value={formData.patientName}
           onCreate={onCreateNew}
         />

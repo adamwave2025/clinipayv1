@@ -29,6 +29,29 @@ const SendLinkPage = () => {
     handleSendPaymentLink
   } = useSendLinkPageState();
 
+  // Adapt formData to match the expected SendLinkForm interface
+  const adaptedFormData = {
+    patientName: formData.patientName,
+    patientEmail: formData.patientEmail,
+    patientPhone: formData.patientPhone,
+    selectedLink: formData.paymentLinkId || '',
+    customAmount: formData.customAmount ? String(formData.customAmount) : '',
+    message: formData.message || '',
+    startDate: formData.paymentDate || new Date()
+  };
+
+  // Adapt handleSelectChange to match expected signature
+  const handleSelectValue = (value: string) => {
+    const syntheticEvent = {
+      target: {
+        name: 'paymentLinkId',
+        value
+      }
+    } as React.ChangeEvent<HTMLSelectElement>;
+    
+    handleSelectChange(syntheticEvent);
+  };
+
   return (
     <DashboardLayout userType="clinic">
       <PageHeader 
@@ -43,10 +66,10 @@ const SendLinkPage = () => {
             paymentLinks={regularLinks}
             paymentPlans={paymentPlans}
             isLoadingLinks={isLoadingLinks}
-            formData={formData}
+            formData={adaptedFormData}
             isPaymentPlan={isPaymentPlan}
             onFormChange={handleChange}
-            onSelectChange={handleSelectChange}
+            onSelectChange={handleSelectValue}
             onDateChange={handleDateChange}
             onPatientSelect={handlePatientSelect}
             onCreateNew={handleCreateNew}
