@@ -4,17 +4,19 @@ import { NotificationResponse, StandardNotificationPayload } from './notificatio
 
 // Stub implementation for development - actual implementation is in separate file
 export const addToNotificationQueue = async (
-  recipientType: string,
-  paymentId: string,
+  notificationType: string,
   payload: StandardNotificationPayload,
-  notificationType: string = 'payment', // Default to 'payment' if not specified
+  recipientType: string,
+  clinicId?: string,
+  referenceId?: string,
   options: Record<string, any> = {}
 ): Promise<NotificationResponse> => {
   console.log('Notification would be sent:', {
-    recipientType,
-    paymentId,
-    payload,
     notificationType,
+    payload,
+    recipientType,
+    clinicId,
+    referenceId,
     options
   });
 
@@ -26,7 +28,7 @@ export const addToNotificationQueue = async (
   };
 };
 
-export const checkNotificationExists = async () => ({ exists: false });
+export const checkNotificationExists = async (notificationType: string, recipientType: string, referenceId: string) => ({ exists: false });
 export const processNotificationsNow = async () => ({ success: true });
 export const callWebhookDirectly = async () => ({ success: true });
-export const verifyWebhookConfiguration = async () => ({ success: true });
+export const verifyWebhookConfiguration = async () => ({ success: true, patient: true, clinic: true });
