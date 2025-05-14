@@ -1,4 +1,5 @@
 
+// Add an explicit export keyword to the PaymentLinkData interface
 export interface PaymentLinkData {
   id: string;
   title?: string;

@@ -16,4 +16,5 @@ export * from './payments';
 export * from './sendLink';
 
 // Export types
-export type { PaymentLinkData } from '../types/paymentLink';
+export type { PaymentLinkData } from '../types';
+
