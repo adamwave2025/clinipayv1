@@ -19,7 +19,6 @@ export function useSidebarNavigation(items: SidebarItem[]) {
   const isLinkActive = (to: string) => {
     // Extract the base URL without search params
     const currentPath = location.pathname;
-    const currentSearch = location.search;
     
     // Special case for dashboard root
     if (to === '/dashboard') {
@@ -32,17 +31,9 @@ export function useSidebarNavigation(items: SidebarItem[]) {
       return currentPath === '/dashboard/settings';
     }
     
-    // For other routes, use a more precise matching algorithm
-    if (to !== '/dashboard' && currentPath.startsWith(to)) {
-      // Make sure it's a complete path segment match
-      const toWithSlash = to.endsWith('/') ? to : `${to}/`;
-      return currentPath === to || 
-             currentPath.startsWith(toWithSlash) ||
-             // Allow query parameter matches
-             currentPath === to.split('?')[0];
-    }
-    
-    return false;
+    // For other routes, use exact match or prefix match
+    return currentPath === to || 
+           (currentPath !== '/dashboard' && to !== '/dashboard' && currentPath.startsWith(to));
   };
 
   // Check if submenu has any active links

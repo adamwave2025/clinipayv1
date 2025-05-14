@@ -1,21 +1,19 @@
 
-import React from 'react';
-import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import SettingsContainer from '@/containers/settings/SettingsContainer';
 
 const SettingsPage = () => {
-  const [searchParams] = useSearchParams();
-  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   
-  // If we're on the settings page without a tab parameter, default to profile
-  React.useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (location.pathname === '/dashboard/settings' && !tab) {
-      // Use replace to avoid adding to history stack
-      navigate('/dashboard/settings?tab=profile', { replace: true });
+  // Only redirect if there's no tab parameter at all
+  useEffect(() => {
+    if (!searchParams.has('tab')) {
+      console.log('No tab parameter found, defaulting to profile');
+      setSearchParams({ tab: 'profile' }, { replace: true });
     }
-  }, [location.pathname, searchParams, navigate]);
+  }, [searchParams, setSearchParams]);
   
   return <SettingsContainer />;
 };

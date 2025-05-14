@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User, CreditCard, Bell, Shield } from 'lucide-react';
 import { useClinicData } from '@/hooks/useClinicData';
@@ -20,73 +20,30 @@ const VALID_TABS = ['profile', 'payments', 'notifications', 'security'];
 const SettingsContainer = () => {
   // Use React Router hooks
   const [searchParams, setSearchParams] = useSearchParams();
-  const location = useLocation();
+  const navigate = useNavigate();
   
-  // Get initial tab from URL or default to 'profile'
-  const initialTab = searchParams.get('tab') || 'profile';
-  const validInitialTab = VALID_TABS.includes(initialTab) ? initialTab : 'profile';
+  // Always get the tab from URL params
+  const currentTab = searchParams.get('tab') || 'profile';
   
-  // State for the active tab
-  const [activeTab, setActiveTab] = useState(validInitialTab);
+  // Make sure the tab is valid
+  const safeTab = VALID_TABS.includes(currentTab) ? currentTab : 'profile';
   
-  // Track URL updates to prevent loops
-  const urlUpdateRef = useRef({
-    isUpdating: false,
-    lastPath: location.pathname,
-    lastTab: validInitialTab,
-    ignoreNextUpdate: false
-  });
-
-  // Initialize once from URL on component mount
+  // Only set params if they need to change (prevents loops)
   useEffect(() => {
-    const urlTab = searchParams.get('tab') || 'profile';
-    if (VALID_TABS.includes(urlTab)) {
-      setActiveTab(urlTab);
-      urlUpdateRef.current.lastTab = urlTab;
-    } else if (urlTab !== 'profile') {
-      // If invalid tab in URL, reset to profile
-      setSearchParams({ tab: 'profile' }, { replace: true });
+    if (currentTab !== safeTab) {
+      console.log(`Invalid tab detected: ${currentTab}, redirecting to ${safeTab}`);
+      setSearchParams({ tab: safeTab }, { replace: true });
     }
-  }, []); // Empty dependency array ensures this only runs once on mount
+  }, [currentTab, safeTab, setSearchParams]);
   
-  // Handle URL changes from external navigation (like sidebar)
-  useEffect(() => {
-    // Skip if we're in the middle of our own update
-    if (urlUpdateRef.current.isUpdating) {
-      urlUpdateRef.current.isUpdating = false;
-      return;
-    }
-
-    // Skip if path hasn't changed (tab change within settings)
-    if (location.pathname === urlUpdateRef.current.lastPath) {
-      const urlTab = searchParams.get('tab') || 'profile';
-      
-      // Only update state if the tab actually changed and is valid
-      if (urlTab !== activeTab && VALID_TABS.includes(urlTab)) {
-        console.log(`External tab change detected: ${activeTab} -> ${urlTab}`);
-        setActiveTab(urlTab);
-        urlUpdateRef.current.lastTab = urlTab;
-      }
-    }
-    
-    // Update last known path
-    urlUpdateRef.current.lastPath = location.pathname;
-  }, [location, searchParams, activeTab]);
-  
-  // Handle tab selection from UI
+  // Handle tab selection from UI (direct user action)
   const handleTabChange = (value: string) => {
     console.log(`Tab selected by user: ${value}`);
     
-    // Skip update if already on this tab
-    if (value === activeTab) return;
-    
-    // Update state first
-    setActiveTab(value);
-    urlUpdateRef.current.lastTab = value;
-    
-    // Then update URL, marking that we're doing the update
-    urlUpdateRef.current.isUpdating = true;
-    setSearchParams({ tab: value }, { replace: true });
+    // Only update if changing to a different tab
+    if (value !== safeTab) {
+      setSearchParams({ tab: value }, { replace: true });
+    }
   };
 
   const { 
@@ -115,7 +72,7 @@ const SettingsContainer = () => {
         description="Manage your clinic settings and preferences"
       />
       
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+      <Tabs value={safeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid grid-cols-4 max-w-3xl mb-6">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
