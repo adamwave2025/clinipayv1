@@ -3,7 +3,7 @@ import { StandardNotificationPayload, NotificationMethod } from '../../../types/
 import { NotificationService as CoreNotificationService } from '../../../services';
 import { NotificationResult } from '../types';
 
-export const NotificationService = {
+export const PaymentNotificationService = {
   /**
    * Create a notification payload from recipient data and notification method
    */

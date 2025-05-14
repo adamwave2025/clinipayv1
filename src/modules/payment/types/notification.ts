@@ -4,7 +4,7 @@
  * This ensures consistency in the data sent to notification services
  */
 export interface StandardNotificationPayload {
-  notification_type: string;
+  notification_type: "payment_request" | "payment_success" | "payment_failed" | "refund";
   notification_method: NotificationMethod;
   patient: PatientDetails;
   payment: PaymentDetails;

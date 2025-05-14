@@ -7,7 +7,7 @@ import {
   PatientService,
   PaymentRequestService,
   ClinicService,
-  NotificationService,
+  PaymentNotificationService,
   PaymentLinkService
 } from './services';
 
@@ -82,7 +82,7 @@ export function usePaymentLinkSender() {
       
       if (notificationMethod.email || notificationMethod.sms) {
         // Create notification payload
-        const notificationPayload = NotificationService.createNotificationPayload(
+        const notificationPayload = PaymentNotificationService.createNotificationPayload(
           clinicId,
           clinicData.clinic_name,
           clinicData.email,
@@ -104,7 +104,7 @@ export function usePaymentLinkSender() {
         }
 
         // Send notification
-        const notificationResult = await NotificationService.sendNotification(
+        const notificationResult = await PaymentNotificationService.sendNotification(
           notificationPayload,
           clinicId,
           paymentRequest.id
