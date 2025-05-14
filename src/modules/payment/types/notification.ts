@@ -9,6 +9,8 @@ export interface StandardNotificationPayload {
   patient: PatientDetails;
   payment: PaymentDetails;
   clinic: ClinicDetails;
+  error?: ErrorDetails; // Add this to match the other definition
+  [key: string]: any; // Add index signature to match the other definition
 }
 
 export interface NotificationMethod {
@@ -25,9 +27,15 @@ export interface PatientDetails {
 export interface PaymentDetails {
   reference: string | null;
   amount: number;
-  refund_amount: number | null;
+  refund_amount: number | null; // Keep as required but allow null
   payment_link: string;
   message: string;
+  financial_details?: {
+    gross_amount: number;
+    stripe_fee: number;
+    platform_fee: number;
+    net_amount: number;
+  };
 }
 
 export interface ClinicDetails {
@@ -36,6 +44,11 @@ export interface ClinicDetails {
   email?: string;
   phone?: string;
   address?: string;
+}
+
+export interface ErrorDetails {
+  message: string;
+  code: string;
 }
 
 /**
@@ -61,5 +74,24 @@ export interface NotificationQueueResult {
     fallback?: string;
   };
   immediate_processing?: boolean;
-  error?: any;
+  error?: any; // Using any to allow string or error object
+}
+
+// Define NotificationResult type to match what's used in services
+export interface NotificationResult {
+  success: boolean;
+  delivery?: {
+    webhook: boolean;
+    edge_function: boolean;
+    fallback: boolean;
+    any_success: boolean;
+  };
+  errors?: {
+    webhook?: string;
+    edge_function?: string;
+    fallback?: string;
+  };
+  notification_id?: string;
+  error?: string | any; // Change to allow both string and PostgrestError types
+  immediate_processing?: boolean;
 }

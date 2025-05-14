@@ -1,9 +1,10 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { NotificationMethod, StandardNotificationPayload } from '@/types/notification';
-import { NotificationPayloadData, NotificationResult } from './types';
+import { NotificationMethod } from '@/types/notification';
+import { NotificationPayloadData } from './types';
 import { PaymentNotificationService } from '@/modules/payment/hooks/sendLink/services';
+import { StandardNotificationPayload, NotificationResult } from '@/modules/payment/types/notification';
 
 export function useNotificationService() {
   const [isSendingNotification, setIsSendingNotification] = useState(false);
@@ -20,7 +21,7 @@ export function useNotificationService() {
       payment: {
         reference: recipientData.payment.reference,
         amount: recipientData.payment.amount,
-        refund_amount: null, // Always provide this field, even if null
+        refund_amount: null, // Always provide this field as null
         payment_link: recipientData.payment.payment_link,
         message: recipientData.payment.message
       },

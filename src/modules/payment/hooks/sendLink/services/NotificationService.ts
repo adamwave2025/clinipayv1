@@ -1,7 +1,6 @@
 
-import { StandardNotificationPayload, NotificationMethod } from '../../../types/notification';
+import { StandardNotificationPayload, NotificationMethod, NotificationResult } from '../../../types/notification';
 import { NotificationService } from '../../../services';
-import { NotificationResult } from '../types';
 
 export const PaymentNotificationService = {
   /**
@@ -79,7 +78,7 @@ export const PaymentNotificationService = {
         console.log("⚠️ CRITICAL SUCCESS: Payment request notification sent successfully");
       }
       
-      return notificationResult;
+      return notificationResult as NotificationResult;
     } catch (error: any) {
       console.error("⚠️ CRITICAL ERROR: Exception during notification delivery:", error);
       return {
@@ -87,7 +86,7 @@ export const PaymentNotificationService = {
         error: error.message,
         delivery: { webhook: false, edge_function: false, fallback: false, any_success: false },
         errors: { webhook: error.message }
-      };
+      } as NotificationResult;
     }
   }
 };
