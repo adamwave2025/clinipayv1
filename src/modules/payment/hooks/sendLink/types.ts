@@ -1,6 +1,5 @@
 
-import { StandardNotificationPayload } from '@/types/notification';
-import { PaymentLink } from '@/types/payment';
+import { StandardNotificationPayload } from '../../types/notification';
 
 export interface SendLinkFormData {
   patientName: string;
@@ -9,18 +8,20 @@ export interface SendLinkFormData {
   selectedLink: string;
   customAmount: string;
   message: string;
-  scheduledDate?: Date | null;
   startDate?: Date | string | null;
+  scheduledDate?: Date | null;
 }
 
 export interface PaymentLinkSenderProps {
   formData: SendLinkFormData;
-  paymentLinks: PaymentLink[];
+  clinicId: string;
   patientId?: string;
 }
 
 export interface PaymentLinkSenderResult {
   success: boolean;
+  paymentRequestId?: string;
+  notificationSent?: boolean;
   error?: string;
 }
 
