@@ -1,6 +1,11 @@
 
-// Import from the shadcn toast component
-import { useToast, toast } from "sonner";
+// Import from sonner - which only exports toast, not useToast
+import { toast } from "sonner";
 
-// Re-export the toast utilities
-export { useToast, toast };
+// Re-export the toast utility
+export { toast };
+
+// Export a useToast function that returns the toast function for compatibility
+export const useToast = () => {
+  return { toast };
+};
