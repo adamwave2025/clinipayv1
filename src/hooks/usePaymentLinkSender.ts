@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -216,12 +217,15 @@ export function usePaymentLinkSender() {
           console.log('⚠️ CRITICAL: Adding notification to queue and calling webhook directly...');
           console.log('⚠️ CRITICAL: With clinic_id:', userData.clinic_id);
           
+          // This is a reusable link - use processImmediately=true to ensure immediate delivery
           const { success, error, webhook_success, webhook_error } = await addToNotificationQueue(
             'payment_request',
             notificationPayload,
             'patient',
             userData.clinic_id,
-            paymentRequest.id
+            paymentRequest.id,
+            undefined,  // payment_id is undefined
+            true  // processImmediately = true for reusable links
           );
 
           if (!success) {

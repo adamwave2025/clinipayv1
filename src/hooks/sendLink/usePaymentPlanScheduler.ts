@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -330,12 +331,15 @@ export function usePaymentPlanScheduler() {
           console.log('⚠️ CRITICAL: Adding payment plan notification to queue and calling webhook immediately...');
           console.log('⚠️ CRITICAL: With clinic_id:', clinicId);
           
+          // For plans that start today, set processImmediately to true to ensure notification is sent right away
           const { success, error, webhook_success, webhook_error } = await addToNotificationQueue(
             'payment_request',
             notificationPayload,
             'patient',
             clinicId,
-            paymentRequestData.id
+            paymentRequestData.id,
+            undefined, // payment_id is undefined
+            true // processImmediately = true for same-day payment plans
           );
 
           if (!success) {

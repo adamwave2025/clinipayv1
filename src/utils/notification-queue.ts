@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { StandardNotificationPayload } from '@/types/notification';
 import { Json } from '@/integrations/supabase/types';
 import { callWebhookDirectly } from './webhook-caller';
+import { processNotificationsNow } from './notification-cron-setup';
 
 /**
  * Add an item to the notification queue for processing and immediately call webhook
@@ -13,7 +14,8 @@ export async function addToNotificationQueue(
   recipient_type: 'patient' | 'clinic',
   clinic_id: string,
   reference_id?: string,
-  payment_id?: string
+  payment_id?: string,
+  processImmediately = false // New parameter with default value of false
 ) {
   console.log(`⚠️ CRITICAL: Adding notification to queue: type=${type}, recipient=${recipient_type}, reference=${reference_id}`);
   console.log(`⚠️ CRITICAL: Using clinic_id=${clinic_id}`);
@@ -91,8 +93,12 @@ export async function addToNotificationQueue(
     console.log(`⚠️ CRITICAL: Calling webhook directly...`);
     const webhookResult = await callWebhookDirectly(payload, recipient_type);
     
+    // Continue with the normal flow regardless of webhook result
+    let webhookSuccess = false;
+    
     if (webhookResult.success) {
       console.log(`⚠️ CRITICAL SUCCESS: Webhook call successful`);
+      webhookSuccess = true;
       
       // Update the queue item to mark it as processed
       const { error: updateError } = await supabase
@@ -106,23 +112,32 @@ export async function addToNotificationQueue(
       if (updateError) {
         console.error('⚠️ CRITICAL: Failed to update notification status:', updateError);
       }
-      
-      return { 
-        success: true, 
-        notification_id: queuedItem.id, 
-        webhook_success: true 
-      };
     } else {
       console.error('⚠️ CRITICAL ERROR: Direct webhook call failed:', webhookResult.error);
-      
-      // Still return success for the queueing part, but indicate webhook failure
-      return { 
-        success: true, 
-        notification_id: queuedItem.id, 
-        webhook_success: false,
-        webhook_error: webhookResult.error
-      };
     }
+    
+    // NEW: If processImmediately is true, trigger the notification queue processing
+    // This is a safety net in case the direct webhook call fails or for debugging
+    if (processImmediately) {
+      console.log(`⚠️ CRITICAL: processImmediately=true, triggering notification queue processing`);
+      
+      try {
+        // Call the notification processor edge function via helper
+        const processingResult = await processNotificationsNow();
+        console.log(`⚠️ CRITICAL: Notification processing triggered:`, processingResult);
+      } catch (procError) {
+        console.error('⚠️ CRITICAL ERROR: Failed to trigger notification processing:', procError);
+        // Non-fatal error, we still return success for the queueing part
+      }
+    }
+    
+    return { 
+      success: true, 
+      notification_id: queuedItem.id, 
+      webhook_success: webhookSuccess,
+      webhook_error: webhookSuccess ? undefined : webhookResult.error,
+      immediate_processing: processImmediately
+    };
   } catch (error) {
     console.error('⚠️ CRITICAL ERROR: Exception adding to notification queue:', error);
     return { success: false, error };
