@@ -23,6 +23,9 @@ try {
       .then(() => {
         console.log('Supabase schema cache refreshed');
       })
+      .catch((e) => {
+        console.log('Schema refresh attempt failed:', e);
+      })
   ).catch((e) => {
     console.log('Schema refresh attempted but failed:', e);
   });

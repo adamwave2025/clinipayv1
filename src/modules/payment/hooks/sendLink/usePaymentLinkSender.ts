@@ -144,13 +144,14 @@ export function usePaymentLinkSender() {
         patientName: formData.patientName
       });
 
+      // FIX: Use custom_amount instead of amount in the insert operation
       const { data, error } = await supabase
         .from('payment_requests')
         .insert({
           clinic_id: userData.clinic_id,
           patient_id: finalPatientId,
           payment_link_id: paymentLinkId,
-          custom_amount: formData.selectedLink ? null : amount,
+          custom_amount: formData.selectedLink ? null : amount, // Use custom_amount instead of amount
           patient_name: formData.patientName,
           patient_email: formData.patientEmail,
           patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,

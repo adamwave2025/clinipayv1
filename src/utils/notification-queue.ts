@@ -23,6 +23,7 @@ export async function addToNotificationQueue(
     const jsonPayload = payload as unknown as Json;
     
     // Insert into notification queue with only the columns that exist in the database
+    // Based on the database schema, only include valid columns
     const { data, error } = await supabase
       .from('notification_queue')
       .insert({
