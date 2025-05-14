@@ -9,7 +9,7 @@ interface SidebarNavItemProps {
 }
 
 const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ item, isActive }) => {
-  // Determine if current link is active
+  // Determine if current link is active using the passed isActive function
   const linkIsActive = isActive(item.to);
 
   return (

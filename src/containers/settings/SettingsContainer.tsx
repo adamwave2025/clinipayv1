@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User, CreditCard, Bell, Shield } from 'lucide-react';
@@ -17,22 +17,53 @@ import { handlePaymentAction } from './PaymentActions';
 
 const VALID_TABS = ['profile', 'payments', 'notifications', 'security'];
 
+// Utility function to debounce function calls
+const debounce = (fn: Function, ms = 300) => {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return function(...args: any[]) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), ms);
+  };
+};
+
 const SettingsContainer = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Get initial tab from URL or default to 'profile'
-  const initialTab = searchParams.get('tab');
+  const initialUrlTab = searchParams.get('tab');
+  const validInitialTab = VALID_TABS.includes(initialUrlTab as string) ? initialUrlTab : 'profile';
   
-  // Track current tab state
-  const [activeTab, setActiveTab] = useState(
-    VALID_TABS.includes(initialTab as string) ? initialTab : 'profile'
+  // State for the active tab
+  const [activeTab, setActiveTab] = useState(validInitialTab);
+  
+  // References to track navigation state
+  const navigationState = useRef({
+    source: null as 'url' | 'user' | null,
+    isInitialized: false,
+    prevTab: validInitialTab,
+    isUpdatingUrl: false
+  });
+  
+  // Track renders for debugging
+  const renderCount = useRef(0);
+  renderCount.current++;
+  
+  // Debounced URL update function to prevent rapid changes
+  const debouncedSetSearchParams = useCallback(
+    debounce((tab: string) => {
+      if (!navigationState.current.isUpdatingUrl) {
+        navigationState.current.isUpdatingUrl = true;
+        // Use replace to avoid adding new history entries
+        setSearchParams({ tab }, { replace: true });
+        
+        // Reset the flag after a short delay
+        setTimeout(() => {
+          navigationState.current.isUpdatingUrl = false;
+        }, 50);
+      }
+    }, 100),
+    [setSearchParams]
   );
-  
-  // Reference to track state source (user action vs URL)
-  const stateSource = useRef<'url' | 'user' | null>(null);
-  
-  // Reference to track if we've handled the initial URL params
-  const initialTabProcessed = useRef(false);
   
   const { 
     clinicData, 
@@ -43,34 +74,50 @@ const SettingsContainer = () => {
     deleteLogo
   } = useClinicData();
 
-  // Consolidated effect to handle URL <-> state synchronization
+  // Update tab from URL, but only if URL changed externally
   useEffect(() => {
-    // On mount, sync from URL to state
-    if (!initialTabProcessed.current) {
-      const tabFromUrl = searchParams.get('tab');
-      if (tabFromUrl && VALID_TABS.includes(tabFromUrl)) {
-        setActiveTab(tabFromUrl);
-      }
-      initialTabProcessed.current = true;
-      stateSource.current = 'url';
+    const urlTab = searchParams.get('tab');
+    const validUrlTab = VALID_TABS.includes(urlTab as string) ? urlTab : 'profile';
+    
+    // On first render, initialize state from URL
+    if (!navigationState.current.isInitialized) {
+      setActiveTab(validUrlTab);
+      navigationState.current.isInitialized = true;
+      navigationState.current.source = 'url';
       return;
     }
     
-    // When state changes from user action, update URL
-    if (stateSource.current === 'user') {
-      setSearchParams({ tab: activeTab }, { replace: true });
-      // Reset the state source after URL update to prevent loops
-      stateSource.current = null;
+    // If URL changed externally and we're not in the middle of our own update
+    if (!navigationState.current.isUpdatingUrl && 
+        validUrlTab !== activeTab && 
+        navigationState.current.source !== 'user') {
+      setActiveTab(validUrlTab);
+      navigationState.current.source = 'url';
     }
-  }, [activeTab, searchParams, setSearchParams]);
-
-  // Handle tab change from user interaction
-  const handleTabChange = (value: string) => {
-    if (value === activeTab) return; // Prevent unnecessary state updates
     
-    stateSource.current = 'user'; // Mark change as from user interaction
+    // If tab state was updated by user, update URL
+    if (navigationState.current.source === 'user') {
+      debouncedSetSearchParams(activeTab);
+      // Reset source after handling
+      navigationState.current.source = null;
+    }
+    
+    // Update previous tab reference
+    navigationState.current.prevTab = activeTab;
+    
+  }, [activeTab, searchParams, debouncedSetSearchParams]);
+
+  // Safe tab change handler with guards against unnecessary updates
+  const handleTabChange = useCallback((value: string) => {
+    // Prevent unnecessary state updates
+    if (value === activeTab) return;
+    
+    // Set the source to 'user' to track origin of change
+    navigationState.current.source = 'user';
+    
+    // Update active tab state
     setActiveTab(value);
-  };
+  }, [activeTab]);
 
   if (dataLoading) {
     return (
