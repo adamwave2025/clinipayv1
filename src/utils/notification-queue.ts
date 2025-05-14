@@ -15,7 +15,7 @@ export async function addToNotificationQueue(
   reference_id?: string,
   payment_id?: string
 ) {
-  console.log(`⚠️ CRITICAL: Adding notification to queue: type=${type}, recipient=${recipient_type}, clinic=${clinic_id}`);
+  console.log(`⚠️ CRITICAL: Adding notification to queue: type=${type}, recipient=${recipient_type}, clinic=${clinic_id}, reference=${reference_id}`);
   
   try {
     // Convert the StandardNotificationPayload to Json compatible format
@@ -49,7 +49,7 @@ export async function addToNotificationQueue(
     }
 
     const queuedItem = data[0];
-    console.log(`⚠️ CRITICAL: Successfully queued notification with id: ${queuedItem.id}`);
+    console.log(`⚠️ CRITICAL SUCCESS: Successfully queued notification with id: ${queuedItem.id}`);
 
     // DIRECTLY call the webhook immediately instead of relying on edge function
     console.log(`⚠️ CRITICAL: Calling webhook directly...`);

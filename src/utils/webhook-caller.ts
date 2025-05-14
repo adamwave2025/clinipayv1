@@ -1,77 +1,50 @@
 
-import { StandardNotificationPayload } from '@/types/notification';
-import { supabase } from '@/integrations/supabase/client';
+import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
 
 /**
- * Directly call webhook with notification payload
+ * Directly call the webhook to send notifications immediately
  */
 export async function callWebhookDirectly(
-  payload: StandardNotificationPayload,
-  recipient_type: 'patient' | 'clinic'
-): Promise<{ success: boolean; error?: string }> {
+  payload: StandardNotificationPayload, 
+  recipientType: 'patient' | 'clinic'
+) {
   try {
-    console.log('⚠️ CRITICAL: Calling webhook directly with payload:', JSON.stringify(payload, null, 2));
+    console.log(`⚠️ CRITICAL: Calling webhook directly for ${recipientType} notification`);
     
-    // Format monetary values to display as currency (convert pennies to pounds)
-    if (payload.payment && payload.payment.amount) {
-      console.log('💰 Converting monetary values to proper format');
-      // Convert amount from pennies to pounds
-      const rawAmount = payload.payment.amount;
-      payload.payment.amount = typeof rawAmount === 'number' ? rawAmount / 100 : rawAmount;
-      
-      // Also convert refund amount if present
-      if (payload.payment.refund_amount) {
-        const rawRefundAmount = payload.payment.refund_amount;
-        payload.payment.refund_amount = typeof rawRefundAmount === 'number' ? rawRefundAmount / 100 : rawRefundAmount;
-      }
-    }
-
-    // Determine which webhook URL to use based on recipient_type
-    let webhookUrl: string | null = null;
+    // The webhook endpoint for notifications
+    const webhookUrl = import.meta.env.VITE_NOTIFICATION_WEBHOOK_URL || 'https://clinipay.co.uk/api/notifications';
     
-    // First try to get webhook URL from system_settings
-    const { data: webhookSettings, error: settingsError } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', recipient_type === 'patient' ? 'patient_notification_webhook' : 'clinic_notification_webhook')
-      .maybeSingle();
-      
-    if (!settingsError && webhookSettings?.value) {
-      webhookUrl = webhookSettings.value;
-      console.log(`📤 Found webhook URL in system_settings for ${recipient_type} notifications`);
-    } else {
-      console.log(`⚠️ No webhook URL found in system_settings for ${recipient_type} notifications, trying environment fallback`);
-    }
+    // Prepare the webhook payload
+    const webhookPayload = {
+      payload,
+      recipient_type: recipientType
+    };
     
-    // If no webhook URL in system_settings, use default service domain
-    if (!webhookUrl) {
-      // Default fallback to Lead Connector standard webhook
-      webhookUrl = 'https://services.leadconnector.com/payment/webhook';
-      console.log(`📤 Using default webhook URL: ${webhookUrl}`);
-    }
+    console.log(`⚠️ CRITICAL: Sending to webhook URL: ${webhookUrl}`);
+    console.log(`⚠️ CRITICAL: With payload:`, JSON.stringify(webhookPayload, null, 2));
     
-    console.log(`📤 Sending ${recipient_type} notification to webhook: ${webhookUrl}`);
-
-    // Make direct HTTP call to webhook
+    // Make the direct call to the webhook
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Webhook-Source': 'direct-client-call'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(webhookPayload)
     });
-
-    // Check response
+    
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`⚠️ CRITICAL ERROR: Webhook call failed with status ${response.status}: ${errorText}`);
-      return { success: false, error: `Webhook responded with ${response.status}: ${errorText}` };
+      return { success: false, error: `Webhook call failed with status ${response.status}` };
     }
-
-    console.log(`✅ Webhook response: ${response.status}`);
-    return { success: true };
+    
+    const responseData = await response.json();
+    console.log(`⚠️ CRITICAL SUCCESS: Webhook call succeeded with response:`, responseData);
+    
+    return { success: true, data: responseData };
   } catch (error) {
-    console.error('⚠️ CRITICAL ERROR: Exception in webhook call:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error calling webhook' };
+    console.error(`⚠️ CRITICAL ERROR: Exception during webhook call:`, error);
+    return { success: false, error: String(error) };
   }
 }

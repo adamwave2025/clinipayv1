@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +11,17 @@ import { addToNotificationQueue } from '@/utils/notification-queue';
 export function usePaymentPlanScheduler() {
   const [isSchedulingPlan, setIsSchedulingPlan] = useState(false);
   const { user } = useAuth();
+
+  // Helper to check if a date is today
+  const isDateToday = (dateString: string): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const compareDate = new Date(dateString);
+    compareDate.setHours(0, 0, 0, 0);
+    
+    return today.getTime() === compareDate.getTime();
+  };
 
   const handleSchedulePaymentPlan = async (
     patientId: string,
@@ -29,7 +41,7 @@ export function usePaymentPlanScheduler() {
     }
 
     setIsSchedulingPlan(true);
-    console.log('Starting payment plan scheduling process...');
+    console.log('⚠️ CRITICAL: Starting payment plan scheduling process...');
 
     try {
       // Get the clinic ID for the current user
@@ -50,7 +62,7 @@ export function usePaymentPlanScheduler() {
       }
 
       const clinicId = userData.clinic_id;
-      console.log(`Using clinic ID: ${clinicId}`);
+      console.log(`⚠️ CRITICAL: Using clinic ID: ${clinicId}`);
 
       // Get clinic details for the notification
       const { data: clinicData, error: clinicError } = await supabase
@@ -76,12 +88,17 @@ export function usePaymentPlanScheduler() {
       const paymentCount = selectedPlan.paymentCount || 1;
       const installmentAmount = Math.floor(totalAmount / paymentCount);
 
-      console.log('Payment plan details:', {
+      console.log('⚠️ CRITICAL: Payment plan details:', {
         totalAmount,
         paymentCount,
         installmentAmount,
-        paymentFrequency
+        paymentFrequency,
+        startDate: formData.startDate
       });
+
+      // Determine if the plan starts today for notification purposes
+      const planStartsToday = isDateToday(formData.startDate);
+      console.log(`⚠️ CRITICAL: Plan starts today: ${planStartsToday ? 'YES' : 'NO'}`);
 
       // Ensure valid dates and amounts
       if (!formData.startDate) {
@@ -93,7 +110,7 @@ export function usePaymentPlanScheduler() {
       }
 
       // Create the plan record
-      console.log('Creating payment plan with start date:', formData.startDate);
+      console.log('⚠️ CRITICAL: Creating payment plan with start date:', formData.startDate);
       const { data: planData, error: planError } = await supabase
         .from('plans')
         .insert({
@@ -117,7 +134,7 @@ export function usePaymentPlanScheduler() {
         .single();
 
       if (planError) {
-        console.error('Error creating payment plan:', planError);
+        console.error('⚠️ CRITICAL ERROR: Error creating payment plan:', planError);
         throw new Error(`Failed to create payment plan: ${planError.message}`);
       }
 
@@ -126,7 +143,7 @@ export function usePaymentPlanScheduler() {
       }
 
       const planId = planData.id;
-      console.log('Payment plan created successfully:', planId);
+      console.log('⚠️ CRITICAL SUCCESS: Payment plan created successfully:', planId);
 
       // Now create the payment schedule
       const schedulePromises = [];
@@ -136,7 +153,7 @@ export function usePaymentPlanScheduler() {
         // Format date as ISO string but cut off the time part
         const dueDate = currentDate.toISOString().split('T')[0];
 
-        console.log(`Creating installment ${i}/${paymentCount} due on ${dueDate}`);
+        console.log(`⚠️ CRITICAL: Creating installment ${i}/${paymentCount} due on ${dueDate}`);
         
         const scheduleItem = {
           plan_id: planId,
@@ -146,7 +163,7 @@ export function usePaymentPlanScheduler() {
           amount: installmentAmount,
           due_date: dueDate,
           payment_frequency: paymentFrequency,
-          status: 'pending',
+          status: i === 1 && planStartsToday ? 'sent' : 'pending',
           payment_number: i,
           total_payments: paymentCount
         };
@@ -181,7 +198,7 @@ export function usePaymentPlanScheduler() {
         .map(result => result.error);
       
       if (scheduleErrors.length > 0) {
-        console.error('Errors creating payment schedule items:', scheduleErrors);
+        console.error('⚠️ CRITICAL ERROR: Errors creating payment schedule items:', scheduleErrors);
         throw new Error(`Failed to create one or more schedule items`);
       }
 
@@ -189,11 +206,11 @@ export function usePaymentPlanScheduler() {
       const firstPaymentSchedule = scheduleResults[0].data?.[0];
       
       if (!firstPaymentSchedule) {
-        console.error('Failed to retrieve first payment schedule');
+        console.error('⚠️ CRITICAL ERROR: Failed to retrieve first payment schedule');
         throw new Error('Failed to create initial payment schedule');
       }
       
-      console.log('⚠️ CRITICAL: First payment schedule created:', firstPaymentSchedule.id);
+      console.log('⚠️ CRITICAL SUCCESS: First payment schedule created:', firstPaymentSchedule.id);
 
       // Now create a payment request for the first installment
       const { data: paymentRequestData, error: paymentRequestError } = await supabase
@@ -212,7 +229,7 @@ export function usePaymentPlanScheduler() {
         .single();
 
       if (paymentRequestError) {
-        console.error('Error creating payment request:', paymentRequestError);
+        console.error('⚠️ CRITICAL ERROR: Error creating payment request:', paymentRequestError);
         throw new Error(`Failed to create payment request: ${paymentRequestError.message}`);
       }
 
@@ -220,7 +237,7 @@ export function usePaymentPlanScheduler() {
         throw new Error('Failed to create payment request: No data returned');
       }
 
-      console.log('⚠️ CRITICAL: Created payment request for first installment:', paymentRequestData.id);
+      console.log('⚠️ CRITICAL SUCCESS: Created payment request for first installment:', paymentRequestData.id);
 
       // Update the first payment schedule with the request ID AND SET STATUS TO SENT
       const { error: updateError } = await supabase
@@ -266,19 +283,11 @@ export function usePaymentPlanScheduler() {
         console.log('Created activity record for plan creation');
       }
 
-      // Now create and send the notification for the first payment
-      // Use clinicNotificationData instead of clinicData to avoid name collision
-      const { data: clinicNotificationData, error: clinicDataError } = await supabase
-        .from('clinics')
-        .select('*')
-        .eq('id', clinicId)
-        .single();
+      // Only create and send notification if the plan starts today
+      if (planStartsToday) {
+        console.log('⚠️ CRITICAL: Plan starts today - creating notification for first installment');
         
-      if (clinicDataError) {
-        console.error('Error fetching clinic details for notification:', clinicDataError);
-        toast.warning('Payment plan created, but notification might be delayed');
-      } else {
-        const formattedAddress = ClinicFormatter.formatAddress(clinicNotificationData);
+        const formattedAddress = ClinicFormatter.formatAddress(clinicData);
         const notificationMethod: NotificationMethod = {
           email: !!formData.patientEmail,
           sms: !!formData.patientPhone
@@ -302,9 +311,9 @@ export function usePaymentPlanScheduler() {
             message: `[PLAN] ${formData.message || `Payment plan: ${selectedPlan.title || 'Payment Plan'} - Installment 1 of ${paymentCount}`}`
           },
           clinic: {
-            name: clinicNotificationData.clinic_name || "Your healthcare provider",
-            email: clinicNotificationData.email,
-            phone: clinicNotificationData.phone,
+            name: clinicData.clinic_name || "Your healthcare provider",
+            email: clinicData.email,
+            phone: clinicData.phone,
             address: formattedAddress
           }
         };
@@ -335,16 +344,21 @@ export function usePaymentPlanScheduler() {
           console.error("⚠️ CRITICAL ERROR: Exception during payment plan notification delivery:", notifyErr);
           toast.warning("Payment plan created, but there was an issue sending notifications");
         }
+      } else {
+        console.log('⚠️ CRITICAL: Plan starts in the future - no notification will be sent now');
+        // We don't create notification records for future payment plan installments
+        // They will be created by the payment schedule processing function
       }
 
       return { 
         success: true, 
         planId: planId,
-        paymentRequestId: paymentRequestData.id
+        paymentRequestId: paymentRequestData.id,
+        sentNotification: planStartsToday
       };
 
     } catch (error: any) {
-      console.error('Error in handleSchedulePaymentPlan:', error);
+      console.error('⚠️ CRITICAL ERROR: Error in handleSchedulePaymentPlan:', error);
       return { 
         success: false, 
         error: error.message || 'Failed to schedule payment plan'
