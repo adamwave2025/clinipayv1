@@ -3,6 +3,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { StandardNotificationPayload } from '../types/notification';
 
 export interface NotificationSettings {
   email_notifications?: boolean;
@@ -79,5 +80,39 @@ export class NotificationService {
         message: `Failed to send test ${type} notification`
       };
     }
+  }
+
+  /**
+   * Add a notification to the processing queue
+   * @param type Notification type
+   * @param payload Notification payload
+   * @param recipientType Recipient type (patient or clinic)
+   * @param clinicId Clinic ID
+   * @param referenceId Reference ID (optional)
+   * @param paymentId Payment ID (optional)
+   * @param processImmediately Whether to process immediately (optional)
+   * @returns Result of the operation
+   */
+  static async addToQueue(
+    type: string,
+    payload: StandardNotificationPayload,
+    recipientType: 'patient' | 'clinic',
+    clinicId: string,
+    referenceId?: string,
+    paymentId?: string,
+    processImmediately?: boolean
+  ) {
+    // Use the utility function from the root utils directory
+    return await import('@/utils/notification-queue').then(module => {
+      return module.addToNotificationQueue(
+        type,
+        payload,
+        recipientType,
+        clinicId,
+        referenceId,
+        paymentId,
+        processImmediately
+      );
+    });
   }
 }
