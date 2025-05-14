@@ -1,79 +1,132 @@
 
 import { useState } from 'react';
-import { toast } from 'sonner';
-import { addToNotificationQueue } from '@/utils/notification-queue';
-import { NotificationMethod, StandardNotificationPayload } from '@/types/notification';
-import { NotificationPayloadData } from './types';
+import { NotificationMethod } from '@/types/notification';
 
-// Define the notification result type to match what's expected
+// Define the notification payload type for better type safety
+export interface NotificationPayload {
+  notification_type: string;
+  notification_method: NotificationMethod;
+  clinic: {
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+  };
+  patient: {
+    name: string;
+    email?: string;
+    phone?: string;
+  };
+  payment: {
+    reference: string | null; // Can be null when sending a payment request
+    amount: number;
+    refund_amount: number | null;
+    payment_link: string;
+    message: string;
+  };
+}
+
 export interface NotificationResult {
   success: boolean;
+  error?: string;
   delivery?: {
-    webhook: boolean;
-    edge_function: boolean;
-    fallback: boolean;
-    any_success: boolean;
+    email_sent?: boolean;
+    sms_sent?: boolean;
+    any_success?: boolean;
   };
   errors?: {
     webhook?: string;
+    email?: string;
+    sms?: string;
   };
-  notification_id?: string;
-  error?: string;
 }
 
-export function useNotificationService() {
+export const useNotificationService = () => {
   const [isSendingNotification, setIsSendingNotification] = useState(false);
-
+  
+  /**
+   * Creates a notification payload object for payment requests
+   */
   const createNotificationPayload = (
-    recipientData: NotificationPayloadData,
+    recipients: {
+      clinic: {
+        id: string;
+        name: string;
+        email?: string;
+        phone?: string;
+        address?: string;
+      };
+      patient: {
+        name: string;
+        email?: string;
+        phone?: string;
+      };
+      payment: {
+        reference: string;
+        amount: number;
+        refund_amount: number | null;
+        payment_link: string;
+        message: string;
+      };
+    },
     notificationMethod: NotificationMethod
-  ): StandardNotificationPayload => {
+  ): NotificationPayload => {
     return {
       notification_type: "payment_request",
       notification_method: notificationMethod,
-      patient: recipientData.patient,
-      payment: recipientData.payment,
-      clinic: recipientData.clinic
+      clinic: recipients.clinic,
+      patient: recipients.patient,
+      payment: {
+        // Important: Set reference to null when sending a payment link
+        // The reference will be set when the actual payment is made
+        reference: null,  
+        amount: recipients.payment.amount,
+        refund_amount: recipients.payment.refund_amount,
+        payment_link: recipients.payment.payment_link,
+        message: recipients.payment.message
+      }
     };
   };
 
+  /**
+   * Sends a payment notification to the patient
+   */
   const sendPaymentNotification = async (
-    payload: StandardNotificationPayload,
+    payload: NotificationPayload,
     clinicId: string,
     paymentRequestId: string
   ): Promise<NotificationResult> => {
     setIsSendingNotification(true);
-    
     try {
-      console.log('⚠️ CRITICAL: Adding notification to queue and calling webhook directly...');
-      console.log('⚠️ CRITICAL: With clinic_id:', clinicId);
+      // Make API call to send notification
+      const response = await fetch('/api/notifications/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          payload,
+          clinicId,
+          paymentRequestId
+        }),
+      });
       
-      // Use processImmediately=true to ensure immediate delivery
-      const notificationResult = await addToNotificationQueue(
-        'payment_request',
-        payload,
-        'patient',
-        clinicId,
-        paymentRequestId,
-        undefined,  // payment_id is undefined
-        true  // processImmediately = true
-      );
-
-      if (!notificationResult.success) {
-        console.error("⚠️ CRITICAL ERROR: Failed to queue notification:", notificationResult.error);
-        toast.warning("Payment link was sent, but notification delivery might be delayed");
-        return notificationResult;
-      } else if (notificationResult.delivery?.any_success === false) {
-        console.error("⚠️ CRITICAL ERROR: Failed to deliver notification via webhook:", notificationResult.errors?.webhook);
-        toast.warning("Payment link was sent, but notification delivery might be delayed");
-        return notificationResult;
-      } else {
-        console.log("⚠️ CRITICAL SUCCESS: Payment request notification sent successfully");
-        return notificationResult;
+      if (!response.ok) {
+        const errorData = await response.json();
+        return {
+          success: false,
+          error: errorData.message || 'Failed to send notification'
+        };
       }
+      
+      const result = await response.json();
+      return {
+        success: true,
+        delivery: result.delivery
+      };
     } catch (error: any) {
-      console.error("⚠️ CRITICAL ERROR: Exception during notification delivery:", error);
-      toast.warning("Payment link created, but there was an issue sending notifications");
+      console.error('Error sending notification:', error);
       return {
         success: false,
         error: error.message
@@ -82,10 +135,10 @@ export function useNotificationService() {
       setIsSendingNotification(false);
     }
   };
-
+  
   return {
-    isSendingNotification,
     createNotificationPayload,
-    sendPaymentNotification
+    sendPaymentNotification,
+    isSendingNotification
   };
-}
+};
