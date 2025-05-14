@@ -3,10 +3,9 @@
 export * from './payment';
 
 // Export from paymentLink, but exclude duplicate PaymentLink
-export { 
+export type { 
   PaymentLinkData,
-  RawPaymentLinkData,
-  RawPaymentRequestData
+  ProcessedPaymentLink
 } from './paymentLink';
 
 export * from './notification';
