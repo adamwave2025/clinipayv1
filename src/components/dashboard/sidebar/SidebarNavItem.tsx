@@ -9,18 +9,22 @@ interface SidebarNavItemProps {
 }
 
 const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ item, isActive }) => {
+  // Determine if current link is active
+  const linkIsActive = isActive(item.to);
+
   return (
     <li>
       <NavLink
         to={item.to}
-        className={({ isActive }) => `
+        className={`
           flex items-center px-4 py-3 rounded-lg text-gray-700 transition-colors
-          ${isActive 
+          ${linkIsActive 
             ? 'bg-gradient-primary text-white' 
             : 'hover:bg-gray-100'
           }
         `}
-        end
+        // Use 'end' prop only for index routes like /dashboard
+        end={item.to === '/dashboard'}
       >
         {item.icon}
         <span className="ml-3">{item.label}</span>

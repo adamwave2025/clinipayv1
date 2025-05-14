@@ -12,14 +12,25 @@ export function useSidebarNavigation(items: SidebarItem[]) {
     setExpandedMenu(expandedMenu === label ? null : label);
   };
 
-  // Check if a link is active
+  // Check if a link is active with improved matching
   const isLinkActive = (to: string) => {
-    // For main dashboard route, only return true for exact match
-    if (to === '/dashboard' && location.pathname !== '/dashboard') {
-      return false;
+    // For exact matches (like '/dashboard'), require exact path match
+    if (to === '/dashboard') {
+      return location.pathname === '/dashboard';
     }
-    // For other routes, check if the location pathname includes the to path
-    return location.pathname.includes(to);
+    
+    // For settings page with tab params, check the base route match
+    if (to === '/dashboard/settings') {
+      return location.pathname === '/dashboard/settings';
+    }
+    
+    // For other routes, ensure proper path matching to avoid false positives
+    // Use startsWith to prevent partial matches (e.g., /dashboard/settings matching /dashboard)
+    // and add a trailing slash check to ensure complete path segments
+    return location.pathname.startsWith(to) && 
+      (location.pathname === to || 
+       location.pathname.startsWith(to + '/') || 
+       location.pathname.includes(to + '?'));
   };
 
   // Check if submenu has any active links

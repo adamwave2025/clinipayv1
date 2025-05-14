@@ -22,15 +22,17 @@ const SettingsContainer = () => {
   
   // Get initial tab from URL or default to 'profile'
   const initialTab = searchParams.get('tab');
+  
+  // Track current tab state
   const [activeTab, setActiveTab] = useState(
     VALID_TABS.includes(initialTab as string) ? initialTab : 'profile'
   );
   
+  // Reference to track state source (user action vs URL)
+  const stateSource = useRef<'url' | 'user' | null>(null);
+  
   // Reference to track if we've handled the initial URL params
   const initialTabProcessed = useRef(false);
-  
-  // Reference to track if the tab change is from user interaction
-  const isUserAction = useRef(false);
   
   const { 
     clinicData, 
@@ -41,29 +43,32 @@ const SettingsContainer = () => {
     deleteLogo
   } = useClinicData();
 
-  // Effect to sync URL params with state, but only once on initial load
+  // Consolidated effect to handle URL <-> state synchronization
   useEffect(() => {
+    // On mount, sync from URL to state
     if (!initialTabProcessed.current) {
       const tabFromUrl = searchParams.get('tab');
       if (tabFromUrl && VALID_TABS.includes(tabFromUrl)) {
         setActiveTab(tabFromUrl);
       }
       initialTabProcessed.current = true;
+      stateSource.current = 'url';
+      return;
     }
-  }, [searchParams]);
-
-  // Effect to update URL when state changes from user interaction
-  useEffect(() => {
-    if (initialTabProcessed.current && isUserAction.current) {
-      setSearchParams({ tab: activeTab });
-      isUserAction.current = false;
+    
+    // When state changes from user action, update URL
+    if (stateSource.current === 'user') {
+      setSearchParams({ tab: activeTab }, { replace: true });
+      // Reset the state source after URL update to prevent loops
+      stateSource.current = null;
     }
-  }, [activeTab, setSearchParams]);
+  }, [activeTab, searchParams, setSearchParams]);
 
+  // Handle tab change from user interaction
   const handleTabChange = (value: string) => {
     if (value === activeTab) return; // Prevent unnecessary state updates
     
-    isUserAction.current = true; // Mark this change as from user interaction
+    stateSource.current = 'user'; // Mark change as from user interaction
     setActiveTab(value);
   };
 
