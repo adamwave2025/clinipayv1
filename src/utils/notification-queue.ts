@@ -7,6 +7,7 @@ import { processNotificationsNow } from './notification-cron-setup';
 
 /**
  * Add an item to the notification queue for processing and immediately call webhook
+ * @param processImmediately If true, will also trigger the notification queue processing after adding to queue
  */
 export async function addToNotificationQueue(
   type: string,
@@ -15,7 +16,7 @@ export async function addToNotificationQueue(
   clinic_id: string,
   reference_id?: string,
   payment_id?: string,
-  processImmediately = false // New parameter with default value of false
+  processImmediately = false // Explicitly add this parameter with default false
 ) {
   console.log(`⚠️ CRITICAL: Adding notification to queue: type=${type}, recipient=${recipient_type}, reference=${reference_id}`);
   console.log(`⚠️ CRITICAL: Using clinic_id=${clinic_id}`);
@@ -116,10 +117,10 @@ export async function addToNotificationQueue(
       console.error('⚠️ CRITICAL ERROR: Direct webhook call failed:', webhookResult.error);
     }
     
-    // NEW: If processImmediately is true, trigger the notification queue processing
-    // This is a safety net in case the direct webhook call fails or for debugging
+    // If processImmediately is true, trigger the notification queue processing REGARDLESS of webhook result
+    // This is the critical part - it's a safety net in case the direct webhook call fails
     if (processImmediately) {
-      console.log(`⚠️ CRITICAL: processImmediately=true, triggering notification queue processing`);
+      console.log(`⚠️ CRITICAL: processImmediately=true, triggering notification queue processing via edge function`);
       
       try {
         // Call the notification processor edge function via helper
@@ -127,7 +128,7 @@ export async function addToNotificationQueue(
         console.log(`⚠️ CRITICAL: Notification processing triggered:`, processingResult);
       } catch (procError) {
         console.error('⚠️ CRITICAL ERROR: Failed to trigger notification processing:', procError);
-        // Non-fatal error, we still return success for the queueing part
+        // Still return success for the queueing part - we have multiple fallbacks
       }
     }
     
