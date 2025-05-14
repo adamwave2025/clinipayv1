@@ -1,28 +1,25 @@
 
-// Import types from the correct location
+import { PaymentLink } from '@/types/payment';
 import { StandardNotificationPayload } from '../../types/notification';
 
 export interface SendLinkFormData {
   patientName: string;
-  patientEmail: string;
-  patientPhone: string;
-  selectedLink: string;
-  customAmount: string;
-  message: string;
-  startDate?: Date | string | null;
-  scheduledDate?: Date | null;
+  patientEmail?: string;
+  patientPhone?: string;
+  selectedLink?: string;
+  customAmount?: string;
+  message?: string;
+  startDate?: Date;
 }
 
 export interface PaymentLinkSenderProps {
   formData: SendLinkFormData;
-  clinicId: string;
+  paymentLinks?: PaymentLink[];
   patientId?: string;
 }
 
 export interface PaymentLinkSenderResult {
   success: boolean;
-  paymentRequestId?: string;
-  notificationSent?: boolean;
   error?: string;
 }
 
@@ -42,8 +39,8 @@ export interface NotificationPayloadData {
   payment: {
     reference: string;
     amount: number;
-    refund_amount: null;
-    payment_link: string;
+    refund_amount?: number | null;
+    payment_link?: string;
     message: string;
   };
 }

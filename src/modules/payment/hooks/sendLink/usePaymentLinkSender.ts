@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -56,7 +57,7 @@ export function usePaymentLinkSender() {
       }
 
       // 1. Create or Retrieve Patient
-      const patient = await PatientService.createOrRetrievePatient(
+      const patient = await PatientService.findOrCreatePatient(
         data.patientName,
         data.patientEmail,
         data.patientPhone,
@@ -75,10 +76,14 @@ export function usePaymentLinkSender() {
       };
 
       const paymentRequest = await PaymentRequestService.createPaymentRequest(
-        paymentData,
-        patient.id,
-        user.id,
-        clinicData.id
+        clinicData.id,
+        patient,
+        data.patientName,
+        data.patientEmail,
+        data.patientPhone,
+        null,
+        data.amount, 
+        data.message
       );
 
       if (!paymentRequest) {
@@ -88,18 +93,18 @@ export function usePaymentLinkSender() {
 
       // 3. Create Payment Link
       const paymentLinkData: Partial<PaymentLink> = {
-        clinicId: clinicData.id,
-        patientId: patient.id,
+        clinic_id: clinicData.id,
+        patient_id: patient,
         amount: data.amount,
         title: `Payment request for ${data.patientName}`,
         description: data.message,
-        paymentRequestId: paymentRequest.id,
-        userId: user.id,
-        active: true,
-        paymentPlan: false,
+        payment_request_id: paymentRequest.id,
+        user_id: user.id,
+        is_active: true,
+        payment_plan: false,
       };
 
-      const paymentLink = await PaymentLinkService.createLink(paymentLinkData);
+      const paymentLink = await PaymentLinkService.fetchPaymentLinkDetails(paymentRequest.id);
 
       if (!paymentLink) {
         toast.error('Failed to create payment link.');
@@ -112,27 +117,26 @@ export function usePaymentLinkSender() {
         sms: data.smsNotification,
       };
 
-      const notificationPayload = {
-        patient: {
-          name: data.patientName,
-          email: data.patientEmail,
-          phone: data.patientPhone,
-        },
-        payment: {
-          reference: paymentRequest.id,
-          amount: data.amount,
-          message: data.message,
-        },
-        clinic: {
-          id: clinicData.id,
-          name: clinicData.name || '',
-          email: clinicData.email,
-          phone: clinicData.phone,
-          address: clinicData.address,
-        },
-      };
+      const clinicAddress = ClinicService.formatClinicAddress ? 
+        ClinicService.formatClinicAddress(clinicData) : 
+        '';
 
-      const notificationResult = await PaymentNotificationService.sendPaymentNotification(
+      const notificationPayload = PaymentNotificationService.createNotificationPayload(
+        clinicData.id,
+        clinicData.clinic_name || '',
+        clinicData.email,
+        clinicData.phone,
+        clinicAddress,
+        data.patientName,
+        data.patientEmail,
+        data.patientPhone,
+        paymentRequest.id,
+        data.amount,
+        data.message,
+        notificationMethod
+      );
+
+      const notificationResult = await PaymentNotificationService.sendNotification(
         notificationPayload,
         clinicData.id,
         paymentRequest.id
