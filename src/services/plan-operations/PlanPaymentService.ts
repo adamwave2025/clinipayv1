@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -6,8 +5,8 @@ import { generatePaymentReference, generateManualPaymentReference } from '@/util
 import { PlanStatusService } from '@/services/PlanStatusService';
 import { PlanPaymentMetrics } from '@/services/plan-status/PlanPaymentMetrics';
 import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
-import { callWebhookDirectly } from '@/utils/webhook-caller';
 import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
+import { PaymentNotificationService } from '@/modules/payment/services/PaymentNotificationService';
 
 /**
  * Service for handling payment-related operations within plans
@@ -310,21 +309,20 @@ export class PlanPaymentService {
           }
         });
 
-        // NEW: Send direct payment confirmation via webhook instead of using notification queue
-        try {
-          // Get clinic details for notification
-          const { data: clinicData, error: clinicError } = await supabase
-            .from('clinics')
-            .select('*')
-            .eq('id', scheduleEntry.clinic_id)
-            .single();
+        // Get clinic details for notification
+        const { data: clinicData, error: clinicError } = await supabase
+          .from('clinics')
+          .select('*')
+          .eq('id', scheduleEntry.clinic_id)
+          .single();
 
-          if (clinicError) {
-            console.error('Error fetching clinic data for webhook notification:', clinicError);
-          } else if (patientData && patientData.email) {
-            // Only send notification if we have patient data
-            console.log('⚠️ CRITICAL: Sending direct webhook notification for manual payment');
-            
+        if (clinicError) {
+          console.error('Error fetching clinic data for webhook notification:', clinicError);
+        } else if (patientData && patientData.email) {
+          // Only send notification if we have patient data
+          console.log('⚠️ CRITICAL: Preparing direct webhook notifications for manual payment');
+          
+          try {
             const notificationMethod: NotificationMethod = {
               email: !!patientData.email,
               sms: !!patientData.phone
@@ -332,8 +330,8 @@ export class PlanPaymentService {
 
             const formattedAddress = ClinicFormatter.formatAddress(clinicData);
             
-            // Create the notification payload for a successful payment
-            const notificationPayload: StandardNotificationPayload = {
+            // Create the notification payload for a successful payment (patient notification)
+            const patientNotificationPayload: StandardNotificationPayload = {
               notification_type: "payment_success",
               notification_method: notificationMethod,
               patient: {
@@ -356,25 +354,16 @@ export class PlanPaymentService {
               }
             };
             
-            // Call the webhook directly for patient notification
-            const webhookResult = await callWebhookDirectly(notificationPayload, 'patient');
-            
-            if (!webhookResult.success) {
-              console.error('⚠️ CRITICAL ERROR: Failed to send direct webhook notification:', webhookResult.error);
-            } else {
-              console.log('✅ Direct webhook notification sent successfully for manual payment');
-            }
-            
-            // Also send a notification to the clinic
+            // Create clinic notification payload
             const clinicNotificationPayload: StandardNotificationPayload = {
-              ...notificationPayload,
+              ...patientNotificationPayload,
               notification_type: "payment_success",
               notification_method: {
                 email: !!clinicData.email_notifications,
                 sms: !!clinicData.sms_notifications
               },
               payment: {
-                ...notificationPayload.payment,
+                ...patientNotificationPayload.payment,
                 financial_details: {
                   gross_amount: scheduleEntry.amount,
                   stripe_fee: 0, // No Stripe fee for manual payments
@@ -384,17 +373,25 @@ export class PlanPaymentService {
               }
             };
             
-            // Call the webhook directly for clinic notification
-            const clinicWebhookResult = await callWebhookDirectly(clinicNotificationPayload, 'clinic');
+            console.log(`⚠️ CRITICAL: Sending notifications with clinic_id: ${scheduleEntry.clinic_id}`);
             
-            if (!clinicWebhookResult.success) {
-              console.error('⚠️ CRITICAL ERROR: Failed to send clinic webhook notification:', clinicWebhookResult.error);
+            // Send both notifications directly using our new service
+            const notificationResult = await PaymentNotificationService.sendManualPaymentNotifications(
+              patientNotificationPayload,
+              clinicNotificationPayload,
+              scheduleEntry.clinic_id
+            );
+            
+            if (!notificationResult.success) {
+              console.error(`⚠️ CRITICAL ERROR: Failed to send notifications: ${notificationResult.error}`);
             } else {
-              console.log('✅ Clinic webhook notification sent successfully for manual payment');
+              console.log('✅ Payment notifications sent successfully');
             }
+          } catch (notifyErr: any) {
+            console.error("⚠️ CRITICAL ERROR: Exception during direct notifications:", notifyErr);
           }
-        } catch (notifyErr) {
-          console.error("⚠️ CRITICAL ERROR: Exception during direct webhook notification:", notifyErr);
+        } else {
+          console.log('⚠️ No patient email available, skipping notifications');
         }
       }
       
