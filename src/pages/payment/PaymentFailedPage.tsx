@@ -28,7 +28,7 @@ const PaymentFailedPage = () => {
   const [searchParams] = useSearchParams();
   const linkId = searchParams.get('link_id');
   const navigate = useNavigate();
-  const { linkData, isLoading } = usePaymentLinkData(linkId);
+  const { paymentLink, isLoading } = usePaymentLinkData(linkId);
   
   // Try to load payment link data
   if (isLoading) {
@@ -56,14 +56,14 @@ const PaymentFailedPage = () => {
         
         <PaymentFailedReasons />
         
-        {linkData && linkData.clinic && (
+        {paymentLink && paymentLink.clinic && (
           <ClinicInformationCard 
             clinicDetails={{
-              name: linkData.clinic.name,
-              logo: linkData.clinic.logo,
-              email: linkData.clinic.email || '',
-              phone: linkData.clinic.phone || '',
-              address: linkData.clinic.address || ''
+              name: paymentLink.clinic.name,
+              logo: paymentLink.clinic.logo,
+              email: paymentLink.clinic.email || '',
+              phone: paymentLink.clinic.phone || '',
+              address: paymentLink.clinic.address || ''
             } as ClinicDetails} 
           />
         )}

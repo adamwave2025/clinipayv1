@@ -6,7 +6,7 @@ export { usePaymentLinkData } from './usePaymentLinkData';
 export { usePaymentProcess } from './usePaymentProcess';
 export { usePaymentRecord } from './usePaymentRecord';
 export { useStripePayment } from './useStripePayment';
-export { usePaymentLinkSender } from './usePaymentLinkSender';
+export { usePaymentLinkSender } from './sendLink/usePaymentLinkSender';
 export { usePaymentState } from './payments/usePaymentState';
 
 // Also export payment state hooks

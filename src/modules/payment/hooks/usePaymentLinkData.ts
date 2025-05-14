@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentLinkData } from '../types/paymentLink';
+import { PaymentLinkFormatter } from '@/services/payment-link/PaymentLinkFormatter';
 
 export function usePaymentLinkData(paymentLinkId: string | null) {
   const [paymentLink, setPaymentLink] = useState<PaymentLinkData | null>(null);
@@ -42,7 +44,13 @@ export function usePaymentLinkData(paymentLinkId: string | null) {
           throw error;
         }
 
-        setPaymentLink(data as PaymentLinkData);
+        // Use the PaymentLinkFormatter to properly format the raw data
+        const formattedData = PaymentLinkFormatter.formatPaymentLink(data);
+        if (!formattedData) {
+          throw new Error('Failed to format payment link data');
+        }
+
+        setPaymentLink(formattedData);
       } catch (err: any) {
         console.error('Error fetching payment link:', err);
         setError(err.message || 'Failed to fetch payment link');
@@ -54,5 +62,5 @@ export function usePaymentLinkData(paymentLinkId: string | null) {
     fetchPaymentLink();
   }, [paymentLinkId]);
 
-  return { paymentLink, isLoading, error };
+  return { paymentLink, linkData: paymentLink, isLoading, error };
 }
