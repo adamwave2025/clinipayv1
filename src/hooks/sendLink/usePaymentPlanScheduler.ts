@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -294,6 +293,12 @@ export function usePaymentPlanScheduler() {
         };
         
         console.log('⚠️ CRITICAL: Creating notification for payment plan first installment');
+        console.log('⚠️ CRITICAL: Notification will be sent via:', 
+          JSON.stringify({
+            email: notificationMethod.email ? formData.patientEmail : "none",
+            sms: notificationMethod.sms ? formData.patientPhone : "none"
+          })
+        );
         
         const notificationPayload: StandardNotificationPayload = {
           notification_type: "payment_request",
@@ -311,6 +316,7 @@ export function usePaymentPlanScheduler() {
             message: `[PLAN] ${formData.message || `Payment plan: ${selectedPlan.title || 'Payment Plan'} - Installment 1 of ${paymentCount}`}`
           },
           clinic: {
+            id: clinicId, // Explicitly add clinic ID to match RLS policy
             name: clinicData.clinic_name || "Your healthcare provider",
             email: clinicData.email,
             phone: clinicData.phone,
@@ -322,6 +328,7 @@ export function usePaymentPlanScheduler() {
         
         try {
           console.log('⚠️ CRITICAL: Adding payment plan notification to queue and calling webhook immediately...');
+          console.log('⚠️ CRITICAL: With clinic_id:', clinicId);
           
           const { success, error, webhook_success, webhook_error } = await addToNotificationQueue(
             'payment_request',
