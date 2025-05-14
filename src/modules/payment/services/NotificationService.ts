@@ -1,118 +1,136 @@
 
-// Notification service for handling email and SMS notification status
-
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { StandardNotificationPayload } from '../types/notification';
+import { Json } from '@/integrations/supabase/types';
+import { callWebhookDirectly } from '@/utils/webhook-caller';
+import { processNotificationsNow, triggerNotificationFallback } from '@/utils/notification-cron-setup';
 
-export interface NotificationSettings {
-  email_notifications?: boolean;
-  sms_notifications?: boolean;
-}
-
+/**
+ * Service for managing notifications throughout the payment system
+ */
 export class NotificationService {
   /**
-   * Update notification settings for a clinic
-   * @param settings Email and SMS notification preferences
-   * @returns Success status and message
-   */
-  static async updateSettings(settings: NotificationSettings): Promise<{ success: boolean; message: string }> {
-    try {
-      const { error } = await supabase.from('clinics')
-        .update(settings)
-        .eq('id', (await supabase.auth.getUser()).data.user?.id);
-
-      if (error) throw error;
-      
-      return {
-        success: true,
-        message: 'Notification settings updated successfully'
-      };
-    } catch (error) {
-      console.error('Error updating notification settings:', error);
-      return {
-        success: false,
-        message: 'Failed to update notification settings'
-      };
-    }
-  }
-
-  /**
-   * Get notification settings for the current clinic
-   * @returns Current notification settings
-   */
-  static async getSettings(): Promise<NotificationSettings | null> {
-    try {
-      const { data, error } = await supabase.from('clinics')
-        .select('email_notifications, sms_notifications')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
-
-      if (error) throw error;
-      
-      return data;
-    } catch (error) {
-      console.error('Error fetching notification settings:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Send a test notification
-   * @param type The type of notification to send (email or sms)
-   * @returns Success status and message
-   */
-  static async sendTestNotification(type: 'email' | 'sms'): Promise<{ success: boolean; message: string }> {
-    try {
-      // Simulate sending a test notification
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.success(`Test ${type} sent successfully`);
-      
-      return {
-        success: true,
-        message: `Test ${type} notification sent`
-      };
-    } catch (error) {
-      console.error(`Error sending test ${type} notification:`, error);
-      return {
-        success: false,
-        message: `Failed to send test ${type} notification`
-      };
-    }
-  }
-
-  /**
-   * Add a notification to the processing queue
-   * @param type Notification type
-   * @param payload Notification payload
-   * @param recipientType Recipient type (patient or clinic)
-   * @param clinicId Clinic ID
-   * @param referenceId Reference ID (optional)
-   * @param paymentId Payment ID (optional)
-   * @param processImmediately Whether to process immediately (optional)
-   * @returns Result of the operation
+   * Add an item to the notification queue for processing
    */
   static async addToQueue(
     type: string,
     payload: StandardNotificationPayload,
-    recipientType: 'patient' | 'clinic',
-    clinicId: string,
-    referenceId?: string,
-    paymentId?: string,
-    processImmediately?: boolean
+    recipient_type: 'patient' | 'clinic',
+    clinic_id: string,
+    reference_id?: string,
+    payment_id?: string,
+    processImmediately = false
   ) {
-    // Use the utility function from the root utils directory
-    return await import('@/utils/notification-queue').then(module => {
-      return module.addToNotificationQueue(
-        type,
-        payload,
-        recipientType,
-        clinicId,
-        referenceId,
-        paymentId,
-        processImmediately
-      );
-    });
+    console.log(`⚠️ CRITICAL: Adding notification to queue: type=${type}, recipient=${recipient_type}, reference=${reference_id}`);
+    console.log(`⚠️ CRITICAL: Using clinic_id=${clinic_id}`);
+    
+    try {
+      // Ensure clinic ID is valid
+      if (!clinic_id) {
+        console.error('⚠️ CRITICAL ERROR: Missing clinic_id for notification queue');
+        return { success: false, error: 'Missing clinic_id' };
+      }
+      
+      // Ensure clinic ID is in payload for RLS purposes
+      if (payload.clinic && typeof payload.clinic === 'object') {
+        if (!payload.clinic.id) {
+          payload.clinic.id = clinic_id;
+        } else if (payload.clinic.id !== clinic_id) {
+          payload.clinic.id = clinic_id; // Ensure consistent clinic ID
+        }
+      } else {
+        return { success: false, error: 'Invalid payload structure: missing clinic object' };
+      }
+      
+      // Convert payload to JSON format
+      const jsonPayload = payload as unknown as Json;
+      
+      // Insert into notification queue
+      const { data, error } = await supabase
+        .from('notification_queue')
+        .insert({
+          type,
+          payload: jsonPayload,
+          recipient_type,
+          ...(payment_id ? { payment_id } : {}),
+          status: 'pending',
+          retry_count: 0
+        })
+        .select();
+
+      if (error) {
+        console.error('⚠️ CRITICAL ERROR: Failed to add to queue:', error);
+        return { success: false, error };
+      }
+
+      const queuedItem = data?.[0];
+      if (!queuedItem) {
+        return { success: false, error: 'No data returned' };
+      }
+
+      // First attempt: Direct webhook call
+      const webhookResult = await callWebhookDirectly(payload, recipient_type);
+      
+      // Track delivery success
+      let webhookSuccess = false;
+      let edgeFunctionSuccess = false;
+      let fallbackSuccess = false;
+      
+      if (webhookResult.success) {
+        webhookSuccess = true;
+        await this.markNotificationSent(queuedItem.id);
+      }
+      
+      // Second attempt: Edge function (if immediate processing needed or webhook failed)
+      if (processImmediately || !webhookSuccess) {
+        try {
+          const processingResult = await processNotificationsNow();
+          
+          if (processingResult.success) {
+            edgeFunctionSuccess = true;
+          } else if (!webhookSuccess) {
+            // Third attempt: Fallback webhook
+            const fallbackResult = await triggerNotificationFallback();
+            fallbackSuccess = fallbackResult.success;
+          }
+        } catch (err) {
+          console.error('⚠️ CRITICAL ERROR: Failed to process notifications:', err);
+        }
+      }
+      
+      return { 
+        success: true, 
+        notification_id: queuedItem.id, 
+        delivery: {
+          webhook: webhookSuccess,
+          edge_function: edgeFunctionSuccess,
+          fallback: fallbackSuccess,
+          any_success: webhookSuccess || edgeFunctionSuccess || fallbackSuccess
+        },
+        errors: {
+          webhook: !webhookSuccess ? webhookResult.error : undefined
+        }
+      };
+    } catch (error) {
+      console.error('⚠️ CRITICAL ERROR: Exception adding to queue:', error);
+      return { success: false, error };
+    }
+  }
+  
+  /**
+   * Mark a notification as sent
+   */
+  private static async markNotificationSent(notificationId: string) {
+    const { error } = await supabase
+      .from('notification_queue')
+      .update({ 
+        status: 'sent',
+        processed_at: new Date().toISOString() 
+      })
+      .eq('id', notificationId);
+      
+    if (error) {
+      console.error('⚠️ CRITICAL: Failed to update notification status:', error);
+    }
   }
 }

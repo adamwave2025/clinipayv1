@@ -21,7 +21,9 @@ export async function callWebhookDirectly(
       headers: {
         'Content-Type': 'application/json',
         'X-Source': 'client-direct-call',
-        'X-Delivery-Method': 'immediate'
+        'X-Delivery-Method': 'immediate',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
       },
       body: JSON.stringify(payload)
     });

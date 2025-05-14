@@ -23,7 +23,7 @@ export interface PatientDetails {
 }
 
 export interface PaymentDetails {
-  reference: string;
+  reference: string | null;
   amount: number;
   refund_amount: number | null;
   payment_link: string;

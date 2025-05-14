@@ -30,10 +30,10 @@ export const PaymentNotificationService = {
         phone: patientPhone
       },
       payment: {
-        reference: null, // Important: Set to null instead of using paymentRequestId
+        reference: paymentRequestId, // Use the full ID now, not null
         amount: amount,
         refund_amount: null,
-        payment_link: `https://clinipay.co.uk/payment/${paymentRequestId}`, // Still use paymentRequestId for the URL
+        payment_link: `https://clinipay.co.uk/payment/${paymentRequestId}`,
         message: message || "Payment request"
       },
       clinic: {
@@ -65,7 +65,7 @@ export const PaymentNotificationService = {
         'patient',
         clinicId,
         paymentRequestId,
-        undefined,  // payment_id is undefined
+        undefined,
         true  // processImmediately = true
       );
 

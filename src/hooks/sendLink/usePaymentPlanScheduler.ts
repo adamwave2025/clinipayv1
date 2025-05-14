@@ -7,6 +7,7 @@ import { PaymentLink } from '@/types/payment';
 import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
 import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
 import { addToNotificationQueue } from '@/utils/notification-queue';
+import { processNotificationsNow } from '@/utils/notification-cron-setup';
 
 export function usePaymentPlanScheduler() {
   const [isSchedulingPlan, setIsSchedulingPlan] = useState(false);
@@ -348,12 +349,25 @@ export function usePaymentPlanScheduler() {
           } else if (notificationResult.delivery?.any_success === false) {
             console.error("⚠️ CRITICAL ERROR: Failed to deliver notification via webhook:", notificationResult.errors?.webhook);
             toast.warning("Payment plan created, but notification delivery might be delayed");
+            
+            // CRITICAL ADDITION: Force processing of notification queue since the webhook call failed
+            console.log("⚠️ CRITICAL: Directly calling processNotificationsNow to ensure delivery");
+            const processingResult = await processNotificationsNow();
+            console.log("⚠️ CRITICAL: Direct notification processing result:", processingResult);
           } else {
             console.log("⚠️ CRITICAL SUCCESS: Payment plan notification sent successfully");
           }
         } catch (notifyErr) {
           console.error("⚠️ CRITICAL ERROR: Exception during payment plan notification delivery:", notifyErr);
           toast.warning("Payment plan created, but there was an issue sending notifications");
+          
+          // CRITICAL ADDITION: Force processing of notification queue even if there was an exception
+          try {
+            console.log("⚠️ CRITICAL: Attempting fallback notification processing after exception");
+            await processNotificationsNow();
+          } catch (fallbackErr) {
+            console.error("⚠️ CRITICAL ERROR: Fallback notification processing failed:", fallbackErr);
+          }
         }
       } else {
         console.log('⚠️ CRITICAL: Plan starts in the future - no notification will be sent now');
