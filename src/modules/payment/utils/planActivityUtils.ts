@@ -1,3 +1,4 @@
+
 import { PaymentLinkData } from '../types/paymentLink';
 
 export interface PlanActivity {
@@ -19,7 +20,7 @@ export function isPaymentLinkActive(linkData?: PaymentLinkData | null): boolean 
     id: linkData.id,
     status: linkData.status, 
     isActive: linkData.isActive,
-    paymentPlan: linkData.isPaymentPlan || linkData.paymentPlan  // Check both property names
+    paymentPlan: linkData.isPaymentPlan  // Use isPaymentPlan property
   });
   
   // First check if we have an explicit isActive property (directly from DB)
@@ -38,7 +39,7 @@ export function isPaymentLinkActive(linkData?: PaymentLinkData | null): boolean 
   }
   
   // For payment plans with special handling
-  if (linkData.isPaymentPlan || linkData.paymentPlan) {  // Check both property names
+  if (linkData.isPaymentPlan) {  // Use isPaymentPlan property consistently
     // Payment plans can be processed if they are active or overdue
     if (linkData.status === 'active' || linkData.status === 'overdue') {
       console.log(`Payment plan ${linkData.id} is processable with status: ${linkData.status}`);

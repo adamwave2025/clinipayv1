@@ -1,4 +1,7 @@
 
-import { useToast, toast } from "@/hooks/use-toast";
+// Import toast from the shadcn implementation
+import { useToast as useShadcnToast, toast as shadcnToast } from "@/components/ui/use-toast";
 
-export { useToast, toast };
+// Re-export the shadcn toast utilities
+export const useToast = useShadcnToast;
+export const toast = shadcnToast;

@@ -59,7 +59,7 @@ const PaymentFailedPage = () => {
         {linkData && linkData.clinic && (
           <ClinicInformationCard 
             clinicDetails={{
-              name: linkData.clinic.name || '',
+              name: linkData.clinic.name || '', // Ensure name is provided (required by ClinicDetails)
               logo: linkData.clinic.logo || '',
               email: linkData.clinic.email || '',
               phone: linkData.clinic.phone || '',

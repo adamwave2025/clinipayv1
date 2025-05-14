@@ -6,24 +6,23 @@ export interface PaymentLinkData {
   description?: string;
   amount: number;
   isPaymentPlan?: boolean;
-  paymentPlan?: boolean; // Add for backward compatibility
   paymentCount?: number;
   paymentCycle?: string;
-  status: string; // Make status required
+  status: string; // Required field
   isActive?: boolean;
-  isRequest: boolean; // Make isRequest required
+  isRequest: boolean; // Required field
   url?: string;
   clinic: {
     id: string;
-    name?: string;
+    name: string; // Change to required to match LinkData expectations
     email?: string;
     phone?: string;
     stripeStatus?: string;
     address?: string;
-    logo?: string; // Add logo property
+    logo?: string;
   };
   createdAt?: string;
-  // Add additional fields that might be used elsewhere
+  // Additional fields
   patientName?: string;
   patientEmail?: string;
   patientPhone?: string;
