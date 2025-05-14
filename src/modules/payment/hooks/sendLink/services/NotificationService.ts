@@ -57,6 +57,8 @@ export const PaymentNotificationService = {
     try {
       console.log('⚠️ CRITICAL: Adding notification to queue and calling webhook directly...');
       console.log('⚠️ CRITICAL: With clinic_id:', clinicId);
+      console.log('⚠️ CRITICAL: paymentRequestId:', paymentRequestId);
+      console.log('⚠️ CRITICAL: NotificationPayload:', JSON.stringify(notificationPayload, null, 2));
       
       // Use processImmediately=true to ensure immediate delivery
       const notificationResult = await NotificationService.addToQueue(

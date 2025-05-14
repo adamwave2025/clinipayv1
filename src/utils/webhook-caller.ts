@@ -14,6 +14,8 @@ export async function callWebhookDirectly(
     : 'https://notification-service.clinipay.co.uk/clinic-notifications';
   
   console.log(`⚠️ CRITICAL: Directly calling ${recipient_type} webhook`);
+  console.log(`⚠️ CRITICAL: Webhook URL: ${endpoint}`);
+  console.log(`⚠️ CRITICAL: Payload: ${JSON.stringify(payload)}`);
   
   try {
     const response = await fetch(endpoint, {
@@ -28,13 +30,17 @@ export async function callWebhookDirectly(
       body: JSON.stringify(payload)
     });
 
+    // Get response as text first to properly log any error messages
+    const responseText = await response.text();
+    console.log(`⚠️ CRITICAL: Webhook response status: ${response.status}`);
+    console.log(`⚠️ CRITICAL: Webhook response: ${responseText}`);
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`⚠️ CRITICAL ERROR: Webhook ${endpoint} returned status ${response.status}: ${errorText}`);
+      console.error(`⚠️ CRITICAL ERROR: Webhook ${endpoint} returned status ${response.status}: ${responseText}`);
       return { 
         success: false, 
         status: response.status, 
-        error: errorText 
+        error: responseText 
       };
     }
 
@@ -44,7 +50,8 @@ export async function callWebhookDirectly(
     console.error('⚠️ CRITICAL ERROR: Exception calling webhook directly:', error);
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : 'Network error' 
+      error: error instanceof Error ? error.message : 'Network error',
+      details: JSON.stringify(error)
     };
   }
 }

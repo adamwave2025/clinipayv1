@@ -59,7 +59,16 @@ export async function addToNotificationQueue(
       clinic_id: clinic_id
     }));
     
-    // Insert into notification queue
+    // Insert into notification queue - Make sure we are clear about each field
+    console.log('⚠️ CRITICAL: Attempting to insert notification into queue with data:', JSON.stringify({
+      type,
+      recipient_type,
+      payment_id: payment_id || null,
+      status: 'pending',
+      retry_count: 0,
+      clinic_id_from_payload: payload.clinic.id
+    }));
+    
     const { data, error } = await supabase
       .from('notification_queue')
       .insert({

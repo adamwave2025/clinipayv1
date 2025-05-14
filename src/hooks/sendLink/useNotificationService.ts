@@ -1,25 +1,9 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { addToNotificationQueue } from '@/utils/notification-queue';
 import { NotificationMethod, StandardNotificationPayload } from '@/types/notification';
 import { NotificationPayloadData } from './types';
-
-// Define the notification result type to match what's expected
-export interface NotificationResult {
-  success: boolean;
-  delivery?: {
-    webhook: boolean;
-    edge_function: boolean;
-    fallback: boolean;
-    any_success: boolean;
-  };
-  errors?: {
-    webhook?: string;
-  };
-  notification_id?: string;
-  error?: string;
-}
+import { PaymentNotificationService } from '@/modules/payment/hooks/sendLink/services';
 
 export function useNotificationService() {
   const [isSendingNotification, setIsSendingNotification] = useState(false);
@@ -41,22 +25,15 @@ export function useNotificationService() {
     payload: StandardNotificationPayload,
     clinicId: string,
     paymentRequestId: string
-  ): Promise<NotificationResult> => {
+  ) => {
     setIsSendingNotification(true);
     
     try {
-      console.log('⚠️ CRITICAL: Adding notification to queue and calling webhook directly...');
-      console.log('⚠️ CRITICAL: With clinic_id:', clinicId);
-      
-      // Use processImmediately=true to ensure immediate delivery
-      const notificationResult = await addToNotificationQueue(
-        'payment_request',
+      console.log('⚠️ CRITICAL: Sending payment notification through service...');
+      const notificationResult = await PaymentNotificationService.sendNotification(
         payload,
-        'patient',
         clinicId,
-        paymentRequestId,
-        undefined,  // payment_id is undefined
-        true  // processImmediately = true
+        paymentRequestId
       );
 
       if (!notificationResult.success) {
