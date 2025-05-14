@@ -47,6 +47,12 @@ export class NotificationService {
         return { success: false, error: 'Invalid payload structure: missing clinic object' };
       }
       
+      // Make sure payment includes refund_amount even if it's null
+      if (payload.payment && typeof payload.payment === 'object' && payload.payment.refund_amount === undefined) {
+        console.log('⚠️ CRITICAL: Adding refund_amount: null to payment payload');
+        payload.payment.refund_amount = null;
+      }
+      
       // Convert the StandardNotificationPayload to Json compatible format
       const jsonPayload = payload as unknown as Json;
       
@@ -55,13 +61,15 @@ export class NotificationService {
         clinic_id: clinic_id
       }));
       
-      // Insert into notification queue
+      // Insert into notification queue - Do not attempt to insert fields that don't exist
       console.log('⚠️ CRITICAL: Attempting to insert notification into queue');
       console.log('⚠️ CRITICAL: Notification data:', JSON.stringify({
         type,
         recipient_type,
         payment_id: payment_id || null,
-        clinic_id,
+        status: 'pending',
+        retry_count: 0,
+        payload: jsonPayload
       }));
 
       const { data, error } = await supabase
@@ -78,12 +86,18 @@ export class NotificationService {
 
       if (error) {
         console.error('⚠️ CRITICAL ERROR: Failed to add to notification queue:', error);
-        console.error('⚠️ CRITICAL ERROR: Error details:', JSON.stringify(error));
+        console.error('⚠️ CRITICAL ERROR: Error details:', JSON.stringify({
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        }));
         console.error('⚠️ CRITICAL ERROR: Payload causing error:', JSON.stringify({
           type,
           recipient_type,
           has_payment_id: !!payment_id,
-          clinic_id: clinic_id
+          clinic_id: clinic_id,
+          payload_clinic_id: payload.clinic.id
         }));
         return { success: false, error };
       }
@@ -165,9 +179,14 @@ export class NotificationService {
         },
         immediate_processing: processImmediately
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('⚠️ CRITICAL ERROR: Exception adding to notification queue:', error);
-      return { success: false, error };
+      return { 
+        success: false, 
+        error: error.message,
+        delivery: { webhook: false, edge_function: false, fallback: false, any_success: false },
+        errors: { webhook: error.message }
+      };
     }
   }
   

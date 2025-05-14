@@ -30,9 +30,9 @@ export const PaymentNotificationService = {
         phone: patientPhone
       },
       payment: {
-        reference: paymentRequestId, // Use the full ID now, not null
+        reference: paymentRequestId,
         amount: amount,
-        refund_amount: null,
+        refund_amount: null, // Ensure this is always provided as null if no refund
         payment_link: `https://clinipay.co.uk/payment/${paymentRequestId}`,
         message: message || "Payment request"
       },
@@ -84,7 +84,9 @@ export const PaymentNotificationService = {
       console.error("⚠️ CRITICAL ERROR: Exception during notification delivery:", error);
       return {
         success: false,
-        error: error.message
+        error: error.message,
+        delivery: { webhook: false, edge_function: false, fallback: false, any_success: false },
+        errors: { webhook: error.message }
       };
     }
   }

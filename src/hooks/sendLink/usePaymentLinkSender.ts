@@ -128,16 +128,18 @@ export function usePaymentLinkSender() {
           paymentRequest.id
         );
 
-        // Fixed: Handle notification result properly using the NotificationResult type
+        // Handle notification result safely
         if (!notificationResult.success) {
           console.error('⚠️ CRITICAL ERROR: Notification failed:', notificationResult.error);
+          toast.warning("Payment link created, but notification delivery might be delayed");
         } else if (notificationResult.delivery && notificationResult.delivery.any_success === false) {
           console.warn('⚠️ CRITICAL WARNING: All notification methods failed');
+          toast.warning("Payment link created, but notification delivery might be delayed");
           // Detailed logging of errors
           if (notificationResult.errors && notificationResult.errors.webhook) {
             console.error('Webhook error:', notificationResult.errors.webhook);
           }
-        } else {
+        } else if (notificationResult.delivery) {
           console.log('⚠️ CRITICAL: Notification delivery success status:', notificationResult.delivery);
         }
       } else {
