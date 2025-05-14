@@ -5,11 +5,22 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { PatientService, PaymentRequestService, ClinicService, PaymentNotificationService, PaymentLinkService } from './services';
+import { PatientService, PaymentRequestService, PaymentNotificationService, PaymentLinkService } from './services';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClinicData } from '@/hooks/useClinicData';
 import { PaymentLink } from '@/types/payment';
 import { NotificationMethod } from '../../types/notification';
+
+// Define the form input type to match the schema
+interface FormInput {
+  patientName: string;
+  patientEmail?: string;
+  patientPhone?: string;
+  amount: number;
+  message: string;
+  emailNotification: boolean;
+  smsNotification: boolean;
+}
 
 // Define the schema for form validation
 const schema = yup.object({
@@ -22,24 +33,13 @@ const schema = yup.object({
   smsNotification: yup.boolean(),
 }).required();
 
-// Define the form input type
-interface FormInput {
-  patientName: string;
-  patientEmail?: string;
-  patientPhone?: string;
-  amount: number;
-  message: string;
-  emailNotification: boolean;
-  smsNotification: boolean;
-}
-
 export function usePaymentLinkSender() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   const { clinicData } = useClinicData();
   const navigate = useNavigate();
 
-  // Initialize react-hook-form
+  // Initialize react-hook-form with proper typing
   const { register, handleSubmit, formState: { errors }, reset } = useForm<FormInput>({
     resolver: yupResolver(schema),
     defaultValues: {
@@ -77,7 +77,7 @@ export function usePaymentLinkSender() {
 
       const paymentRequest = await PaymentRequestService.createPaymentRequest(
         clinicData.id,
-        patient,
+        patient.id,
         data.patientName,
         data.patientEmail,
         data.patientPhone,
@@ -91,10 +91,10 @@ export function usePaymentLinkSender() {
         return;
       }
 
-      // 3. Create Payment Link
+      // 3. Create Payment Link - using correct property names matching the PaymentLink type
       const paymentLinkData: Partial<PaymentLink> = {
         clinic_id: clinicData.id,
-        patient_id: patient,
+        patient_id: patient.id,
         amount: data.amount,
         title: `Payment request for ${data.patientName}`,
         description: data.message,
@@ -117,24 +117,31 @@ export function usePaymentLinkSender() {
         sms: data.smsNotification,
       };
 
-      const clinicAddress = ClinicService.formatClinicAddress ? 
-        ClinicService.formatClinicAddress(clinicData) : 
+      const clinicAddress = clinicData.address_line_1 ? 
+        `${clinicData.address_line_1}${clinicData.address_line_2 ? ', ' + clinicData.address_line_2 : ''}, ${clinicData.city || ''}, ${clinicData.postcode || ''}`.trim() : 
         '';
 
-      const notificationPayload = PaymentNotificationService.createNotificationPayload(
-        clinicData.id,
-        clinicData.clinic_name || '',
-        clinicData.email,
-        clinicData.phone,
-        clinicAddress,
-        data.patientName,
-        data.patientEmail,
-        data.patientPhone,
-        paymentRequest.id,
-        data.amount,
-        data.message,
-        notificationMethod
-      );
+      const notificationPayload = {
+        patient: {
+          name: data.patientName,
+          email: data.patientEmail,
+          phone: data.patientPhone
+        },
+        payment: {
+          reference: paymentRequest.id,
+          amount: data.amount,
+          message: data.message,
+          payment_link: `https://clinipay.co.uk/payment/${paymentRequest.id}`,
+          refund_amount: null
+        },
+        clinic: {
+          id: clinicData.id,
+          name: clinicData.clinic_name || '',
+          email: clinicData.email,
+          phone: clinicData.phone,
+          address: clinicAddress
+        }
+      };
 
       const notificationResult = await PaymentNotificationService.sendNotification(
         notificationPayload,

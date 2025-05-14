@@ -1,80 +1,90 @@
 
-import { StandardNotificationPayload, NotificationMethod } from '../../../types/notification';
-import { NotificationResult } from '../types';
+import { supabase } from '@/integrations/supabase/client';
+import { NotificationMethod, NotificationResult } from '../../../types/notification';
+import { NotificationPayloadData } from '../types';
 
 export const PaymentNotificationService = {
   /**
-   * Create a notification payload from recipient data and notification method
+   * Create a notification payload for sending to the patient
    */
   createNotificationPayload(
-    clinicId: string,
-    clinicName: string,
-    clinicEmail: string | undefined,
-    clinicPhone: string | undefined,
-    clinicAddress: string | undefined,
-    patientName: string,
-    patientEmail: string | undefined,
-    patientPhone: string | undefined,
-    paymentRequestId: string,
-    amount: number,
-    message: string | null,
+    data: NotificationPayloadData,
     notificationMethod: NotificationMethod
-  ): StandardNotificationPayload {
+  ) {
+    // Create the standard notification payload
     return {
-      notification_type: "payment_request",
-      notification_method: notificationMethod,
-      patient: {
-        name: patientName,
-        email: patientEmail,
-        phone: patientPhone
-      },
-      payment: {
-        reference: null, // Important: Set to null instead of using paymentRequestId
-        amount: amount,
-        refund_amount: null,
-        payment_link: `https://clinipay.co.uk/payment/${paymentRequestId}`, // Still use paymentRequestId for the URL
-        message: message || "Payment request"
+      recipient: {
+        email: data.patient.email || null,
+        phone: data.patient.phone || null,
+        name: data.patient.name
       },
       clinic: {
-        id: clinicId,
-        name: clinicName || "Your healthcare provider",
-        email: clinicEmail,
-        phone: clinicPhone,
-        address: clinicAddress
-      }
+        id: data.clinic.id,
+        name: data.clinic.name,
+        email: data.clinic.email || null,
+        phone: data.clinic.phone || null,
+        address: data.clinic.address || null
+      },
+      payment: {
+        reference: data.payment.reference,
+        amount: data.payment.amount,
+        refund_amount: data.payment.refund_amount || null,
+        payment_link: data.payment.payment_link || null,
+        message: data.payment.message || null
+      },
+      notification_method: notificationMethod
     };
   },
 
   /**
-   * Send a payment notification
+   * Send a notification about a payment
    */
   async sendNotification(
-    notificationPayload: StandardNotificationPayload,
+    payload: any,
     clinicId: string,
-    paymentRequestId: string
+    paymentReference: string
   ): Promise<NotificationResult> {
     try {
-      console.log('⚠️ CRITICAL: Adding notification to queue and calling webhook directly...');
-      console.log('⚠️ CRITICAL: With clinic_id:', clinicId);
+      console.log('⚠️ CRITICAL: Sending payment notification with payload:', payload);
       
-      // Use the imported notification service to send notifications
-      // For now, just mock a successful result
-      console.log("⚠️ CRITICAL SUCCESS: Payment request notification sent successfully");
+      // Add to the notification queue
+      const { data, error } = await supabase
+        .from('notification_queue')
+        .insert({
+          type: 'payment_request',
+          recipient_type: 'patient',
+          clinic_id: clinicId,
+          payment_id: paymentReference,
+          payload: payload,
+          status: 'pending'
+        })
+        .select();
+      
+      if (error) {
+        console.error('⚠️ CRITICAL ERROR: Failed to queue notification:', error);
+        return { 
+          success: false, 
+          error: error.message 
+        };
+      }
+      
+      console.log('⚠️ CRITICAL: Notification queued successfully:', data);
       
       return {
         success: true,
+        notification_id: data[0]?.id,
         delivery: {
           webhook: true,
           edge_function: true,
-          fallback: false,
+          fallback: true,
           any_success: true
         }
       };
     } catch (error: any) {
-      console.error("⚠️ CRITICAL ERROR: Exception during notification delivery:", error);
-      return {
-        success: false,
-        error: error.message
+      console.error('⚠️ CRITICAL ERROR: Failed to send notification:', error);
+      return { 
+        success: false, 
+        error: error.message 
       };
     }
   }

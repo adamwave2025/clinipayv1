@@ -1,60 +1,35 @@
+// Define common payment-related types for the payment module
 
-export interface Payment {
-  id: string;
-  amount: number;
-  clinicId: string;
-  date: string;
-  patientName: string;
-  patientEmail?: string;
-  patientPhone?: string;
-  status: string;
-  refundAmount?: number;
-  refundedAmount?: number; // Add this as an alias for refundAmount for backward compatibility
-  netAmount: number;
-  paymentMethod: string;
-  paymentReference?: string;
-  reference?: string; // Add this as an alias for paymentReference for backward compatibility
-  stripePaymentId?: string;
-  manualPayment?: boolean;
-  
-  // Adding the missing fields used throughout the application
-  type?: 'deposit' | 'treatment' | 'consultation' | 'payment_plan' | 'other';
-  linkTitle?: string;
-  description?: string;
-  isCustomAmount?: boolean;
-  paymentUrl?: string;
-  message?: string;
-  paymentLinkId?: string;
-  platformFee?: number;
-}
-
-export enum PaymentStatus {
-  COMPLETED = 'completed',
-  REFUNDED = 'refunded',
-  PARTIAL_REFUND = 'partial_refund',
-  FAILED = 'failed',
-  PENDING = 'pending'
-}
-
+// PaymentLink type definition to match the database schema
 export interface PaymentLink {
   id: string;
-  title: string;
-  amount: number;
-  type: string;
+  title?: string;
   description?: string;
-  url?: string; 
-  createdAt?: string;
-  isActive?: boolean;
+  amount: number;
+  clinic_id: string;
+  patient_id?: string;
+  payment_request_id?: string;
+  user_id?: string;
+  is_active?: boolean;
+  payment_plan?: boolean;
+  payment_count?: number;
+  plan_total_amount?: number;
   paymentPlan?: boolean;
   paymentCount?: number;
   paymentCycle?: string;
-  planTotalAmount?: number;
+  type?: string;
+  status?: string;
+  isActive?: boolean;
+  isRequest?: boolean;
+  createdAt?: string;
 }
 
-// Add PaymentStats interface that was referenced but not defined
-export interface PaymentStats {
-  totalReceivedToday: number;
-  totalPendingToday: number;
-  totalReceivedMonth: number;
-  totalRefundedMonth: number;
+// Add other payment related types as needed
+export interface PaymentData {
+  id?: string;
+  amount: number;
+  message?: string;
+  status?: string;
 }
+
+// Export the types
