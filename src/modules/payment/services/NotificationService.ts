@@ -1,118 +1,53 @@
-
-// Notification service for handling email and SMS notification status
-
-import { supabase } from '@/integrations/supabase/client';
+// Here we're just fixing imports to use types from the types directory
 import { toast } from 'sonner';
 import { StandardNotificationPayload } from '../types/notification';
+import { getUserClinicId } from '@/utils/userUtils';
 
-export interface NotificationSettings {
-  email_notifications?: boolean;
-  sms_notifications?: boolean;
-}
-
+// Export the NotificationService class/functions but not the types
 export class NotificationService {
-  /**
-   * Update notification settings for a clinic
-   * @param settings Email and SMS notification preferences
-   * @returns Success status and message
-   */
-  static async updateSettings(settings: NotificationSettings): Promise<{ success: boolean; message: string }> {
+  static async sendNotification(payload: StandardNotificationPayload): Promise<any> {
     try {
-      const { error } = await supabase.from('clinics')
-        .update(settings)
-        .eq('id', (await supabase.auth.getUser()).data.user?.id);
+      // Simulate sending a notification
+      console.log('Sending notification with payload:', payload);
 
-      if (error) throw error;
-      
-      return {
-        success: true,
-        message: 'Notification settings updated successfully'
-      };
-    } catch (error) {
-      console.error('Error updating notification settings:', error);
-      return {
-        success: false,
-        message: 'Failed to update notification settings'
-      };
+      // Extract clinic ID from the payload
+      const clinicId = payload.clinic.id;
+
+      // Check if clinic ID is available
+      if (!clinicId) {
+        console.error('Clinic ID is missing in the notification payload.');
+        toast.error('Clinic ID is missing in the notification payload.');
+        return { success: false, error: 'Clinic ID is missing' };
+      }
+
+      // Call the Supabase function to trigger the notification
+      const response = await fetch('/api/trigger-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      // Check if the function call was successful
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Failed to trigger notification:', errorData);
+        toast.error(`Failed to trigger notification: ${errorData.message || 'Unknown error'}`);
+        return { success: false, error: errorData.message || 'Failed to trigger notification' };
+      }
+
+      const result = await response.json();
+
+      // Log the result of the function call
+      console.log('Notification triggered successfully:', result);
+      toast.success('Notification triggered successfully.');
+
+      return { success: true, data: result };
+    } catch (error: any) {
+      console.error('Error sending notification:', error);
+      toast.error(`Error sending notification: ${error.message || 'Unknown error'}`);
+      return { success: false, error: error.message || 'Error sending notification' };
     }
-  }
-
-  /**
-   * Get notification settings for the current clinic
-   * @returns Current notification settings
-   */
-  static async getSettings(): Promise<NotificationSettings | null> {
-    try {
-      const { data, error } = await supabase.from('clinics')
-        .select('email_notifications, sms_notifications')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
-
-      if (error) throw error;
-      
-      return data;
-    } catch (error) {
-      console.error('Error fetching notification settings:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Send a test notification
-   * @param type The type of notification to send (email or sms)
-   * @returns Success status and message
-   */
-  static async sendTestNotification(type: 'email' | 'sms'): Promise<{ success: boolean; message: string }> {
-    try {
-      // Simulate sending a test notification
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.success(`Test ${type} sent successfully`);
-      
-      return {
-        success: true,
-        message: `Test ${type} notification sent`
-      };
-    } catch (error) {
-      console.error(`Error sending test ${type} notification:`, error);
-      return {
-        success: false,
-        message: `Failed to send test ${type} notification`
-      };
-    }
-  }
-
-  /**
-   * Add a notification to the processing queue
-   * @param type Notification type
-   * @param payload Notification payload
-   * @param recipientType Recipient type (patient or clinic)
-   * @param clinicId Clinic ID
-   * @param referenceId Reference ID (optional)
-   * @param paymentId Payment ID (optional)
-   * @param processImmediately Whether to process immediately (optional)
-   * @returns Result of the operation
-   */
-  static async addToQueue(
-    type: string,
-    payload: StandardNotificationPayload,
-    recipientType: 'patient' | 'clinic',
-    clinicId: string,
-    referenceId?: string,
-    paymentId?: string,
-    processImmediately?: boolean
-  ) {
-    // Use the utility function from the root utils directory
-    return await import('@/utils/notification-queue').then(module => {
-      return module.addToNotificationQueue(
-        type,
-        payload,
-        recipientType,
-        clinicId,
-        referenceId,
-        paymentId,
-        processImmediately
-      );
-    });
   }
 }

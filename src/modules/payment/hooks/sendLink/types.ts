@@ -1,4 +1,5 @@
 
+// Import types from the correct location
 import { StandardNotificationPayload } from '../../types/notification';
 
 export interface SendLinkFormData {
