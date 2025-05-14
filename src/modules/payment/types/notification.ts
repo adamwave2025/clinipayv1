@@ -37,7 +37,7 @@ export interface StandardNotificationPayload {
     }
   };
   clinic: {
-    id?: string; // Add ID to match RLS policies
+    id: string; // Added this property to match what code is expecting
     name: string;
     email?: string;
     phone?: string;
