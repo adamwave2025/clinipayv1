@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User, CreditCard, Bell, Shield } from 'lucide-react';
@@ -20,10 +20,17 @@ const VALID_TABS = ['profile', 'payments', 'notifications', 'security'];
 const SettingsContainer = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   
+  // Get initial tab from URL or default to 'profile'
   const initialTab = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(
     VALID_TABS.includes(initialTab as string) ? initialTab : 'profile'
   );
+  
+  // Reference to track if we've handled the initial URL params
+  const initialTabProcessed = useRef(false);
+  
+  // Reference to track if the tab change is from user interaction
+  const isUserAction = useRef(false);
   
   const { 
     clinicData, 
@@ -34,9 +41,30 @@ const SettingsContainer = () => {
     deleteLogo
   } = useClinicData();
 
+  // Effect to sync URL params with state, but only once on initial load
+  useEffect(() => {
+    if (!initialTabProcessed.current) {
+      const tabFromUrl = searchParams.get('tab');
+      if (tabFromUrl && VALID_TABS.includes(tabFromUrl)) {
+        setActiveTab(tabFromUrl);
+      }
+      initialTabProcessed.current = true;
+    }
+  }, [searchParams]);
+
+  // Effect to update URL when state changes from user interaction
+  useEffect(() => {
+    if (initialTabProcessed.current && isUserAction.current) {
+      setSearchParams({ tab: activeTab });
+      isUserAction.current = false;
+    }
+  }, [activeTab, setSearchParams]);
+
   const handleTabChange = (value: string) => {
+    if (value === activeTab) return; // Prevent unnecessary state updates
+    
+    isUserAction.current = true; // Mark this change as from user interaction
     setActiveTab(value);
-    setSearchParams({ tab: value });
   };
 
   if (dataLoading) {
