@@ -1,177 +1,143 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
-import { PatientService, PaymentRequestService, PaymentNotificationService, PaymentLinkService } from './services';
-import { useAuth } from '@/contexts/AuthContext';
-import { useClinicData } from '@/hooks/useClinicData';
-import { PaymentLink } from '@/types/payment';
 import { NotificationMethod } from '../../types/notification';
-
-// Define the form input type to match the schema
-interface FormInput {
-  patientName: string;
-  patientEmail?: string;
-  patientPhone?: string;
-  amount: number;
-  message: string;
-  emailNotification: boolean;
-  smsNotification: boolean;
-}
-
-// Define the schema for form validation
-const schema = yup.object({
-  patientName: yup.string().required('Patient Name is required'),
-  patientEmail: yup.string().email('Invalid email format'),
-  patientPhone: yup.string().matches(/^[0-9]+$/, 'Must be only digits').min(8, 'Must be at least 8 digits'),
-  amount: yup.number().required('Amount is required').positive('Amount must be positive'),
-  message: yup.string().required('Message is required'),
-  emailNotification: yup.boolean(),
-  smsNotification: yup.boolean(),
-}).required();
+import { PaymentLinkSenderProps, PaymentLinkSenderResult } from './types';
+import {
+  PatientService,
+  PaymentRequestService,
+  ClinicService,
+  PaymentNotificationService,
+  PaymentLinkService
+} from './services';
 
 export function usePaymentLinkSender() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user } = useAuth();
-  const { clinicData } = useClinicData();
-  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Initialize react-hook-form with proper typing
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<FormInput>({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      emailNotification: true,
-      smsNotification: false,
-    },
-  });
-
-  const onSubmit = async (data: FormInput) => {
-    setIsSubmitting(true);
+  const sendPaymentLink = async ({ formData, clinicId, patientId }: PaymentLinkSenderProps): Promise<PaymentLinkSenderResult> => {
+    setIsLoading(true);
+    console.log('⚠️ CRITICAL: Starting payment link creation process...');
+    
     try {
-      if (!user || !clinicData) {
-        toast.error('User or clinic data not available.');
-        return;
+      if (!clinicId) {
+        throw new Error('No clinic ID provided');
       }
-
-      // 1. Create or Retrieve Patient
-      const patient = await PatientService.findOrCreatePatient(
-        data.patientName,
-        data.patientEmail,
-        data.patientPhone,
-        clinicData.id
-      );
-
-      if (!patient) {
-        toast.error('Failed to create or retrieve patient.');
-        return;
-      }
-
-      // 2. Create Payment Request
-      const paymentData = {
-        amount: data.amount,
-        message: data.message,
-      };
-
-      const paymentRequest = await PaymentRequestService.createPaymentRequest(
-        clinicData.id,
-        patient.id,
-        data.patientName,
-        data.patientEmail,
-        data.patientPhone,
-        null,
-        data.amount, 
-        data.message
-      );
-
-      if (!paymentRequest) {
-        toast.error('Failed to create payment request.');
-        return;
-      }
-
-      // 3. Create Payment Link - using correct property names matching the PaymentLink type
-      const paymentLinkData: Partial<PaymentLink> = {
-        clinic_id: clinicData.id,
-        patient_id: patient.id,
-        amount: data.amount,
-        title: `Payment request for ${data.patientName}`,
-        description: data.message,
-        payment_request_id: paymentRequest.id,
-        user_id: user.id,
-        is_active: true,
-        payment_plan: false,
-      };
-
-      const paymentLink = await PaymentLinkService.fetchPaymentLinkDetails(paymentRequest.id);
-
-      if (!paymentLink) {
-        toast.error('Failed to create payment link.');
-        return;
-      }
-
-      // 4. Send Payment Notification
-      const notificationMethod: NotificationMethod = {
-        email: data.emailNotification,
-        sms: data.smsNotification,
-      };
-
-      const clinicAddress = clinicData.address_line_1 ? 
-        `${clinicData.address_line_1}${clinicData.address_line_2 ? ', ' + clinicData.address_line_2 : ''}, ${clinicData.city || ''}, ${clinicData.postcode || ''}`.trim() : 
-        '';
-
-      const notificationPayload = {
-        patient: {
-          name: data.patientName,
-          email: data.patientEmail,
-          phone: data.patientPhone
-        },
-        payment: {
-          reference: paymentRequest.id,
-          amount: data.amount,
-          message: data.message,
-          payment_link: `https://clinipay.co.uk/payment/${paymentRequest.id}`,
-          refund_amount: null
-        },
-        clinic: {
-          id: clinicData.id,
-          name: clinicData.clinic_name || '',
-          email: clinicData.email,
-          phone: clinicData.phone,
-          address: clinicAddress
+      
+      // Calculate the amount to charge
+      let amount = 0;
+      let paymentLinkId = null;
+      let title = '';
+      let isPaymentPlan = false;
+      
+      if (formData.selectedLink) {
+        paymentLinkId = formData.selectedLink;
+        
+        // Fetch the link details to get the amount
+        const linkData = await PaymentLinkService.fetchPaymentLinkDetails(paymentLinkId);
+        
+        amount = linkData.amount;
+        title = linkData.title || '';
+        isPaymentPlan = linkData.payment_plan || false;
+      } else if (formData.customAmount) {
+        amount = parseInt(formData.customAmount, 10);
+        if (isNaN(amount) || amount <= 0) {
+          throw new Error('Invalid custom amount');
         }
-      };
-
-      const notificationResult = await PaymentNotificationService.sendNotification(
-        notificationPayload,
-        clinicData.id,
-        paymentRequest.id
-      );
-
-      if (!notificationResult.success) {
-        console.error('Notification sending failed:', notificationResult.error);
-        toast.error('Payment link created, but there was an issue sending notifications');
       } else {
-        toast.success('Payment link sent successfully!');
+        throw new Error('Either a payment link ID or custom amount must be provided');
       }
 
-      // Reset the form and navigate
-      reset();
-      navigate('/dashboard');
+      // Use provided patientId or find/create one
+      const finalPatientId = await PatientService.findOrCreatePatient(
+        formData.patientName,
+        formData.patientEmail,
+        formData.patientPhone,
+        clinicId,
+        patientId
+      );
+
+      // Create the payment request
+      const paymentRequest = await PaymentRequestService.createPaymentRequest(
+        clinicId,
+        finalPatientId,
+        formData.patientName,
+        formData.patientEmail,
+        formData.patientPhone,
+        paymentLinkId,
+        paymentLinkId ? null : amount,
+        formData.message
+      );
+
+      // Get clinic data for the notification
+      const clinicData = await ClinicService.fetchClinicData(clinicId);
+      const formattedAddress = ClinicService.formatClinicAddress(clinicData);
+
+      // Determine notification methods
+      const notificationMethod: NotificationMethod = {
+        email: !!formData.patientEmail,
+        sms: !!formData.patientPhone
+      };
+      
+      let notificationSent = false;
+      
+      if (notificationMethod.email || notificationMethod.sms) {
+        // Create notification payload
+        const notificationPayload = PaymentNotificationService.createNotificationPayload(
+          clinicId,
+          clinicData.clinic_name,
+          clinicData.email,
+          clinicData.phone,
+          formattedAddress,
+          formData.patientName,
+          formData.patientEmail,
+          formData.patientPhone,
+          paymentRequest.id,
+          amount,
+          formData.message || (title ? `Payment for ${title}` : "Payment request"),
+          notificationMethod
+        );
+
+        // Add a debug flag to the payload for payment plans
+        if (isPaymentPlan) {
+          console.log('⚠️ CRITICAL: This is a payment plan - adding debug flag to payload');
+          notificationPayload.payment.message = `[PLAN] ${notificationPayload.payment.message}`;
+        }
+
+        // Send notification
+        const notificationResult = await PaymentNotificationService.sendNotification(
+          notificationPayload,
+          clinicId,
+          paymentRequest.id
+        );
+        
+        notificationSent = notificationResult.success && (notificationResult.delivery?.any_success || false);
+        
+        if (!notificationResult.success) {
+          toast.warning("Payment link created, but notification delivery might be delayed");
+        } else if (notificationResult.delivery?.any_success === false) {
+          toast.info("Payment link created, notification will be delivered shortly");
+        }
+      } else {
+        console.warn('⚠️ CRITICAL WARNING: No notification methods available for this patient');
+      }
+
+      toast.success('Payment link sent successfully');
+      return { 
+        success: true, 
+        paymentRequestId: paymentRequest.id,
+        notificationSent 
+      };
     } catch (error: any) {
-      console.error('Submission error:', error);
-      toast.error(`Failed to send payment link: ${error.message || 'Unknown error'}`);
+      console.error('⚠️ CRITICAL ERROR: Error sending payment link:', error);
+      toast.error('Failed to send payment link: ' + error.message);
+      return { success: false, error: error.message };
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   return {
-    register,
-    handleSubmit,
-    onSubmit,
-    errors,
-    isSubmitting,
+    isLoading,
+    sendPaymentLink
   };
 }

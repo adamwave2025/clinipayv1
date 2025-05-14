@@ -1,90 +1,88 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { NotificationMethod, NotificationResult } from '../../../types/notification';
-import { NotificationPayloadData } from '../types';
+import { StandardNotificationPayload, NotificationMethod } from '../../../types/notification';
+import { NotificationService as CoreNotificationService } from '../../../services';
+import { NotificationResult } from '../types';
 
 export const PaymentNotificationService = {
   /**
-   * Create a notification payload for sending to the patient
+   * Create a notification payload from recipient data and notification method
    */
   createNotificationPayload(
-    data: NotificationPayloadData,
+    clinicId: string,
+    clinicName: string,
+    clinicEmail: string | undefined,
+    clinicPhone: string | undefined,
+    clinicAddress: string | undefined,
+    patientName: string,
+    patientEmail: string | undefined,
+    patientPhone: string | undefined,
+    paymentRequestId: string,
+    amount: number,
+    message: string | null,
     notificationMethod: NotificationMethod
-  ) {
-    // Create the standard notification payload
+  ): StandardNotificationPayload {
     return {
-      recipient: {
-        email: data.patient.email || null,
-        phone: data.patient.phone || null,
-        name: data.patient.name
-      },
-      clinic: {
-        id: data.clinic.id,
-        name: data.clinic.name,
-        email: data.clinic.email || null,
-        phone: data.clinic.phone || null,
-        address: data.clinic.address || null
+      notification_type: "payment_request",
+      notification_method: notificationMethod,
+      patient: {
+        name: patientName,
+        email: patientEmail,
+        phone: patientPhone
       },
       payment: {
-        reference: data.payment.reference,
-        amount: data.payment.amount,
-        refund_amount: data.payment.refund_amount || null,
-        payment_link: data.payment.payment_link || null,
-        message: data.payment.message || null
+        reference: null, // Important: Set to null instead of using paymentRequestId
+        amount: amount,
+        refund_amount: null,
+        payment_link: `https://clinipay.co.uk/payment/${paymentRequestId}`, // Still use paymentRequestId for the URL
+        message: message || "Payment request"
       },
-      notification_method: notificationMethod
+      clinic: {
+        id: clinicId,
+        name: clinicName || "Your healthcare provider",
+        email: clinicEmail,
+        phone: clinicPhone,
+        address: clinicAddress
+      }
     };
   },
 
   /**
-   * Send a notification about a payment
+   * Send a payment notification
    */
   async sendNotification(
-    payload: any,
+    notificationPayload: StandardNotificationPayload,
     clinicId: string,
-    paymentReference: string
+    paymentRequestId: string
   ): Promise<NotificationResult> {
     try {
-      console.log('⚠️ CRITICAL: Sending payment notification with payload:', payload);
+      console.log('⚠️ CRITICAL: Adding notification to queue and calling webhook directly...');
+      console.log('⚠️ CRITICAL: With clinic_id:', clinicId);
       
-      // Add to the notification queue
-      const { data, error } = await supabase
-        .from('notification_queue')
-        .insert({
-          type: 'payment_request',
-          recipient_type: 'patient',
-          clinic_id: clinicId,
-          payment_id: paymentReference,
-          payload: payload,
-          status: 'pending'
-        })
-        .select();
-      
-      if (error) {
-        console.error('⚠️ CRITICAL ERROR: Failed to queue notification:', error);
-        return { 
-          success: false, 
-          error: error.message 
-        };
+      // Use processImmediately=true to ensure immediate delivery
+      const notificationResult = await CoreNotificationService.addToQueue(
+        'payment_request',
+        notificationPayload,
+        'patient',
+        clinicId,
+        paymentRequestId,
+        undefined,  // payment_id is undefined
+        true  // processImmediately = true
+      );
+
+      if (!notificationResult.success) {
+        console.error("⚠️ CRITICAL ERROR: Failed to queue notification:", notificationResult.error);
+      } else if (notificationResult.delivery?.any_success === false) {
+        console.error("⚠️ CRITICAL ERROR: Failed to deliver notification via webhook:", notificationResult.errors?.webhook);
+      } else {
+        console.log("⚠️ CRITICAL SUCCESS: Payment request notification sent successfully");
       }
       
-      console.log('⚠️ CRITICAL: Notification queued successfully:', data);
-      
-      return {
-        success: true,
-        notification_id: data[0]?.id,
-        delivery: {
-          webhook: true,
-          edge_function: true,
-          fallback: true,
-          any_success: true
-        }
-      };
+      return notificationResult;
     } catch (error: any) {
-      console.error('⚠️ CRITICAL ERROR: Failed to send notification:', error);
-      return { 
-        success: false, 
-        error: error.message 
+      console.error("⚠️ CRITICAL ERROR: Exception during notification delivery:", error);
+      return {
+        success: false,
+        error: error.message
       };
     }
   }

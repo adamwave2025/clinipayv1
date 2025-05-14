@@ -1,56 +1,65 @@
 
-// Define notification-related types for the payment module
-
-// Basic notification settings
-export interface NotificationSettings {
-  email: boolean;
-  sms: boolean;
+/**
+ * Standard notification payload structure used across the application
+ * This ensures consistency in the data sent to notification services
+ */
+export interface StandardNotificationPayload {
+  notification_type: "payment_request" | "payment_success" | "payment_failed" | "refund";
+  notification_method: NotificationMethod;
+  patient: PatientDetails;
+  payment: PaymentDetails;
+  clinic: ClinicDetails;
 }
 
-// Method for sending notifications
 export interface NotificationMethod {
   email: boolean;
   sms: boolean;
 }
 
-// Standard notification payload structure
-export interface StandardNotificationPayload {
-  recipient: {
-    email: string | null;
-    phone: string | null;
-    name: string;
-  };
-  clinic: {
-    id: string;
-    name: string;
-    email: string | null;
-    phone: string | null;
-    address: string | null;
-  };
-  payment: {
-    reference: string;
-    amount: number;
-    refund_amount: number | null;
-    payment_link: string | null;
-    message: string | null;
-  };
-  notification_method: NotificationMethod;
+export interface PatientDetails {
+  name: string;
+  email?: string;
+  phone?: string;
 }
 
-// Notification result after sending
-export interface NotificationResult {
+export interface PaymentDetails {
+  reference: string;
+  amount: number;
+  refund_amount: number | null;
+  payment_link: string;
+  message: string;
+}
+
+export interface ClinicDetails {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+}
+
+/**
+ * Notification delivery status returned when a notification is queued
+ */
+export interface NotificationDeliveryStatus {
+  webhook: boolean;
+  edge_function: boolean;
+  fallback: boolean;
+  any_success: boolean;
+}
+
+/**
+ * Result of adding a notification to the queue
+ */
+export interface NotificationQueueResult {
   success: boolean;
   notification_id?: string;
-  delivery?: {
-    webhook: boolean;
-    edge_function: boolean;
-    fallback: boolean;
-    any_success: boolean;
-  };
+  delivery?: NotificationDeliveryStatus;
   errors?: {
     webhook?: string;
     edge_function?: string;
     fallback?: string;
   };
-  error?: string;
+  immediate_processing?: boolean;
+  error?: any;
 }
