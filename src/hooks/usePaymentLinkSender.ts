@@ -40,12 +40,12 @@ export function usePaymentLinkSender() {
       let paymentTitle = '';
       let isPaymentPlan = false;
 
-      if (formData.selectedLink && paymentLinks) {
+      if (formData.selectedLink) {
         const selectedPaymentLink = paymentLinks.find(link => link.id === formData.selectedLink);
         if (selectedPaymentLink) {
           amount = selectedPaymentLink.amount;
           paymentLinkId = selectedPaymentLink.id;
-          paymentTitle = selectedPaymentLink.title || '';
+          paymentTitle = selectedPaymentLink.title;
           isPaymentPlan = selectedPaymentLink.paymentPlan || false;
           console.log('⚠️ CRITICAL: Using payment link:', { 
             id: paymentLinkId, 
@@ -106,10 +106,10 @@ export function usePaymentLinkSender() {
             phone: formData.patientPhone
           },
           payment: {
-            reference: null, // FIXED: Set reference to null when sending payment requests
+            reference: paymentRequest.id,
             amount: amount,
             refund_amount: null,
-            payment_link: `https://clinipay.co.uk/payment/${paymentRequest.id}`, // Keep the payment request ID in the URL
+            payment_link: `https://clinipay.co.uk/payment/${paymentRequest.id}`,
             message: formData.message || (paymentTitle ? `Payment for ${paymentTitle}` : "Payment request")
           }
         }, notificationMethod);
@@ -121,24 +121,11 @@ export function usePaymentLinkSender() {
         }
 
         // Send the notification
-        const notificationResult = await notificationService.sendPaymentNotification(
+        await notificationService.sendPaymentNotification(
           notificationPayload,
           clinicId,
           paymentRequest.id
         );
-
-        // Handle notification result properly
-        if (!notificationResult.success) {
-          console.error('⚠️ CRITICAL ERROR: Notification failed:', notificationResult.error);
-        } else if (notificationResult.delivery && notificationResult.delivery.any_success === false) {
-          console.warn('⚠️ CRITICAL WARNING: All notification methods failed');
-          // Detailed logging of errors
-          if (notificationResult.errors && notificationResult.errors.webhook) {
-            console.error('Webhook error:', notificationResult.errors.webhook);
-          }
-        } else {
-          console.log('⚠️ CRITICAL: Notification delivery success status:', notificationResult.delivery);
-        }
       } else {
         console.warn('⚠️ CRITICAL: No notification methods available for this patient');
       }
