@@ -31,7 +31,7 @@ export function useSidebarNavigation(items: SidebarItem[]) {
       return currentPath === '/dashboard/settings';
     }
     
-    // For other routes, use exact match or prefix match
+    // For other routes, use exact match or prefix match for nested routes
     return currentPath === to || 
            (currentPath !== '/dashboard' && to !== '/dashboard' && currentPath.startsWith(to));
   };

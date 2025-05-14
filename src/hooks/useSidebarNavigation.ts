@@ -32,6 +32,7 @@ export function useSidebarNavigation(items: SidebarItem[]) {
     }
     
     // For other routes, use exact match or prefix match for nested routes
+    // Only match prefixes if they're not dashboard (which would match everything)
     return currentPath === to || 
            (to !== '/dashboard' && currentPath.startsWith(to));
   };

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { SidebarLink } from './navigationData';
@@ -14,10 +13,18 @@ const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ item, isActive }) => {
   // Determine if current link is active using the passed isActive function
   const linkIsActive = isActive(item.to);
   
-  // For settings page, we want to preserve the URL parameters when navigating
-  const to = item.to === '/dashboard/settings' && location.pathname === '/dashboard/settings' 
-    ? { pathname: item.to, search: location.search }
-    : item.to;
+  // Special handling for settings page - For settings links, we always
+  // use the basic path and let SettingsContainer handle tab selection
+  // This prevents the URL parameter loop issue
+  let to = item.to;
+  
+  // When we're already on the settings page and have a tab parameter,
+  // preserve it only if we're clicking on settings again
+  if (item.to === '/dashboard/settings' && location.pathname === '/dashboard/settings') {
+    console.log('📝 Settings link clicked while on settings page');
+    // Keep the existing search parameters
+    to = { pathname: item.to, search: location.search };
+  }
 
   return (
     <NavLink
