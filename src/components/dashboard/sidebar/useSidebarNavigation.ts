@@ -20,6 +20,8 @@ export function useSidebarNavigation(items: SidebarItem[]) {
     // Extract the base URL without search params
     const currentPath = location.pathname;
     
+    console.log(`🔍 Checking if ${to} is active. Current path: ${currentPath}`);
+    
     // Special case for dashboard root
     if (to === '/dashboard') {
       return currentPath === '/dashboard';
@@ -34,7 +36,7 @@ export function useSidebarNavigation(items: SidebarItem[]) {
     // For other routes, use exact match or prefix match for nested routes
     // Only match prefixes if they're not dashboard (which would match everything)
     return currentPath === to || 
-           (to !== '/dashboard' && currentPath !== '/dashboard' && currentPath.startsWith(to));
+           (to !== '/dashboard' && currentPath.startsWith(to));
   };
 
   // Check if submenu has any active links
@@ -49,6 +51,8 @@ export function useSidebarNavigation(items: SidebarItem[]) {
       return;
     }
     
+    console.log(`📍 Path changed from ${prevPathname.current} to ${location.pathname}`);
+    
     // Update previous pathname
     prevPathname.current = location.pathname;
     
@@ -59,6 +63,7 @@ export function useSidebarNavigation(items: SidebarItem[]) {
       .find(item => isSubmenuActive(item.links))?.label;
       
     if (menuToExpand && expandedMenu !== menuToExpand) {
+      console.log(`📂 Expanding menu: ${menuToExpand}`);
       setExpandedMenu(menuToExpand);
     }
   }, [location.pathname, items, expandedMenu]);

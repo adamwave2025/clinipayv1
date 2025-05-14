@@ -1,9 +1,15 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import SettingsContainer from '@/containers/settings/SettingsContainer';
 
 const SettingsPage = () => {
-  console.log('📄 Rendering SettingsPage');
+  useEffect(() => {
+    console.log('📄 SettingsPage mounted');
+    return () => {
+      console.log('📄 SettingsPage unmounted');
+    };
+  }, []);
+
   return <SettingsContainer />;
 };
 

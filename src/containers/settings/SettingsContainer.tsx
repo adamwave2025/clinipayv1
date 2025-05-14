@@ -43,17 +43,21 @@ const SettingsContainer = () => {
     return tab;
   };
   
+  // Debug log for initial render
+  console.log('🏁 SettingsContainer rendering. URL tab:', urlTabParam, 'Active tab:', activeTab);
+  
   // Effect to synchronize URL parameters with component state
   useEffect(() => {
-    console.log('🔄 Running tab sync effect. URL tab:', urlTabParam, 'Active tab:', activeTab);
+    console.log('🔄 Running tab sync effect. URL tab:', urlTabParam, 'Active tab:', activeTab, 
+                'Processing URL:', processingUrlChange.current, 'User Action:', userAction.current);
     
-    // Skip if we're already processing a URL change to avoid loops
+    // Skip this effect run if we're already processing a URL change
     if (processingUrlChange.current) {
       console.log('⏭️ Skipping - already processing URL change');
       return;
     }
     
-    // Initialize on first render
+    // Handle initialization
     if (!initialized.current) {
       initialized.current = true;
       const validTab = getValidTab(urlTabParam);
@@ -68,15 +72,19 @@ const SettingsContainer = () => {
         console.log('📝 Correcting URL parameter to:', validTab);
         processingUrlChange.current = true;
         setSearchParams({ tab: validTab }, { replace: true });
-        processingUrlChange.current = false;
+        // Reset this flag after execution completes (not in this block)
+        setTimeout(() => {
+          processingUrlChange.current = false;
+          console.log('🔄 Reset processing flag after URL change');
+        }, 0);
       }
       
       return;
     }
     
-    // When URL changes externally (like from sidebar navigation)
+    // When URL changes externally (navigation from sidebar)
     if (urlTabParam !== activeTab && !userAction.current) {
-      console.log('🔄 URL changed externally to:', urlTabParam);
+      console.log('🔀 URL changed externally to:', urlTabParam);
       const validTab = getValidTab(urlTabParam);
       
       // Update local state to match URL
@@ -105,7 +113,12 @@ const SettingsContainer = () => {
     console.log('📝 Updating URL to match selected tab:', value);
     processingUrlChange.current = true;
     setSearchParams({ tab: value }, { replace: true });
-    processingUrlChange.current = false;
+    
+    // Reset processing flag after the URL change completes
+    setTimeout(() => {
+      processingUrlChange.current = false;
+      console.log('🔄 Reset processing flag after URL change');
+    }, 0);
   };
 
   const { 
