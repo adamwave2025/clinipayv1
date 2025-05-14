@@ -1,8 +1,8 @@
 
 import { useState } from 'react';
-import { usePaymentLinkSender as useOriginalPaymentLinkSender } from '@/hooks/usePaymentLinkSender';
+import { usePaymentLinkSender as useModulePaymentLinkSender } from '@/modules/payment/hooks/sendLink/usePaymentLinkSender';
 import { PaymentLink } from '@/types/payment';
-import { SendLinkFormData } from './useSendLinkFormState';
+import { SendLinkFormData } from '@/modules/payment/hooks/sendLink';
 import { toast } from 'sonner';
 
 interface SendPaymentLinkParams {
@@ -12,7 +12,7 @@ interface SendPaymentLinkParams {
 }
 
 export function usePaymentLinkSender() {
-  const { isLoading: isOriginalLoading, sendPaymentLink: originalSendPaymentLink } = useOriginalPaymentLinkSender();
+  const { isLoading: isOriginalLoading, sendPaymentLink: originalSendPaymentLink } = useModulePaymentLinkSender();
   const [isSending, setIsSending] = useState(false);
 
   const sendPaymentLink = async ({ formData, paymentLinks, patientId }: SendPaymentLinkParams) => {
@@ -37,7 +37,8 @@ export function usePaymentLinkSender() {
       
       const result = await originalSendPaymentLink({ 
         formData: enhancedFormData, 
-        paymentLinks
+        clinicId: paymentLinks[0]?.clinic?.id, // Use the clinic ID from the first payment link
+        patientId
       });
       
       // No toasts here - we'll show one comprehensive toast at the end in useSendLinkPageState
