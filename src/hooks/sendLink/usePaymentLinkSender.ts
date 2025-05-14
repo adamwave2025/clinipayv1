@@ -7,7 +7,7 @@ import { PaymentLinkSenderProps, PaymentLinkSenderResult } from './types';
 import { useClinicDataService } from './useClinicDataService';
 import { usePatientOperations } from './usePatientOperations';
 import { usePaymentRequestService } from './usePaymentRequestService';
-import { useNotificationService } from './useNotificationService';
+import { useNotificationService, NotificationResult } from './useNotificationService';
 
 export function usePaymentLinkSender() {
   const [isLoading, setIsLoading] = useState(false);
@@ -128,7 +128,7 @@ export function usePaymentLinkSender() {
           paymentRequest.id
         );
 
-        // Fixed: Access delivery and errors properties correctly
+        // Fixed: Handle notification result properly using the NotificationResult type
         if (!notificationResult.success) {
           console.error('⚠️ CRITICAL ERROR: Notification failed:', notificationResult.error);
         } else if (notificationResult.delivery && notificationResult.delivery.any_success === false) {

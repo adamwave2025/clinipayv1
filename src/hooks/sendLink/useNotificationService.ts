@@ -5,6 +5,22 @@ import { addToNotificationQueue } from '@/utils/notification-queue';
 import { NotificationMethod, StandardNotificationPayload } from '@/types/notification';
 import { NotificationPayloadData } from './types';
 
+// Define the notification result type to match what's expected
+export interface NotificationResult {
+  success: boolean;
+  delivery?: {
+    webhook: boolean;
+    edge_function: boolean;
+    fallback: boolean;
+    any_success: boolean;
+  };
+  errors?: {
+    webhook?: string;
+  };
+  notification_id?: string;
+  error?: string;
+}
+
 export function useNotificationService() {
   const [isSendingNotification, setIsSendingNotification] = useState(false);
 
@@ -25,7 +41,7 @@ export function useNotificationService() {
     payload: StandardNotificationPayload,
     clinicId: string,
     paymentRequestId: string
-  ) => {
+  ): Promise<NotificationResult> => {
     setIsSendingNotification(true);
     
     try {
@@ -46,19 +62,22 @@ export function useNotificationService() {
       if (!notificationResult.success) {
         console.error("⚠️ CRITICAL ERROR: Failed to queue notification:", notificationResult.error);
         toast.warning("Payment link was sent, but notification delivery might be delayed");
-        return false;
+        return notificationResult;
       } else if (notificationResult.delivery?.any_success === false) {
         console.error("⚠️ CRITICAL ERROR: Failed to deliver notification via webhook:", notificationResult.errors?.webhook);
         toast.warning("Payment link was sent, but notification delivery might be delayed");
-        return false;
+        return notificationResult;
       } else {
         console.log("⚠️ CRITICAL SUCCESS: Payment request notification sent successfully");
-        return true;
+        return notificationResult;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("⚠️ CRITICAL ERROR: Exception during notification delivery:", error);
       toast.warning("Payment link created, but there was an issue sending notifications");
-      return false;
+      return {
+        success: false,
+        error: error.message
+      };
     } finally {
       setIsSendingNotification(false);
     }

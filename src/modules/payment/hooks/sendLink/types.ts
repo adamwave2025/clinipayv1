@@ -46,3 +46,18 @@ export interface NotificationPayloadData {
     message: string;
   };
 }
+
+export interface NotificationResult {
+  success: boolean;
+  delivery?: {
+    webhook: boolean;
+    edge_function: boolean;
+    fallback: boolean;
+    any_success: boolean;
+  };
+  errors?: {
+    webhook?: string;
+  };
+  notification_id?: string;
+  error?: string;
+}
