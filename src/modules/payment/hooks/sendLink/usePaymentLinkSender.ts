@@ -129,21 +129,20 @@ export function usePaymentLinkSender() {
         console.log('⚠️ CRITICAL: Using provided patient ID:', finalPatientId);
       }
 
-      console.log('⚠️ CRITICAL: Creating payment request with:', {
-        clinicId: userData.clinic_id,
-        patientId: finalPatientId,
-        paymentLinkId,
-        amount,
-        patientName: formData.patientName,
-        isPaymentPlan
-      });
-
       // Skip payment plan creation - handled by usePaymentPlanScheduler
       if (isPaymentPlan) {
         console.log('⚠️ CRITICAL: This is a payment plan, skipping standard payment request creation');
         setIsLoading(false);
         return { success: true, skippedAsPaymentPlan: true };
       }
+
+      console.log('⚠️ CRITICAL: Creating payment request with:', {
+        clinicId: userData.clinic_id,
+        patientId: finalPatientId,
+        paymentLinkId,
+        amount,
+        patientName: formData.patientName
+      });
 
       const { data, error } = await supabase
         .from('payment_requests')

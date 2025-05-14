@@ -15,26 +15,24 @@ export async function addToNotificationQueue(
   reference_id?: string,
   payment_id?: string
 ) {
-  console.log(`⚠️ CRITICAL: Adding notification to queue: type=${type}, recipient=${recipient_type}, clinic=${clinic_id}, reference=${reference_id}`);
+  console.log(`⚠️ CRITICAL: Adding notification to queue: type=${type}, recipient=${recipient_type}, reference=${reference_id}`);
   
   try {
     // Convert the StandardNotificationPayload to Json compatible format
     // This explicit cast ensures we satisfy TypeScript's type checking
     const jsonPayload = payload as unknown as Json;
     
-    // Insert into notification queue with high priority
+    // Insert into notification queue with only the columns that exist in the database
     const { data, error } = await supabase
       .from('notification_queue')
       .insert({
         type,
         payload: jsonPayload,
         recipient_type,
-        clinic_id,
-        reference_id,
+        // Only include payment_id if provided
+        ...(payment_id ? { payment_id } : {}),
         status: 'pending',
-        retry_count: 0,
-        payment_id,
-        priority: 'high'
+        retry_count: 0
       })
       .select();
 
@@ -63,9 +61,7 @@ export async function addToNotificationQueue(
         .from('notification_queue')
         .update({ 
           status: 'sent',
-          processed_at: new Date().toISOString(),
-          last_attempt: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          processed_at: new Date().toISOString()
         })
         .eq('id', queuedItem.id);
       
