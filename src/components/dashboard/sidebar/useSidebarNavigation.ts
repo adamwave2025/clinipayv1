@@ -15,26 +15,26 @@ export function useSidebarNavigation(items: SidebarItem[]) {
     setExpandedMenu(expandedMenu === label ? null : label);
   };
 
-  // Check if a link is active with enhanced matching for query parameters
+  // Check if a link is active with enhanced matching for settings page
   const isLinkActive = (to: string) => {
     // Extract the base URL without search params
     const currentPath = location.pathname;
+    const currentSearch = location.search;
     
     // Special case for dashboard root
     if (to === '/dashboard') {
       return currentPath === '/dashboard';
     }
     
-    // Special case for settings page with tab params
+    // Special handling for settings page
     if (to === '/dashboard/settings') {
+      // Always match if we're on the settings path, regardless of the tab
       return currentPath === '/dashboard/settings';
     }
     
     // For other routes, use a more precise matching algorithm
-    // that prevents partial matches and handles path segments properly
     if (to !== '/dashboard' && currentPath.startsWith(to)) {
       // Make sure it's a complete path segment match
-      // This prevents "/dashboard" from matching "/dashboard/settings"
       const toWithSlash = to.endsWith('/') ? to : `${to}/`;
       return currentPath === to || 
              currentPath.startsWith(toWithSlash) ||
@@ -52,10 +52,13 @@ export function useSidebarNavigation(items: SidebarItem[]) {
   
   // Initialize expanded menu based on active path
   useEffect(() => {
-    // Track pathname changes for debugging
-    if (prevPathname.current !== location.pathname) {
-      prevPathname.current = location.pathname;
+    // Skip if pathname hasn't changed
+    if (prevPathname.current === location.pathname) {
+      return;
     }
+    
+    // Update previous pathname
+    prevPathname.current = location.pathname;
     
     // Find which submenu should be expanded based on current route
     const menuToExpand = items
@@ -66,8 +69,7 @@ export function useSidebarNavigation(items: SidebarItem[]) {
     if (menuToExpand && expandedMenu !== menuToExpand) {
       setExpandedMenu(menuToExpand);
     }
-    // Only run when the pathname changes
-  }, [location.pathname, items]);
+  }, [location.pathname, items, expandedMenu]);
 
   return {
     expandedMenu,
