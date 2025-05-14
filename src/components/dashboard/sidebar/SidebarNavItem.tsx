@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { SidebarLink } from './navigationData';
@@ -16,7 +17,7 @@ const SidebarNavItem: React.FC<SidebarNavItemProps> = ({ item, isActive }) => {
   // Special handling for settings page - For settings links, we always
   // use the basic path and let SettingsContainer handle tab selection
   // This prevents the URL parameter loop issue
-  let to = item.to;
+  let to: string | { pathname: string; search: string } = item.to;
   
   // When we're already on the settings page and have a tab parameter,
   // preserve it only if we're clicking on settings again

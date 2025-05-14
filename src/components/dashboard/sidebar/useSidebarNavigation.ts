@@ -32,8 +32,9 @@ export function useSidebarNavigation(items: SidebarItem[]) {
     }
     
     // For other routes, use exact match or prefix match for nested routes
+    // Only match prefixes if they're not dashboard (which would match everything)
     return currentPath === to || 
-           (currentPath !== '/dashboard' && to !== '/dashboard' && currentPath.startsWith(to));
+           (to !== '/dashboard' && currentPath !== '/dashboard' && currentPath.startsWith(to));
   };
 
   // Check if submenu has any active links
