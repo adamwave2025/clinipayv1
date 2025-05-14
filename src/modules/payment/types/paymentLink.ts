@@ -35,3 +35,39 @@ export interface ProcessedPaymentLink {
   planTotalAmount?: number;
   clinic_id: string;
 }
+
+/**
+ * Interface representing payment link data with clinic information
+ */
+export interface PaymentLinkData {
+  id: string;
+  title?: string;
+  type?: string;
+  amount: number;
+  description?: string;
+  clinic: {
+    id: string;
+    name: string;
+    logo?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    stripeStatus: string;
+  };
+  status: string;
+  isActive?: boolean;
+  isPaymentPlan?: boolean;
+  paymentPlan?: boolean;
+  planTotalAmount?: number;
+  totalPaid?: number;
+  totalOutstanding?: number;
+  customAmount?: number;
+  hasOverduePayments?: boolean;
+  payment_link_id?: string;
+  isRescheduled?: boolean;
+  isRequest: boolean;
+  patientName?: string;
+  patientEmail?: string;
+  patientPhone?: string;
+  paymentId?: string;
+}

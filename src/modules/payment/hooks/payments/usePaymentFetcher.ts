@@ -43,21 +43,27 @@ export function usePaymentFetcher() {
         throw new Error(error.message);
       }
 
-      // Map the database fields to our Payment interface
-      return data.map((payment: any) => ({
+      // Map the database fields directly to our Payment interface
+      const mappedPayments = data.map((payment: any) => ({
         id: payment.id,
-        amount: payment.amount_paid || 0,
-        clinicId: payment.clinic_id,
-        date: payment.paid_at || payment.created_at,
-        patientName: payment.patient_name,
-        patientEmail: payment.patient_email,
+        amount_paid: payment.amount_paid || 0,
+        clinic_id: payment.clinic_id,
+        paid_at: payment.paid_at || payment.created_at,
+        patient_name: payment.patient_name,
+        patient_email: payment.patient_email,
+        patient_phone: payment.patient_phone,
         status: payment.status,
-        refundAmount: payment.refund_amount,
-        netAmount: payment.net_amount,
-        paymentMethod: payment.payment_method || 'card',
-        paymentReference: payment.payment_ref, // Use payment_ref instead of reference
-        stripePaymentId: payment.stripe_payment_id
+        refund_amount: payment.refund_amount,
+        net_amount: payment.net_amount,
+        payment_ref: payment.payment_ref,
+        stripe_payment_id: payment.stripe_payment_id,
+        payment_link_id: payment.payment_link_id,
+        patient_id: payment.patient_id,
+        payment_schedule_id: payment.payment_schedule_id,
+        manual_payment: payment.manual_payment
       })) as Payment[];
+      
+      return mappedPayments;
     } catch (err: any) {
       console.error('Failed to fetch payments:', err);
       setError(err.message || 'Failed to fetch payment data');

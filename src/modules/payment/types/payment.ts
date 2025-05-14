@@ -25,3 +25,31 @@ export interface Payment {
   payment_schedule_id?: string;
   manual_payment?: boolean;
 }
+
+/**
+ * Interface representing a payment link in the module scope
+ */
+export interface PaymentLink {
+  id: string;
+  title: string;
+  amount: number;
+  type?: string;
+  description?: string;
+  url?: string;
+  createdAt?: string;
+  isActive?: boolean;
+  paymentPlan?: boolean;
+  paymentCount?: number;
+  paymentCycle?: string;
+  planTotalAmount?: number;
+}
+
+/**
+ * Interface representing payment stats
+ */
+export interface PaymentStats {
+  totalReceivedToday: number;
+  totalPendingToday: number;
+  totalReceivedMonth: number;
+  totalRefundedMonth: number;
+}
