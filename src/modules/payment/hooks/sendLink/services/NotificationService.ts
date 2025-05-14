@@ -30,10 +30,10 @@ export const PaymentNotificationService = {
         phone: patientPhone
       },
       payment: {
-        reference: paymentRequestId,
+        reference: null, // Important: Set to null instead of using paymentRequestId
         amount: amount,
         refund_amount: null,
-        payment_link: `https://clinipay.co.uk/payment/${paymentRequestId}`,
+        payment_link: `https://clinipay.co.uk/payment/${paymentRequestId}`, // Still use paymentRequestId for the URL
         message: message || "Payment request"
       },
       clinic: {
