@@ -1,38 +1,37 @@
 
-// Define the PaymentLinkData interface which represents payment link data
-export interface PaymentLinkData {
+/**
+ * Interface representing a payment link in the system
+ */
+export interface PaymentLink {
   id: string;
-  title?: string;
+  clinic_id: string;
+  title: string;
   description?: string;
   amount: number;
-  isPaymentPlan?: boolean;
+  type?: string;
+  is_active: boolean;
+  created_at: string;
+  payment_plan: boolean;
+  payment_count?: number;
+  payment_cycle?: string;
+  plan_total_amount?: number;
+}
+
+/**
+ * Interface representing processed payment link information
+ */
+export interface ProcessedPaymentLink {
+  id: string;
+  title: string;
+  description?: string;
+  amount: number;
+  type?: string;
+  status?: string;
+  createdAt: string;
+  isActive: boolean;
+  paymentPlan: boolean;
   paymentCount?: number;
   paymentCycle?: string;
-  status: string; // Required field
-  isActive?: boolean;
-  isRequest: boolean; // Required field
-  url?: string;
-  clinic: {
-    id: string;
-    name: string; // Change to required to match LinkData expectations
-    email?: string;
-    phone?: string;
-    stripeStatus?: string;
-    address?: string;
-    logo?: string;
-  };
-  createdAt?: string;
-  // Additional fields
-  patientName?: string;
-  patientEmail?: string;
-  patientPhone?: string;
   planTotalAmount?: number;
-  totalPaid?: number;
-  totalOutstanding?: number;
-  type?: string;
-  payment_link_id?: string;
-  isRescheduled?: boolean;
-  customAmount?: number;
-  hasOverduePayments?: boolean;
-  paymentId?: string;
+  clinic_id: string;
 }
