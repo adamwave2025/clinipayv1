@@ -218,7 +218,7 @@ export function usePaymentLinkSender() {
           console.log('⚠️ CRITICAL: With clinic_id:', userData.clinic_id);
           
           // This is a reusable link - use processImmediately=true to ensure immediate delivery
-          const { success, error, webhook_success, webhook_error } = await addToNotificationQueue(
+          const notificationResult = await addToNotificationQueue(
             'payment_request',
             notificationPayload,
             'patient',
@@ -228,11 +228,11 @@ export function usePaymentLinkSender() {
             true  // processImmediately = true for reusable links
           );
 
-          if (!success) {
-            console.error("⚠️ CRITICAL ERROR: Failed to queue notification:", error);
+          if (!notificationResult.success) {
+            console.error("⚠️ CRITICAL ERROR: Failed to queue notification:", notificationResult.error);
             toast.warning("Payment link was sent, but notification delivery might be delayed");
-          } else if (!webhook_success) {
-            console.error("⚠️ CRITICAL ERROR: Failed to deliver notification via webhook:", webhook_error);
+          } else if (notificationResult.delivery?.any_success === false) {
+            console.error("⚠️ CRITICAL ERROR: Failed to deliver notification via webhook:", notificationResult.errors?.webhook);
             toast.warning("Payment link was sent, but notification delivery might be delayed");
           } else {
             console.log("⚠️ CRITICAL SUCCESS: Payment request notification sent successfully");

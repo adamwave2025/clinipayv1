@@ -332,7 +332,7 @@ export function usePaymentPlanScheduler() {
           console.log('⚠️ CRITICAL: With clinic_id:', clinicId);
           
           // For plans that start today, set processImmediately to true to ensure notification is sent right away
-          const { success, error, webhook_success, webhook_error } = await addToNotificationQueue(
+          const notificationResult = await addToNotificationQueue(
             'payment_request',
             notificationPayload,
             'patient',
@@ -342,11 +342,11 @@ export function usePaymentPlanScheduler() {
             true // processImmediately = true for same-day payment plans
           );
 
-          if (!success) {
-            console.error("⚠️ CRITICAL ERROR: Failed to queue payment plan notification:", error);
+          if (!notificationResult.success) {
+            console.error("⚠️ CRITICAL ERROR: Failed to queue payment plan notification:", notificationResult.error);
             toast.warning("Payment plan created, but notification delivery might be delayed");
-          } else if (!webhook_success) {
-            console.error("⚠️ CRITICAL ERROR: Failed to deliver notification via webhook:", webhook_error);
+          } else if (notificationResult.delivery?.any_success === false) {
+            console.error("⚠️ CRITICAL ERROR: Failed to deliver notification via webhook:", notificationResult.errors?.webhook);
             toast.warning("Payment plan created, but notification delivery might be delayed");
           } else {
             console.log("⚠️ CRITICAL SUCCESS: Payment plan notification sent successfully");
