@@ -1,28 +1,20 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { NotificationService } from '@/modules/payment/services'; 
-import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
-import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
-
-interface PaymentLinkSenderProps {
-  formData: {
-    patientName: string;
-    patientEmail: string;
-    patientPhone?: string;
-    selectedLink: string;
-    customAmount?: string;
-    message?: string;
-  };
-  clinicId: string;
-  patientId?: string;  // Optional patient ID
-}
+import { NotificationMethod } from '../../types/notification';
+import { PaymentLinkSenderProps, PaymentLinkSenderResult } from './types';
+import {
+  PatientService,
+  PaymentRequestService,
+  ClinicService,
+  NotificationService,
+  PaymentLinkService
+} from './services';
 
 export function usePaymentLinkSender() {
   const [isLoading, setIsLoading] = useState(false);
 
-  const sendPaymentLink = async ({ formData, clinicId, patientId }: PaymentLinkSenderProps) => {
+  const sendPaymentLink = async ({ formData, clinicId, patientId }: PaymentLinkSenderProps): Promise<PaymentLinkSenderResult> => {
     setIsLoading(true);
     console.log('⚠️ CRITICAL: Starting payment link creation process...');
     
@@ -34,23 +26,18 @@ export function usePaymentLinkSender() {
       // Calculate the amount to charge
       let amount = 0;
       let paymentLinkId = null;
+      let title = '';
+      let isPaymentPlan = false;
       
       if (formData.selectedLink) {
         paymentLinkId = formData.selectedLink;
         
         // Fetch the link details to get the amount
-        const { data: linkData, error: linkError } = await supabase
-          .from('payment_links')
-          .select('amount, title, payment_plan')
-          .eq('id', paymentLinkId)
-          .single();
-          
-        if (linkError || !linkData) {
-          console.error('⚠️ CRITICAL ERROR: Error fetching payment link details:', linkError);
-          throw new Error('Could not find the selected payment link');
-        }
+        const linkData = await PaymentLinkService.fetchPaymentLinkDetails(paymentLinkId);
         
         amount = linkData.amount;
+        title = linkData.title || '';
+        isPaymentPlan = linkData.payment_plan || false;
       } else if (formData.customAmount) {
         amount = parseInt(formData.customAmount, 10);
         if (isNaN(amount) || amount <= 0) {
@@ -61,143 +48,84 @@ export function usePaymentLinkSender() {
       }
 
       // Use provided patientId or find/create one
-      let finalPatientId = patientId; 
-      
-      // Check if we need to create a patient first
-      if (!finalPatientId) {
-        // Look for existing patient with this email
-        if (formData.patientEmail) {
-          const { data: existingPatient } = await supabase
-            .from('patients')
-            .select('id')
-            .eq('clinic_id', clinicId)
-            .eq('email', formData.patientEmail)
-            .maybeSingle();
-            
-          if (existingPatient) {
-            finalPatientId = existingPatient.id;
-          } else {
-            // Create a new patient if not found
-            const { data: newPatient, error: patientError } = await supabase
-              .from('patients')
-              .insert({
-                clinic_id: clinicId,
-                name: formData.patientName,
-                email: formData.patientEmail,
-                phone: formData.patientPhone || null
-              })
-              .select()
-              .single();
-              
-            if (patientError) {
-              console.error('⚠️ CRITICAL ERROR: Error creating patient:', patientError);
-              // Continue without patient ID
-            } else if (newPatient) {
-              finalPatientId = newPatient.id;
-            }
-          }
-        }
-      }
+      const finalPatientId = await PatientService.findOrCreatePatient(
+        formData.patientName,
+        formData.patientEmail,
+        formData.patientPhone,
+        clinicId,
+        patientId
+      );
 
       // Create the payment request
-      const { data, error } = await supabase
-        .from('payment_requests')
-        .insert({
-          clinic_id: clinicId,
-          patient_id: finalPatientId,
-          payment_link_id: paymentLinkId,
-          custom_amount: paymentLinkId ? null : amount,
-          patient_name: formData.patientName,
-          patient_email: formData.patientEmail,
-          patient_phone: formData.patientPhone || null,
-          status: 'sent',
-          message: formData.message || null
-        })
-        .select();
-
-      if (error) {
-        console.error('⚠️ CRITICAL ERROR: Error creating payment request:', error);
-        throw error;
-      }
-      
-      if (!data || data.length === 0) {
-        throw new Error('Failed to create payment request');
-      }
-
-      const paymentRequest = data[0];
-      console.log('⚠️ CRITICAL: Payment request created successfully:', paymentRequest.id);
+      const paymentRequest = await PaymentRequestService.createPaymentRequest(
+        clinicId,
+        finalPatientId,
+        formData.patientName,
+        formData.patientEmail,
+        formData.patientPhone,
+        paymentLinkId,
+        paymentLinkId ? null : amount,
+        formData.message
+      );
 
       // Get clinic data for the notification
-      const { data: clinicData, error: clinicError } = await supabase
-        .from('clinics')
-        .select('*')
-        .eq('id', clinicId)
-        .single();
-
-      if (clinicError || !clinicData) {
-        console.error('⚠️ CRITICAL ERROR: Error fetching clinic data:', clinicError);
-        throw new Error('Could not find clinic information');
-      }
+      const clinicData = await ClinicService.fetchClinicData(clinicId);
+      const formattedAddress = ClinicService.formatClinicAddress(clinicData);
 
       // Determine notification methods
       const notificationMethod: NotificationMethod = {
         email: !!formData.patientEmail,
         sms: !!formData.patientPhone
       };
-
-      const formattedAddress = ClinicFormatter.formatAddress(clinicData);
       
-      // Create notification payload
-      const notificationPayload: StandardNotificationPayload = {
-        notification_type: "payment_request",
-        notification_method: notificationMethod,
-        patient: {
-          name: formData.patientName,
-          email: formData.patientEmail,
-          phone: formData.patientPhone
-        },
-        payment: {
-          reference: paymentRequest.id,
-          amount: amount,
-          refund_amount: null,
-          payment_link: `https://clinipay.co.uk/payment/${paymentRequest.id}`,
-          message: formData.message || "Payment request"
-        },
-        clinic: {
-          id: clinicId,
-          name: clinicData.clinic_name || "Your healthcare provider",
-          email: clinicData.email,
-          phone: clinicData.phone,
-          address: formattedAddress
+      let notificationSent = false;
+      
+      if (notificationMethod.email || notificationMethod.sms) {
+        // Create notification payload
+        const notificationPayload = NotificationService.createNotificationPayload(
+          clinicId,
+          clinicData.clinic_name,
+          clinicData.email,
+          clinicData.phone,
+          formattedAddress,
+          formData.patientName,
+          formData.patientEmail,
+          formData.patientPhone,
+          paymentRequest.id,
+          amount,
+          formData.message || (title ? `Payment for ${title}` : "Payment request"),
+          notificationMethod
+        );
+
+        // Add a debug flag to the payload for payment plans
+        if (isPaymentPlan) {
+          console.log('⚠️ CRITICAL: This is a payment plan - adding debug flag to payload');
+          notificationPayload.payment.message = `[PLAN] ${notificationPayload.payment.message}`;
         }
-      };
 
-      // Queue notification with processImmediately=true to ensure immediate delivery
-      const notificationResult = await NotificationService.addToQueue(
-        'payment_request',
-        notificationPayload,
-        'patient',
-        clinicId,
-        paymentRequest.id,
-        undefined,
-        true  // Set processImmediately=true ALWAYS for payment links
-      );
-      
-      if (!notificationResult.success) {
-        console.error('⚠️ CRITICAL ERROR: Failed to queue notification:', notificationResult.error);
-        // Continue - the payment request was created successfully
-        toast.warning("Payment link created, but notification delivery might be delayed");
-      } else if (notificationResult.delivery?.any_success === false) {
-        console.warn('⚠️ CRITICAL WARNING: Notification queued but immediate delivery failed');
-        toast.info("Payment link created, notification will be delivered shortly");
+        // Send notification
+        const notificationResult = await NotificationService.sendNotification(
+          notificationPayload,
+          clinicId,
+          paymentRequest.id
+        );
+        
+        notificationSent = notificationResult.success && (notificationResult.delivery?.any_success || false);
+        
+        if (!notificationResult.success) {
+          toast.warning("Payment link created, but notification delivery might be delayed");
+        } else if (notificationResult.delivery?.any_success === false) {
+          toast.info("Payment link created, notification will be delivered shortly");
+        }
       } else {
-        console.log('⚠️ CRITICAL SUCCESS: Notification delivery succeeded');
+        console.warn('⚠️ CRITICAL WARNING: No notification methods available for this patient');
       }
 
+      toast.success('Payment link sent successfully');
       return { 
         success: true, 
         paymentRequestId: paymentRequest.id,
-        notificationSent: notificationResult.success && notificationResult.delivery?.any_success
+        notificationSent 
       };
     } catch (error: any) {
       console.error('⚠️ CRITICAL ERROR: Error sending payment link:', error);
