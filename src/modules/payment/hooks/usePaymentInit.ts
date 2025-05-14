@@ -6,20 +6,20 @@ import { toast } from 'sonner';
 
 export function usePaymentInit(linkId: string | undefined, errorParam: string | null) {
   const [initError, setInitError] = useState<string | null>(errorParam);
-  const { paymentLink, linkData, isLoading, error } = usePaymentLinkData(linkId || null);
+  const { linkData, isLoading, error } = usePaymentLinkData(linkId);
   const navigate = useNavigate();
 
   // Redirect if link not found, but only after loading is complete
   useEffect(() => {
     // Only redirect if we're done loading AND have an error
-    if (!isLoading && (error || !paymentLink)) {
+    if (!isLoading && (error || !linkData)) {
       console.error("Payment link error:", error);
-      console.log("Payment link data:", paymentLink);
+      console.log("Payment link data:", linkData);
       
       // Add a slight delay to avoid immediate redirects
       // This gives components time to mount and check for data
       const redirectTimer = setTimeout(() => {
-        if (!paymentLink) {
+        if (!linkData) {
           console.log("Redirecting to failed page due to missing payment link data");
           navigate('/payment/failed');
         }
@@ -27,7 +27,7 @@ export function usePaymentInit(linkId: string | undefined, errorParam: string | 
       
       return () => clearTimeout(redirectTimer);
     }
-  }, [isLoading, error, paymentLink, navigate]);
+  }, [isLoading, error, linkData, navigate]);
   
   // Handle global errors by redirecting to failed page
   useEffect(() => {
@@ -52,7 +52,7 @@ export function usePaymentInit(linkId: string | undefined, errorParam: string | 
   }, [navigate, linkId]);
 
   return {
-    linkData: paymentLink,
+    linkData,
     isLoading,
     initError,
     setInitError

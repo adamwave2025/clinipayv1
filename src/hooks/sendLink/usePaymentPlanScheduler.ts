@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -223,17 +222,21 @@ export function usePaymentPlanScheduler() {
 
       console.log('⚠️ CRITICAL: Created payment request for first installment:', paymentRequestData.id);
 
-      // Update the first payment schedule with the request ID
+      // Update the first payment schedule with the request ID AND SET STATUS TO SENT
       const { error: updateError } = await supabase
         .from('payment_schedule')
-        .update({ payment_request_id: paymentRequestData.id })
+        .update({ 
+          payment_request_id: paymentRequestData.id,
+          status: 'sent',  // Update status to 'sent' to match the payment request status
+          updated_at: new Date().toISOString()
+        })
         .eq('id', firstPaymentSchedule.id);
 
       if (updateError) {
         console.error('Error updating payment schedule with request ID:', updateError);
         // Non-fatal error, we can continue
       } else {
-        console.log('Updated payment schedule with request ID');
+        console.log('Updated payment schedule with request ID and set status to sent');
       }
 
       // Create an activity record for this plan creation

@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Payment, PaymentLink } from '@/types/payment';
 import { toast } from 'sonner';
 import { usePaymentLinks } from '@/hooks/usePaymentLinks';
-import { useAuth } from '@/contexts/AuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import DashboardContext, { useDashboardData } from '@/contexts/DashboardContext';
 import { usePayments } from '@/hooks/usePayments';
 import { usePaymentStats } from '@/hooks/usePaymentStats';
@@ -23,7 +24,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
   
   const { payments, setPayments, isLoadingPayments, fetchPayments } = usePayments();
   const { stats } = usePaymentStats();
-  const { user } = useAuth();
+  const { user } = useUnifiedAuth();
 
   const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
   const [archivedLinks, setArchivedLinks] = useState<PaymentLink[]>([]);

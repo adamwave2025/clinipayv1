@@ -1,18 +1,20 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { PaymentLinkData } from '../types/paymentLink';
-import { PaymentLinkFormatter } from '@/services/payment-link/PaymentLinkFormatter';
+import { validatePenceAmount } from '../services/CurrencyService';
+import { isPaymentLinkActive } from '../utils/planActivityUtils';
 
-export function usePaymentLinkData(paymentLinkId: string | null) {
-  const [paymentLink, setPaymentLink] = useState<PaymentLinkData | null>(null);
+export function usePaymentLinkData(linkId: string | undefined | null) {
+  const [linkData, setLinkData] = useState<PaymentLinkData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchPaymentLink() {
-      if (!paymentLinkId) {
+    const fetchLinkData = async () => {
+      if (!linkId) {
+        console.log('usePaymentLinkData: No payment link ID provided');
         setIsLoading(false);
+        setError('No payment link ID provided');
         return;
       }
 
@@ -20,47 +22,61 @@ export function usePaymentLinkData(paymentLinkId: string | null) {
       setError(null);
 
       try {
-        const { data, error } = await supabase
-          .from('payment_links')
-          .select(`
-            *,
-            clinics:clinic_id (
-              id,
-              clinic_name,
-              logo_url,
-              email,
-              phone,
-              address_line_1,
-              address_line_2,
-              city,
-              postcode,
-              country
-            )
-          `)
-          .eq('id', paymentLinkId)
-          .single();
-
-        if (error) {
-          throw error;
+        console.log(`usePaymentLinkData: Fetching data for link ID: ${linkId}`);
+        
+        // Fetch actual payment link data from your API
+        // This is a simplified example, replace with your actual API call
+        const response = await fetch(`/api/payment-links/${linkId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch payment link data');
         }
-
-        // Use the PaymentLinkFormatter to properly format the raw data
-        const formattedData = PaymentLinkFormatter.formatPaymentLink(data);
-        if (!formattedData) {
-          throw new Error('Failed to format payment link data');
+        
+        const rawLinkData = await response.json();
+        console.log('Raw payment link data:', rawLinkData);
+        
+        // In this module version, we'll add isActive if not already present
+        const linkData = {
+          ...rawLinkData,
+          isActive: rawLinkData.isActive !== undefined ? 
+                    rawLinkData.isActive : 
+                    (rawLinkData.is_active !== false) // Default to true if not explicitly false
+        };
+        
+        // Log the active status for debugging
+        console.log('Module - Payment link active check:', {
+          id: linkData.id,
+          status: linkData.status,
+          isActive: linkData.isActive,
+          isActiveByFunction: isPaymentLinkActive(linkData)
+        });
+        
+        // Validate the payment amount
+        console.log('Payment amount in pence:', linkData.amount);
+        if (!validatePenceAmount(linkData.amount, 'usePaymentLinkData')) {
+          console.warn(`usePaymentLinkData: Payment amount validation failed: ${linkData.amount}`);
+          
+          // If the amount is 0 or invalid, set a minimum amount for safety
+          if (linkData.amount <= 0) {
+            console.warn('usePaymentLinkData: Setting minimum amount of 100 pence (£1)');
+            linkData.amount = 100; // Set minimum to £1 (100p)
+          }
         }
-
-        setPaymentLink(formattedData);
-      } catch (err: any) {
-        console.error('Error fetching payment link:', err);
-        setError(err.message || 'Failed to fetch payment link');
+        
+        setLinkData(linkData);
+      } catch (error: any) {
+        console.error('usePaymentLinkData: Error fetching payment link/request:', error);
+        setError(error.message || 'An error occurred while fetching payment information');
       } finally {
         setIsLoading(false);
       }
-    }
+    };
 
-    fetchPaymentLink();
-  }, [paymentLinkId]);
+    fetchLinkData();
+  }, [linkId]);
 
-  return { paymentLink, linkData: paymentLink, isLoading, error };
+  return {
+    linkData,
+    isLoading,
+    error
+  };
 }

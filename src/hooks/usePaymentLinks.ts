@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import { PaymentLink } from '@/types/payment';
 import { toast } from 'sonner';
 import { PaymentLinkService } from '@/services/PaymentLinkService';
@@ -19,7 +19,7 @@ export function usePaymentLinks() {
   const [isLoading, setIsLoading] = useState(true);
   const [isArchiveLoading, setIsArchiveLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user } = useUnifiedAuth();
 
   const fetchPaymentLinks = async () => {
     if (!user) {

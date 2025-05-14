@@ -1,12 +1,10 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { generatePaymentReference, generateManualPaymentReference } from '@/utils/paymentUtils';
 import { PlanStatusService } from '@/services/PlanStatusService';
 import { PlanPaymentMetrics } from '@/services/plan-status/PlanPaymentMetrics';
-import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
-import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
-import { PaymentNotificationService } from '@/modules/payment/services/PaymentNotificationService';
 
 /**
  * Service for handling payment-related operations within plans
@@ -112,8 +110,6 @@ export class PlanPaymentService {
    * It creates payment records, updates payment schedule status, and updates
    * the plan progress. It also checks if this is the final payment in a plan
    * and will mark the plan as completed if all installments are now paid.
-   * 
-   * UPDATED: Now sends webhook notifications directly without using the notification queue
    */
   static async recordManualPayment(paymentId: string): Promise<{ success: boolean, error?: any }> {
     try {
@@ -308,91 +304,6 @@ export class PlanPaymentService {
             payment_ref: paymentRef
           }
         });
-
-        // Get clinic details for notification
-        const { data: clinicData, error: clinicError } = await supabase
-          .from('clinics')
-          .select('*')
-          .eq('id', scheduleEntry.clinic_id)
-          .single();
-
-        if (clinicError) {
-          console.error('Error fetching clinic data for webhook notification:', clinicError);
-        } else if (patientData && patientData.email) {
-          // Only send notification if we have patient data
-          console.log('⚠️ CRITICAL: Preparing direct webhook notifications for manual payment');
-          
-          try {
-            const notificationMethod: NotificationMethod = {
-              email: !!patientData.email,
-              sms: !!patientData.phone
-            };
-
-            const formattedAddress = ClinicFormatter.formatAddress(clinicData);
-            
-            // Create the notification payload for a successful payment (patient notification)
-            const patientNotificationPayload: StandardNotificationPayload = {
-              notification_type: "payment_success",
-              notification_method: notificationMethod,
-              patient: {
-                name: patientData.name || 'Patient',
-                email: patientData.email,
-                phone: patientData.phone
-              },
-              payment: {
-                reference: paymentRef,
-                amount: scheduleEntry.amount,
-                refund_amount: null,
-                payment_link: `https://clinipay.co.uk/payment-receipt/${payment.id}`,
-                message: "Your payment was successfully recorded"
-              },
-              clinic: {
-                name: clinicData.clinic_name || "Your healthcare provider",
-                email: clinicData.email,
-                phone: clinicData.phone,
-                address: formattedAddress
-              }
-            };
-            
-            // Create clinic notification payload
-            const clinicNotificationPayload: StandardNotificationPayload = {
-              ...patientNotificationPayload,
-              notification_type: "payment_success",
-              notification_method: {
-                email: !!clinicData.email_notifications,
-                sms: !!clinicData.sms_notifications
-              },
-              payment: {
-                ...patientNotificationPayload.payment,
-                financial_details: {
-                  gross_amount: scheduleEntry.amount,
-                  stripe_fee: 0, // No Stripe fee for manual payments
-                  platform_fee: 0, // No platform fee for manual payments
-                  net_amount: scheduleEntry.amount
-                }
-              }
-            };
-            
-            console.log(`⚠️ CRITICAL: Sending notifications with clinic_id: ${scheduleEntry.clinic_id}`);
-            
-            // Send both notifications directly using our new service
-            const notificationResult = await PaymentNotificationService.sendManualPaymentNotifications(
-              patientNotificationPayload,
-              clinicNotificationPayload,
-              scheduleEntry.clinic_id
-            );
-            
-            if (!notificationResult.success) {
-              console.error(`⚠️ CRITICAL ERROR: Failed to send notifications: ${notificationResult.error}`);
-            } else {
-              console.log('✅ Payment notifications sent successfully');
-            }
-          } catch (notifyErr: any) {
-            console.error("⚠️ CRITICAL ERROR: Exception during direct notifications:", notifyErr);
-          }
-        } else {
-          console.log('⚠️ No patient email available, skipping notifications');
-        }
       }
       
       return { success: true };

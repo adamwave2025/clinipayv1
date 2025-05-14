@@ -5,7 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
 import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
-import { PaymentNotificationService } from '../../services/PaymentNotificationService';
+import { processNotificationsNow } from '@/utils/notification-cron-setup';
+import { addToNotificationQueue } from '@/utils/notification-queue';
 
 interface PaymentLinkSenderProps {
   formData: {
@@ -62,7 +63,6 @@ export function usePaymentLinkSender() {
       let amount = 0;
       let paymentLinkId = null;
       let paymentTitle = '';
-      let isPaymentPlan = false;
 
       if (formData.selectedLink) {
         const selectedPaymentLink = paymentLinks.find(link => link.id === formData.selectedLink);
@@ -70,13 +70,7 @@ export function usePaymentLinkSender() {
           amount = selectedPaymentLink.amount;
           paymentLinkId = selectedPaymentLink.id;
           paymentTitle = selectedPaymentLink.title;
-          isPaymentPlan = selectedPaymentLink.paymentPlan || false;
-          console.log('Using payment link:', { 
-            id: paymentLinkId, 
-            title: paymentTitle, 
-            amount,
-            isPaymentPlan 
-          });
+          console.log('Using payment link:', { id: paymentLinkId, title: paymentTitle, amount });
         } else {
           console.error('Selected payment link not found in available links');
         }
@@ -128,8 +122,7 @@ export function usePaymentLinkSender() {
         patientId,
         paymentLinkId,
         amount,
-        patientName: formData.patientName,
-        isPaymentPlan
+        patientName: formData.patientName
       });
 
       const { data, error } = await supabase
@@ -158,7 +151,7 @@ export function usePaymentLinkSender() {
       }
 
       const paymentRequest = data[0];
-      console.log('⚠️ CRITICAL: Payment request created successfully:', paymentRequest.id);
+      console.log('Payment request created successfully:', paymentRequest);
       
       const notificationMethod: NotificationMethod = {
         email: !!formData.patientEmail,
@@ -168,7 +161,7 @@ export function usePaymentLinkSender() {
       const formattedAddress = ClinicFormatter.formatAddress(clinicData);
       
       if (notificationMethod.email || notificationMethod.sms) {
-        console.log('⚠️ CRITICAL: Creating notification for payment request');
+        console.log('Creating notification for payment request');
         
         const notificationPayload: StandardNotificationPayload = {
           notification_type: "payment_request",
@@ -193,33 +186,33 @@ export function usePaymentLinkSender() {
           }
         };
 
-        console.log('⚠️ CRITICAL: Notification payload prepared:', JSON.stringify(notificationPayload, null, 2));
-        
-        // Add a debug flag to the payload for payment plans
-        if (isPaymentPlan) {
-          console.log('This is a payment plan - adding debug flag to payload');
-          notificationPayload.payment.message = `[PLAN] ${notificationPayload.payment.message}`;
-        }
+        console.log('Notification payload prepared:', JSON.stringify(notificationPayload, null, 2));
 
         try {
-          console.log('⚠️ CRITICAL: Sending direct notification to webhook...');
-          
-          // Use the PaymentNotificationService instead of addToNotificationQueue
-          const result = await PaymentNotificationService.sendDirectNotification(
+          const { success, error } = await addToNotificationQueue(
+            'payment_request',
             notificationPayload,
             'patient',
-            userData.clinic_id
+            userData.clinic_id,
+            paymentRequest.id
           );
 
-          if (!result.success) {
-            console.error("⚠️ CRITICAL ERROR: Failed to send notification:", result.error);
+          if (!success) {
+            console.error("Failed to queue notification:", error);
             toast.warning("Payment link was sent, but notification delivery might be delayed");
           } else {
-            console.log("⚠️ CRITICAL SUCCESS: Payment request notification sent successfully");
+            console.log("Payment request notification queued successfully");
+            
+            try {
+              console.log("Processing notifications immediately...");
+              const processResult = await processNotificationsNow();
+              console.log("Process notifications result:", processResult);
+            } catch (cronErr) {
+              console.error("Exception triggering notification processing:", cronErr);
+            }
           }
         } catch (notifyErr) {
-          console.error("⚠️ CRITICAL ERROR: Exception during notification delivery:", notifyErr);
-          toast.warning("Payment link created, but there was an issue sending notifications");
+          console.error("Critical error during notification queueing:", notifyErr);
         }
       } else {
         console.warn('No notification methods available for this patient');
