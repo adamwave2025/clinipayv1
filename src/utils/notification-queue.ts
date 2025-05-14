@@ -3,10 +3,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { StandardNotificationPayload } from '@/types/notification';
 import { Json } from '@/integrations/supabase/types';
 import { callWebhookDirectly } from './webhook-caller';
-import { processNotificationsNow } from './notification-cron-setup';
+import { processNotificationsNow, triggerNotificationFallback } from './notification-cron-setup';
+import { toast } from 'sonner';
 
 /**
  * Add an item to the notification queue for processing and immediately call webhook
+ * @param type The type of notification
+ * @param payload The notification payload
+ * @param recipient_type The recipient type ('patient' or 'clinic')
+ * @param clinic_id The clinic ID
+ * @param reference_id Optional reference ID
+ * @param payment_id Optional payment ID
  * @param processImmediately If true, will also trigger the notification queue processing after adding to queue
  */
 export async function addToNotificationQueue(
@@ -16,7 +23,7 @@ export async function addToNotificationQueue(
   clinic_id: string,
   reference_id?: string,
   payment_id?: string,
-  processImmediately = false // Explicitly add this parameter with default false
+  processImmediately = false
 ) {
   console.log(`⚠️ CRITICAL: Adding notification to queue: type=${type}, recipient=${recipient_type}, reference=${reference_id}`);
   console.log(`⚠️ CRITICAL: Using clinic_id=${clinic_id}`);
@@ -45,7 +52,6 @@ export async function addToNotificationQueue(
     }
     
     // Convert the StandardNotificationPayload to Json compatible format
-    // This explicit cast ensures we satisfy TypeScript's type checking
     const jsonPayload = payload as unknown as Json;
     
     console.log('⚠️ CRITICAL: Current auth state:', JSON.stringify({
@@ -53,20 +59,16 @@ export async function addToNotificationQueue(
       clinic_id: clinic_id
     }));
     
-    // Insert into notification queue with only the columns that exist in the database
-    // Based on the database schema, only include valid columns
+    // Insert into notification queue
     const { data, error } = await supabase
       .from('notification_queue')
       .insert({
         type,
         payload: jsonPayload,
         recipient_type,
-        // Only include payment_id if provided
         ...(payment_id ? { payment_id } : {}),
         status: 'pending',
         retry_count: 0
-        // REMOVED: clinic_id: clinic_id - This column doesn't exist in the database
-        // but the clinic_id is included in the payload.clinic.id for RLS purposes
       })
       .select();
 
@@ -90,18 +92,20 @@ export async function addToNotificationQueue(
     const queuedItem = data[0];
     console.log(`⚠️ CRITICAL SUCCESS: Successfully queued notification with id: ${queuedItem.id}`);
 
-    // DIRECTLY call the webhook immediately instead of relying on edge function
+    // DIRECT WEBHOOK CALL - First delivery attempt
     console.log(`⚠️ CRITICAL: Calling webhook directly...`);
     const webhookResult = await callWebhookDirectly(payload, recipient_type);
     
-    // Continue with the normal flow regardless of webhook result
+    // Track delivery method success
     let webhookSuccess = false;
+    let edgeFunctionSuccess = false;
+    let fallbackSuccess = false;
     
     if (webhookResult.success) {
-      console.log(`⚠️ CRITICAL SUCCESS: Webhook call successful`);
+      console.log(`⚠️ CRITICAL SUCCESS: Direct webhook call successful`);
       webhookSuccess = true;
       
-      // Update the queue item to mark it as processed
+      // Mark notification as sent since direct delivery succeeded
       const { error: updateError } = await supabase
         .from('notification_queue')
         .update({ 
@@ -117,26 +121,50 @@ export async function addToNotificationQueue(
       console.error('⚠️ CRITICAL ERROR: Direct webhook call failed:', webhookResult.error);
     }
     
-    // If processImmediately is true, trigger the notification queue processing REGARDLESS of webhook result
-    // This is the critical part - it's a safety net in case the direct webhook call fails
-    if (processImmediately) {
-      console.log(`⚠️ CRITICAL: processImmediately=true, triggering notification queue processing via edge function`);
+    // If processImmediately is true or direct webhook failed, trigger the notification queue processing
+    if (processImmediately || !webhookSuccess) {
+      console.log(`⚠️ CRITICAL: ${processImmediately ? 'processImmediately=true' : 'Direct webhook failed'}, triggering edge function...`);
       
       try {
-        // Call the notification processor edge function via helper
+        // EDGE FUNCTION CALL - Second delivery attempt
         const processingResult = await processNotificationsNow();
-        console.log(`⚠️ CRITICAL: Notification processing triggered:`, processingResult);
+        console.log(`⚠️ CRITICAL: Edge function result:`, processingResult);
+        
+        if (processingResult.success) {
+          edgeFunctionSuccess = true;
+        } else if (!webhookSuccess) {
+          // Only try fallback if both primary methods failed
+          console.log(`⚠️ CRITICAL: Both direct webhook and edge function failed, trying fallback...`);
+          
+          // FALLBACK WEBHOOK - Third delivery attempt
+          const fallbackResult = await triggerNotificationFallback();
+          if (fallbackResult.success) {
+            fallbackSuccess = true;
+          }
+        }
       } catch (procError) {
         console.error('⚠️ CRITICAL ERROR: Failed to trigger notification processing:', procError);
-        // Still return success for the queueing part - we have multiple fallbacks
       }
+    }
+    
+    // Show warning toast if all delivery methods failed
+    if (!webhookSuccess && !edgeFunctionSuccess && !fallbackSuccess && processImmediately) {
+      // This notification is important (processImmediately=true) but all immediate delivery methods failed
+      toast.warning("Payment link was sent, but notification delivery might be delayed");
     }
     
     return { 
       success: true, 
       notification_id: queuedItem.id, 
-      webhook_success: webhookSuccess,
-      webhook_error: webhookSuccess ? undefined : webhookResult.error,
+      delivery: {
+        webhook: webhookSuccess,
+        edge_function: edgeFunctionSuccess,
+        fallback: fallbackSuccess,
+        any_success: webhookSuccess || edgeFunctionSuccess || fallbackSuccess
+      },
+      errors: {
+        webhook: !webhookSuccess ? webhookResult.error : undefined
+      },
       immediate_processing: processImmediately
     };
   } catch (error) {
