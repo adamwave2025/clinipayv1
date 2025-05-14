@@ -61,10 +61,9 @@ export async function addToNotificationQueue(
         // Only include payment_id if provided
         ...(payment_id ? { payment_id } : {}),
         status: 'pending',
-        retry_count: 0,
-        // Explicitly add clinic_id to the record for RLS purposes
-        // This is critical for RLS policies to work properly
-        clinic_id: clinic_id
+        retry_count: 0
+        // REMOVED: clinic_id: clinic_id - This column doesn't exist in the database
+        // but the clinic_id is included in the payload.clinic.id for RLS purposes
       })
       .select();
 
