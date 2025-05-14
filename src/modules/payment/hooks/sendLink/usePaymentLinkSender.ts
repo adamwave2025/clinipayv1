@@ -2,253 +2,137 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { StandardNotificationPayload, NotificationMethod } from '@/types/notification';
-import { ClinicFormatter } from '@/services/payment-link/ClinicFormatter';
-import { processNotificationsNow } from '@/utils/notification-cron-setup';
-import { addToNotificationQueue } from '@/utils/notification-queue';
 
 interface PaymentLinkSenderProps {
   formData: {
     patientName: string;
     patientEmail: string;
-    patientPhone: string;
+    patientPhone?: string;
     selectedLink: string;
-    customAmount: string;
-    message: string;
+    customAmount?: string;
+    message?: string;
   };
-  paymentLinks: any[];
-  patientId?: string;
+  clinicId: string;
 }
 
 export function usePaymentLinkSender() {
   const [isLoading, setIsLoading] = useState(false);
-  const { user } = useAuth();
 
-  const sendPaymentLink = async ({ formData, paymentLinks, patientId }: PaymentLinkSenderProps) => {
+  const sendPaymentLink = async ({ formData, clinicId }: PaymentLinkSenderProps) => {
     setIsLoading(true);
-    console.log('⚠️ CRITICAL: Starting payment link creation process...');
+    console.log('Starting payment link creation process...');
     
     try {
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('clinic_id')
-        .eq('id', user?.id)
-        .single();
-
-      if (userError) {
-        console.error('Error fetching user data:', userError);
-        throw userError;
+      if (!clinicId) {
+        throw new Error('No clinic ID provided');
       }
       
-      if (!userData.clinic_id) {
-        console.error('No clinic_id found for user:', user?.id);
-        throw new Error('No clinic associated with this user');
-      }
-      
-      console.log('⚠️ CRITICAL: Found clinic_id:', userData.clinic_id);
-
-      const { data: clinicData, error: clinicError } = await supabase
-        .from('clinics')
-        .select('*')
-        .eq('id', userData.clinic_id)
-        .single();
-
-      if (clinicError) {
-        console.error('Error fetching clinic data:', clinicError);
-        throw clinicError;
-      }
-      
-      console.log('⚠️ CRITICAL: Retrieved clinic data successfully');
-
+      // Calculate the amount to charge
       let amount = 0;
       let paymentLinkId = null;
-      let paymentTitle = '';
-      let isPaymentPlan = false;
-
-      if (formData.selectedLink) {
-        const selectedPaymentLink = paymentLinks.find(link => link.id === formData.selectedLink);
-        if (selectedPaymentLink) {
-          amount = selectedPaymentLink.amount;
-          paymentLinkId = selectedPaymentLink.id;
-          paymentTitle = selectedPaymentLink.title;
-          isPaymentPlan = selectedPaymentLink.paymentPlan || false;
-          console.log('⚠️ CRITICAL: Using payment link:', { 
-            id: paymentLinkId, 
-            title: paymentTitle, 
-            amount,
-            isPaymentPlan 
-          });
-        } else {
-          console.error('Selected payment link not found in available links');
-        }
-      } else if (formData.customAmount) {
-        amount = Number(formData.customAmount);
-        console.log('⚠️ CRITICAL: Using custom amount:', amount);
-      }
-
-      // Use provided patientId or find/create one
-      let finalPatientId = patientId;
       
-      if (!finalPatientId) {
-        // Look for existing patient with this email
-        if (formData.patientEmail) {
-          const { data: existingPatient } = await supabase
-            .from('patients')
-            .select('id')
-            .eq('clinic_id', userData.clinic_id)
-            .eq('email', formData.patientEmail)
-            .maybeSingle();
-            
-          if (existingPatient) {
-            finalPatientId = existingPatient.id;
-            console.log('⚠️ CRITICAL: Found existing patient:', finalPatientId);
-          } else {
-            // Create a new patient if not found
-            const { data: newPatient, error: patientError } = await supabase
-              .from('patients')
-              .insert({
-                clinic_id: userData.clinic_id,
-                name: formData.patientName,
-                email: formData.patientEmail,
-                phone: formData.patientPhone || null
-              })
-              .select()
-              .single();
-              
-            if (patientError) {
-              console.error('Error creating patient:', patientError);
-              // Continue without patient ID
-            } else if (newPatient) {
-              finalPatientId = newPatient.id;
-              console.log('⚠️ CRITICAL: Created new patient:', finalPatientId);
-            }
-          }
+      if (formData.selectedLink) {
+        paymentLinkId = formData.selectedLink;
+        
+        // Fetch the link details to get the amount
+        const { data: linkData, error: linkError } = await supabase
+          .from('payment_links')
+          .select('amount')
+          .eq('id', paymentLinkId)
+          .single();
+          
+        if (linkError || !linkData) {
+          console.error('Error fetching payment link details:', linkError);
+          throw new Error('Could not find the selected payment link');
+        }
+        
+        amount = linkData.amount;
+      } else if (formData.customAmount) {
+        amount = parseInt(formData.customAmount, 10);
+        if (isNaN(amount) || amount <= 0) {
+          throw new Error('Invalid custom amount');
         }
       } else {
-        console.log('⚠️ CRITICAL: Using provided patient ID:', finalPatientId);
+        throw new Error('Either a payment link ID or custom amount must be provided');
       }
 
-      // Skip payment plan creation - handled by usePaymentPlanScheduler
-      if (isPaymentPlan) {
-        console.log('⚠️ CRITICAL: This is a payment plan, skipping standard payment request creation');
-        setIsLoading(false);
-        return { success: true, skippedAsPaymentPlan: true };
+      // Check if we need to create a patient first
+      let patientId = null;
+      
+      // Look for existing patient with this email
+      if (formData.patientEmail) {
+        const { data: existingPatient } = await supabase
+          .from('patients')
+          .select('id')
+          .eq('clinic_id', clinicId)
+          .eq('email', formData.patientEmail)
+          .maybeSingle();
+          
+        if (existingPatient) {
+          patientId = existingPatient.id;
+        } else {
+          // Create a new patient if not found
+          const { data: newPatient, error: patientError } = await supabase
+            .from('patients')
+            .insert({
+              clinic_id: clinicId,
+              name: formData.patientName,
+              email: formData.patientEmail,
+              phone: formData.patientPhone || null
+            })
+            .select()
+            .single();
+            
+          if (patientError) {
+            console.error('Error creating patient:', patientError);
+            // Continue without patient ID
+          } else if (newPatient) {
+            patientId = newPatient.id;
+          }
+        }
       }
 
-      console.log('⚠️ CRITICAL: Creating payment request with:', {
-        clinicId: userData.clinic_id,
-        patientId: finalPatientId,
-        paymentLinkId,
-        amount,
-        patientName: formData.patientName
+      // Create the payment request using only fields that exist in the database
+      console.log('Creating payment request with:', {
+        clinic_id: clinicId,
+        patient_id: patientId,
+        payment_link_id: paymentLinkId,
+        custom_amount: paymentLinkId ? null : amount,
+        patient_name: formData.patientName,
+        patient_email: formData.patientEmail,
+        patient_phone: formData.patientPhone,
+        status: 'sent',
+        message: formData.message || null
       });
-
-      // FIX: Use custom_amount instead of amount in the insert operation
+      
       const { data, error } = await supabase
         .from('payment_requests')
         .insert({
-          clinic_id: userData.clinic_id,
-          patient_id: finalPatientId,
+          clinic_id: clinicId,
+          patient_id: patientId,
           payment_link_id: paymentLinkId,
-          custom_amount: formData.selectedLink ? null : amount, // Use custom_amount instead of amount
+          custom_amount: paymentLinkId ? null : amount, // Use custom_amount instead of amount
           patient_name: formData.patientName,
           patient_email: formData.patientEmail,
-          patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,
+          patient_phone: formData.patientPhone || null,
           status: 'sent',
           message: formData.message || null
         })
         .select();
 
       if (error) {
-        console.error('⚠️ CRITICAL ERROR: Error creating payment request:', error);
+        console.error('Error creating payment request:', error);
         throw error;
       }
       
       if (!data || data.length === 0) {
-        console.error('⚠️ CRITICAL ERROR: No data returned from payment request creation');
         throw new Error('Failed to create payment request');
       }
 
-      const paymentRequest = data[0];
-      console.log('⚠️ CRITICAL SUCCESS: Payment request created successfully:', paymentRequest.id);
-      
-      const notificationMethod: NotificationMethod = {
-        email: !!formData.patientEmail,
-        sms: !!formData.patientPhone
-      };
-
-      const formattedAddress = ClinicFormatter.formatAddress(clinicData);
-      
-      if (notificationMethod.email || notificationMethod.sms) {
-        console.log('⚠️ CRITICAL: Creating notification for payment request');
-        
-        const notificationPayload: StandardNotificationPayload = {
-          notification_type: "payment_request",
-          notification_method: notificationMethod,
-          patient: {
-            name: formData.patientName,
-            email: formData.patientEmail,
-            phone: formData.patientPhone
-          },
-          payment: {
-            reference: paymentRequest.id,
-            amount: amount,
-            refund_amount: null,
-            payment_link: `https://clinipay.co.uk/payment/${paymentRequest.id}`,
-            message: formData.message || (paymentTitle ? `Payment for ${paymentTitle}` : "Payment request")
-          },
-          clinic: {
-            name: clinicData.clinic_name || "Your healthcare provider",
-            email: clinicData.email,
-            phone: clinicData.phone,
-            address: formattedAddress
-          }
-        };
-
-        console.log('⚠️ CRITICAL: Notification payload prepared:', JSON.stringify(notificationPayload, null, 2));
-
-        try {
-          console.log('⚠️ CRITICAL: Adding notification to queue and calling webhook directly...');
-          
-          const { success, error, webhook_success, webhook_error } = await addToNotificationQueue(
-            'payment_request',
-            notificationPayload,
-            'patient',
-            userData.clinic_id,
-            paymentRequest.id
-          );
-
-          if (!success) {
-            console.error("⚠️ CRITICAL ERROR: Failed to queue notification:", error);
-            toast.warning("Payment link was sent, but notification delivery might be delayed");
-          } else if (!webhook_success) {
-            console.error("⚠️ CRITICAL ERROR: Failed to deliver notification via webhook:", webhook_error);
-            toast.warning("Payment link was sent, but notification delivery might be delayed");
-          } else {
-            console.log("⚠️ CRITICAL SUCCESS: Payment request notification sent successfully");
-          }
-          
-          // Try processing notifications immediately as an additional fallback
-          try {
-            console.log("⚠️ CRITICAL: Processing notifications immediately as fallback...");
-            await processNotificationsNow();
-          } catch (cronErr) {
-            console.error("Exception triggering notification processing:", cronErr);
-          }
-        } catch (notifyErr) {
-          console.error("⚠️ CRITICAL ERROR: Critical error during notification queueing:", notifyErr);
-          toast.warning("Payment link created, but there was an issue sending notifications");
-        }
-      } else {
-        console.warn('No notification methods available for this patient');
-      }
-      
       toast.success('Payment link sent successfully');
-      
-      return { success: true, paymentRequestId: paymentRequest.id };
+      return { success: true, paymentRequestId: data[0].id };
     } catch (error: any) {
-      console.error('⚠️ CRITICAL ERROR: Error sending payment link:', error);
+      console.error('Error sending payment link:', error);
       toast.error('Failed to send payment link: ' + error.message);
       return { success: false, error: error.message };
     } finally {

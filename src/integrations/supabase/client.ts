@@ -14,7 +14,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 // Force schema cache refresh by making a dummy call
 // This helps resolve issues with cache mismatches between code and database
 try {
-  // Convert the Promise-like object to a full Promise before chaining catch
+  // Use Promise.resolve() to properly handle the Promise chain
   Promise.resolve(
     supabase
       .from('payment_links')
