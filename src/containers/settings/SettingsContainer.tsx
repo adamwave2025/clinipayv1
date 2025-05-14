@@ -1,6 +1,6 @@
 
-import React, { useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User, CreditCard, Bell, Shield } from 'lucide-react';
 import { useClinicData } from '@/hooks/useClinicData';
@@ -16,32 +16,42 @@ import SecuritySettings from '@/components/settings/SecuritySettings';
 import { handlePaymentAction } from './PaymentActions';
 
 const VALID_TABS = ['profile', 'payments', 'notifications', 'security'];
+const DEFAULT_TAB = 'profile';
 
 const SettingsContainer = () => {
   // Use React Router hooks
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   
-  // Always get the tab from URL params
-  const currentTab = searchParams.get('tab') || 'profile';
+  // Track initialization to prevent unnecessary updates
+  const initialized = useRef(false);
+  const userAction = useRef(false);
+  
+  // Get current tab from URL params
+  const currentTab = searchParams.get('tab');
   
   // Make sure the tab is valid
-  const safeTab = VALID_TABS.includes(currentTab) ? currentTab : 'profile';
+  const safeTab = VALID_TABS.includes(currentTab || '') ? currentTab : DEFAULT_TAB;
   
-  // Only set params if they need to change (prevents loops)
+  // Set the initial tab parameter if needed (only once)
   useEffect(() => {
-    if (currentTab !== safeTab) {
-      console.log(`Invalid tab detected: ${currentTab}, redirecting to ${safeTab}`);
-      setSearchParams({ tab: safeTab }, { replace: true });
+    if (!initialized.current) {
+      initialized.current = true;
+      
+      if (!currentTab) {
+        console.log('No tab parameter found, initializing with default tab:', DEFAULT_TAB);
+        setSearchParams({ tab: DEFAULT_TAB }, { replace: true });
+      } else if (currentTab !== safeTab) {
+        console.log(`Invalid tab detected: ${currentTab}, correcting to ${safeTab}`);
+        setSearchParams({ tab: safeTab }, { replace: true });
+      }
     }
   }, [currentTab, safeTab, setSearchParams]);
   
   // Handle tab selection from UI (direct user action)
   const handleTabChange = (value: string) => {
-    console.log(`Tab selected by user: ${value}`);
-    
-    // Only update if changing to a different tab
-    if (value !== safeTab) {
+    if (value !== currentTab) {
+      console.log(`Tab selected by user: ${value}`);
+      userAction.current = true;
       setSearchParams({ tab: value }, { replace: true });
     }
   };
@@ -72,7 +82,7 @@ const SettingsContainer = () => {
         description="Manage your clinic settings and preferences"
       />
       
-      <Tabs value={safeTab} onValueChange={handleTabChange} className="w-full">
+      <Tabs value={safeTab || DEFAULT_TAB} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid grid-cols-4 max-w-3xl mb-6">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
