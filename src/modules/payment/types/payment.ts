@@ -1,41 +1,48 @@
 
-/**
- * Interface representing a payment record in the system
- */
 export interface Payment {
   id: string;
-  status: 'pending' | 'completed' | 'failed' | 'refunded' | 'partially_refunded';
-  amount_paid: number;
-  paid_at: string | null;
-  patient_name: string | null;
-  patient_email: string | null;
-  patient_phone: string | null;
-  payment_ref: string | null;
-  clinic_id: string;
-  payment_link_id: string | null;
-  stripe_payment_id: string | null;
-  refund_amount: number | null;
-  refunded_at: string | null;
-  stripe_refund_id: string | null;
-  stripe_refund_fee: number | null;
-  stripe_fee: number | null;
-  platform_fee: number | null;
-  net_amount: number | null;
-  patient_id?: string;
-  payment_schedule_id?: string;
-  manual_payment?: boolean;
+  amount: number;
+  clinicId: string;
+  date: string;
+  patientName: string;
+  patientEmail?: string;
+  patientPhone?: string;
+  status: string;
+  refundAmount?: number;
+  refundedAmount?: number; // Add this as an alias for refundAmount for backward compatibility
+  netAmount: number;
+  paymentMethod: string;
+  paymentReference?: string;
+  reference?: string; // Add this as an alias for paymentReference for backward compatibility
+  stripePaymentId?: string;
+  manualPayment?: boolean;
+  
+  // Adding the missing fields used throughout the application
+  type?: 'deposit' | 'treatment' | 'consultation' | 'payment_plan' | 'other';
+  linkTitle?: string;
+  description?: string;
+  isCustomAmount?: boolean;
+  paymentUrl?: string;
+  message?: string;
+  paymentLinkId?: string;
+  platformFee?: number;
 }
 
-/**
- * Interface representing a payment link in the module scope
- */
+export enum PaymentStatus {
+  COMPLETED = 'completed',
+  REFUNDED = 'refunded',
+  PARTIAL_REFUND = 'partial_refund',
+  FAILED = 'failed',
+  PENDING = 'pending'
+}
+
 export interface PaymentLink {
   id: string;
   title: string;
   amount: number;
-  type?: string;
+  type: string;
   description?: string;
-  url?: string;
+  url?: string; 
   createdAt?: string;
   isActive?: boolean;
   paymentPlan?: boolean;
@@ -44,9 +51,7 @@ export interface PaymentLink {
   planTotalAmount?: number;
 }
 
-/**
- * Interface representing payment stats
- */
+// Add PaymentStats interface that was referenced but not defined
 export interface PaymentStats {
   totalReceivedToday: number;
   totalPendingToday: number;

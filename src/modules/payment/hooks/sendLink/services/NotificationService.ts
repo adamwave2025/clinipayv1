@@ -1,6 +1,6 @@
 
 import { StandardNotificationPayload, NotificationMethod } from '../../../types/notification';
-import { NotificationService as CoreNotificationService } from '../../../services';
+import { NotificationService } from '../../../services';
 import { NotificationResult } from '../types';
 
 export const PaymentNotificationService = {
@@ -59,7 +59,7 @@ export const PaymentNotificationService = {
       console.log('⚠️ CRITICAL: With clinic_id:', clinicId);
       
       // Use processImmediately=true to ensure immediate delivery
-      const notificationResult = await CoreNotificationService.addToQueue(
+      const notificationResult = await NotificationService.addToQueue(
         'payment_request',
         notificationPayload,
         'patient',

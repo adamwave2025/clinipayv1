@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User, CreditCard, Bell, Shield } from 'lucide-react';
 import { useClinicData } from '@/hooks/useClinicData';
@@ -18,22 +18,34 @@ import { handlePaymentAction } from './PaymentActions';
 const VALID_TABS = ['profile', 'payments', 'notifications', 'security'];
 
 const SettingsContainer = () => {
+  // Use React Router hooks
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   
-  // Get initial tab from URL or default to 'profile'
-  const initialTab = searchParams.get('tab');
+  // Always get the tab from URL params
+  const currentTab = searchParams.get('tab') || 'profile';
   
-  // Track current tab state
-  const [activeTab, setActiveTab] = useState(
-    VALID_TABS.includes(initialTab as string) ? initialTab : 'profile'
-  );
+  // Make sure the tab is valid
+  const safeTab = VALID_TABS.includes(currentTab) ? currentTab : 'profile';
   
-  // Reference to track state source (user action vs URL)
-  const stateSource = useRef<'url' | 'user' | null>(null);
+  // Only set params if they need to change (prevents loops)
+  useEffect(() => {
+    if (currentTab !== safeTab) {
+      console.log(`Invalid tab detected: ${currentTab}, redirecting to ${safeTab}`);
+      setSearchParams({ tab: safeTab }, { replace: true });
+    }
+  }, [currentTab, safeTab, setSearchParams]);
   
-  // Reference to track if we've handled the initial URL params
-  const initialTabProcessed = useRef(false);
-  
+  // Handle tab selection from UI (direct user action)
+  const handleTabChange = (value: string) => {
+    console.log(`Tab selected by user: ${value}`);
+    
+    // Only update if changing to a different tab
+    if (value !== safeTab) {
+      setSearchParams({ tab: value }, { replace: true });
+    }
+  };
+
   const { 
     clinicData, 
     isLoading: dataLoading, 
@@ -42,35 +54,6 @@ const SettingsContainer = () => {
     uploadLogo,
     deleteLogo
   } = useClinicData();
-
-  // Consolidated effect to handle URL <-> state synchronization
-  useEffect(() => {
-    // On mount, sync from URL to state
-    if (!initialTabProcessed.current) {
-      const tabFromUrl = searchParams.get('tab');
-      if (tabFromUrl && VALID_TABS.includes(tabFromUrl)) {
-        setActiveTab(tabFromUrl);
-      }
-      initialTabProcessed.current = true;
-      stateSource.current = 'url';
-      return;
-    }
-    
-    // When state changes from user action, update URL
-    if (stateSource.current === 'user') {
-      setSearchParams({ tab: activeTab }, { replace: true });
-      // Reset the state source after URL update to prevent loops
-      stateSource.current = null;
-    }
-  }, [activeTab, searchParams, setSearchParams]);
-
-  // Handle tab change from user interaction
-  const handleTabChange = (value: string) => {
-    if (value === activeTab) return; // Prevent unnecessary state updates
-    
-    stateSource.current = 'user'; // Mark change as from user interaction
-    setActiveTab(value);
-  };
 
   if (dataLoading) {
     return (
@@ -89,7 +72,7 @@ const SettingsContainer = () => {
         description="Manage your clinic settings and preferences"
       />
       
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+      <Tabs value={safeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid grid-cols-4 max-w-3xl mb-6">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />

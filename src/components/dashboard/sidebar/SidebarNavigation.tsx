@@ -16,13 +16,15 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ items }) => {
     <nav className="flex-1 p-4">
       <ul className="space-y-1">
         {items.map((item, index) => (
-          <li key={`sidebar-item-${index}`}>
-            {'to' in item ? (
+          'to' in item ? (
+            <li key={`sidebar-item-${index}`}>
               <SidebarNavItem 
                 item={item} 
                 isActive={isLinkActive} 
               />
-            ) : (
+            </li>
+          ) : (
+            <li key={`sidebar-item-${index}`}>
               <SidebarSubmenu 
                 item={item} 
                 isExpanded={expandedMenu === item.label} 
@@ -30,8 +32,8 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ items }) => {
                 isLinkActive={isLinkActive}
                 isSubmenuActive={isSubmenuActive(item.links)}
               />
-            )}
-          </li>
+            </li>
+          )
         ))}
       </ul>
     </nav>
