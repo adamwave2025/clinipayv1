@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { StandardNotificationPayload } from '../types/notification';
+import { StandardNotificationPayload, NotificationResult } from '../types/notification';
 import { Json } from '@/integrations/supabase/types';
 import { callWebhookDirectly } from '@/utils/webhook-caller';
 import { processNotificationsNow, triggerNotificationFallback } from '@/utils/notification-cron-setup';
@@ -20,7 +20,7 @@ export class NotificationService {
     reference_id?: string,
     payment_id?: string,
     processImmediately = false
-  ) {
+  ): Promise<NotificationResult> {
     console.log(`⚠️ CRITICAL: Adding notification to queue: type=${type}, recipient=${recipient_type}, reference=${reference_id}`);
     console.log(`⚠️ CRITICAL: Using clinic_id=${clinic_id}`);
     console.log(`⚠️ CRITICAL: Payload details:`, JSON.stringify(payload, null, 2));
@@ -29,29 +29,54 @@ export class NotificationService {
       // Ensure clinic ID is valid
       if (!clinic_id) {
         console.error('⚠️ CRITICAL ERROR: Missing clinic_id for notification queue insertion');
-        return { success: false, error: 'Missing clinic_id' };
+        return { 
+          success: false, 
+          error: 'Missing clinic_id',
+          delivery: { webhook: false, edge_function: false, fallback: false, any_success: false },
+        };
       }
       
-      // Ensure clinic ID is also in the payload for RLS purposes
-      if (payload.clinic && typeof payload.clinic === 'object') {
-        if (!payload.clinic.id) {
-          console.log('⚠️ CRITICAL: Adding clinic_id to payload.clinic');
-          payload.clinic.id = clinic_id;
-        } else if (payload.clinic.id !== clinic_id) {
-          console.warn(`⚠️ CRITICAL WARNING: Different clinic IDs: payload=${payload.clinic.id}, parameter=${clinic_id}`);
-          // Use the provided clinic_id to ensure RLS works
-          payload.clinic.id = clinic_id;
-        }
-      } else {
-        console.error('⚠️ CRITICAL ERROR: Payload has no clinic object or it is not properly formatted');
-        return { success: false, error: 'Invalid payload structure: missing clinic object' };
+      // ENSURE clinic ID is properly set in the payload - this is critical
+      // Check if payload has a clinic object, if not create one
+      if (!payload.clinic || typeof payload.clinic !== 'object') {
+        console.log('⚠️ CRITICAL WARNING: No clinic object in payload, creating one');
+        payload.clinic = {
+          id: clinic_id,
+          name: "Your healthcare provider"
+        };
+      } else if (!payload.clinic.id) {
+        // If clinic exists but no ID, add it
+        console.log('⚠️ CRITICAL: Adding clinic_id to payload.clinic');
+        payload.clinic.id = clinic_id;
+      } else if (payload.clinic.id !== clinic_id) {
+        console.warn(`⚠️ CRITICAL WARNING: Different clinic IDs: payload=${payload.clinic.id}, parameter=${clinic_id}`);
+        // Use the provided clinic_id to ensure RLS works
+        payload.clinic.id = clinic_id;
       }
       
       // Make sure payment includes refund_amount even if it's null
-      if (payload.payment && typeof payload.payment === 'object' && payload.payment.refund_amount === undefined) {
-        console.log('⚠️ CRITICAL: Adding refund_amount: null to payment payload');
-        payload.payment.refund_amount = null;
+      if (payload.payment && typeof payload.payment === 'object') {
+        if (payload.payment.refund_amount === undefined) {
+          console.log('⚠️ CRITICAL: Adding refund_amount: null to payment payload');
+          payload.payment.refund_amount = null;
+        }
+      } else {
+        console.error('⚠️ CRITICAL ERROR: Payload has no payment object or it is not properly formatted');
+        return { 
+          success: false, 
+          error: 'Invalid payload structure: missing payment object',
+          delivery: { webhook: false, edge_function: false, fallback: false, any_success: false },
+        };
       }
+      
+      // Check for clinic_id in multiple places (critical for RLS)
+      console.log('⚠️ CRITICAL DEBUG: Payload clinic ID check', {
+        'clinic_id_param': clinic_id,
+        'payload_clinic_id': payload.clinic?.id,
+        'clinic_object_exists': !!payload.clinic,
+        'has_payment_message': !!payload.payment?.message,
+        'is_payment_plan': payload.payment?.message?.includes('[PLAN]') || false
+      });
       
       // Convert the StandardNotificationPayload to Json compatible format
       const jsonPayload = payload as unknown as Json;
@@ -61,7 +86,7 @@ export class NotificationService {
         clinic_id: clinic_id
       }));
       
-      // Insert into notification queue - Do not attempt to insert fields that don't exist
+      // Insert into notification queue with detailed debugging
       console.log('⚠️ CRITICAL: Attempting to insert notification into queue');
       console.log('⚠️ CRITICAL: Notification data:', JSON.stringify({
         type,
@@ -70,7 +95,7 @@ export class NotificationService {
         status: 'pending',
         retry_count: 0,
         payload: jsonPayload
-      }));
+      }, null, 2));
 
       const { data, error } = await supabase
         .from('notification_queue')
@@ -97,14 +122,23 @@ export class NotificationService {
           recipient_type,
           has_payment_id: !!payment_id,
           clinic_id: clinic_id,
-          payload_clinic_id: payload.clinic.id
+          payload_clinic_id: payload.clinic?.id,
+          payment_message: payload.payment?.message
         }));
-        return { success: false, error };
+        return { 
+          success: false, 
+          error,
+          delivery: { webhook: false, edge_function: false, fallback: false, any_success: false },
+        };
       }
 
       if (!data || data.length === 0) {
         console.error('⚠️ CRITICAL ERROR: No data returned from notification queue insertion');
-        return { success: false, error: 'No data returned' };
+        return { 
+          success: false, 
+          error: 'No data returned',
+          delivery: { webhook: false, edge_function: false, fallback: false, any_success: false },
+        };
       }
 
       const queuedItem = data[0];

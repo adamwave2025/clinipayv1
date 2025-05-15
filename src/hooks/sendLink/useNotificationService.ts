@@ -13,7 +13,20 @@ export function useNotificationService() {
     recipientData: NotificationPayloadData,
     notificationMethod: NotificationMethod
   ): StandardNotificationPayload => {
-    // Ensure refund_amount is always provided as null to match the required structure
+    console.log('⚠️ CRITICAL: Creating notification payload with data:', JSON.stringify({
+      clinic_id: recipientData.clinic.id,
+      clinic_name: recipientData.clinic.name,
+      patient_name: recipientData.patient.name,
+      ref: recipientData.payment.reference,
+      payment_type: recipientData.payment.message?.includes('[PLAN]') ? 'PLAN' : 'REGULAR'
+    }, null, 2));
+    
+    // Ensure clinic.id is present and consistent
+    if (!recipientData.clinic.id) {
+      console.error('⚠️ CRITICAL ERROR: Missing clinic.id in notification payload data');
+    }
+    
+    // Ensure refund_amount is always provided as null
     return {
       notification_type: "payment_request",
       notification_method: notificationMethod,
@@ -38,6 +51,22 @@ export function useNotificationService() {
     
     try {
       console.log('⚠️ CRITICAL: Sending payment notification through service...');
+      console.log('⚠️ CRITICAL: Using clinicId:', clinicId);
+      console.log('⚠️ CRITICAL: Is payment plan:', payload.payment.message?.includes('[PLAN]') ? 'YES' : 'NO');
+      
+      // Ensure clinic ID is properly set in payload before sending
+      if (!payload.clinic || !payload.clinic.id) {
+        console.warn('⚠️ CRITICAL WARNING: clinic_id missing in payload, adding it now');
+        if (!payload.clinic) {
+          payload.clinic = { id: clinicId, name: "Your healthcare provider" };
+        } else {
+          payload.clinic.id = clinicId;
+        }
+      } else if (payload.clinic.id !== clinicId) {
+        console.warn(`⚠️ CRITICAL WARNING: Mismatched clinic IDs - payload: ${payload.clinic.id}, parameter: ${clinicId}`);
+        payload.clinic.id = clinicId;
+      }
+      
       const notificationResult = await PaymentNotificationService.sendNotification(
         payload,
         clinicId,

@@ -30,6 +30,7 @@ export function usePaymentLinkSender() {
       
       // Step 1: Get clinic ID for the current user
       const clinicId = await clinicService.fetchUserClinicId(user.id);
+      console.log('⚠️ CRITICAL: Using clinic ID:', clinicId);
       
       // Step 2: Get detailed clinic data
       const clinicData = await clinicService.fetchClinicData(clinicId);
@@ -78,6 +79,8 @@ export function usePaymentLinkSender() {
         formData.selectedLink ? null : amount
       );
       
+      console.log('⚠️ CRITICAL: Payment request created successfully:', paymentRequest.id);
+      
       // Step 6: Determine notification methods and send notifications
       const notificationMethod: NotificationMethod = {
         email: !!formData.patientEmail,
@@ -93,9 +96,22 @@ export function usePaymentLinkSender() {
           sms: notificationMethod.sms ? formData.patientPhone : "none"
         }));
         
+        // Prepare message with appropriate context
+        let messageContent = formData.message || (paymentTitle ? `Payment for ${paymentTitle}` : "Payment request");
+        
+        // Add debug flag for payment plans - making this more explicit
+        if (isPaymentPlan) {
+          console.log('⚠️ CRITICAL: This is a payment plan - adding explicit debug flag to payload');
+          messageContent = `[PLAN] ${messageContent}`;
+          
+          // Extra logging for payment plan paths
+          console.log(`⚠️ CRITICAL DEBUG: PAYMENT PLAN path: ${
+            isPaymentPlan ? 'ACTIVE' : 'INACTIVE'}, clinic_id=${clinicId}`);
+        }
+        
         const notificationPayload = notificationService.createNotificationPayload({
           clinic: {
-            id: clinicId,
+            id: clinicId, // Explicitly ensure clinic ID is present
             name: clinicData.clinic_name || "Your healthcare provider",
             email: clinicData.email,
             phone: clinicData.phone,
@@ -109,38 +125,34 @@ export function usePaymentLinkSender() {
           payment: {
             reference: paymentRequest.id,
             amount: amount,
-            refund_amount: null,
+            refund_amount: null, // Explicitly set to null for all cases
             payment_link: `https://clinipay.co.uk/payment/${paymentRequest.id}`,
-            message: formData.message || (paymentTitle ? `Payment for ${paymentTitle}` : "Payment request")
+            message: messageContent
           }
         }, notificationMethod);
 
-        // Add a debug flag to the payload for payment plans
-        if (isPaymentPlan) {
-          console.log('⚠️ CRITICAL: This is a payment plan - adding debug flag to payload');
-          notificationPayload.payment.message = `[PLAN] ${notificationPayload.payment.message}`;
-        }
-
-        // Send the notification
-        const notificationResult = await notificationService.sendPaymentNotification(
-          notificationPayload,
-          clinicId,
-          paymentRequest.id
-        );
-
-        // Handle notification result safely
-        if (!notificationResult.success) {
-          console.error('⚠️ CRITICAL ERROR: Notification failed:', notificationResult.error);
-          toast.warning("Payment link created, but notification delivery might be delayed");
-        } else if (notificationResult.delivery && notificationResult.delivery.any_success === false) {
-          console.warn('⚠️ CRITICAL WARNING: All notification methods failed');
-          toast.warning("Payment link created, but notification delivery might be delayed");
-          // Detailed logging of errors
-          if (notificationResult.errors && notificationResult.errors.webhook) {
-            console.error('Webhook error:', notificationResult.errors.webhook);
+        console.log('⚠️ CRITICAL: Final notification payload for sending:', JSON.stringify(notificationPayload, null, 2));
+        
+        // Send the notification with complete debugging
+        try {
+          const notificationResult = await notificationService.sendPaymentNotification(
+            notificationPayload,
+            clinicId,
+            paymentRequest.id
+          );
+          
+          console.log('⚠️ CRITICAL: Notification result:', JSON.stringify(notificationResult, null, 2));
+          
+          // Handle notification result based on plan type
+          if (isPaymentPlan) {
+            if (!notificationResult.success) {
+              console.error('⚠️ CRITICAL PLAN ERROR: Notification failed:', notificationResult.error);
+            } else {
+              console.log('⚠️ CRITICAL PLAN SUCCESS: Notification sent successfully');
+            }
           }
-        } else if (notificationResult.delivery) {
-          console.log('⚠️ CRITICAL: Notification delivery success status:', notificationResult.delivery);
+        } catch (notifyError) {
+          console.error('⚠️ CRITICAL ERROR: Notification failed with exception:', notifyError);
         }
       } else {
         console.warn('⚠️ CRITICAL: No notification methods available for this patient');
