@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext, { PaymentDialogData } from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -179,7 +178,7 @@ export const ManagePlansProvider: React.FC<{
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
     handleMarkAsPaid,
-    handleOpenReschedule,
+    handleOpenReschedule: handleOpenRescheduleInstallment,
     handleTakePayment: originalHandleTakePayment,  // Rename to avoid conflict
     confirmMarkAsPaid,
     showTakePaymentDialog,
@@ -368,6 +367,19 @@ export const ManagePlansProvider: React.FC<{
     // The reschedule hook will now handle refreshPlanState
   };
   
+  // Fix the handleOpenReschedule function to properly call the payment reschedule actions
+  const handleOpenReschedule = (paymentId: string) => {
+    console.log("ManagePlansProvider: Opening reschedule dialog for payment:", paymentId);
+    // Direct call to the handleOpenRescheduleDialog from paymentRescheduleActions
+    paymentRescheduleActions.handleOpenRescheduleDialog(paymentId);
+    // Debug to confirm state after the function call
+    setTimeout(() => {
+      console.log("ManagePlansProvider: Dialog state after opening:", 
+        paymentRescheduleActions.showRescheduleDialog,
+        "Selected payment:", paymentRescheduleActions.selectedPaymentId);
+    }, 100);
+  };
+  
   // Create a wrapper function that adapts the signature
   const handleOpenRescheduleDialog = () => {
     planRescheduleActions.handleOpenRescheduleDialog();
@@ -439,7 +451,7 @@ export const ManagePlansProvider: React.FC<{
         
         // Individual payment actions
         handleMarkAsPaid,
-        handleOpenReschedule,
+        handleOpenReschedule, // This is the fixed function to open the payment reschedule dialog
         handleReschedulePayment,
         handleTakePayment,
         preparePaymentData,
@@ -487,7 +499,7 @@ export const ManagePlansProvider: React.FC<{
         
         // Add payment rescheduling dialog properties
         showReschedulePaymentDialog: paymentRescheduleActions.showRescheduleDialog,
-        setShowReschedulePaymentDialog: paymentRescheduleActions.setShowRescheduleDialog,
+        setShowReschedulePaymentDialog: paymentRescheduleActions.setShowReschedulePaymentDialog,
         
         hasOverduePayments,
         hasPaidPayments,
@@ -502,4 +514,3 @@ export const ManagePlansProvider: React.FC<{
     </ManagePlansContext.Provider>
   );
 };
-

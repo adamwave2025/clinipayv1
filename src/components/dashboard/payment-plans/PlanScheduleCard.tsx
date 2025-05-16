@@ -125,7 +125,10 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
                 variant="outline" 
                 size="sm"
                 className="flex items-center"
-                onClick={() => onReschedule(installment.id)}
+                onClick={() => {
+                  console.log("Calling onReschedule for payment ID:", installment.id);
+                  onReschedule(installment.id);
+                }}
               >
                 <Calendar className="mr-1 h-4 w-4" />
                 Reschedule

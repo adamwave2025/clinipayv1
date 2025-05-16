@@ -13,14 +13,13 @@ export const usePaymentRescheduleActions = (
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   
   const handleOpenRescheduleDialog = (paymentId: string) => {
-    console.log("usePaymentRescheduleActions: Opening reschedule dialog for payment", paymentId);
+    console.log("[usePaymentRescheduleActions] Opening reschedule dialog for payment:", paymentId);
     setSelectedPaymentId(paymentId);
     setShowRescheduleDialog(true);
-    console.log("usePaymentRescheduleActions: Dialog state after opening:", showRescheduleDialog);
-    // Using setTimeout to check the state after the React update cycle
+    // Debug log to verify state is being set correctly
     setTimeout(() => {
-      console.log("usePaymentRescheduleActions: Dialog state after timeout:", showRescheduleDialog);
-    }, 0);
+      console.log("[usePaymentRescheduleActions] Dialog state after update:", showRescheduleDialog, "selectedPaymentId:", selectedPaymentId);
+    }, 100);
   };
   
   const handleReschedulePayment = async (newDate: Date) => {
@@ -37,7 +36,7 @@ export const usePaymentRescheduleActions = (
       // Get payment data before rescheduling to log activity properly
       const { data: paymentData, error: fetchError } = await supabase
         .from('payment_schedule')
-        .select('id, due_date, payment_request_id, status')
+        .select('id, due_date, payment_request_id, status, plan_id')
         .eq('id', selectedPaymentId)
         .single();
       

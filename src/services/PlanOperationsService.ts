@@ -160,7 +160,7 @@ export class PlanOperationsService {
       // Get the payment schedule item to retrieve plan ID for logging
       const { data: paymentData, error: fetchError } = await supabase
         .from('payment_schedule')
-        .select('plan_id')
+        .select('plan_id, due_date')
         .eq('id', paymentId)
         .single();
       
@@ -185,10 +185,37 @@ export class PlanOperationsService {
       
       // Log activity if we have a plan ID
       if (paymentData?.plan_id) {
-        await this.logPlanActivity(paymentData.plan_id, 'payment_rescheduled', { 
-          paymentId,
-          newDueDate: formattedDate
-        });
+        // Get additional plan details needed for activity logging
+        const { data: planData, error: planError } = await supabase
+          .from('plans')
+          .select('payment_link_id, patient_id, clinic_id')
+          .eq('id', paymentData.plan_id)
+          .single();
+          
+        if (planError) {
+          console.error('Error fetching plan data for activity log:', planError);
+          // Continue anyway since the payment was rescheduled successfully
+        } else if (planData) {
+          // Log the activity with all required fields
+          const { error: activityError } = await supabase
+            .from('payment_activity')
+            .insert({
+              plan_id: paymentData.plan_id,
+              payment_link_id: planData.payment_link_id,
+              patient_id: planData.patient_id,
+              clinic_id: planData.clinic_id,
+              action_type: 'payment_rescheduled',
+              details: {
+                paymentId,
+                oldDueDate: paymentData.due_date,
+                newDueDate: formattedDate
+              }
+            });
+            
+          if (activityError) {
+            console.error('Error logging payment reschedule activity:', activityError);
+          }
+        }
       }
       
       return { success: true };
