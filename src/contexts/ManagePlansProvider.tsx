@@ -499,7 +499,7 @@ export const ManagePlansProvider: React.FC<{
         
         // Add payment rescheduling dialog properties
         showReschedulePaymentDialog: paymentRescheduleActions.showRescheduleDialog,
-        setShowReschedulePaymentDialog: paymentRescheduleActions.setShowReschedulePaymentDialog,
+        setShowReschedulePaymentDialog: paymentRescheduleActions.setShowRescheduleDialog, // Fixed: Using the correct property name
         
         hasOverduePayments,
         hasPaidPayments,
