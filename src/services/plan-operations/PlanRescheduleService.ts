@@ -16,7 +16,6 @@ export class PlanRescheduleService {
    */
   static async reschedulePlan(plan: Plan, newStartDate: Date): Promise<boolean> {
     try {
-      // FIXED: Use date-fns format to ensure correct date preservation for UK timezone
       // Format date as YYYY-MM-DD using date-fns format which preserves the date regardless of timezone
       const formattedDate = format(newStartDate, 'yyyy-MM-dd');
       console.log('Rescheduling plan with formatted date:', formattedDate);
@@ -43,7 +42,7 @@ export class PlanRescheduleService {
       
       // Track how many payment requests we need to cancel
       let paymentRequestCount = 0;
-      const paymentRequestIds = [];
+      const paymentRequestIds: string[] = [];
       
       // Get all modifiable schedule entries
       const { data: scheduleEntries, error: scheduleError } = await supabase
@@ -58,22 +57,23 @@ export class PlanRescheduleService {
       console.log(`Found ${scheduleEntries?.length || 0} modifiable payment schedules`);
       
       // Identify payment requests to cancel
-      for (const entry of scheduleEntries || []) {
-        if (entry.payment_request_id) {
-          paymentRequestIds.push(entry.payment_request_id);
-          paymentRequestCount++;
+      if (scheduleEntries) {
+        for (const entry of scheduleEntries) {
+          if (entry.payment_request_id) {
+            paymentRequestIds.push(entry.payment_request_id);
+            paymentRequestCount++;
+          }
         }
       }
       
       console.log(`Found ${paymentRequestIds.length} payment requests to cancel`);
       
-      // Cancel active payment requests since dates will change - CRITICAL: removed is('payment_id', null) condition
+      // Cancel active payment requests since dates will change
       if (paymentRequestIds.length > 0) {
         const { data: updatedRequests, error: requestUpdateError } = await supabase
           .from('payment_requests')
           .update({
             status: 'cancelled'
-            // Removed updated_at as it doesn't exist in the table
           })
           .in('id', paymentRequestIds)
           .select();
@@ -125,8 +125,6 @@ export class PlanRescheduleService {
       }
       
       // Update modifiable payment schedules using the new date as the starting point
-      // Instead of shifting all dates by the difference, we set the first one to the exact new date
-      // and calculate subsequent dates based on the frequency
       if (scheduleEntries && scheduleEntries.length > 0) {
         let shiftedCount = 0;
         
@@ -134,7 +132,7 @@ export class PlanRescheduleService {
         const { error: firstPaymentUpdateError } = await supabase
           .from('payment_schedule')
           .update({
-            due_date: formattedDate, // FIXED: Using the formatted date string directly
+            due_date: formattedDate, // Using the formatted date string directly
             status: 'pending', // Reset status to pending
             payment_request_id: null, // Clear any payment request associations
             updated_at: new Date().toISOString()
@@ -152,13 +150,13 @@ export class PlanRescheduleService {
           const newDueDate = new Date(newStartDate);
           newDueDate.setDate(newDueDate.getDate() + (i * paymentInterval));
           
-          // FIXED: Use format consistently to convert to string and prevent timezone issues
+          // Use format consistently to convert to string and prevent timezone issues
           const formattedDueDate = format(newDueDate, 'yyyy-MM-dd');
           
           const { error: dueDateUpdateError } = await supabase
             .from('payment_schedule')
             .update({
-              due_date: formattedDueDate, // FIXED: Using formatted date string
+              due_date: formattedDueDate, // Using formatted date string
               status: 'pending', // Reset status to pending
               payment_request_id: null, // Clear any payment request associations
               updated_at: new Date().toISOString()
@@ -179,7 +177,7 @@ export class PlanRescheduleService {
       const { error: nextDueDateUpdateError } = await supabase
         .from('plans')
         .update({
-          next_due_date: formattedDate // FIXED: Using formatted date string
+          next_due_date: formattedDate // Using formatted date string
         })
         .eq('id', plan.id);
         
@@ -201,7 +199,7 @@ export class PlanRescheduleService {
           details: {
             plan_name: plan.title || plan.planName,
             previous_date: currentPlan.start_date,
-            new_date: formattedDate, // FIXED: Using formatted date string
+            new_date: formattedDate, // Using formatted date string
             payments_shifted: scheduleEntries?.length || 0,
             payment_requests_cancelled: paymentRequestCount
           }
@@ -211,9 +209,6 @@ export class PlanRescheduleService {
         console.error('Error logging reschedule activity:', activityError);
       }
 
-      // REMOVED: No longer call updatePlanStatus here - the status is set explicitly above based on payment history
-      // Let the cron job handle overdue detection, we've set active/pending status based on payment history
-      
       return true;
       
     } catch (error: any) {

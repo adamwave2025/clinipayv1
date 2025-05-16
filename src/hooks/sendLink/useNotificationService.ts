@@ -54,6 +54,11 @@ export function useNotificationService() {
       console.log('⚠️ CRITICAL: Using clinicId:', clinicId);
       console.log('⚠️ CRITICAL: Is payment plan:', payload.payment.message?.includes('[PLAN]') ? 'YES' : 'NO');
       
+      // Log if this is a rescheduled payment notification
+      if (payload.payment.message?.includes('[RESCHEDULED]')) {
+        console.log('⚠️ CRITICAL: This is a RESCHEDULED payment notification');
+      }
+      
       // Ensure clinic ID is properly set in payload before sending
       if (!payload.clinic || !payload.clinic.id) {
         console.warn('⚠️ CRITICAL WARNING: clinic_id missing in payload, adding it now');

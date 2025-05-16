@@ -18,6 +18,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { Toaster } from "@/components/ui/sonner";
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import StripeProvider from '@/components/payment/StripeProvider';
 
 const ManagePlansHeader: React.FC<{
   isTemplateView: boolean;
@@ -218,9 +219,11 @@ const ManagePlansPage: React.FC = () => {
   return (
     <DashboardLayout userType="clinic">
       <DashboardDataProvider>
-        <ManagePlansProvider>
-          <ManagePlansPageContent />
-        </ManagePlansProvider>
+        <StripeProvider>
+          <ManagePlansProvider>
+            <ManagePlansPageContent />
+          </ManagePlansProvider>
+        </StripeProvider>
       </DashboardDataProvider>
     </DashboardLayout>
   );

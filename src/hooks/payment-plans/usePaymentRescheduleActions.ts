@@ -34,6 +34,38 @@ export const usePaymentRescheduleActions = (
     try {
       console.log(`Rescheduling payment ${selectedPaymentId} to ${newDate.toISOString()}`);
       
+      // Get payment data before rescheduling to log activity properly
+      const { data: paymentData, error: fetchError } = await supabase
+        .from('payment_schedule')
+        .select('id, due_date, payment_request_id, status')
+        .eq('id', selectedPaymentId)
+        .single();
+      
+      if (fetchError) {
+        console.error("Error fetching payment data:", fetchError);
+        toast.error('Failed to fetch payment data for rescheduling');
+        return;
+      }
+      
+      // If payment has an associated payment request, cancel it first
+      if (paymentData.payment_request_id) {
+        console.log(`Cancelling existing payment request ${paymentData.payment_request_id}`);
+        
+        const { error: cancelError } = await supabase
+          .from('payment_requests')
+          .update({
+            status: 'cancelled'
+          })
+          .eq('id', paymentData.payment_request_id);
+        
+        if (cancelError) {
+          console.error("Error cancelling existing payment request:", cancelError);
+          toast.error('Failed to cancel existing payment request');
+        } else {
+          console.log("Successfully cancelled existing payment request");
+        }
+      }
+      
       // Use the service to reschedule the payment
       const result = await PlanOperationsService.reschedulePayment(selectedPaymentId, newDate);
       

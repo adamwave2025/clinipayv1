@@ -40,7 +40,10 @@ const ReschedulePaymentDialog = ({
   const [date, setDate] = useState<Date>(tomorrow);
   
   const handleConfirm = () => {
-    onConfirm(date);
+    const normalizedDate = new Date(date);
+    normalizedDate.setHours(0, 0, 0, 0);
+    console.log('Confirming payment reschedule with date:', normalizedDate.toISOString());
+    onConfirm(normalizedDate);
   };
   
   // Function to disable past dates
@@ -79,13 +82,21 @@ const ReschedulePaymentDialog = ({
                   {date ? format(date, "PPP") : <span>Pick a date</span>}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0 z-50" align="start">
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={(newDate) => newDate && setDate(newDate)}
+                  onSelect={(newDate) => {
+                    if (newDate) {
+                      const normalizedDate = new Date(newDate);
+                      normalizedDate.setHours(0, 0, 0, 0);
+                      console.log('Selected date for payment:', normalizedDate.toISOString());
+                      setDate(normalizedDate);
+                    }
+                  }}
                   disabled={disablePastDates}
                   initialFocus
+                  className="pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
