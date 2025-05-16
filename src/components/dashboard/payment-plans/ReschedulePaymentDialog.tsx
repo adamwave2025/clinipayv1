@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +13,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import CustomDatePicker from '@/components/common/CustomDatePicker';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface ReschedulePaymentDialogProps {
   open: boolean;
@@ -32,13 +38,19 @@ const ReschedulePaymentDialog = ({
   tomorrow.setHours(0, 0, 0, 0);
   
   const [date, setDate] = useState<Date>(tomorrow);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   
   const handleConfirm = () => {
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
     console.log('Confirming payment reschedule with date:', normalizedDate.toISOString());
     onConfirm(normalizedDate);
+  };
+  
+  // Function to disable past dates
+  const disablePastDates = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
   };
   
   return (
@@ -56,30 +68,38 @@ const ReschedulePaymentDialog = ({
             <label htmlFor="rescheduleDate" className="text-sm font-medium">
               New Payment Date
             </label>
-            <div className="relative">
-              <Button
-                variant="outline"
-                className="w-full justify-start text-left font-normal"
-                onClick={() => setShowDatePicker(!showDatePicker)}
-                disabled={isLoading}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "PPP") : <span>Pick a date</span>}
-              </Button>
-              
-              {showDatePicker && (
-                <div className="absolute z-50 mt-2 bg-white rounded-md shadow-lg">
-                  <CustomDatePicker
-                    selectedDate={date}
-                    onDateChange={(newDate) => {
-                      setDate(newDate);
-                      setShowDatePicker(false);
-                    }}
-                    disablePastDates={true}
-                  />
-                </div>
-              )}
-            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                  )}
+                  disabled={isLoading}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 z-50" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(newDate) => {
+                    if (newDate) {
+                      const normalizedDate = new Date(newDate);
+                      normalizedDate.setHours(0, 0, 0, 0);
+                      console.log('Selected date for payment:', normalizedDate.toISOString());
+                      setDate(normalizedDate);
+                    }
+                  }}
+                  disabled={disablePastDates}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
         

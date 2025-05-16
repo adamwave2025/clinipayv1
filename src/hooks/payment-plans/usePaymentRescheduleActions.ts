@@ -37,7 +37,7 @@ export const usePaymentRescheduleActions = (
       // Get payment data before rescheduling to log activity properly
       const { data: paymentData, error: fetchError } = await supabase
         .from('payment_schedule')
-        .select('id, due_date, payment_request_id, status, plan_id')
+        .select('id, due_date, payment_request_id, status')
         .eq('id', selectedPaymentId)
         .single();
       
@@ -66,44 +66,10 @@ export const usePaymentRescheduleActions = (
         }
       }
       
-      // Get plan data to log the activity
-      const { data: planData, error: planError } = await supabase
-        .from('payment_plans')
-        .select('id, title, clinic_id')
-        .eq('id', paymentData.plan_id)
-        .single();
-        
-      if (planError) {
-        console.error("Error fetching plan data:", planError);
-      }
-      
       // Use the service to reschedule the payment
       const result = await PlanOperationsService.reschedulePayment(selectedPaymentId, newDate);
       
       if (result.success) {
-        // Log activity
-        const oldDate = new Date(paymentData.due_date).toISOString().split('T')[0];
-        const newDateFormatted = newDate.toISOString().split('T')[0];
-        
-        const { error: activityError } = await supabase
-          .from('payment_activity')
-          .insert({
-            payment_id: selectedPaymentId,
-            plan_id: paymentData.plan_id,
-            clinic_id: planData?.clinic_id,
-            action: 'payment_rescheduled',
-            details: JSON.stringify({
-              old_date: oldDate,
-              new_date: newDateFormatted,
-              payment_id: selectedPaymentId
-            }),
-            notes: `Payment rescheduled from ${oldDate} to ${newDateFormatted}`
-          });
-        
-        if (activityError) {
-          console.error("Error logging activity:", activityError);
-        }
-        
         toast.success('Payment rescheduled successfully');
         
         // Close dialog
