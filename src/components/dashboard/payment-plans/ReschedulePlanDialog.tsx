@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from "lucide-react";
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +13,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface ReschedulePlanDialogProps {
   showDialog: boolean;
@@ -52,8 +59,12 @@ const ReschedulePlanDialog = ({
     onConfirm(normalizedDate);
   };
 
-  // Get today's date in YYYY-MM-DD format for min attribute
-  const today = new Date().toISOString().split('T')[0];
+  // Disable dates in the past
+  const disablePastDates = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
+  };
 
   return (
     <Dialog open={showDialog} onOpenChange={setShowDialog}>
@@ -71,23 +82,39 @@ const ReschedulePlanDialog = ({
             <label htmlFor="rescheduleDate" className="text-sm font-medium">
               New Start Date
             </label>
-            <input
-              type="date"
-              id="rescheduleDate"
-              className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
-              value={date.toISOString().split('T')[0]}
-              min={today}
-              onChange={(e) => {
-                if (e.target.value) {
-                  // Ensure the time is set to midnight
-                  const newDate = new Date(e.target.value);
-                  newDate.setHours(0, 0, 0, 0);
-                  console.log('Selected date:', newDate.toISOString());
-                  setDate(newDate);
-                }
-              }}
-              disabled={isWorking}
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                  )}
+                  disabled={isWorking}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 max-h-[300px] overflow-y-auto z-50" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(newDate) => {
+                    if (newDate) {
+                      // Ensure the time is set to midnight
+                      const normalizedDate = new Date(newDate);
+                      normalizedDate.setHours(0, 0, 0, 0);
+                      console.log('Selected date:', normalizedDate.toISOString());
+                      setDate(normalizedDate);
+                    }
+                  }}
+                  disabled={disablePastDates}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
             <p className="text-xs text-muted-foreground mt-1">
               All future payments will be rescheduled based on this date.
             </p>

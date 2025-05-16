@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
@@ -68,22 +67,6 @@ export const usePlanRescheduleActions = (
       const success = await PlanOperationsService.reschedulePlan(selectedPlan, newStartDate);
       
       if (success) {
-        // Log activity in payment_activity table
-        if (selectedPlan.clinicId && selectedPlan.patientId && selectedPlan.paymentLinkId) {
-          await supabase.from('payment_activity').insert({
-            plan_id: selectedPlan.id,
-            clinic_id: selectedPlan.clinicId,
-            patient_id: selectedPlan.patientId,
-            payment_link_id: selectedPlan.paymentLinkId,
-            action_type: 'reschedule_plan',
-            details: {
-              plan_name: selectedPlan.title || selectedPlan.planName,
-              previous_date: selectedPlan.startDate,
-              new_date: newStartDate.toISOString().split('T')[0]
-            }
-          });
-        }
-        
         toast.success('Payment plan rescheduled successfully');
         
         // Refresh the plan data using the refreshPlanState function

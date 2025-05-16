@@ -37,7 +37,7 @@ export const usePaymentRescheduleActions = (
       // Get payment data before rescheduling to log activity properly
       const { data: paymentData, error: fetchError } = await supabase
         .from('payment_schedule')
-        .select('id, due_date, payment_request_id, status, plan_id, patient_id')
+        .select('id, due_date, payment_request_id, status')
         .eq('id', selectedPaymentId)
         .single();
       
@@ -71,32 +71,6 @@ export const usePaymentRescheduleActions = (
       
       if (result.success) {
         toast.success('Payment rescheduled successfully');
-        
-        // Get plan details to log activity properly
-        if (paymentData.plan_id) {
-          const { data: planData, error: planError } = await supabase
-            .from('plans')
-            .select('id, clinic_id, payment_link_id')
-            .eq('id', paymentData.plan_id)
-            .single();
-            
-          if (!planError && planData) {
-            // Log activity
-            await supabase.from('payment_activity').insert({
-              action_type: 'payment_rescheduled',
-              plan_id: paymentData.plan_id,
-              patient_id: paymentData.patient_id,
-              clinic_id: planData.clinic_id,
-              payment_link_id: planData.payment_link_id,
-              details: {
-                payment_id: selectedPaymentId,
-                previous_date: paymentData.due_date,
-                new_date: newDate.toISOString().split('T')[0],
-                had_payment_request: paymentData.payment_request_id !== null
-              }
-            });
-          }
-        }
         
         // Close dialog
         setShowRescheduleDialog(false);
