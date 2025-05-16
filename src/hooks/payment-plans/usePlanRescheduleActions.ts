@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,7 +9,7 @@ export const usePlanRescheduleActions = (
   selectedPlan: Plan | null,
   setShowPlanDetails: (show: boolean) => void,
   refreshPlanState?: (planId: string) => Promise<void>,
-  setIsTemplateView?: (isTemplate: boolean) => void // Add optional setIsTemplateView parameter
+  setIsTemplateView?: (isTemplate: boolean) => void
 ) => {
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [hasSentPayments, setHasSentPayments] = useState(false);
@@ -63,10 +64,33 @@ export const usePlanRescheduleActions = (
     setIsProcessing(true);
     
     try {
+      console.log(`Rescheduling plan ${selectedPlan.id} to start on ${newStartDate.toISOString()}`);
+      
       // Use PlanOperationsService directly
       const success = await PlanOperationsService.reschedulePlan(selectedPlan, newStartDate);
       
       if (success) {
+        // Log the activity
+        const oldDate = new Date(selectedPlan.startDate || Date.now()).toISOString().split('T')[0];
+        const newDateFormatted = newStartDate.toISOString().split('T')[0];
+        
+        const { error: activityError } = await supabase
+          .from('payment_activity')
+          .insert({
+            plan_id: selectedPlan.id,
+            clinic_id: selectedPlan.clinicId,
+            action: 'plan_rescheduled',
+            details: JSON.stringify({
+              old_date: oldDate,
+              new_date: newDateFormatted
+            }),
+            notes: `Payment plan rescheduled from ${oldDate} to ${newDateFormatted}`
+          });
+        
+        if (activityError) {
+          console.error("Error logging plan reschedule activity:", activityError);
+        }
+        
         toast.success('Payment plan rescheduled successfully');
         
         // Refresh the plan data using the refreshPlanState function
@@ -76,7 +100,6 @@ export const usePlanRescheduleActions = (
         
         // Close the dialog but keep the plan details open
         setShowRescheduleDialog(false);
-        // setShowPlanDetails(false); // Keep the plan details modal open
         
         // Explicitly set view back to patient plans (not templates)
         if (setIsTemplateView) {

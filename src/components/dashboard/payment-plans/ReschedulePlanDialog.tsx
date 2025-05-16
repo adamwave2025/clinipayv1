@@ -1,10 +1,8 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -13,11 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import CustomDatePicker from '@/components/common/CustomDatePicker';
 
 interface ReschedulePlanDialogProps {
   showDialog: boolean;
@@ -47,6 +41,7 @@ const ReschedulePlanDialog = ({
   initialDate.setHours(0, 0, 0, 0); // Normalize to midnight
   
   const [date, setDate] = useState<Date>(initialDate);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   
   // Use either isLoading or isProcessing (prioritize isProcessing)
   const isWorking = isProcessing || isLoading;
@@ -57,13 +52,6 @@ const ReschedulePlanDialog = ({
     normalizedDate.setHours(0, 0, 0, 0);
     console.log('Confirming with date:', normalizedDate.toISOString());
     onConfirm(normalizedDate);
-  };
-
-  // Disable dates in the past
-  const disablePastDates = (date: Date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return date < today;
   };
 
   return (
@@ -82,39 +70,30 @@ const ReschedulePlanDialog = ({
             <label htmlFor="rescheduleDate" className="text-sm font-medium">
               New Start Date
             </label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                  disabled={isWorking}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 max-h-[300px] overflow-y-auto z-50" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={(newDate) => {
-                    if (newDate) {
-                      // Ensure the time is set to midnight
-                      const normalizedDate = new Date(newDate);
-                      normalizedDate.setHours(0, 0, 0, 0);
-                      console.log('Selected date:', normalizedDate.toISOString());
-                      setDate(normalizedDate);
-                    }
-                  }}
-                  disabled={disablePastDates}
-                  initialFocus
-                  className="pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
+            <div className="relative">
+              <Button
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+                onClick={() => setShowDatePicker(!showDatePicker)}
+                disabled={isWorking}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date ? format(date, "PPP") : <span>Pick a date</span>}
+              </Button>
+              
+              {showDatePicker && (
+                <div className="absolute z-50 mt-2 bg-white rounded-md shadow-lg">
+                  <CustomDatePicker
+                    selectedDate={date}
+                    onDateChange={(newDate) => {
+                      setDate(newDate);
+                      setShowDatePicker(false);
+                    }}
+                    disablePastDates={true}
+                  />
+                </div>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               All future payments will be rescheduled based on this date.
             </p>
