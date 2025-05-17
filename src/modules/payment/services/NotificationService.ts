@@ -61,18 +61,27 @@ export class NotificationService {
           payload.payment.refund_amount = null;
         }
         
-        // Ensure monetary values are properly formatted for notifications
-        // This is critical especially for refund amounts
+        // CRITICAL FIX: Ensure monetary values are stored as integers (pence/cents)
         if (type === 'payment_refund' || type === 'refund') {
           if (payload.payment.refund_amount !== null) {
-            // Make sure refund_amount is the correct format and not missing decimal places
-            // Check if the refund amount appears to be in pence but missing the decimal point
+            // Make sure refund_amount is stored correctly in pence/cents
+            // If the refund amount was passed in pounds, convert to pence
             console.log(`⚠️ CRITICAL: Validating refund amount format: ${payload.payment.refund_amount}`);
-            const refundAmount = payload.payment.refund_amount;
+            let refundAmount = payload.payment.refund_amount;
             
-            // All monetary values in the notification payload should be formatted with 2 decimal places
+            // If the amount appears to be in pounds (has decimal places or is small), convert to pence
             if (typeof refundAmount === 'number' && !Number.isNaN(refundAmount)) {
-              console.log(`⚠️ CRITICAL: Refund amount is valid: ${refundAmount}`);
+              // Check if the amount appears to be in pounds rather than pence
+              const isPounds = refundAmount < 1000 && String(refundAmount).includes('.');
+              
+              if (isPounds) {
+                // Convert pounds to pence for storage
+                refundAmount = Math.round(refundAmount * 100);
+                console.log(`⚠️ CRITICAL: Converted refund amount from pounds to pence: £${payload.payment.refund_amount} -> ${refundAmount}p`);
+                payload.payment.refund_amount = refundAmount;
+              } else {
+                console.log(`⚠️ CRITICAL: Refund amount appears to be in pence already: ${refundAmount}p`);
+              }
             } else {
               console.error(`⚠️ CRITICAL ERROR: Invalid refund amount: ${refundAmount}, setting to 0`);
               payload.payment.refund_amount = 0;
