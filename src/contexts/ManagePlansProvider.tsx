@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext, { PaymentDialogData } from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -98,13 +97,13 @@ export const ManagePlansProvider: React.FC<{
     handleBackToPlans
   } = usePlanDetailsView();
 
-  // Use installment handler hooks - with renamed variable to avoid conflict
+  // Extract both the payment data state and the setter from useInstallmentHandler
   const {
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    setPaymentData, // Make sure we get the setter also
-    selectedInstallment: viewDetailsInstallment,  // Renamed to viewDetailsInstallment
+    setPaymentData,
+    selectedInstallment: viewDetailsInstallment,
     handleViewPaymentDetails
   } = useInstallmentHandler();
   
@@ -491,7 +490,7 @@ export const ManagePlansProvider: React.FC<{
         handleOpenResumeDialog,
         hasSentPayments,
         
-        // Use reschedule actions from the plan reschedule hook
+        // Add the reschedule plan dialog properties from planRescheduleActions
         showRescheduleDialog: planRescheduleActions.showRescheduleDialog,
         setShowRescheduleDialog: planRescheduleActions.setShowRescheduleDialog,
         handleReschedulePlan,

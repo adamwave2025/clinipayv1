@@ -65,7 +65,7 @@ export interface ManagePlansContextType {
   
   // Add the missing handler methods
   handleMarkAsPaid: (paymentId: string) => void;
-  // Combined function for reschedule handling - accepts either payment ID or no args (for plan reschedule)
+  // Modified function for reschedule handling - supports both plan and payment rescheduling
   handleOpenRescheduleDialog: (paymentId?: string) => void;
   handleReschedulePayment: (date: Date) => void;
   handleTakePayment: (paymentId: string, installmentDetails?: any) => void;
@@ -112,6 +112,11 @@ export interface ManagePlansContextType {
   // Reschedule payment dialog properties
   showReschedulePaymentDialog: boolean; 
   setShowReschedulePaymentDialog: (show: boolean) => void;
+  
+  // Reschedule plan dialog properties - adding these properties
+  showRescheduleDialog: boolean;
+  setShowRescheduleDialog: (show: boolean) => void;
+  handleReschedulePlan: (newStartDate: Date) => Promise<void>;
   
   // Plan state helpers
   isPlanPaused: (plan: Plan | null) => boolean;
