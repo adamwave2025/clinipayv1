@@ -80,4 +80,37 @@ export class PlanPaymentMetrics {
       return { success: false, error };
     }
   }
+  
+  /**
+   * Logs a payment activity in the payment_activity table
+   */
+  static async logPaymentActivity(
+    paymentLinkId: string,
+    patientId: string,
+    clinicId: string,
+    planId: string,
+    actionType: string,
+    details: Record<string, any>
+  ): Promise<{success: boolean, error?: any}> {
+    try {
+      const { error } = await supabase
+        .from('payment_activity')
+        .insert({
+          payment_link_id: paymentLinkId,
+          patient_id: patientId,
+          clinic_id: clinicId,
+          plan_id: planId,
+          action_type: actionType,
+          performed_at: new Date().toISOString(),
+          details
+        });
+      
+      if (error) throw error;
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error logging payment activity:', error);
+      return { success: false, error };
+    }
+  }
 }

@@ -5,6 +5,7 @@ import { usePaymentIntent } from '@/hooks/usePaymentIntent';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
+import { PlanPaymentMetrics } from '@/services/plan-status/PlanPaymentMetrics';
 
 export function useInstallmentPayment(
   paymentId: string | null,
@@ -67,6 +68,8 @@ export function useInstallmentPayment(
           status,
           due_date,
           payment_request_id,
+          payment_number,
+          total_payments,
           plans!inner(
             id,
             clinic_id,
@@ -250,16 +253,37 @@ export function useInstallmentPayment(
             }
           }
         }
+
+        // 6. NEW: Log payment activity to the payment_activity table
+        // This ensures activity is logged regardless of webhook timing
+        await PlanPaymentMetrics.logPaymentActivity(
+          paymentData.plans.payment_link_id,
+          paymentData.plans.patient_id,
+          paymentData.plans.clinic_id,
+          paymentData.plan_id,
+          'card_payment_processed',
+          {
+            payment_id: paymentId,
+            amount: amount,
+            payment_number: paymentData.payment_number,
+            total_payments: paymentData.total_payments,
+            processed_at: new Date().toISOString(),
+            payment_method: 'card',
+            stripe_payment_id: paymentResult.paymentIntent?.id || 'unknown'
+          }
+        );
+        
+        // 7. Use the PlanPaymentMetrics service to ensure the count is accurate
+        await PlanPaymentMetrics.updatePlanPaymentMetrics(paymentData.plan_id);
         
       } catch (dbUpdateError: any) {
         console.error('Error in direct database update fallback:', dbUpdateError.message);
         // This is a fallback, so we continue even if it fails
       }
       
-      // 6. The webhook will handle updating the payment status, but we'll show success to the user
       toast.success('Payment processed successfully');
       
-      // 7. Refresh the payment data
+      // Refresh the payment data
       await onPaymentProcessed();
       
       return { success: true };
