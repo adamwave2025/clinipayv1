@@ -13,7 +13,7 @@ export const usePaymentRescheduleActions = (
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   const [maxAllowedDate, setMaxAllowedDate] = useState<Date | undefined>(undefined);
   
-  const handleOpenRescheduleDialog = async (paymentId: string) => {
+  const handleOpenRescheduleDialog = async (paymentId: string): Promise<void> => {
     console.log("[usePaymentRescheduleActions] Opening reschedule dialog for payment:", paymentId);
     setSelectedPaymentId(paymentId);
     

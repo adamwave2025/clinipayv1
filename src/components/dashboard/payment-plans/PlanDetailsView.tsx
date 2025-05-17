@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -53,7 +54,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 
-import { useManagePlans } from '@/hooks/payment-plans/useManagePlans';
+import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import PlanActivityCard from './PlanActivityCard';
 import ReschedulePaymentDialog from './ReschedulePaymentDialog';
@@ -114,8 +115,9 @@ const PlanDetailsView = () => {
     handleOpenRescheduleDialog,
     showReschedulePaymentDialog,
     setShowReschedulePaymentDialog,
-    maxAllowedDate, // Extract maxAllowedDate from context
-  } = useManagePlans();
+    maxAllowedDate,
+    setPaymentToRefund, // Add this missing prop
+  } = useManagePlansContext();
   
   useEffect(() => {
     if (!selectedPlan && showPlanDetails) {
@@ -175,7 +177,7 @@ const PlanDetailsView = () => {
       case 'pending':
         return <Badge variant="secondary">Pending</Badge>;
       case 'paid':
-        return <Badge variant="success">Paid</Badge>;
+        return <Badge variant="outline">Paid</Badge>; // Changed from "success" to "outline"
       case 'overdue':
         return <Badge variant="destructive">Overdue</Badge>;
       case 'sent':
@@ -310,7 +312,7 @@ const PlanDetailsView = () => {
                               <DropdownMenuItem onClick={() => handleTakePayment(installment.id, installment)}>
                                 <DollarSign className="mr-2 h-4 w-4" /> Take Payment
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleMarkAsPaid(installment.id, installment)}>
+                              <DropdownMenuItem onClick={() => handleMarkAsPaid(installment.id)}>
                                 <BadgeCheck className="mr-2 h-4 w-4" /> Mark as Paid
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleOpenReschedule(installment.id)}>
@@ -320,7 +322,9 @@ const PlanDetailsView = () => {
                                 <ArrowRight className="mr-2 h-4 w-4" /> Send Reminder
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => {
-                                setPaymentToRefund(installment.paymentId || null);
+                                if (setPaymentToRefund) {
+                                  setPaymentToRefund(installment.paymentId || null);
+                                }
                                 openRefundDialog();
                               }}>
                                 <ArrowRight className="mr-2 h-4 w-4" /> Refund Payment
@@ -386,13 +390,13 @@ const PlanDetailsView = () => {
         onOpenChange={setShowReschedulePaymentDialog}
         onConfirm={handleReschedulePayment}
         isLoading={isProcessing}
-        maxAllowedDate={maxAllowedDate} // Pass maxAllowedDate to the dialog
+        maxAllowedDate={maxAllowedDate}
       />
       
       {/* Take payment dialog */}
       <TakePaymentDialog
         open={showTakePaymentDialog}
-        setOpen={setShowTakePaymentDialog}
+        onOpenChange={setShowTakePaymentDialog} // Changed from setOpen to onOpenChange
         paymentData={selectedPlan ? {
           paymentId: selectedInstallment?.id || '',
           patientName: selectedPlan?.patientName || '',
