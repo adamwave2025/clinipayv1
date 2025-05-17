@@ -20,17 +20,27 @@ export function useStripePayment() {
       phone?: string;
     };
   }) => {
-    if (!stripe || !elements) {
-      console.error('Stripe not initialized:', { stripe: !!stripe, elements: !!elements });
-      toast.error('Stripe has not been initialized');
-      return { success: false, error: 'Stripe not initialized' };
+    // Check if the Stripe library is initialized - log detailed error if not
+    if (!stripe) {
+      console.error('Stripe not initialized - processPayment failed');
+      toast.error('Payment system is not initialized');
+      return { success: false, error: 'Payment system not initialized' };
+    }
+
+    // Check if Elements are initialized - log detailed error if not
+    if (!elements) {
+      console.error('Stripe Elements not initialized - processPayment failed');
+      toast.error('Payment form is not fully loaded');
+      return { success: false, error: 'Payment form not fully loaded' };
     }
 
     const cardElement = elements.getElement('card');
+    
+    // Check if the card element is available - log detailed error if not
     if (!cardElement) {
       console.error('Card element not found or is not initialized');
-      toast.error('Card information is not complete');
-      return { success: false, error: 'Card information incomplete' };
+      toast.error('Card information is not available');
+      return { success: false, error: 'Card information unavailable' };
     }
 
     // Verify card element is available
@@ -116,8 +126,8 @@ export function useStripePayment() {
     paymentMethod: any;
   }) => {
     if (!stripe) {
-      toast.error('Stripe has not been initialized');
-      return { success: false, error: 'Stripe not initialized' };
+      toast.error('Payment system is not initialized');
+      return { success: false, error: 'Payment system not initialized' };
     }
 
     // Prevent duplicate processing

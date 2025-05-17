@@ -9,7 +9,7 @@ import StripeProvider from '@/components/payment/StripeProvider';
 import StripeCardElement from '@/components/payment/form/StripeCardElement';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useForm, FormProvider } from 'react-hook-form';
-import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { useStripe, useElements } from '@stripe/react-stripe-js';
 
 interface TakePaymentDialogProps {
   open: boolean;
@@ -27,17 +27,21 @@ interface PaymentFormValues {
   stripeCard?: { complete?: boolean };
 }
 
-const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
-  open,
-  onOpenChange,
+const TakePaymentContent: React.FC<Omit<TakePaymentDialogProps, 'open' | 'onOpenChange'> & {
+  onClose: () => void;
+  paymentComplete: boolean;
+  setPaymentComplete: (complete: boolean) => void;
+}> = ({
   paymentId = "",
   patientName = "",
   patientEmail = "",
   patientPhone = "",
   amount = 50000, // £500 in pence
-  onPaymentProcessed = async () => {}
+  onPaymentProcessed = async () => {},
+  onClose,
+  paymentComplete,
+  setPaymentComplete
 }) => {
-  const [paymentComplete, setPaymentComplete] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isCardComplete, setIsCardComplete] = useState(false);
   const cardCompleteRef = useRef(false);
@@ -61,37 +65,21 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   
   // Validate the payment ID early
   useEffect(() => {
-    if (open) {
-      console.log("TakePaymentDialog opened with:", { 
-        paymentId, 
-        patientName, 
-        amount,
-        stripeInitialized: !!stripe,
-        elementsInitialized: !!elements
-      });
-      
-      if (!paymentId || typeof paymentId !== 'string' || paymentId.trim() === '') {
-        console.error("Invalid payment ID provided to TakePaymentDialog:", paymentId);
-        setValidationError("Invalid payment ID. Cannot process payment.");
-      } else {
-        setValidationError(null);
-      }
+    console.log("TakePaymentDialog content rendered with:", { 
+      paymentId, 
+      patientName, 
+      amount,
+      stripeInitialized: !!stripe,
+      elementsInitialized: !!elements
+    });
+    
+    if (!paymentId || typeof paymentId !== 'string' || paymentId.trim() === '') {
+      console.error("Invalid payment ID provided to TakePaymentDialog:", paymentId);
+      setValidationError("Invalid payment ID. Cannot process payment.");
+    } else {
+      setValidationError(null);
     }
-  }, [open, paymentId, patientName, amount, stripe, elements]);
-
-  // Reset dialog state when it closes
-  const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) {
-      setTimeout(() => {
-        setPaymentComplete(false);
-        setValidationError(null);
-        setIsCardComplete(false);
-        cardCompleteRef.current = false;
-        form.reset(); // Reset form when dialog closes
-      }, 300);
-    }
-    onOpenChange(newOpen);
-  };
+  }, [paymentId, patientName, amount, stripe, elements]);
   
   // Use the installment payment hook
   const { 
@@ -188,7 +176,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       </Alert>
       <Button 
         className="w-full mt-6"
-        onClick={() => onOpenChange(false)}
+        onClick={onClose}
       >
         Close
       </Button>
@@ -265,7 +253,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
         </p>
         <Button 
           className="mt-4 w-full"
-          onClick={() => onOpenChange(false)}
+          onClick={onClose}
         >
           Close
         </Button>
@@ -274,19 +262,48 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   );
 
   return (
+    <>
+      {paymentComplete ? (
+        renderSuccessContent()
+      ) : (
+        validationError ? renderValidationError() : renderPaymentForm()
+      )}
+    </>
+  );
+};
+
+const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
+  open,
+  onOpenChange,
+  ...props
+}) => {
+  const [paymentComplete, setPaymentComplete] = useState(false);
+
+  // Reset dialog state when it closes
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      setTimeout(() => {
+        setPaymentComplete(false);
+      }, 300);
+    }
+    onOpenChange(newOpen);
+  };
+
+  return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Process Payment</DialogTitle>
         </DialogHeader>
         
-        {paymentComplete ? (
-          renderSuccessContent()
-        ) : (
-          <StripeProvider>
-            {validationError ? renderValidationError() : renderPaymentForm()}
-          </StripeProvider>
-        )}
+        <StripeProvider>
+          <TakePaymentContent 
+            {...props}
+            onClose={() => onOpenChange(false)}
+            paymentComplete={paymentComplete}
+            setPaymentComplete={setPaymentComplete}
+          />
+        </StripeProvider>
       </DialogContent>
     </Dialog>
   );

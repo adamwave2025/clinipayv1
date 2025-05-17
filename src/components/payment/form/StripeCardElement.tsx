@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+
+import React, { useEffect, useRef, useState } from 'react';
 import { CardElement } from '@stripe/react-stripe-js';
 import { FormControl, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
@@ -25,6 +26,7 @@ const StripeCardElement = ({
   
   // Keep track of whether the card has been mounted
   const hasBeenMounted = useRef(false);
+  const [mounted, setMounted] = useState(false);
   
   // Store the latest onChange callback
   const onChangeRef = useRef(onChange);
@@ -33,6 +35,14 @@ const StripeCardElement = ({
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  // Set mounted flag after component is rendered
+  useEffect(() => {
+    setMounted(true);
+    return () => {
+      setMounted(false);
+    };
+  }, []);
 
   const cardElementOptions = {
     style: {
@@ -66,7 +76,8 @@ const StripeCardElement = ({
       isComplete: event.complete, 
       hasError: event.error ? true : false,
       errorMessage: event.error?.message || 'No error',
-      hasBeenMounted: hasBeenMounted.current
+      hasBeenMounted: hasBeenMounted.current,
+      mountedState: mounted
     });
     
     // Call parent onChange if it exists

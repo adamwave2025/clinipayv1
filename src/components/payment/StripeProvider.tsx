@@ -10,6 +10,9 @@ interface StripeProviderProps {
   children: React.ReactNode;
 }
 
+// Create a singleton Stripe promise so we don't re-initialize for each render
+let cachedStripePromise: Promise<any> | null = null;
+
 const StripeProvider = ({ children }: StripeProviderProps) => {
   const [stripePromise, setStripePromise] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -19,6 +22,14 @@ const StripeProvider = ({ children }: StripeProviderProps) => {
 
   useEffect(() => {
     const fetchPublishableKey = async () => {
+      // Return cached promise if available
+      if (cachedStripePromise) {
+        console.log('Using cached Stripe instance');
+        setStripePromise(cachedStripePromise);
+        setLoading(false);
+        return;
+      }
+
       // Prevent multiple initialization attempts
       if (initAttempted.current) return;
       initAttempted.current = true;
@@ -66,8 +77,9 @@ const StripeProvider = ({ children }: StripeProviderProps) => {
         console.log('Stripe key received, initializing...'); 
         
         try {
-          // Initialize Stripe with the publishable key
+          // Initialize Stripe with the publishable key and cache it
           const promise = loadStripe(data.publishableKey);
+          cachedStripePromise = promise;
           console.log('Stripe initialization started');
           
           // Wait for the promise to resolve to catch any initialization errors
