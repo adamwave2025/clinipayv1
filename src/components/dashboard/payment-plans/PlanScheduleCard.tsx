@@ -36,7 +36,9 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
       'cancelled': 'destructive',
       'scheduled': 'secondary',
       'processing': 'secondary',
-      'sent': 'primary'
+      'sent': 'primary',
+      'refunded': 'secondary',
+      'partially_refunded': 'secondary'
     };
 
     return (
@@ -44,7 +46,7 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
         variant={variants[status] as any || 'secondary'} 
         className="capitalize"
       >
-        {status}
+        {status === 'partially_refunded' ? 'Partially Refunded' : status}
       </Badge>
     );
   };
@@ -109,7 +111,8 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
             </div>
           </div>
           
-          {installment.status !== 'paid' && installment.status !== 'cancelled' && (
+          {/* Only show actions if the payment is not paid, cancelled, refunded, or partially refunded */}
+          {!['paid', 'cancelled', 'refunded', 'partially_refunded'].includes(installment.status) && (
             <div className="flex flex-wrap gap-2 pt-2">
               <Button 
                 variant="outline" 

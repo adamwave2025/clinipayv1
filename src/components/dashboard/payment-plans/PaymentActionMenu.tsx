@@ -27,6 +27,11 @@ const PaymentActionMenu: React.FC<PaymentActionMenuProps> = ({
   onReschedule,
   onTakePayment
 }) => {
+  // Don't render the menu at all for refunded or partially refunded payments
+  if (['refunded', 'partially_refunded'].includes(installment.status)) {
+    return null;
+  }
+  
   // Simplified take payment handler - no toast, just open the dialog
   const handleTakePayment = (e: React.MouseEvent) => {
     e.preventDefault();

@@ -15,7 +15,7 @@ export interface PlanInstallment {
   paymentRequestId?: string;
   paymentId?: string;
   manualPayment?: boolean;
-  // Add any other fields that might be needed
+  refundAmount?: number; // Added for tracking refund amounts
 }
 
 /**
@@ -34,7 +34,8 @@ export const formatInstallmentFromDb = (data: any): PlanInstallment => {
     totalPayments: data.total_payments || 0,
     paymentRequestId: data.payment_request_id,
     paymentId: data.payment_id,
-    manualPayment: data.manualPayment || false
+    manualPayment: data.manualPayment || false,
+    refundAmount: data.refund_amount
   };
 };
 
@@ -61,7 +62,8 @@ export const formatPlanInstallments = (installments: any[]): PlanInstallment[] =
       totalPayments: item.total_payments || 0,
       paymentRequestId: item.payment_request_id,
       paymentId: item.payment_id,
-      manualPayment: item.manualPayment || false
+      manualPayment: item.manualPayment || false,
+      refundAmount: item.refund_amount
     };
   });
 };
