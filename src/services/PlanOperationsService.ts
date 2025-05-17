@@ -273,7 +273,7 @@ export class PlanOperationsService {
         return false;
       }
       
-      // Make sure we have an activity log entry for manual payment
+      // KEEP activity log entry for manual payment
       if (planId) {
         // Get the payment schedule data for the activity log
         const { data: scheduleData } = await supabase

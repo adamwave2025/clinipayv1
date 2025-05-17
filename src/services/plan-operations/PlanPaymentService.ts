@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -302,22 +301,8 @@ export class PlanPaymentService {
         }
       }
       
-      // Record the activity
-      await supabase.from('payment_activity').insert({
-        plan_id: scheduleEntry.plan_id,
-        payment_link_id: scheduleEntry.payment_link_id,
-        patient_id: scheduleEntry.patient_id,
-        clinic_id: scheduleEntry.clinic_id,
-        action_type: 'manual_payment_recorded',
-        details: {
-          payment_id: payment.id,
-          amount: scheduleEntry.amount,
-          payment_number: scheduleEntry.payment_number,
-          total_payments: scheduleEntry.total_payments,
-          due_date: scheduleEntry.due_date,
-          payment_ref: paymentRef
-        }
-      });
+      // REMOVE the duplicate activity logging - we'll keep the one in PlanOperationsService instead
+      // The code related to recording manual_payment_recorded activity has been removed here
       
       return { success: true };
       
