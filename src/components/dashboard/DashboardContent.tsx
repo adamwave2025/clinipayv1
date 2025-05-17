@@ -53,7 +53,7 @@ const DashboardContent = () => {
       <div className="mb-8">
         <RecentPaymentsCard 
           payments={payments} 
-          onRefund={openRefundDialog}
+          onRefund={() => openRefundDialog(selectedPayment?.id || '')}
           onPaymentClick={handlePaymentClick}
         />
       </div>
@@ -62,7 +62,7 @@ const DashboardContent = () => {
         payment={selectedPayment}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        onRefund={openRefundDialog}
+        onRefund={() => openRefundDialog(selectedPayment?.id || '')}
       />
 
       <PaymentRefundDialog

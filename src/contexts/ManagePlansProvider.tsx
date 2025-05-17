@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext, { PaymentDialogData } from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -103,7 +104,10 @@ export const ManagePlansProvider: React.FC<{
     setShowPaymentDetails,
     paymentData,
     selectedInstallment: viewDetailsInstallment,  // Renamed to viewDetailsInstallment
-    handleViewPaymentDetails
+    handleViewPaymentDetails,
+    // Remove duplicate refund state declarations since we'll use useRefundState
+    refundDialogOpen: installmentRefundDialogOpen,
+    setRefundDialogOpen: setInstallmentRefundDialogOpen
   } = useInstallmentHandler();
   
   // Define onPaymentUpdated function for the take payment dialog
@@ -274,8 +278,6 @@ export const ManagePlansProvider: React.FC<{
   // Set up properties for plan action dialogs
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showPauseDialog, setShowPauseDialog] = useState(false);
-  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
-  const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
   
   // Use the improved resume actions hook with refreshPlanState
   const { 
@@ -298,11 +300,6 @@ export const ManagePlansProvider: React.FC<{
   const handleOpenPauseDialog = () => {
     console.log("Opening pause dialog");
     setShowPauseDialog(true);
-  };
-  
-  const openRefundDialog = () => {
-    console.log("Opening refund dialog");
-    setRefundDialogOpen(true);
   };
   
   // Use updated action handlers that leverage refreshPlanState
@@ -389,13 +386,6 @@ export const ManagePlansProvider: React.FC<{
   // Create handler for payment rescheduling
   const handleReschedulePayment = async (newDate: Date) => {
     await paymentRescheduleActions.handleReschedulePayment(newDate);
-  };
-  
-  const processRefund = async () => {
-    console.log("Process refund action called");
-    setRefundDialogOpen(false);
-    // Always reset to patient plans view after operations
-    setIsTemplateView(false);
   };
   
   const handleSendReminder = async () => {

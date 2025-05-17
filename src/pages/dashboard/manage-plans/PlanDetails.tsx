@@ -7,7 +7,7 @@ import PlanDetailsView from '@/components/dashboard/payment-plans/PlanDetailsVie
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
-import { PaymentRefundDialog } from '@/components/dashboard/payments/PaymentRefundDialog';
+import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 
 const PlanDetails = () => {
   const {

@@ -12,7 +12,8 @@ export const useInstallmentHandler = () => {
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const { paymentData, fetchPaymentDetails, setPaymentData } = usePaymentDetailsFetcher();
   
-  // Add refund dialog state
+  // Add refund dialog state - we'll expose these but they won't be used
+  // since we're delegating to useRefundState in ManagePlansProvider
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
 
@@ -48,7 +49,7 @@ export const useInstallmentHandler = () => {
     }
   };
 
-  // Add function to open the refund dialog
+  // These functions are kept for API compatibility but will be overridden by useRefundState
   const openRefundDialog = () => {
     if (paymentData && paymentData.id) {
       setPaymentToRefund(paymentData.id);
@@ -59,7 +60,7 @@ export const useInstallmentHandler = () => {
     }
   };
 
-  // Add function to process the refund
+  // Add function to process the refund - also kept for API compatibility
   const processRefund = async (amountInPounds?: number) => {
     if (!paymentToRefund) {
       toast.error('No payment selected for refund');
