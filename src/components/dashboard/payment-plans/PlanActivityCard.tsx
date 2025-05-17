@@ -1,8 +1,20 @@
-
 import React from 'react';
 import { PlanActivity } from '@/utils/planActivityUtils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckCircle, AlertCircle, Pause, Play, Calendar, X } from 'lucide-react';
+import { 
+  CheckCircle, 
+  AlertCircle, 
+  Pause, 
+  Play, 
+  Calendar, 
+  X, 
+  CreditCard,
+  FileText,
+  RefreshCcw,
+  PauseCircle,
+  PlayCircle,
+  CalendarClock
+} from 'lucide-react';
  
 interface PlanActivityCardProps {
   activities: PlanActivity[];
@@ -22,22 +34,72 @@ const PlanActivityCard: React.FC<PlanActivityCardProps> = ({ activities, isLoadi
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'payment':
+      case 'payment_made':
       case 'payment_success':
+      case 'payment_marked_paid':
         return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'payment_failed':
         return <AlertCircle className="h-5 w-5 text-red-500" />;
       case 'plan_paused':
-        return <Pause className="h-5 w-5 text-amber-500" />;
+      case 'paused':
+        return <PauseCircle className="h-5 w-5 text-amber-500" />;
       case 'plan_resumed':
-        return <Play className="h-5 w-5 text-blue-500" />;
+      case 'resumed':
+        return <PlayCircle className="h-5 w-5 text-blue-500" />;
       case 'plan_rescheduled':
       case 'payment_rescheduled':
-        return <Calendar className="h-5 w-5 text-purple-500" />;
+      case 'reschedule_plan':
+      case 'reschedule_payment':
+        return <CalendarClock className="h-5 w-5 text-purple-500" />;
       case 'plan_cancelled':
+      case 'cancelled':
         return <X className="h-5 w-5 text-red-500" />;
+      case 'plan_created':
+        return <FileText className="h-5 w-5 text-blue-500" />;
+      case 'payment_refunded':
+      case 'refund':
+        return <RefreshCcw className="h-5 w-5 text-orange-500" />;
+      case 'manual_payment':
+        return <CreditCard className="h-5 w-5 text-emerald-500" />;
       default:
         return <div className="h-5 w-5 rounded-full bg-gray-300" />;
+    }
+  };
+
+  const getActivityDescription = (activity: PlanActivity) => {
+    // If there's a description already provided, use that
+    if (activity.description) {
+      return activity.description;
+    }
+    
+    // Otherwise, generate a description based on the action type
+    switch (activity.actionType) {
+      case 'plan_created':
+        return 'Plan created';
+      case 'payment_made':
+        return `Payment received (${activity.details?.paymentNumber || ''} of ${activity.details?.totalPayments || ''})`;
+      case 'payment_marked_paid':
+        return 'Payment manually marked as paid';
+      case 'payment_failed':
+        return 'Payment failed';
+      case 'plan_paused':
+        return 'Plan paused';
+      case 'plan_resumed':
+        return 'Plan resumed';
+      case 'plan_rescheduled':
+        return 'Plan rescheduled';
+      case 'payment_rescheduled':
+        return 'Payment rescheduled';
+      case 'plan_cancelled':
+        return 'Plan cancelled';
+      case 'payment_refunded':
+        return 'Payment refunded';
+      case 'reschedule_payment':
+        return 'Payment date changed';
+      case 'reschedule_plan':
+        return 'Plan schedule updated';
+      default:
+        return activity.actionType.replace(/_/g, ' ');
     }
   };
 
@@ -73,8 +135,21 @@ const PlanActivityCard: React.FC<PlanActivityCardProps> = ({ activities, isLoadi
             {getActivityIcon(activity.actionType)}
           </div>
           <div>
-            <p className="text-sm">{activity.description || activity.actionType.replace(/_/g, ' ')}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm font-medium">{getActivityDescription(activity)}</p>
+            {activity.details && (
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {activity.details.newDate && (
+                  <p>New date: {new Date(activity.details.newDate).toLocaleDateString()}</p>
+                )}
+                {activity.details.amount && (
+                  <p>Amount: {new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(activity.details.amount/100)}</p>
+                )}
+                {activity.details.reason && (
+                  <p>Reason: {activity.details.reason}</p>
+                )}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
               {formatDate(activity.timestamp || activity.performedAt)}
             </p>
           </div>

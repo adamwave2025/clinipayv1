@@ -1,3 +1,4 @@
+
 /**
  * Interface for plan activity entries
  */
@@ -29,6 +30,15 @@ export interface PlanActivity {
     resumeDate?: string;
     reference?: string;
     reason?: string;
+    oldStartDate?: string;
+    newStartDate?: string;
+    oldDueDate?: string;
+    refundAmount?: number;
+    originalAmount?: number;
+    isFullRefund?: boolean;
+    refundedAt?: string;
+    manualPayment?: boolean;
+    error?: string;
     [key: string]: any;
   };
 }
@@ -67,7 +77,12 @@ export const formatPlanActivities = (activities: any[]): PlanActivity[] => {
     return formatted;
   });
   
-  return formattedActivities;
+  // Sort activities by performed_at date in descending order (newest first)
+  return formattedActivities.sort((a, b) => {
+    const dateA = new Date(a.performedAt || a.timestamp || '').getTime();
+    const dateB = new Date(b.performedAt || b.timestamp || '').getTime();
+    return dateB - dateA;
+  });
 };
 
 /**
@@ -173,7 +188,8 @@ const enrichActivityDetails = (actionType: string, details: any): any => {
     console.log('Enriched payment details:', {
       reference: enhancedDetails.reference,
       paymentNumber: enhancedDetails.paymentNumber,
-      totalPayments: enhancedDetails.totalPayments
+      totalPayments: enhancedDetails.totalPayments,
+      manualPayment: enhancedDetails.manualPayment
     });
   }
   
@@ -209,6 +225,44 @@ const enrichActivityDetails = (actionType: string, details: any): any => {
         nextDueDate: enhancedDetails.nextDueDate
       });
     }
+    
+    // For rescheduled plans, ensure we have the date changes
+    if (actionType === 'plan_rescheduled' || actionType === 'reschedule_plan') {
+      // Normalize start date fields
+      if (enhancedDetails.oldDate && !enhancedDetails.oldStartDate) {
+        enhancedDetails.oldStartDate = enhancedDetails.oldDate;
+      }
+      if (enhancedDetails.newDate && !enhancedDetails.newStartDate) {
+        enhancedDetails.newStartDate = enhancedDetails.newDate;
+      }
+      
+      // Make sure we have a next due date for UI display
+      if (enhancedDetails.newStartDate && !enhancedDetails.nextDueDate) {
+        enhancedDetails.nextDueDate = enhancedDetails.newStartDate;
+      }
+    }
+  }
+  
+  // For rescheduled payments
+  if (actionType === 'payment_rescheduled' || actionType === 'reschedule_payment') {
+    // Normalize date fields
+    if (enhancedDetails.originalDate && !enhancedDetails.oldDueDate) {
+      enhancedDetails.oldDueDate = enhancedDetails.originalDate;
+    }
+    if (!enhancedDetails.newDate && enhancedDetails.newDueDate) {
+      enhancedDetails.newDate = enhancedDetails.newDueDate;
+    }
+  }
+  
+  // For refunds
+  if (actionType === 'payment_refunded') {
+    // Ensure we have all necessary fields
+    if (enhancedDetails.refund_amount && !enhancedDetails.refundAmount) {
+      enhancedDetails.refundAmount = enhancedDetails.refund_amount;
+    }
+    if (enhancedDetails.refunded_at && !enhancedDetails.refundedAt) {
+      enhancedDetails.refundedAt = enhancedDetails.refunded_at;
+    }
   }
   
   console.log(`Fully enriched details for ${actionType}:`, enhancedDetails);
@@ -227,15 +281,23 @@ export const getActionTypeLabel = (actionType: string): string => {
     case 'payment_made':
       return 'Payment received';
     case 'payment_rescheduled':
+    case 'reschedule_payment':
       return 'Payment rescheduled';
     case 'plan_paused':
       return 'Plan paused';
     case 'plan_resumed':
       return 'Plan resumed';
     case 'plan_rescheduled':
+    case 'reschedule_plan':
       return 'Plan rescheduled';
     case 'plan_cancelled':
       return 'Plan cancelled';
+    case 'payment_refunded':
+      return 'Payment refunded';
+    case 'payment_reminder_sent':
+      return 'Payment reminder sent';
+    case 'payment_failed':
+      return 'Payment failed';
     default:
       return capitalize(actionType.replace(/_/g, ' '));
   }

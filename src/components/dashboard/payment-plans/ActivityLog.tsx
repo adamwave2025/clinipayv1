@@ -9,7 +9,11 @@ import {
   CalendarClock,
   X,
   PauseCircle,
-  PlayCircle
+  PlayCircle,
+  CheckCircle,
+  RefreshCcw,
+  AlertCircle,
+  MessageCircle
 } from 'lucide-react';
 
 interface ActivityLogProps {
@@ -39,9 +43,13 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
         return <FileText className="h-4 w-4 text-purple-500" />;
       case 'payment_made':
       case 'payment_marked_paid':
-        return <CreditCard className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'payment_failed':
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
       case 'plan_rescheduled':
       case 'payment_rescheduled':
+      case 'reschedule_plan':
+      case 'reschedule_payment':
         return <CalendarClock className="h-4 w-4 text-amber-500" />;
       case 'plan_cancelled':
         return <X className="h-4 w-4 text-red-500" />;
@@ -49,6 +57,10 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
         return <PauseCircle className="h-4 w-4 text-orange-500" />;
       case 'plan_resumed':
         return <PlayCircle className="h-4 w-4 text-green-500" />;
+      case 'payment_refunded':
+        return <RefreshCcw className="h-4 w-4 text-orange-500" />;
+      case 'payment_reminder_sent':
+        return <MessageCircle className="h-4 w-4 text-blue-500" />;
       default:
         return <FileText className="h-4 w-4 text-gray-500" />;
     }
@@ -79,7 +91,8 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
         return (
           <>
             <div className="font-medium">
-              Payment received for {activity.details?.amount ? formatCurrency(activity.details.amount) : 'Not specified'}
+              {activity.actionType === 'payment_marked_paid' ? 'Payment marked as paid' : 'Payment received'} 
+              {activity.details?.amount ? ` for ${formatCurrency(activity.details.amount)}` : ''}
             </div>
             <div className="mt-1 space-y-1 text-sm">
               {activity.details?.paymentNumber && activity.details?.totalPayments ? (
@@ -88,16 +101,43 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
                 <p>Payment processed</p>
               )}
               {activity.details?.reference && <p>Reference: {activity.details.reference}</p>}
+              {activity.details?.manualPayment && <p className="text-amber-600">Manual payment</p>}
             </div>
           </>
         );
       case 'plan_rescheduled':
-      case 'payment_rescheduled':
+      case 'reschedule_plan':
         return (
           <>
             <div className="font-medium">Rescheduled plan</div>
             <div className="mt-1 space-y-1 text-sm">
-              <p>Next payment date: {formatDate(activity.details?.newDate || activity.details?.nextDueDate || 'Not specified')}</p>
+              {activity.details?.oldStartDate && activity.details?.newStartDate && (
+                <p>Changed from {formatDate(activity.details.oldStartDate)} to {formatDate(activity.details.newStartDate)}</p>
+              )}
+              {!activity.details?.oldStartDate && activity.details?.newStartDate && (
+                <p>Next payment date: {formatDate(activity.details.newStartDate)}</p>
+              )}
+              {!activity.details?.oldStartDate && !activity.details?.newStartDate && activity.details?.nextDueDate && (
+                <p>Next payment date: {formatDate(activity.details.nextDueDate)}</p>
+              )}
+            </div>
+          </>
+        );
+      case 'payment_rescheduled':
+      case 'reschedule_payment':
+        return (
+          <>
+            <div className="font-medium">Rescheduled payment</div>
+            <div className="mt-1 space-y-1 text-sm">
+              {activity.details?.paymentNumber && activity.details?.totalPayments && (
+                <p>Payment {activity.details.paymentNumber} of {activity.details.totalPayments}</p>
+              )}
+              {activity.details?.oldDueDate && activity.details?.newDate && (
+                <p>Changed from {formatDate(activity.details.oldDueDate)} to {formatDate(activity.details.newDate)}</p>
+              )}
+              {activity.details?.amount && (
+                <p>Amount: {formatCurrency(activity.details.amount)}</p>
+              )}
             </div>
           </>
         );
@@ -129,6 +169,54 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
             <div className="font-medium">Resumed plan</div>
             <div className="mt-1 space-y-1 text-sm">
               <p>Next payment date: {formatDate(activity.details?.resumeDate || activity.details?.nextDueDate || 'Not specified')}</p>
+            </div>
+          </>
+        );
+      case 'payment_refunded':
+        return (
+          <>
+            <div className="font-medium">Payment refunded</div>
+            <div className="mt-1 space-y-1 text-sm">
+              {activity.details?.refundAmount && (
+                <p>Refund amount: {formatCurrency(activity.details.refundAmount)}</p>
+              )}
+              {activity.details?.isFullRefund && (
+                <p>Full refund</p>
+              )}
+              {activity.details?.paymentNumber && activity.details?.totalPayments && (
+                <p>Payment {activity.details.paymentNumber} of {activity.details.totalPayments}</p>
+              )}
+            </div>
+          </>
+        );
+      case 'payment_reminder_sent':
+        return (
+          <>
+            <div className="font-medium">Payment reminder sent</div>
+            <div className="mt-1 space-y-1 text-sm">
+              {activity.details?.paymentNumber && activity.details?.totalPayments && (
+                <p>Payment {activity.details.paymentNumber} of {activity.details.totalPayments}</p>
+              )}
+              {activity.details?.dueDate && (
+                <p>Due date: {formatDate(activity.details.dueDate)}</p>
+              )}
+              {activity.details?.amount && (
+                <p>Amount: {formatCurrency(activity.details.amount)}</p>
+              )}
+            </div>
+          </>
+        );
+      case 'payment_failed':
+        return (
+          <>
+            <div className="font-medium">Payment failed</div>
+            <div className="mt-1 space-y-1 text-sm">
+              {activity.details?.amount && (
+                <p>Amount: {formatCurrency(activity.details.amount)}</p>
+              )}
+              {activity.details?.error && (
+                <p className="text-red-500">Error: {activity.details.error}</p>
+              )}
             </div>
           </>
         );

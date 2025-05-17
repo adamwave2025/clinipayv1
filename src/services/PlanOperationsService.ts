@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
@@ -34,7 +35,8 @@ export class PlanOperationsService {
       try {
         await this.logPlanActivity(plan.id, 'plan_cancelled', { 
           planId: plan.id,
-          planName: plan.title || plan.planName 
+          planName: plan.title || plan.planName,
+          cancelledAt: new Date().toISOString(),
         });
       } catch (err) {
         console.warn('Could not log plan activity for cancellation:', err);
@@ -69,7 +71,8 @@ export class PlanOperationsService {
       try {
         await this.logPlanActivity(plan.id, 'plan_paused', { 
           planId: plan.id,
-          planName: plan.title || plan.planName 
+          planName: plan.title || plan.planName,
+          pausedAt: new Date().toISOString(),
         });
       } catch (err) {
         console.warn('Could not log plan activity for pause operation:', err);
@@ -110,7 +113,17 @@ export class PlanOperationsService {
       
       console.log('Resume plan result:', data);
       
-      // Already logged in the database function
+      // Log activity if not already logged by the database function
+      try {
+        await this.logPlanActivity(plan.id, 'plan_resumed', { 
+          planId: plan.id,
+          planName: plan.title || plan.planName,
+          resumeDate: formattedDate
+        });
+      } catch (err) {
+        console.warn('Could not log plan activity for resume operation:', err);
+      }
+      
       return true;
     } catch (err) {
       console.error('Error in resumePlan:', err);
@@ -134,6 +147,18 @@ export class PlanOperationsService {
       if (!success) {
         console.error('Error in PlanRescheduleService.reschedulePlan');
         return false;
+      }
+      
+      // Log activity if not already logged by the service
+      try {
+        await this.logPlanActivity(plan.id, 'plan_rescheduled', { 
+          planId: plan.id,
+          planName: plan.title || plan.planName,
+          oldStartDate: plan.startDate,
+          newStartDate: format(newStartDate, 'yyyy-MM-dd')
+        });
+      } catch (err) {
+        console.warn('Could not log plan activity for reschedule operation:', err);
       }
       
       return true;
@@ -160,7 +185,7 @@ export class PlanOperationsService {
       // Get the payment schedule item to retrieve plan ID for logging
       const { data: paymentData, error: fetchError } = await supabase
         .from('payment_schedule')
-        .select('plan_id, due_date')
+        .select('plan_id, due_date, payment_number, total_payments, amount')
         .eq('id', paymentId)
         .single();
       
@@ -188,7 +213,7 @@ export class PlanOperationsService {
         // Get additional plan details needed for activity logging
         const { data: planData, error: planError } = await supabase
           .from('plans')
-          .select('payment_link_id, patient_id, clinic_id')
+          .select('payment_link_id, patient_id, clinic_id, title')
           .eq('id', paymentData.plan_id)
           .single();
           
@@ -207,8 +232,12 @@ export class PlanOperationsService {
               action_type: 'payment_rescheduled',
               details: {
                 paymentId,
+                paymentNumber: paymentData.payment_number,
+                totalPayments: paymentData.total_payments,
+                amount: paymentData.amount,
                 oldDueDate: paymentData.due_date,
-                newDueDate: formattedDate
+                newDate: formattedDate,
+                planName: planData.title
               }
             });
             
@@ -251,6 +280,28 @@ export class PlanOperationsService {
         return false;
       }
       
+      // Make sure we have an activity log entry for manual payment
+      if (planId) {
+        // Get the payment schedule data for the activity log
+        const { data: scheduleData } = await supabase
+          .from('payment_schedule')
+          .select('payment_number, total_payments, amount, due_date')
+          .eq('id', installmentId)
+          .single();
+          
+        if (scheduleData) {
+          await this.logPlanActivity(planId, 'payment_marked_paid', { 
+            installmentId: installmentId,
+            paymentNumber: scheduleData.payment_number,
+            totalPayments: scheduleData.total_payments,
+            amount: scheduleData.amount,
+            dueDate: scheduleData.due_date,
+            paidAt: new Date().toISOString(),
+            manualPayment: true
+          });
+        }
+      }
+      
       console.log('Payment successfully marked as paid');
       return true;
     } catch (err) {
@@ -272,7 +323,7 @@ export class PlanOperationsService {
       // Get the payment schedule item to retrieve plan ID and patient details
       const { data: paymentData, error: fetchError } = await supabase
         .from('payment_schedule')
-        .select('plan_id, patient_id')
+        .select('plan_id, patient_id, due_date, payment_number, total_payments, amount')
         .eq('id', installmentId)
         .single();
       
@@ -283,10 +334,24 @@ export class PlanOperationsService {
       
       // Log that a reminder was sent
       if (paymentData?.plan_id) {
-        await this.logPlanActivity(paymentData.plan_id, 'payment_reminder_sent', { 
-          installmentId,
-          sentAt: new Date().toISOString()
-        });
+        // Get plan details for the activity
+        const { data: planData } = await supabase
+          .from('plans')
+          .select('payment_link_id, clinic_id, title')
+          .eq('id', paymentData.plan_id)
+          .single();
+          
+        if (planData) {
+          await this.logPlanActivity(paymentData.plan_id, 'payment_reminder_sent', { 
+            installmentId,
+            paymentNumber: paymentData.payment_number,
+            totalPayments: paymentData.total_payments,
+            amount: paymentData.amount,
+            dueDate: paymentData.due_date,
+            sentAt: new Date().toISOString(),
+            planName: planData.title
+          });
+        }
       }
       
       toast.success('Payment reminder sent successfully');
@@ -347,23 +412,26 @@ export class PlanOperationsService {
       if (paymentData.payment_schedule_id) {
         const { data: scheduleData } = await supabase
           .from('payment_schedule')
-          .select('plan_id')
+          .select('plan_id, payment_number, total_payments')
           .eq('id', paymentData.payment_schedule_id)
           .single();
           
         if (scheduleData) {
           planId = scheduleData.plan_id;
+          
+          // Log activity if we have a plan ID
+          if (planId) {
+            await this.logPlanActivity(planId, 'payment_refunded', { 
+              paymentId,
+              refundAmount,
+              originalAmount: paymentData.amount_paid,
+              isFullRefund,
+              refundedAt: now,
+              paymentNumber: scheduleData.payment_number,
+              totalPayments: scheduleData.total_payments
+            });
+          }
         }
-      }
-      
-      // Log activity if we have a plan ID
-      if (planId) {
-        await this.logPlanActivity(planId, 'payment_refunded', { 
-          paymentId,
-          refundAmount,
-          isFullRefund,
-          refundedAt: now
-        });
       }
       
       return { success: true };
@@ -381,7 +449,7 @@ export class PlanOperationsService {
       // Get clinic ID and payment_link_id for the plan
       const { data: planData } = await supabase
         .from('plans')
-        .select('clinic_id, patient_id, payment_link_id')
+        .select('clinic_id, patient_id, payment_link_id, title')
         .eq('id', planId)
         .single();
       
@@ -390,16 +458,27 @@ export class PlanOperationsService {
         return;
       }
       
+      // Add plan name to details if it's not already there
+      if (!details.planName && planData.title) {
+        details.planName = planData.title;
+      }
+      
       // Insert activity record with all required fields including payment_link_id
-      await supabase.from('payment_activity').insert({
+      const { data, error } = await supabase.from('payment_activity').insert({
         plan_id: planId,
         clinic_id: planData.clinic_id,
         patient_id: planData.patient_id,
-        payment_link_id: planData.payment_link_id, // Ensure payment_link_id is included
+        payment_link_id: planData.payment_link_id,
         action_type: actionType,
         details: details,
         performed_at: new Date().toISOString()
-      });
+      }).select();
+      
+      if (error) {
+        console.error('Error logging plan activity:', error);
+      } else {
+        console.log(`Successfully logged "${actionType}" activity for plan ${planId}:`, data);
+      }
     } catch (err) {
       console.error('Error logging plan activity:', err);
     }
