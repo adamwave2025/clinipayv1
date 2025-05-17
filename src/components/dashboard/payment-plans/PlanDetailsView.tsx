@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -43,6 +43,18 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
   onOpenRescheduleDialog,
   onSendReminder
 }) => {
+  // Debug log to track when the component re-renders with new data
+  useEffect(() => {
+    console.log('PlanDetailsView re-rendering with updated data:', {
+      planId: plan?.id,
+      status: plan?.status,
+      nextDueDate: plan?.nextDueDate,
+      installmentsCount: installments?.length,
+      activitiesCount: activities?.length,
+      isRefreshing
+    });
+  }, [plan, installments, activities, isRefreshing]);
+
   const LoadingOverlay = () => (
     <div className="absolute inset-0 bg-white/70 dark:bg-gray-900/70 flex items-center justify-center z-10">
       <div className="flex flex-col items-center space-y-2">
@@ -58,7 +70,7 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
         {isRefreshing && <LoadingOverlay />}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="col-span-1">
-            <PlanProgressCard plan={plan} isLoading={isLoading} />
+            <PlanProgressCard plan={plan} isLoading={isLoading} installments={installments} />
           </div>
           <div className="col-span-1 md:col-span-2">
             <PlanDetailsCard plan={plan} isLoading={isLoading} />

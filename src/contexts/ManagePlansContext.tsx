@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { Payment } from '@/types/payment';
