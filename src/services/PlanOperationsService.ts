@@ -185,7 +185,7 @@ export class PlanOperationsService {
       // Get the payment schedule item to retrieve plan ID for logging
       const { data: paymentData, error: fetchError } = await supabase
         .from('payment_schedule')
-        .select('plan_id, due_date, payment_number, total_payments, amount')
+        .select('plan_id, due_date, payment_number, total_payments, amount, status, payment_request_id')
         .eq('id', paymentId)
         .single();
       
@@ -194,13 +194,33 @@ export class PlanOperationsService {
         return { success: false, error: fetchError };
       }
       
-      // Update the payment schedule with new date
+      // Update the payment schedule with new date and set status to pending if it was sent
+      const updateData: any = { 
+        due_date: formattedDate, // Store only the date part
+        updated_at: new Date().toISOString()
+      };
+      
+      // If payment was in 'sent' status, revert it to 'pending'
+      if (paymentData.status === 'sent') {
+        updateData.status = 'pending';
+        
+        // Cancel the associated payment request if it exists
+        if (paymentData.payment_request_id) {
+          const { error: cancelError } = await supabase
+            .from('payment_requests')
+            .update({ status: 'cancelled' })
+            .eq('id', paymentData.payment_request_id);
+            
+          if (cancelError) {
+            console.error('Error cancelling payment request:', cancelError);
+            // Continue anyway since the main operation is rescheduling
+          }
+        }
+      }
+      
       const { error } = await supabase
         .from('payment_schedule')
-        .update({ 
-          due_date: formattedDate, // Store only the date part
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', paymentId);
       
       if (error) {
@@ -237,7 +257,9 @@ export class PlanOperationsService {
                 amount: paymentData.amount,
                 oldDueDate: paymentData.due_date,
                 newDate: formattedDate,
-                planName: planData.title
+                planName: planData.title,
+                status: paymentData.status,
+                payment_request_cancelled: paymentData.payment_request_id ? true : false
               }
             });
             

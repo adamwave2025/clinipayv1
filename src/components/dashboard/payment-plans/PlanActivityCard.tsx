@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PlanActivity } from '@/utils/planActivityUtils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -89,7 +90,7 @@ const PlanActivityCard: React.FC<PlanActivityCardProps> = ({ activities, isLoadi
       case 'plan_rescheduled':
         return 'Plan rescheduled';
       case 'payment_rescheduled':
-        return 'Payment rescheduled';
+        return `Payment ${activity.details?.paymentNumber || ''} rescheduled`;
       case 'plan_cancelled':
         return 'Plan cancelled';
       case 'payment_refunded':
@@ -141,11 +142,17 @@ const PlanActivityCard: React.FC<PlanActivityCardProps> = ({ activities, isLoadi
                 {activity.details.newDate && (
                   <p>New date: {new Date(activity.details.newDate).toLocaleDateString()}</p>
                 )}
+                {activity.details.oldDueDate && activity.details.newDate && (
+                  <p>Changed from {new Date(activity.details.oldDueDate).toLocaleDateString()} to {new Date(activity.details.newDate).toLocaleDateString()}</p>
+                )}
                 {activity.details.amount && (
                   <p>Amount: {new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(activity.details.amount/100)}</p>
                 )}
                 {activity.details.reason && (
                   <p>Reason: {activity.details.reason}</p>
+                )}
+                {activity.details.payment_request_cancelled && (
+                  <p>Previous payment request cancelled</p>
                 )}
               </div>
             )}

@@ -1,8 +1,11 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from 'date-fns';
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -41,11 +44,11 @@ const ReschedulePaymentDialog = ({
     onConfirm(normalizedDate);
   };
   
-  // Function to get tomorrow's date as a string for min date input
-  const getTomorrowString = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split('T')[0];
+  // Function to disable past dates
+  const disabledDates = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
   };
   
   return (
@@ -63,24 +66,33 @@ const ReschedulePaymentDialog = ({
             <label htmlFor="rescheduleDate" className="text-sm font-medium">
               New Payment Date
             </label>
-            <div className="relative">
-              <input
-                id="rescheduleDate"
-                type="date"
-                className="w-full px-4 py-2 border rounded-md pl-10" 
-                value={date.toISOString().split('T')[0]}
-                min={getTomorrowString()}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    const newDate = new Date(e.target.value);
-                    newDate.setHours(0, 0, 0, 0);
-                    console.log('Selected date for payment:', newDate.toISOString());
-                    setDate(newDate);
-                  }
-                }}
-                disabled={isLoading}
-              />
-              <CalendarIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="rescheduleDate"
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                    disabled={isLoading}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={(newDate) => newDate && setDate(newDate)}
+                    disabled={disabledDates}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Select a future date for the rescheduled payment.
