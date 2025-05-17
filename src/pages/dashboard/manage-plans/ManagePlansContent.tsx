@@ -40,14 +40,6 @@ const ManagePlansContent: React.FC = () => {
   
   console.log('ManagePlansContent rendering with showPlanDetails:', showPlanDetails);
   console.log('ManagePlansContent has selectedPlan:', selectedPlan?.id);
-  
-  // Create wrapper functions to match the expected signatures
-  const handleRescheduleWrapper = (installmentId: string) => {
-    console.log(`Wrapper called handleOpenReschedule for installment: ${installmentId}`);
-    if (handleOpenReschedule) {
-      handleOpenReschedule(installmentId);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -88,7 +80,7 @@ const ManagePlansContent: React.FC = () => {
         onReschedulePlan={handleOpenRescheduleDialog}
         isPlanPaused={isPlanPaused}
         onMarkAsPaid={handleMarkAsPaid}
-        onReschedule={handleRescheduleWrapper}
+        onReschedule={handleOpenReschedule}
         onTakePayment={handleTakePayment}
       />
       
