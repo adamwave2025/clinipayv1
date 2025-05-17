@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 import { corsHeaders } from "./utils.ts";
 import { handlePaymentIntentSucceeded, handlePaymentIntentFailed } from "./paymentHandlers.ts";
 import { handleRefundUpdated } from "./refundHandlers.ts";
@@ -70,11 +70,16 @@ serve(async (req) => {
     console.log("Stripe signature received:", signature.substring(0, 20) + "...");
     console.log("Using webhook secret:", stripeWebhookSecret.substring(0, 5) + "...");
     
-    // Verify the webhook signature
+    // Verify the webhook signature USING ASYNC METHOD
     let event;
     
     try {
-      event = stripe.webhooks.constructEvent(body, signature, stripeWebhookSecret);
+      // Replace synchronous constructEvent with async constructEventAsync
+      event = await stripe.webhooks.constructEventAsync(
+        body, 
+        signature, 
+        stripeWebhookSecret
+      );
       console.log(`Webhook event verified: ${event.type}`);
       console.log(`Event ID: ${event.id}`);
     } catch (err: any) {
@@ -123,3 +128,4 @@ serve(async (req) => {
     );
   }
 });
+
