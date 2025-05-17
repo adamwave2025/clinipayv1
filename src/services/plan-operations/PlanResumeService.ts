@@ -43,10 +43,10 @@ export class PlanResumeService {
       console.log(`Plan has paid payments: ${hasPaidPayments ? 'YES' : 'NO'}`);
       
       // Call our complete_resume_plan database function
+      // Note: The function doesn't accept p_target_status parameter so we remove it
       const { data, error } = await supabase.rpc('complete_resume_plan', {
         p_plan_id: plan.id,
-        p_resume_date: formattedDate,
-        p_target_status: hasPaidPayments ? 'active' : 'pending'
+        p_resume_date: formattedDate
       });
       
       if (error) {
@@ -69,10 +69,10 @@ export class PlanResumeService {
       const { error: activityError } = await supabase
         .from('payment_activity')
         .insert({
-          clinic_id: plan.clinic_id,
-          patient_id: plan.patient_id,
+          clinic_id: plan.clinicId,
+          patient_id: plan.patientId,
           plan_id: plan.id,
-          payment_link_id: plan.payment_link_id,
+          payment_link_id: plan.paymentLinkId,
           action_type: 'plan_resumed',
           details: {
             planName: plan.title || plan.planName,

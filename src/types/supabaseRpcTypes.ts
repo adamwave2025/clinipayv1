@@ -1,3 +1,4 @@
+
 /**
  * Response from the complete_resume_plan RPC function
  */
