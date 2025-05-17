@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -259,7 +260,7 @@ serve(async (req) => {
         // Check if this payment request is linked to a payment schedule
         const { data: scheduleItem, error: scheduleError } = await supabase
           .from('payment_schedule')
-          .select('*, plans!inner(id, status)')
+          .select('*')
           .eq('payment_request_id', paymentRequest.id)
           .maybeSingle();
           
@@ -272,72 +273,13 @@ serve(async (req) => {
           const scheduleStatus = isFullRefund ? 'refunded' : 'partially_refunded';
           const { error: updateScheduleError } = await supabase
             .from('payment_schedule')
-            .update({ 
-              status: scheduleStatus,
-              refund_amount: refundAmountToStore // Store refund amount in payment schedule too
-            })
+            .update({ status: scheduleStatus })
             .eq('id', scheduleItem.id);
             
           if (updateScheduleError) {
             console.error('❌ Error updating payment schedule:', updateScheduleError);
           } else {
             console.log('✅ Updated payment schedule status to:', scheduleStatus);
-            
-            // Check if the plan is completed and update it to active
-            if (scheduleItem.plans && scheduleItem.plans.status === 'completed') {
-              console.log('🔄 Changing plan status from completed to active after refund');
-              
-              // Update the plan status to active
-              const { error: updatePlanError } = await supabase
-                .from('plans')
-                .update({ 
-                  status: 'active',
-                  updated_at: currentTimestamp 
-                })
-                .eq('id', scheduleItem.plans.id);
-                
-              if (updatePlanError) {
-                console.error('❌ Error updating plan status:', updatePlanError);
-              } else {
-                console.log('✅ Updated plan status to active after refund');
-                
-                // Update plan metrics (decrement paid_installments and recalculate progress)
-                // First get the current plan data
-                const { data: planData, error: planError } = await supabase
-                  .from('plans')
-                  .select('paid_installments, total_installments')
-                  .eq('id', scheduleItem.plans.id)
-                  .single();
-                  
-                if (planError) {
-                  console.error('❌ Error fetching plan data for metrics update:', planError);
-                } else {
-                  // Decrement paid installments count (only if it's a full refund)
-                  if (isFullRefund && planData.paid_installments > 0) {
-                    const newPaidInstallments = planData.paid_installments - 1;
-                    const newProgress = Math.round((newPaidInstallments / planData.total_installments) * 100);
-                    
-                    console.log(`📊 Updating plan metrics: ${newPaidInstallments}/${planData.total_installments} (${newProgress}%)`);
-                    
-                    const { error: metricsError } = await supabase
-                      .from('plans')
-                      .update({ 
-                        paid_installments: newPaidInstallments,
-                        progress: newProgress
-                      })
-                      .eq('id', scheduleItem.plans.id);
-                      
-                    if (metricsError) {
-                      console.error('❌ Error updating plan metrics:', metricsError);
-                    } else {
-                      console.log('✅ Successfully updated plan metrics after refund');
-                    }
-                  }
-                }
-              }
-            } else {
-              console.log(`ℹ️ Plan not in completed state (${scheduleItem.plans?.status || 'unknown'}), no status change needed`);
-            }
             
             // Record the refund activity
             const activityPayload = {

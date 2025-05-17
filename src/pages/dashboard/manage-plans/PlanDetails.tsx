@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -7,8 +6,6 @@ import PlanDetailsView from '@/components/dashboard/payment-plans/PlanDetailsVie
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
-import { PlanInstallment } from '@/utils/paymentPlanUtils';
-import { Payment } from '@/types/payment';
 
 const PlanDetails = () => {
   const {
@@ -30,9 +27,9 @@ const PlanDetails = () => {
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
-    selectedInstallment,
+    selectedInstallment, // Use the primary selectedInstallment
     isProcessing,
-    viewDetailsInstallment,
+    viewDetailsInstallment, // Using the renamed property here
     
     // Add plan operation handlers
     handleOpenCancelDialog,
@@ -41,11 +38,6 @@ const PlanDetails = () => {
     handleOpenRescheduleDialog,
     handleSendReminder
   } = useManagePlansContext();
-  
-  // Create a local state to handle the payment detail dialog
-  const [viewInstallment, setViewInstallment] = useState<PlanInstallment | null>(null);
-  const [localPaymentData, setLocalPaymentData] = useState<Payment | null>(null);
-  const [showLocalPaymentDetails, setShowLocalPaymentDetails] = useState(false);
   
   // Debug logging for the dialogs
   useEffect(() => {
@@ -60,39 +52,6 @@ const PlanDetails = () => {
   if (!selectedPlan) {
     return null;
   }
-
-  // Function to handle viewing details of an installment
-  const handleViewInstallmentDetails = (installment: PlanInstallment) => {
-    console.log('Viewing details for installment:', installment);
-    setViewInstallment(installment);
-    
-    // Create a payment object from the installment data
-    const installmentPayment: Payment = {
-      id: installment.id,
-      amount: installment.amount,
-      clinicId: selectedPlan?.clinicId || '',
-      date: installment.paidDate || installment.dueDate,
-      netAmount: installment.amount,
-      patientName: selectedPlan?.patientName || '',
-      status: installment.status,
-      paymentMethod: installment.manualPayment ? 'manual' : 'card',
-      // Set other required fields with appropriate values or defaults
-      stripePaymentId: installment.payment?.id || '',
-      refundAmount: installment.refundAmount || 0,
-      refundedAmount: installment.refundAmount || 0,
-      // Optional fields
-      paymentReference: installment.paymentReference || '',
-      reference: installment.clientReference || '',
-      patientEmail: '',
-      patientPhone: '',
-      manualPayment: installment.manualPayment || false,
-      type: 'payment_plan',
-      linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
-    };
-    
-    setLocalPaymentData(installmentPayment);
-    setShowLocalPaymentDetails(true);
-  };
 
   return (
     <div className="space-y-6">
@@ -116,7 +75,6 @@ const PlanDetails = () => {
         onMarkAsPaid={handleMarkAsPaid}
         onReschedule={handleOpenReschedule}
         onTakePayment={handleTakePayment}
-        onViewDetails={handleViewInstallmentDetails}
         isLoading={isLoadingActivities}
         isRefreshing={isRefreshing}
         onOpenCancelDialog={handleOpenCancelDialog}
@@ -126,22 +84,11 @@ const PlanDetails = () => {
         onSendReminder={() => selectedPlan && handleSendReminder(selectedPlan.id)}
       />
       
-      {/* Use context-provided payment dialog for existing flows */}
       {paymentData && (
         <PaymentDetailDialog
           payment={paymentData}
           open={showPaymentDetails}
           onOpenChange={setShowPaymentDetails}
-          onRefund={() => {}}
-        />
-      )}
-      
-      {/* Use local payment dialog for installment clicks */}
-      {localPaymentData && (
-        <PaymentDetailDialog
-          payment={localPaymentData}
-          open={showLocalPaymentDetails}
-          onOpenChange={setShowLocalPaymentDetails}
           onRefund={() => {}}
         />
       )}
