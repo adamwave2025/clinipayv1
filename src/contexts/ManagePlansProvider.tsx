@@ -70,14 +70,25 @@ export const ManagePlansProvider: React.FC<{
         // Get fresh installment data
         await fetchPlanInstallmentsData(planId);
         
-        // The selected plan might need updating from the fresh data
-        const refreshedPlan = allPlans.find(p => p.id === planId);
-        if (refreshedPlan) {
-          console.log("Found refreshed plan data with status:", refreshedPlan.status);
-          setSelectedPlan(refreshedPlan);
-        } else {
-          console.log("Could not find refreshed plan in allPlans");
-        }
+        // Force update the selected plan with fresh data from allPlans
+        setTimeout(() => {
+          const refreshedPlan = allPlans.find(p => p.id === planId);
+          if (refreshedPlan) {
+            console.log("Found refreshed plan data with status:", refreshedPlan.status);
+            setSelectedPlan(refreshedPlan);
+          } else {
+            console.log("Could not find refreshed plan in allPlans");
+            // Try to fetch it directly as a fallback
+            PlanOperationsService.getPlanDetails(planId)
+              .then(planData => {
+                if (planData) {
+                  console.log("Fetched plan details directly:", planData.status);
+                  setSelectedPlan(planData);
+                }
+              })
+              .catch(err => console.error("Error fetching plan details:", err));
+          }
+        }, 500); // Small delay to ensure other operations complete first
       }
       
       // Enhanced logging for troubleshooting refund updates

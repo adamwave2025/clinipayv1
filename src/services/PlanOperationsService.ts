@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Plan } from '@/utils/planTypes';
-import { PlanInstallment } from '@/utils/paymentPlanUtils';
+import { Plan, formatPlanFromDb } from '@/utils/planTypes';
 import { toast } from 'sonner';
 import { PlanRescheduleService } from './plan-operations/PlanRescheduleService';
 import { PlanCancelService } from './plan-operations/PlanCancelService';
@@ -8,6 +7,7 @@ import { PlanPauseService } from './plan-operations/PlanPauseService';
 import { format } from 'date-fns';
 import { PlanPaymentService } from './plan-operations/PlanPaymentService';
 import { PlanResumeService } from './plan-operations/PlanResumeService';
+import { recordPaymentPlanActivity } from './PaymentScheduleService';
 
 /**
  * Service for performing operations on payment plans
@@ -431,6 +431,32 @@ export class PlanOperationsService {
     } catch (err) {
       console.error('Error in recordPaymentRefund:', err);
       return { success: false, error: err };
+    }
+  }
+  
+  /**
+   * Get detailed information for a specific plan
+   */
+  static async getPlanDetails(planId: string): Promise<Plan | null> {
+    try {
+      const { data, error } = await supabase
+        .from('plans')
+        .select(`
+          *,
+          patients (
+            id, name, email, phone
+          )
+        `)
+        .eq('id', planId)
+        .single();
+        
+      if (error) throw error;
+      if (!data) return null;
+      
+      return formatPlanFromDb(data);
+    } catch (err) {
+      console.error('Error fetching plan details:', err);
+      return null;
     }
   }
   

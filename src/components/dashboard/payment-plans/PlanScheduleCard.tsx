@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { Button } from '@/components/ui/button';
@@ -115,21 +114,21 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
           <div className="flex justify-between items-start">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="font-medium">Payment {installment.payment_number || '-'}</span>
+                <span className="font-medium">Payment {installment.paymentNumber || '-'}</span>
                 {getStatusBadge(installment.status)}
               </div>
               <div className="flex items-center text-sm text-muted-foreground">
                 <Calendar className="h-3.5 w-3.5 mr-1" />
-                {formatDate(installment.due_date)}
+                {formatDate(installment.dueDate)}
               </div>
             </div>
             <div className="text-right">
               <div className="font-medium">{formatCurrency(installment.amount)}</div>
-              {installment.refund_amount > 0 && (
+              {installment.refundAmount > 0 && (
                 <div className="text-sm text-muted-foreground">
                   <span className="flex items-center">
                     <RefreshCcw className="h-3 w-3 mr-1" />
-                    Refund: {formatCurrency(installment.refund_amount)}
+                    Refund: {formatCurrency(installment.refundAmount)}
                   </span>
                 </div>
               )}
