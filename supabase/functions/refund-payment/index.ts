@@ -281,6 +281,89 @@ serve(async (req) => {
           } else {
             console.log('✅ Updated payment schedule status to:', scheduleStatus);
             
+            // NEW: Update the plan if this is a full refund
+            if (isFullRefund && scheduleItem.plan_id) {
+              console.log(`🔄 Updating plan ${scheduleItem.plan_id} after refund`);
+              
+              // Get the plan details
+              const { data: planData, error: planError } = await supabase
+                .from('plans')
+                .select('*')
+                .eq('id', scheduleItem.plan_id)
+                .single();
+                
+              if (planError) {
+                console.error('❌ Error fetching plan data:', planError);
+              } else if (planData) {
+                // Calculate new paid installments count
+                let newPaidCount = planData.paid_installments;
+                
+                if (isFullRefund) {
+                  // Decrement the paid installments count
+                  newPaidCount = Math.max(0, planData.paid_installments - 1);
+                }
+                
+                // Calculate new progress
+                const newProgress = Math.floor((newPaidCount / planData.total_installments) * 100);
+                
+                // Determine new status
+                let newPlanStatus = planData.status;
+                
+                // If plan was completed and now isn't, change status to active
+                if (planData.status === 'completed' && newPaidCount < planData.total_installments) {
+                  newPlanStatus = 'active';
+                }
+                
+                // Find new next_due_date if needed
+                let newNextDueDate = planData.next_due_date;
+                
+                if (newPlanStatus === 'active' && !newNextDueDate) {
+                  // Find the next unpaid/non-refunded payment
+                  const { data: nextPayments } = await supabase
+                    .from('payment_schedule')
+                    .select('due_date')
+                    .eq('plan_id', scheduleItem.plan_id)
+                    .in('status', ['pending', 'sent'])
+                    .order('due_date')
+                    .limit(1);
+                    
+                  if (nextPayments && nextPayments.length > 0) {
+                    newNextDueDate = nextPayments[0].due_date;
+                    console.log(`📅 Found new next due date: ${newNextDueDate}`);
+                  }
+                }
+                
+                // Update the plan
+                const planUpdateData: any = {
+                  paid_installments: newPaidCount,
+                  progress: newProgress,
+                  updated_at: currentTimestamp
+                };
+                
+                // Only include these fields if they changed
+                if (newPlanStatus !== planData.status) {
+                  planUpdateData.status = newPlanStatus;
+                }
+                
+                if (newNextDueDate !== planData.next_due_date) {
+                  planUpdateData.next_due_date = newNextDueDate;
+                }
+                
+                console.log(`📊 Updating plan metrics:`, JSON.stringify(planUpdateData));
+                
+                const { error: planUpdateError } = await supabase
+                  .from('plans')
+                  .update(planUpdateData)
+                  .eq('id', scheduleItem.plan_id);
+                  
+                if (planUpdateError) {
+                  console.error('❌ Error updating plan:', planUpdateError);
+                } else {
+                  console.log(`✅ Successfully updated plan ${scheduleItem.plan_id}`);
+                }
+              }
+            }
+            
             // Record the refund activity
             const activityPayload = {
               patient_id: scheduleItem.patient_id,
