@@ -20,12 +20,15 @@ export const usePaymentRescheduleActions = (
     setTimeout(() => {
       console.log("[usePaymentRescheduleActions] Dialog state after update:", showRescheduleDialog, "selectedPaymentId:", selectedPaymentId);
     }, 100);
+    
+    // Return a resolved Promise to satisfy the TypeScript requirement
+    return Promise.resolve();
   };
   
   const handleReschedulePayment = async (newDate: Date): Promise<void> => {
     if (!selectedPaymentId) {
       toast.error('No payment selected for rescheduling');
-      return;
+      return Promise.reject(new Error('No payment selected for rescheduling'));
     }
     
     setIsProcessing(true);
@@ -43,7 +46,8 @@ export const usePaymentRescheduleActions = (
       if (fetchError) {
         console.error("Error fetching payment data:", fetchError);
         toast.error('Failed to fetch payment data for rescheduling');
-        return;
+        setIsProcessing(false);
+        return Promise.reject(fetchError);
       }
       
       // If payment has an associated payment request, cancel it first
@@ -60,7 +64,8 @@ export const usePaymentRescheduleActions = (
         if (cancelError) {
           console.error("Error cancelling existing payment request:", cancelError);
           toast.error('Failed to cancel existing payment request');
-          return;
+          setIsProcessing(false);
+          return Promise.reject(cancelError);
         } else {
           console.log("Successfully cancelled existing payment request");
         }
@@ -79,13 +84,17 @@ export const usePaymentRescheduleActions = (
         if (onPaymentRescheduled && planId) {
           await onPaymentRescheduled(planId);
         }
+        
+        return Promise.resolve();
       } else {
         toast.error('Failed to reschedule payment');
         console.error('Error rescheduling payment:', result.error);
+        return Promise.reject(result.error);
       }
     } catch (error) {
       console.error('Error in handleReschedulePayment:', error);
       toast.error('An error occurred while rescheduling the payment');
+      return Promise.reject(error);
     } finally {
       setIsProcessing(false);
       setSelectedPaymentId(null);
