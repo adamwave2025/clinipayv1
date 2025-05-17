@@ -15,7 +15,6 @@ export interface PlanInstallment {
   paymentRequestId?: string;
   paymentId?: string;
   manualPayment?: boolean;
-  // Add any other fields that might be needed
 }
 
 /**

@@ -5,16 +5,16 @@ import { Button } from '@/components/ui/button';
 interface PaymentActionsSectionProps {
   status: string;
   onRefund?: () => void;
-  manualPayment?: boolean; // Add prop to indicate manual payment
+  manualPayment?: boolean;
 }
 
 const PaymentActionsSection = ({ 
   status, 
   onRefund,
-  manualPayment = false // Default to false
+  manualPayment = false
 }: PaymentActionsSectionProps) => {
-  // Always hide refund button for manual payments or if status isn't paid or no handler
-  if (status !== 'paid' || !onRefund || manualPayment === true) {
+  // Show refund button for both regular and manual payments that are paid
+  if (status !== 'paid' || !onRefund) {
     console.log('Hiding refund button:', { 
       status, 
       hasOnRefund: !!onRefund, 
@@ -23,7 +23,7 @@ const PaymentActionsSection = ({
     return null;
   }
   
-  console.log('Displaying refund button');
+  console.log('Displaying refund button for payment');
   return (
     <div className="flex justify-end mt-4">
       <Button 
