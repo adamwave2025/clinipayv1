@@ -15,8 +15,6 @@ import { usePaymentRescheduleActions } from '@/hooks/payment-plans/usePaymentRes
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { toast } from '@/hooks/use-toast';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
-import { useRefundState } from '@/hooks/payment-plans/useRefundState';
-import { Payment } from '@/types/payment'; // Add this import for the Payment type
 
 export const ManagePlansProvider: React.FC<{
   children: React.ReactNode;
@@ -104,10 +102,7 @@ export const ManagePlansProvider: React.FC<{
     setShowPaymentDetails,
     paymentData,
     selectedInstallment: viewDetailsInstallment,  // Renamed to viewDetailsInstallment
-    handleViewPaymentDetails,
-    // Remove duplicate refund state declarations since we'll use useRefundState
-    refundDialogOpen: installmentRefundDialogOpen,
-    setRefundDialogOpen: setInstallmentRefundDialogOpen
+    handleViewPaymentDetails
   } = useInstallmentHandler();
   
   // Define onPaymentUpdated function for the take payment dialog
@@ -278,6 +273,8 @@ export const ManagePlansProvider: React.FC<{
   // Set up properties for plan action dialogs
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showPauseDialog, setShowPauseDialog] = useState(false);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
   
   // Use the improved resume actions hook with refreshPlanState
   const { 
@@ -300,6 +297,11 @@ export const ManagePlansProvider: React.FC<{
   const handleOpenPauseDialog = () => {
     console.log("Opening pause dialog");
     setShowPauseDialog(true);
+  };
+  
+  const openRefundDialog = () => {
+    console.log("Opening refund dialog");
+    setRefundDialogOpen(true);
   };
   
   // Use updated action handlers that leverage refreshPlanState
@@ -388,34 +390,17 @@ export const ManagePlansProvider: React.FC<{
     await paymentRescheduleActions.handleReschedulePayment(newDate);
   };
   
+  const processRefund = async () => {
+    console.log("Process refund action called");
+    setRefundDialogOpen(false);
+    // Always reset to patient plans view after operations
+    setIsTemplateView(false);
+  };
+  
   const handleSendReminder = async () => {
     console.log("Send reminder action called");
   };
 
-  // Use the refund state hook
-  const {
-    refundDialogOpen,
-    setRefundDialogOpen,
-    paymentToRefund,
-    setPaymentToRefund,
-    openRefundDialog: originalOpenRefundDialog,
-    processRefund,
-    handleRefund
-  } = useRefundState();
-  
-  // Create a wrapper function that can adapt to different function signatures
-  const openRefundDialog = (paymentIdOrData?: string | Payment | null) => {
-    if (typeof paymentIdOrData === 'string') {
-      // Handle case where a string ID is passed
-      // We don't have access to all payments here, so we'll just pass the ID
-      // The original function will handle finding the payment
-      originalOpenRefundDialog(paymentIdOrData);
-    } else {
-      // Handle case where a Payment object or null is passed
-      originalOpenRefundDialog(paymentIdOrData as Payment | null);
-    }
-  };
-  
   return (
     <ManagePlansContext.Provider
       value={{
@@ -488,7 +473,6 @@ export const ManagePlansProvider: React.FC<{
         paymentToRefund,
         openRefundDialog,
         processRefund,
-        handleRefund,
         
         // Plan action dialogs and handlers
         showCancelDialog,

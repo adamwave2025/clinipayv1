@@ -7,7 +7,6 @@ import PlanDetailsView from '@/components/dashboard/payment-plans/PlanDetailsVie
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
-import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 
 const PlanDetails = () => {
   const {
@@ -33,12 +32,6 @@ const PlanDetails = () => {
     isProcessing,
     viewDetailsInstallment, // Using the renamed property here
     handleViewPaymentDetails,
-    
-    // Add refund related properties
-    refundDialogOpen,
-    setRefundDialogOpen,
-    openRefundDialog,
-    processRefund,
     
     // Add plan operation handlers
     handleOpenCancelDialog,
@@ -99,7 +92,7 @@ const PlanDetails = () => {
           payment={paymentData}
           open={showPaymentDetails}
           onOpenChange={setShowPaymentDetails}
-          onRefund={openRefundDialog}
+          onRefund={() => {}}
         />
       )}
       
@@ -116,15 +109,6 @@ const PlanDetails = () => {
         onConfirm={confirmMarkAsPaid}
         isLoading={isProcessing}
         installment={selectedInstallment}
-      />
-      
-      {/* Fix PaymentRefundDialog props */}
-      <PaymentRefundDialog
-        open={refundDialogOpen} 
-        onOpenChange={setRefundDialogOpen}
-        onRefund={processRefund}
-        paymentAmount={paymentData?.amount}
-        patientName={paymentData?.patientName}
       />
     </div>
   );

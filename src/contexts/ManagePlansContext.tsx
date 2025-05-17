@@ -84,7 +84,6 @@ export interface ManagePlansContextType {
   paymentToRefund: string | null;
   openRefundDialog: () => void;
   processRefund: (amount?: number) => void;
-  handleRefund: (amount?: number, paymentId?: string) => void; // Add this line
   
   // Cancel plan properties
   showCancelDialog: boolean;
