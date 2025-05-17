@@ -60,34 +60,6 @@ export class NotificationService {
           console.log('⚠️ CRITICAL: Adding refund_amount: null to payment payload');
           payload.payment.refund_amount = null;
         }
-        
-        // CRITICAL FIX: Ensure monetary values are stored as integers (pence/cents)
-        if (type === 'payment_refund' || type === 'refund') {
-          if (payload.payment.refund_amount !== null) {
-            // Make sure refund_amount is stored correctly in pence/cents
-            // If the refund amount was passed in pounds, convert to pence
-            console.log(`⚠️ CRITICAL: Validating refund amount format: ${payload.payment.refund_amount}`);
-            let refundAmount = payload.payment.refund_amount;
-            
-            // If the amount appears to be in pounds (has decimal places or is small), convert to pence
-            if (typeof refundAmount === 'number' && !Number.isNaN(refundAmount)) {
-              // Check if the amount appears to be in pounds rather than pence
-              const isPounds = refundAmount < 1000 && String(refundAmount).includes('.');
-              
-              if (isPounds) {
-                // Convert pounds to pence for storage
-                refundAmount = Math.round(refundAmount * 100);
-                console.log(`⚠️ CRITICAL: Converted refund amount from pounds to pence: £${payload.payment.refund_amount} -> ${refundAmount}p`);
-                payload.payment.refund_amount = refundAmount;
-              } else {
-                console.log(`⚠️ CRITICAL: Refund amount appears to be in pence already: ${refundAmount}p`);
-              }
-            } else {
-              console.error(`⚠️ CRITICAL ERROR: Invalid refund amount: ${refundAmount}, setting to 0`);
-              payload.payment.refund_amount = 0;
-            }
-          }
-        }
       } else {
         console.error('⚠️ CRITICAL ERROR: Payload has no payment object or it is not properly formatted');
         return { 
@@ -103,9 +75,7 @@ export class NotificationService {
         'payload_clinic_id': payload.clinic?.id,
         'clinic_object_exists': !!payload.clinic,
         'has_payment_message': !!payload.payment?.message,
-        'payment_type': type,
-        'is_refund': type === 'payment_refund' || type === 'refund',
-        'refund_amount': payload.payment?.refund_amount
+        'is_payment_plan': payload.payment?.message?.includes('[PLAN]') || false
       });
       
       // Convert the StandardNotificationPayload to Json compatible format
@@ -153,8 +123,7 @@ export class NotificationService {
           has_payment_id: !!payment_id,
           clinic_id: clinic_id,
           payload_clinic_id: payload.clinic?.id,
-          payment_message: payload.payment?.message,
-          refund_amount: payload.payment?.refund_amount
+          payment_message: payload.payment?.message
         }));
         return { 
           success: false, 
