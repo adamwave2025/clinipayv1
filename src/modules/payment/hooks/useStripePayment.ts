@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback } from 'react';
 import { useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
@@ -67,7 +66,7 @@ export function useStripePayment() {
         throw new Error('No payment intent returned');
       }
       
-      // Check for failed status by explicitly checking each failed status
+      // Fix: Use a type-safe comparison by explicitly checking each failed status
       if (paymentIntent.status === 'requires_payment_method' || 
           paymentIntent.status === 'requires_action' ||
           paymentIntent.status === 'canceled') {

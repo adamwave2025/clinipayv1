@@ -133,10 +133,6 @@ export async function handleCreatePaymentIntent(req: Request) {
         destination: clinic.stripe_account_id,
       },
       application_fee_amount: platformFeeAmount,
-      // Improved description for better tracking
-      description: payment_schedule_id 
-        ? `Payment for schedule item ${payment_schedule_id}` 
-        : (paymentLinkId ? `Payment for ${paymentLinkId}` : "Direct payment")
     });
 
     console.log(`Payment intent created: ${paymentIntent.id}`);

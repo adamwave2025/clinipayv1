@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect } from 'react';
 import { CardElement } from '@stripe/react-stripe-js';
 import { FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -43,11 +42,9 @@ const StripeCardElement = ({
         '::placeholder': {
           color: '#aab7c4',
         },
-        iconColor: '#666EE8',
       },
       invalid: {
         color: '#ef4444',
-        iconColor: '#ef4444',
       },
     },
     hidePostalCode: true,
@@ -68,8 +65,7 @@ const StripeCardElement = ({
       isComplete: event.complete, 
       hasError: event.error ? true : false,
       errorMessage: event.error?.message || 'No error',
-      hasBeenMounted: hasBeenMounted.current,
-      elementType: event.elementType || 'unknown'
+      hasBeenMounted: hasBeenMounted.current
     });
     
     // Call parent onChange if it exists

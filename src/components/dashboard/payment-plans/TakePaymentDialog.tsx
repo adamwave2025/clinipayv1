@@ -106,11 +106,6 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     // Update both state and ref to track card completion
     setIsCardComplete(event.complete);
     cardCompleteRef.current = event.complete;
-    
-    // Additional debugging for validation
-    if (event.error) {
-      console.warn('Card validation error:', event.error.message);
-    }
   };
   
   const handleSubmitPayment = async () => {
@@ -134,6 +129,8 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     
     try {
       // Use the form data but rely on cardCompleteRef for card completion status
+      const formData = form.getValues();
+      
       const result = await handlePaymentSubmit({
         name: patientName,
         email: patientEmail,
@@ -208,13 +205,6 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
             label="Card Details"
             className="mb-4"
           />
-          
-          {/* Add a debug message if needed during testing */}
-          {process.env.NODE_ENV !== 'production' && (
-            <div className="text-xs text-amber-600">
-              Card Complete: {isCardComplete ? 'Yes' : 'No'}
-            </div>
-          )}
         </div>
         
         <Button 
