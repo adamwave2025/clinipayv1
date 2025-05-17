@@ -45,71 +45,73 @@ serve(async (req) => {
   }
 
   try {
-    // Get the signature from the header
-    const signature = req.headers.get("stripe-signature");
-    if (!signature) {
-      console.error("Missing stripe-signature header");
-      return new Response(
-        JSON.stringify({ error: "Missing stripe signature" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Log signature information for debugging
-    console.log(`Received signature: ${signature.substring(0, 10)}...`);
-
-    // Get the request body as text for webhook verification
-    const body = await req.text();
-    console.log(`Request body length: ${body.length}`);
-    
     // Initialize Stripe
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",
+      httpClient: Stripe.createFetchHttpClient(),
     });
 
-    // Verify the webhook signature using the async method
-    let event;
-    try {
-      // Use constructEventAsync instead of constructEvent
-      console.log("Attempting to verify webhook signature...");
-      event = await stripe.webhooks.constructEventAsync(body, signature, stripeWebhookSecret);
-      console.log("Webhook signature verified successfully!");
-    } catch (err) {
-      console.error(`Webhook signature verification failed: ${err.message}`);
+    // Get request body for webhook event verification
+    const body = await req.text();
+    
+    // Get Stripe signature from headers
+    const signature = req.headers.get("stripe-signature");
+    
+    if (!signature) {
+      console.error("No Stripe signature found in request headers");
       return new Response(
-        JSON.stringify({ error: `Webhook signature verification failed: ${err.message}` }),
+        JSON.stringify({ error: "No Stripe signature found" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    console.log(`Received event: ${event.type}`);
-    console.log(`Event ID: ${event.id}`);
-
-    // Handle the event
-    if (event.type === "payment_intent.succeeded") {
-      console.log(`Processing payment_intent.succeeded event: ${event.id}`);
-      await handlePaymentIntentSucceeded(event.data.object, supabaseClient);
-    } else if (event.type === "payment_intent.payment_failed") {
-      console.log(`Processing payment_intent.payment_failed event: ${event.id}`);
-      await handlePaymentIntentFailed(event.data.object, supabaseClient);
-    } else if (event.type === "refund.updated") {
-      console.log(`Processing refund.updated event: ${event.id}`);
-      await handleRefundUpdated(event.data.object, stripe, supabaseClient);
-    } else {
-      console.log(`Unhandled event type: ${event.type}`);
+    
+    // Verify the webhook signature
+    let event;
+    
+    try {
+      event = stripe.webhooks.constructEvent(body, signature, stripeWebhookSecret);
+      console.log(`Webhook event verified: ${event.type}`);
+    } catch (err: any) {
+      console.error(`Webhook signature verification failed: ${err.message}`);
+      return new Response(
+        JSON.stringify({ error: `Webhook Error: ${err.message}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
-
-    // Return a response to acknowledge receipt of the event
-    console.log("Webhook processing completed successfully");
+    
+    // Process different webhook event types
+    let result;
+    
+    switch (event.type) {
+      case "payment_intent.succeeded":
+        console.log("Processing payment_intent.succeeded event");
+        result = await handlePaymentIntentSucceeded(event.data.object, supabaseClient);
+        break;
+        
+      case "payment_intent.payment_failed":
+        console.log("Processing payment_intent.payment_failed event");
+        result = await handlePaymentIntentFailed(event.data.object, supabaseClient);
+        break;
+        
+      case "charge.refunded":
+        console.log("Processing charge.refunded event");
+        result = await handleRefundUpdated(event.data.object, supabaseClient);
+        break;
+        
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+        result = { status: "ignored", message: `Event type ${event.type} not handled` };
+    }
+    
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
+    
+  } catch (error: any) {
+    console.error("Error processing webhook:", error);
     return new Response(
-      JSON.stringify({ received: true }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error(`Error processing webhook: ${error.message}`);
-    console.error(`Stack trace: ${error.stack}`);
-    return new Response(
-      JSON.stringify({ error: `Webhook error: ${error.message}` }),
+      JSON.stringify({ error: `Server error: ${error.message}` }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

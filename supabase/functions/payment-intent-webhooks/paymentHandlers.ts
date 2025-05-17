@@ -353,3 +353,4 @@ export async function handlePaymentIntentFailed(paymentIntent: any, supabase: Su
     throw error;
   }
 }
+
