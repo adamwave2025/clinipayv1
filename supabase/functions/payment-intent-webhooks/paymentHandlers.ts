@@ -1,388 +1,355 @@
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from "https://esm.sh/stripe@14.21.0";
-import { generatePaymentReference } from "./utils.ts";
-import { NotificationService } from "./notificationService.ts";
-import { PlanService } from "./planService.ts";
+import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { generateUUID } from './utils.ts';
 
-/**
- * Handle a successful payment intent from Stripe
- */
-export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseClient: any) {
-  console.log("Processing payment_intent.succeeded:", paymentIntent.id);
-  console.log("Payment intent details:", JSON.stringify({
-    id: paymentIntent.id,
-    amount: paymentIntent.amount,
-    status: paymentIntent.status,
-    metadata: paymentIntent.metadata || {}
-  }));
+export async function handlePaymentIntentSucceeded(paymentIntent: any, supabase: SupabaseClient) {
+  console.log(`Processing successful payment: ${paymentIntent.id}`);
   
   try {
     // Extract metadata from the payment intent
     const metadata = paymentIntent.metadata || {};
-    const {
-      clinicId,
-      paymentLinkId,
-      requestId,
-      paymentReference: existingReference,
-      patientName,
-      patientEmail,
-      patientPhone,
-    } = metadata;
-
-    if (!clinicId) {
-      console.error("Missing clinicId in payment intent metadata");
-      return;
-    }
-
-    // Store the original amount in cents as received from Stripe
-    const amountInCents = paymentIntent.amount;
+    console.log('Payment intent metadata:', JSON.stringify(metadata, null, 2));
     
-    // Convert to pounds only for logging purposes
-    const amountInPounds = paymentIntent.amount / 100;
+    // Check if this payment is for a payment schedule (installment payment)
+    const paymentScheduleId = metadata.payment_schedule_id;
+    const planId = metadata.planId;
     
-    console.log(`Payment for clinic: ${clinicId}, amount: ${amountInPounds} (original: ${amountInCents} cents)`);
-    
-    // CRITICAL - Always use the reference from metadata if provided
-    const paymentReference = existingReference || generatePaymentReference();
-    
-    console.log(`Using payment reference: ${paymentReference}`);
-    
-    // Initialize fee data variables
-    let stripeFeeInCents = 0; // Store as cents for the database
-    let netAmountInCents = 0; // Store the net amount in cents
-    let platformFeeInCents = 0; // Store the platform fee in cents
-    
-    // Fetch Stripe fee data from charge and balance transaction
-    if (paymentIntent.latest_charge) {
-      try {
-        console.log(`Retrieving charge data for charge ID: ${paymentIntent.latest_charge}`);
-        
-        // Initialize Stripe with proper import
-        const stripe = new Stripe(Deno.env.get("SECRET_KEY") ?? "", {
-          apiVersion: "2023-10-16",
-        });
-        
-        // Retrieve charge data
-        const charge = await stripe.charges.retrieve(paymentIntent.latest_charge);
-        
-        if (charge && charge.balance_transaction) {
-          console.log(`Retrieving balance transaction data for ID: ${charge.balance_transaction}`);
-          
-          // Retrieve balance transaction data
-          const balanceTransaction = await stripe.balanceTransactions.retrieve(
-            typeof charge.balance_transaction === 'string' 
-              ? charge.balance_transaction 
-              : charge.balance_transaction.id
-          );
-          
-          if (balanceTransaction) {
-            // Extract fee data (keeping as cents for DB storage)
-            stripeFeeInCents = balanceTransaction.fee || 0;
-            const stripeFeeInPounds = stripeFeeInCents / 100; // Just for logging
-            
-            // Extract and store the net amount (keeping as cents for DB storage)
-            netAmountInCents = balanceTransaction.net || 0;
-            const netAmountInPounds = netAmountInCents / 100; // For logging
-            
-            console.log(`Stripe fees: £${stripeFeeInPounds.toFixed(2)}, Net amount: £${netAmountInPounds.toFixed(2)}`);
-          }
-        }
-        
-        // Check if charge has application_fee
-        if (charge && charge.application_fee) {
-          console.log(`Retrieving application fee data for ID: ${charge.application_fee}`);
-          
-          try {
-            // Retrieve the application fee details
-            const appFee = await stripe.applicationFees.retrieve(
-              typeof charge.application_fee === 'string'
-                ? charge.application_fee
-                : charge.application_fee.id
-            );
-            
-            if (appFee) {
-              // Store platform fee as cents for DB consistency
-              platformFeeInCents = appFee.amount || 0;
-              const platformFeeInPounds = platformFeeInCents / 100; // Just for logging
-              
-              console.log(`Platform fee: £${platformFeeInPounds.toFixed(2)}`);
-            }
-          } catch (appFeeError) {
-            console.error("Error retrieving application fee data:", appFeeError);
-            console.error("Continuing without platform fee data");
-          }
-        } else {
-          console.log("No application_fee found on charge");
-        }
-      } catch (feeError) {
-        // Log the error but don't prevent payment processing
-        console.error("Error retrieving fee data from Stripe:", feeError);
-        console.error("Continuing with payment processing without fee data");
-      }
+    // Handle payment schedule payment (installment payment)
+    if (paymentScheduleId && planId) {
+      console.log(`Payment is for payment schedule ID: ${paymentScheduleId}, plan ID: ${planId}`);
+      return await handleInstallmentPayment(paymentIntent, supabase, paymentScheduleId, planId);
     }
     
-    // Check if a payment record already exists to avoid duplicates
-    const { data: existingPayment, error: checkError } = await supabaseClient
-      .from("payments")
-      .select("id")
-      .eq("stripe_payment_id", paymentIntent.id)
-      .maybeSingle();
-      
-    if (checkError) {
-      console.error("Error checking for existing payment:", checkError);
-    }
-    
-    if (existingPayment) {
-      console.log(`Payment record already exists for payment ID ${paymentIntent.id}`, existingPayment);
-      return;
-    }
-    
-    // If this payment is for a payment request, get the associated payment_link_id
-    let associatedPaymentLinkId = paymentLinkId;
-    let payment_schedule_id = null; // Initialize payment_schedule_id variable
-    
-    if (requestId) {
-      console.log(`Payment is for request ID: ${requestId}, checking for associated payment link...`);
-      
-      // First check if this payment request is associated with a payment schedule entry
-      const { data: scheduleData, error: scheduleError } = await supabaseClient
-        .from("payment_schedule")
-        .select("id, payment_link_id")
-        .eq("payment_request_id", requestId)
-        .maybeSingle();
-        
-      if (scheduleError) {
-        console.error("Error fetching payment schedule data:", scheduleError);
-      } else if (scheduleData) {
-        // If we found a payment schedule entry, store its ID to link directly to the payment
-        console.log(`Found payment schedule entry ${scheduleData.id} for payment request ${requestId}`);
-        payment_schedule_id = scheduleData.id;
-        
-        if (scheduleData.payment_link_id) {
-          associatedPaymentLinkId = scheduleData.payment_link_id;
-          console.log(`Using payment_link_id ${associatedPaymentLinkId} from payment schedule`);
-        }
-      } else {
-        // Fall back to checking the payment request table
-        console.log("No payment schedule found, checking payment request table for link ID");
-        
-        const { data: requestData, error: requestError } = await supabaseClient
-          .from("payment_requests")
-          .select("payment_link_id")
-          .eq("id", requestId)
-          .maybeSingle();
-          
-        if (requestError) {
-          console.error("Error fetching payment request data:", requestError);
-        } else if (requestData && requestData.payment_link_id) {
-          associatedPaymentLinkId = requestData.payment_link_id;
-          console.log(`Found associated payment link ID: ${associatedPaymentLinkId} from payment request`);
-        } else {
-          console.log("No payment link ID found in payment request");
-        }
-      }
-    }
-    
-    // Prepare payment record data - IMPORTANT: Store all monetary values as cents/pence
-    const paymentData = {
-      clinic_id: clinicId,
-      amount_paid: amountInCents, // Store as integer cents
-      paid_at: new Date().toISOString(),
-      patient_name: patientName || "Unknown",
-      patient_email: patientEmail || null,
-      patient_phone: patientPhone || null,
-      payment_link_id: associatedPaymentLinkId || null,
-      payment_ref: paymentReference,
-      status: "paid",
-      stripe_payment_id: paymentIntent.id,
-      stripe_fee: stripeFeeInCents, // Store as integer (cents)
-      net_amount: netAmountInCents, // Store net amount as integer (cents)
-      platform_fee: platformFeeInCents, // Store platform fee as integer (cents),
-      payment_schedule_id: payment_schedule_id // Add the payment schedule ID if available
-    };
-
-    console.log("Inserting payment record:", JSON.stringify(paymentData));
-    
-    // Record the payment in the payments table
-    const { data, error } = await supabaseClient
-      .from("payments")
-      .insert(paymentData)
-      .select();
-
-    if (error) {
-      console.error("Error inserting payment record:", error);
-      console.error("Error details:", JSON.stringify(error));
-      throw new Error(`Error recording payment: ${error.message}`);
-    }
-
-    if (!data || data.length === 0) {
-      console.error("No data returned from payment insert operation");
-      throw new Error("Payment record was not created properly");
-    }
-
-    const paymentId = data[0].id;
-    console.log(`Payment record created with ID: ${paymentId}`);
-
-    // If this payment was for a payment request, update the request status
-    if (requestId) {
-      console.log(`Updating payment request: ${requestId}`);
-      
-      const { error: requestUpdateError } = await supabaseClient
-        .from("payment_requests")
-        .update({
-          status: "paid",
-          paid_at: new Date().toISOString(),
-          payment_id: paymentId
-        })
-        .eq("id", requestId);
-
-      if (requestUpdateError) {
-        console.error("Error updating payment request:", requestUpdateError);
-        console.error("Error details:", JSON.stringify(requestUpdateError));
-        // Don't throw error here, we already recorded the payment
-      } else {
-        console.log(`Payment request ${requestId} marked as paid`);
-        
-        // Check if this payment is part of a payment plan by looking up in payment_schedule
-        try {
-          // First, get the payment schedule entry associated with this payment request
-          const { data: scheduleData, error: scheduleError } = await supabaseClient
-            .from("payment_schedule")
-            .select(`
-              id, 
-              patient_id, 
-              payment_link_id, 
-              clinic_id,
-              payment_number,
-              total_payments,
-              payment_frequency,
-              plan_id
-            `)
-            .eq("payment_request_id", requestId)
-            .single();
-            
-          if (scheduleError) {
-            console.log("No payment schedule entry found for this request, not a payment plan payment");
-          } else if (scheduleData) {
-            console.log(`Found payment schedule entry: payment ${scheduleData.payment_number} of ${scheduleData.total_payments}`);
-            
-            // Update the payment schedule status if not already updated
-            const { error: updateScheduleError } = await supabaseClient
-              .from("payment_schedule")
-              .update({ status: "paid" })
-              .eq("id", scheduleData.id);
-              
-            if (updateScheduleError) {
-              console.error("Error updating payment schedule status:", updateScheduleError);
-            } else {
-              console.log("Successfully updated payment schedule status to paid");
-            }
-            
-            // IMPORTANT: Update the parent plan record with new payment status
-            await PlanService.updatePlanAfterPayment(
-              supabaseClient,
-              scheduleData,
-              paymentReference,
-              amountInCents,
-              paymentId
-            );
-          }
-        } catch (scheduleError) {
-          console.error("Error checking for payment plan:", scheduleError);
-          // Continue with the rest of the payment processing
-        }
-      }
-    }
-    
-    // Queue notifications for successful payment
-    await NotificationService.queuePaymentSuccessNotifications(
-      supabaseClient,
-      paymentId,
-      {
-        payment_ref: paymentReference,
-        amount_paid: amountInCents,
-        patient_name: patientName,
-        patient_email: patientEmail,
-        patient_phone: patientPhone,
-        clinic_id: clinicId
-      },
-      {
-        stripeFeeInCents,
-        platformFeeInCents,
-        netAmountInCents
-      }
-    );
-
-    console.log("Payment processing completed successfully");
+    // Normal payment processing (non-installment)
+    return await handleStandardPayment(paymentIntent, supabase);
   } catch (error) {
-    console.error("Error processing payment intent:", error);
-    console.error("Stack trace:", error.stack);
+    console.error(`Error processing payment intent ${paymentIntent.id}:`, error);
     throw error;
   }
 }
 
-/**
- * Handle a failed payment intent from Stripe
- */
-export async function handlePaymentIntentFailed(paymentIntent: any, supabaseClient: any) {
-  console.log("Processing payment_intent.payment_failed:", paymentIntent.id);
-  console.log("Failed payment intent details:", JSON.stringify({
-    id: paymentIntent.id,
-    status: paymentIntent.status,
-    error: paymentIntent.last_payment_error,
-    metadata: paymentIntent.metadata || {}
-  }));
+async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseClient, paymentScheduleId: string, planId: string) {
+  console.log(`Processing installment payment for schedule ID: ${paymentScheduleId}`);
+  
+  // Extract metadata
+  const metadata = paymentIntent.metadata || {};
+  const clinicId = metadata.clinicId;
+  const patientName = metadata.patientName;
+  const patientEmail = metadata.patientEmail;
+  const patientPhone = metadata.patientPhone || null;
+  const paymentLinkId = metadata.paymentLinkId || null;
+  const platformFeePercent = metadata.platformFeePercent || '3';
+  const paymentReference = metadata.paymentReference || `CLN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  
+  // Calculate fees
+  const amount = paymentIntent.amount;
+  const platformFeeAmount = Math.round((parseFloat(platformFeePercent) / 100) * amount);
+  const netAmount = amount - (paymentIntent.application_fee_amount || 0) - platformFeeAmount;
   
   try {
-    // Extract metadata from the payment intent
-    const metadata = paymentIntent.metadata || {};
-    const {
-      clinicId,
-      paymentLinkId,
-      requestId,
-      patientName,
-      patientEmail,
-      patientPhone,
-    } = metadata;
-
-    if (!clinicId) {
-      console.error("Missing clinicId in payment intent metadata");
-      return;
+    // Begin transaction
+    const { data: payment, error: paymentError } = await supabase
+      .from('payments')
+      .insert({
+        clinic_id: clinicId,
+        patient_name: patientName,
+        patient_email: patientEmail,
+        patient_phone: patientPhone,
+        amount_paid: amount,
+        paid_at: new Date().toISOString(),
+        payment_link_id: paymentLinkId,
+        payment_ref: paymentReference,
+        stripe_payment_id: paymentIntent.id,
+        status: 'paid',
+        net_amount: netAmount,
+        platform_fee: platformFeeAmount,
+        stripe_fee: paymentIntent.application_fee_amount || 0,
+        payment_schedule_id: paymentScheduleId
+      })
+      .select()
+      .single();
+      
+    if (paymentError) {
+      console.error('Error creating payment record:', paymentError);
+      throw paymentError;
     }
-
-    // Log the failure reason
-    const failureMessage = paymentIntent.last_payment_error?.message || "Unknown failure reason";
-    const failureCode = paymentIntent.last_payment_error?.code || "unknown";
     
-    console.log(`Payment failed for clinic: ${clinicId}, reason: ${failureMessage}, code: ${failureCode}`);
-
-    // Queue notifications for the failed payment
-    await NotificationService.queuePaymentFailureNotifications(
-      supabaseClient,
-      {
-        clinicId,
-        paymentLinkId,
-        amount: paymentIntent.amount,
-        patientName,
-        patientEmail,
-        patientPhone
-      },
-      {
-        failureMessage,
-        failureCode
-      }
-    );
-
-    // If this payment was for a payment request, we might want to update it
-    if (requestId) {
-      console.log(`Payment failed for request: ${requestId}`);
-      // You may choose to update the payment request status here if needed
+    console.log('Payment record created:', payment.id);
+    
+    // Update payment schedule status to 'paid'
+    const { error: scheduleError } = await supabase
+      .from('payment_schedule')
+      .update({
+        status: 'paid',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', paymentScheduleId);
+      
+    if (scheduleError) {
+      console.error('Error updating payment schedule:', scheduleError);
+      throw scheduleError;
     }
-
-    console.log("Failed payment processing completed");
+    
+    console.log(`Updated payment schedule ${paymentScheduleId} status to 'paid'`);
+    
+    // Update plan details - increment paid_installments and progress
+    const { data: planData, error: planFetchError } = await supabase
+      .from('plans')
+      .select('paid_installments, total_installments')
+      .eq('id', planId)
+      .single();
+      
+    if (planFetchError) {
+      console.error('Error fetching plan details:', planFetchError);
+      throw planFetchError;
+    }
+    
+    // Calculate new values
+    const paidInstallments = (planData.paid_installments || 0) + 1;
+    const progress = Math.round((paidInstallments / planData.total_installments) * 100);
+    
+    // Determine if all installments are paid
+    const isCompleted = paidInstallments >= planData.total_installments;
+    
+    // Update plan
+    const { error: planUpdateError } = await supabase
+      .from('plans')
+      .update({
+        paid_installments: paidInstallments,
+        progress: progress,
+        status: isCompleted ? 'completed' : 'active',
+        updated_at: new Date().toISOString(),
+        // Update next due date to the next unpaid installment
+        next_due_date: isCompleted ? null : undefined
+      })
+      .eq('id', planId);
+      
+    if (planUpdateError) {
+      console.error('Error updating plan details:', planUpdateError);
+      throw planUpdateError;
+    }
+    
+    // If not all installments are paid, update the next_due_date to the next unpaid installment
+    if (!isCompleted) {
+      // Find the next unpaid installment
+      const { data: nextPayment, error: nextPaymentError } = await supabase
+        .from('payment_schedule')
+        .select('due_date')
+        .eq('plan_id', planId)
+        .eq('status', 'pending')
+        .order('due_date', { ascending: true })
+        .limit(1)
+        .single();
+        
+      if (nextPayment && !nextPaymentError) {
+        // Update plan's next due date
+        await supabase
+          .from('plans')
+          .update({
+            next_due_date: nextPayment.due_date
+          })
+          .eq('id', planId);
+          
+        console.log(`Updated plan ${planId} next due date to ${nextPayment.due_date}`);
+      }
+    }
+    
+    // Record payment activity
+    await supabase
+      .from('payment_activity')
+      .insert({
+        payment_link_id: paymentLinkId,
+        patient_id: null, // We'll update this if patient exists
+        clinic_id: clinicId,
+        action_type: 'installment_payment_received',
+        plan_id: planId,
+        details: {
+          amount: amount,
+          paymentId: payment.id,
+          paymentReference,
+          installmentNumber: paidInstallments,
+          totalInstallments: planData.total_installments,
+          progress: progress
+        }
+      });
+    
+    console.log(`Installment payment processing complete for payment schedule ${paymentScheduleId}`);
+    
+    return {
+      success: true,
+      paymentId: payment.id,
+      message: `Payment recorded successfully for installment`
+    };
   } catch (error) {
-    console.error("Error processing failed payment intent:", error);
-    console.error("Stack trace:", error.stack);
+    console.error('Error processing installment payment:', error);
+    throw error;
+  }
+}
+
+async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClient) {
+  // Extract metadata
+  const metadata = paymentIntent.metadata || {};
+  const clinicId = metadata.clinicId;
+  const patientName = metadata.patientName;
+  const patientEmail = metadata.patientEmail;
+  const patientPhone = metadata.patientPhone || null;
+  const paymentLinkId = metadata.paymentLinkId || null;
+  const requestId = metadata.requestId || null;
+  const platformFeePercent = metadata.platformFeePercent || '3';
+  const paymentReference = metadata.paymentReference || `CLN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  
+  // Calculate fees
+  const amount = paymentIntent.amount;
+  const platformFeeAmount = Math.round((parseFloat(platformFeePercent) / 100) * amount);
+  const netAmount = amount - (paymentIntent.application_fee_amount || 0) - platformFeeAmount;
+  
+  try {
+    // Create payment record
+    const { data: payment, error: paymentError } = await supabase
+      .from('payments')
+      .insert({
+        clinic_id: clinicId,
+        patient_name: patientName,
+        patient_email: patientEmail,
+        patient_phone: patientPhone,
+        amount_paid: amount,
+        paid_at: new Date().toISOString(),
+        payment_link_id: paymentLinkId,
+        payment_ref: paymentReference,
+        stripe_payment_id: paymentIntent.id,
+        status: 'paid',
+        net_amount: netAmount,
+        platform_fee: platformFeeAmount,
+        stripe_fee: paymentIntent.application_fee_amount || 0
+      })
+      .select()
+      .single();
+      
+    if (paymentError) {
+      console.error('Error creating payment record:', paymentError);
+      throw paymentError;
+    }
+    
+    console.log('Payment record created:', payment.id);
+    
+    // If this was a payment request, update it
+    if (requestId) {
+      const { error: requestError } = await supabase
+        .from('payment_requests')
+        .update({
+          status: 'paid',
+          payment_id: payment.id,
+          paid_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
+        
+      if (requestError) {
+        console.error('Error updating payment request:', requestError);
+        // Non-critical error, continue
+      } else {
+        console.log(`Updated payment request ${requestId} status to 'paid'`);
+      }
+    }
+    
+    // Record payment activity
+    await supabase
+      .from('payment_activity')
+      .insert({
+        payment_link_id: paymentLinkId,
+        patient_id: null, // We'll update this if patient exists
+        clinic_id: clinicId,
+        action_type: 'payment_received',
+        details: {
+          amount: amount,
+          paymentId: payment.id,
+          paymentReference
+        }
+      });
+    
+    // Queue notification
+    await supabase
+      .from('notification_queue')
+      .insert({
+        type: 'payment_received',
+        recipient_type: 'clinic',
+        payload: {
+          payment_id: payment.id,
+          clinic_id: clinicId,
+          amount: amount,
+          patient_name: patientName
+        }
+      });
+    
+    return {
+      success: true,
+      paymentId: payment.id,
+      message: 'Payment recorded successfully'
+    };
+  } catch (error) {
+    console.error('Error processing standard payment:', error);
+    throw error;
+  }
+}
+
+export async function handlePaymentIntentFailed(paymentIntent: any, supabase: SupabaseClient) {
+  console.log(`Processing failed payment: ${paymentIntent.id}`);
+  
+  try {
+    // Extract metadata
+    const metadata = paymentIntent.metadata || {};
+    const clinicId = metadata.clinicId;
+    const patientName = metadata.patientName || 'Unknown';
+    const paymentLinkId = metadata.paymentLinkId || null;
+    const requestId = metadata.requestId || null;
+    const paymentScheduleId = metadata.payment_schedule_id;
+    const planId = metadata.planId;
+    
+    // Log the payment failure
+    console.log(`Payment failed for clinic ${clinicId}, patient: ${patientName}`);
+    console.log('Failure reason:', paymentIntent.last_payment_error?.message || 'Unknown');
+    
+    // Record failed payment in activity
+    await supabase
+      .from('payment_activity')
+      .insert({
+        payment_link_id: paymentLinkId,
+        patient_id: null,
+        clinic_id: clinicId,
+        action_type: 'payment_failed',
+        plan_id: planId || null,
+        details: {
+          paymentIntentId: paymentIntent.id,
+          amount: paymentIntent.amount,
+          failureMessage: paymentIntent.last_payment_error?.message || 'Unknown error',
+          paymentScheduleId: paymentScheduleId || null
+        }
+      });
+    
+    // If this was a payment request, update its status
+    if (requestId) {
+      await supabase
+        .from('payment_requests')
+        .update({
+          status: 'failed'
+        })
+        .eq('id', requestId);
+      
+      console.log(`Updated payment request ${requestId} status to 'failed'`);
+    }
+    
+    // If this was an installment payment, we might want to handle it specifically
+    if (paymentScheduleId && planId) {
+      console.log(`Failed payment was for installment: ${paymentScheduleId}, plan: ${planId}`);
+      // We don't change the status of the payment_schedule, it remains 'pending'
+      // This allows the user to retry the payment
+    }
+    
+    return {
+      success: false,
+      message: 'Payment failure recorded'
+    };
+  } catch (error) {
+    console.error('Error handling failed payment:', error);
+    throw error;
   }
 }

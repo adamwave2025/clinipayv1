@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
-import { usePaymentProcess } from '@/hooks/usePaymentProcess';
+import { usePaymentProcess } from '@/modules/payment/hooks/usePaymentProcess';
 import PaymentFormSection from '@/components/payment/PaymentFormSection';
 import { PaymentLinkData } from '@/types/paymentLink';
 import { toast } from 'sonner';
@@ -84,7 +84,8 @@ const PaymentFormContainer = ({
         name: formData.name, 
         email: formData.email,
         hasPhone: !!formData.phone,
-        amount: safeAmount
+        amount: safeAmount,
+        cardComplete: formData.stripeCard?.complete === true
       });
       
       if (safeAmount <= 0) {

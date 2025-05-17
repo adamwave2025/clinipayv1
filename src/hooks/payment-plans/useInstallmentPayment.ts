@@ -37,6 +37,7 @@ export function useInstallmentPayment(
     }
     
     // Validate card completion
+    console.log('Card completion status at payment submission:', isCardComplete);
     if (!isCardComplete) {
       console.error('Card details are incomplete');
       toast.error('Please complete your card details');
@@ -47,6 +48,7 @@ export function useInstallmentPayment(
     if (!processPayment) {
       console.error('Stripe payment system is not ready');
       toast.error('Payment system is not ready');
+      setIsStripeReady(false);
       return { success: false, error: 'Payment system is not ready' };
     }
     
@@ -141,7 +143,6 @@ export function useInstallmentPayment(
       }
       
       // 4. Process the payment with Stripe
-      // Use the confirmed card completion state passed from the component
       const paymentResult = await processPayment({
         clientSecret: intentResult.clientSecret,
         formData: {

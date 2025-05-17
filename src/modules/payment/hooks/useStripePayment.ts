@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback } from 'react';
 import { useStripe, useElements } from '@stripe/react-stripe-js';
 import { toast } from 'sonner';
@@ -20,15 +21,24 @@ export function useStripePayment() {
     };
   }) => {
     if (!stripe || !elements) {
+      console.error('Stripe not initialized:', { stripe: !!stripe, elements: !!elements });
       toast.error('Stripe has not been initialized');
       return { success: false, error: 'Stripe not initialized' };
     }
 
     const cardElement = elements.getElement('card');
     if (!cardElement) {
+      console.error('Card element not found or is not initialized');
       toast.error('Card information is not complete');
       return { success: false, error: 'Card information incomplete' };
     }
+
+    // Verify card element is available
+    console.log('Card element available for payment processing', { 
+      cardElementAvailable: !!cardElement,
+      stripeReady: !!stripe,
+      elementsReady: !!elements
+    });
 
     // Prevent duplicate processing
     if (processingRef.current || isProcessing) {

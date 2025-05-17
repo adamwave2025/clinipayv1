@@ -1,6 +1,6 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { CardElement } from '@stripe/react-stripe-js';
-import { FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { FormControl, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 interface StripeCardElementProps {
   onChange?: (event: any) => void;
@@ -16,23 +16,24 @@ const StripeCardElement = ({
   label = "Card Details",
   className = ""
 }: StripeCardElementProps) => {
-  // Keep track of whether the card has been mounted
-  const hasBeenMounted = useRef(false);
-  // Store the latest onChange callback
-  const onChangeRef = useRef(onChange);
   // Store card state
   const cardStateRef = useRef<{
     empty: boolean;
     complete: boolean;
     error?: { message: string } | null;
   }>({ empty: true, complete: false });
-
+  
+  // Keep track of whether the card has been mounted
+  const hasBeenMounted = useRef(false);
+  
+  // Store the latest onChange callback
+  const onChangeRef = useRef(onChange);
+  
   // Update the ref when the onChange prop changes
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  // Configure card element options
   const cardElementOptions = {
     style: {
       base: {
@@ -50,7 +51,7 @@ const StripeCardElement = ({
     hidePostalCode: true,
   };
 
-  // Handle card changes
+  // Enhanced change handler to provide better tracking
   const handleCardChange = (event: any) => {
     // Store the latest card state
     cardStateRef.current = {
@@ -87,13 +88,15 @@ const StripeCardElement = ({
         aria-disabled={isLoading}
         data-testid="stripe-card-element-container"
       >
-        <CardElement 
-          id="card-element"
-          options={cardElementOptions} 
-          onChange={handleCardChange}
-          // We don't use disabled since it's not supported by Stripe
-          // Instead we control via parent div's classes and aria-disabled
-        />
+        <FormControl>
+          <CardElement 
+            id="card-element"
+            options={cardElementOptions} 
+            onChange={handleCardChange} 
+            // We don't use disabled since it's not supported by Stripe
+            // Instead we control via parent div's classes and aria-disabled
+          />
+        </FormControl>
       </div>
       <FormMessage />
     </FormItem>

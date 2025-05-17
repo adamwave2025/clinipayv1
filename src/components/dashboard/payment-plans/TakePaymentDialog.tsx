@@ -9,6 +9,7 @@ import StripeProvider from '@/components/payment/StripeProvider';
 import StripeCardElement from '@/components/payment/form/StripeCardElement';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useForm, FormProvider } from 'react-hook-form';
+import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
 interface TakePaymentDialogProps {
   open: boolean;
@@ -41,6 +42,10 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
   const [isCardComplete, setIsCardComplete] = useState(false);
   const cardCompleteRef = useRef(false);
   
+  // Get direct access to Stripe elements
+  const stripe = useStripe();
+  const elements = useElements();
+  
   // Initialize form with FormProvider to ensure context is available
   const form = useForm<PaymentFormValues>({
     defaultValues: {
@@ -60,7 +65,9 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       console.log("TakePaymentDialog opened with:", { 
         paymentId, 
         patientName, 
-        amount
+        amount,
+        stripeInitialized: !!stripe,
+        elementsInitialized: !!elements
       });
       
       if (!paymentId || typeof paymentId !== 'string' || paymentId.trim() === '') {
@@ -70,7 +77,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
         setValidationError(null);
       }
     }
-  }, [open, paymentId, patientName, amount]);
+  }, [open, paymentId, patientName, amount, stripe, elements]);
 
   // Reset dialog state when it closes
   const handleOpenChange = (newOpen: boolean) => {
@@ -94,21 +101,42 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
     isStripeReady
   } = useInstallmentPayment(paymentId, amount, onPaymentProcessed);
   
-  // Track card completion with a ref to prevent reset issues
+  // Enhanced card change handler with additional logging
   const handleCardChange = (event: any) => {
-    console.log('Card element change:', { 
+    // Log the complete event object for debugging
+    console.log('Card element change event:', event);
+    
+    // Track both in state and ref to ensure consistency
+    setIsCardComplete(event.complete);
+    cardCompleteRef.current = event.complete;
+    
+    // Enhanced logging to track card completion status
+    console.log('Card completion status updated:', { 
       isEmpty: event.empty, 
       isComplete: event.complete,
       hasError: event.error ? true : false,
-      errorMessage: event.error?.message || 'No error' 
+      errorMessage: event.error?.message || 'No error',
+      cardCompleteRef: cardCompleteRef.current
     });
-    
-    // Update both state and ref to track card completion
-    setIsCardComplete(event.complete);
-    cardCompleteRef.current = event.complete;
   };
   
+  // Enhanced submit handler with better validation and logging
   const handleSubmitPayment = async () => {
+    // Check if Stripe is ready before proceeding
+    if (!stripe || !elements) {
+      console.error("Stripe not initialized when trying to process payment");
+      toast.error("Payment system is not ready. Please try again.");
+      return;
+    }
+    
+    // Get the card element and verify it exists
+    const cardElement = elements.getElement('card');
+    if (!cardElement) {
+      console.error("Card element not found");
+      toast.error("Card element not found. Please reload and try again.");
+      return;
+    }
+    
     if (isProcessing || isLoading || !isStripeReady) {
       console.log("Payment already in progress or not ready");
       return;
@@ -124,13 +152,14 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
       paymentId,
       name: patientName,
       email: patientEmail,
-      cardComplete: cardCompleteRef.current
+      cardComplete: cardCompleteRef.current,
+      stripeReady: !!stripe,
+      elementsReady: !!elements,
+      cardElementAvailable: !!cardElement
     });
     
     try {
-      // Use the form data but rely on cardCompleteRef for card completion status
-      const formData = form.getValues();
-      
+      // Pass the explicit isCardComplete flag to ensure proper validation
       const result = await handlePaymentSubmit({
         name: patientName,
         email: patientEmail,
@@ -197,7 +226,7 @@ const TakePaymentDialog: React.FC<TakePaymentDialogProps> = ({
           </div>
         </div>
         
-        {/* Card element without form field to prevent reset issues */}
+        {/* Card element with improved handling */}
         <div className="mt-4">
           <StripeCardElement 
             isLoading={isLoading || isProcessing}
