@@ -172,6 +172,9 @@ export const ManagePlansProvider: React.FC<{
     }
   };
   
+  // Create a state for payment data if it doesn't exist yet
+  const [paymentData, setPaymentData] = useState<Payment | null>(null);
+  
   // Use installment actions hook with the refreshInstallments function
   const {
     isProcessing: isProcessingInstallment,
@@ -431,6 +434,7 @@ export const ManagePlansProvider: React.FC<{
         showPaymentDetails,
         setShowPaymentDetails,
         paymentData,
+        setPaymentData,
         viewDetailsInstallment, // Changed from selectedInstallment to viewDetailsInstallment
         
         // Payment dialog data
@@ -451,7 +455,7 @@ export const ManagePlansProvider: React.FC<{
         
         // Individual payment actions
         handleMarkAsPaid,
-        handleOpenReschedule, // This is the fixed function to open the payment reschedule dialog
+        handleOpenRescheduleDialog, // This is the fixed function to open the payment reschedule dialog
         handleReschedulePayment,
         handleTakePayment,
         preparePaymentData,
@@ -498,8 +502,8 @@ export const ManagePlansProvider: React.FC<{
         handleOpenRescheduleDialog,
         
         // Add payment rescheduling dialog properties
-        showReschedulePaymentDialog: paymentRescheduleActions.showRescheduleDialog,
-        setShowReschedulePaymentDialog: paymentRescheduleActions.setShowRescheduleDialog,
+        showReschedulePaymentDialog: paymentRescheduleActions.showReschedulePaymentDialog,
+        setShowReschedulePaymentDialog: paymentRescheduleActions.setShowReschedulePaymentDialog,
         
         hasOverduePayments,
         hasPaidPayments,

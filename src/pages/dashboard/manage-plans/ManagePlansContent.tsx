@@ -30,7 +30,7 @@ const ManagePlansContent: React.FC = () => {
     handleOpenResumeDialog,
     handleOpenRescheduleDialog,
     handleMarkAsPaid,
-    handleOpenReschedule,
+    handleOpenRescheduleDialog: handleOpenReschedule, // Create an alias for backward compatibility
     handleTakePayment,
     isPlanPaused
   } = useManagePlansContext();

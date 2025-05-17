@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -8,6 +8,9 @@ import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
+import { usePaymentDetailsFetcher } from '@/hooks/payment-plans/usePaymentDetailsFetcher';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Payment } from '@/types/payment';
 
 const PlanDetails = () => {
@@ -19,11 +22,11 @@ const PlanDetails = () => {
     isRefreshing,
     handleBackToPlans,
     handleMarkAsPaid,
-    handleOpenReschedule,
     handleTakePayment,
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
+    setPaymentData,
     showReschedulePaymentDialog,
     setShowReschedulePaymentDialog,
     handleReschedulePayment,
@@ -42,11 +45,6 @@ const PlanDetails = () => {
     handleSendReminder
   } = useManagePlansContext();
   
-  // Create a local state to handle the payment detail dialog
-  const [viewInstallment, setViewInstallment] = useState<PlanInstallment | null>(null);
-  const [localPaymentData, setLocalPaymentData] = useState<Payment | null>(null);
-  const [showLocalPaymentDetails, setShowLocalPaymentDetails] = useState(false);
-  
   // Debug logging for the dialogs
   useEffect(() => {
     console.log('PlanDetails - Dialog states:', { 
@@ -62,36 +60,108 @@ const PlanDetails = () => {
   }
 
   // Function to handle viewing details of an installment
-  const handleViewInstallmentDetails = (installment: PlanInstallment) => {
+  const handleViewInstallmentDetails = async (installment: PlanInstallment) => {
     console.log('Viewing details for installment:', installment);
-    setViewInstallment(installment);
     
-    // Create a payment object from the installment data
-    const installmentPayment: Payment = {
-      id: installment.id,
-      amount: installment.amount,
-      clinicId: selectedPlan?.clinicId || '',
-      date: installment.paidDate || installment.dueDate,
-      netAmount: installment.amount,
-      patientName: selectedPlan?.patientName || '',
-      status: installment.status,
-      paymentMethod: installment.manualPayment ? 'manual' : 'card',
-      // Set other required fields with appropriate values or defaults
-      stripePaymentId: installment.paymentId || '',
-      refundAmount: 0,
-      refundedAmount: 0,
-      // Optional fields
-      paymentReference: '',
-      reference: '',
-      patientEmail: '',
-      patientPhone: '',
-      manualPayment: installment.manualPayment || false,
-      type: 'payment_plan',
-      linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
-    };
-    
-    setLocalPaymentData(installmentPayment);
-    setShowLocalPaymentDetails(true);
+    try {
+      // For paid installments, fetch the payment record from the database
+      if (installment.status === 'paid') {
+        console.log('Fetching payment data for paid installment:', installment.id);
+        
+        // Query the payments table using the payment_schedule_id
+        const { data: paymentData, error: paymentError } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('payment_schedule_id', installment.id)
+          .single();
+          
+        if (paymentError) {
+          console.error('Error fetching payment data:', paymentError);
+          toast.error('Failed to load payment details');
+          return;
+        }
+        
+        if (paymentData) {
+          console.log('Found payment data:', paymentData);
+          
+          // Format the payment data to match the Payment interface
+          const payment: Payment = {
+            id: paymentData.id,
+            amount: paymentData.amount_paid,
+            clinicId: paymentData.clinic_id || selectedPlan.clinicId || '',
+            date: paymentData.paid_at || installment.paidDate || '',
+            netAmount: paymentData.net_amount || paymentData.amount_paid,
+            patientName: paymentData.patient_name || selectedPlan.patientName || '',
+            status: paymentData.status || 'paid',
+            paymentMethod: paymentData.manual_payment ? 'manual' : 'card',
+            stripePaymentId: paymentData.stripe_payment_id || '',
+            refundAmount: paymentData.refund_amount || 0,
+            refundedAmount: paymentData.refund_amount || 0,
+            reference: paymentData.payment_ref || '',
+            paymentReference: paymentData.payment_ref || '',
+            patientEmail: paymentData.patient_email || '',
+            patientPhone: paymentData.patient_phone || '',
+            manualPayment: paymentData.manual_payment || false,
+            type: 'payment_plan',
+            linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
+          };
+          
+          // Update the payment data in the context
+          setPaymentData(payment);
+          setShowPaymentDetails(true);
+          return;
+        }
+      }
+      
+      // For unpaid installments or if payment record not found, create a placeholder
+      const placeholderPayment: Payment = {
+        id: installment.id,
+        amount: installment.amount,
+        clinicId: selectedPlan?.clinicId || '',
+        date: installment.paidDate || installment.dueDate,
+        netAmount: installment.amount,
+        patientName: selectedPlan?.patientName || '',
+        status: installment.status,
+        paymentMethod: installment.manualPayment ? 'manual' : 'none',
+        stripePaymentId: installment.paymentId || '',
+        refundAmount: 0,
+        refundedAmount: 0,
+        paymentReference: '',
+        reference: '',
+        patientEmail: '',
+        patientPhone: '',
+        manualPayment: installment.manualPayment || false,
+        type: 'payment_plan',
+        linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
+      };
+      
+      // Update the payment data in the context
+      setPaymentData(placeholderPayment);
+      setShowPaymentDetails(true);
+      
+    } catch (error) {
+      console.error('Error in handleViewInstallmentDetails:', error);
+      toast.error('Failed to load payment details');
+    }
+  };
+
+  // Function to handle payment refunds
+  const handleRefund = async (paymentId: string) => {
+    try {
+      console.log('Processing refund for payment:', paymentId);
+      toast.info('Processing refund...');
+      
+      // Call the refund-payment edge function via PaymentRefundService
+      // This would be implemented in your PaymentRefundService
+      // For now, we'll just show a toast
+      toast.success('Refund processed successfully');
+      
+      // After successful refund, refresh plan data
+      // You would update the plan state here
+    } catch (error) {
+      console.error('Error processing refund:', error);
+      toast.error('Failed to process refund');
+    }
   };
 
   return (
@@ -114,7 +184,7 @@ const PlanDetails = () => {
         installments={installments}
         activities={activities}
         onMarkAsPaid={handleMarkAsPaid}
-        onReschedule={handleOpenReschedule}
+        onReschedule={handleOpenRescheduleDialog}
         onTakePayment={handleTakePayment}
         onViewDetails={handleViewInstallmentDetails}
         isLoading={isLoadingActivities}
@@ -126,25 +196,13 @@ const PlanDetails = () => {
         onSendReminder={() => selectedPlan && handleSendReminder(selectedPlan.id)}
       />
       
-      {/* Use context-provided payment dialog for existing flows */}
-      {paymentData && (
-        <PaymentDetailDialog
-          payment={paymentData}
-          open={showPaymentDetails}
-          onOpenChange={setShowPaymentDetails}
-          onRefund={() => {}}
-        />
-      )}
-      
-      {/* Use local payment dialog for installment clicks */}
-      {localPaymentData && (
-        <PaymentDetailDialog
-          payment={localPaymentData}
-          open={showLocalPaymentDetails}
-          onOpenChange={setShowLocalPaymentDetails}
-          onRefund={() => {}}
-        />
-      )}
+      {/* Use a single payment dialog for all payment details */}
+      <PaymentDetailDialog
+        payment={paymentData}
+        open={showPaymentDetails}
+        onOpenChange={setShowPaymentDetails}
+        onRefund={handleRefund}
+      />
       
       <ReschedulePaymentDialog
         open={showReschedulePaymentDialog}

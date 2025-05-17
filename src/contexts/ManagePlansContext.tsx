@@ -39,6 +39,7 @@ export interface ManagePlansContextType {
   showPaymentDetails: boolean;
   setShowPaymentDetails: (show: boolean) => void;
   paymentData: Payment | null;
+  setPaymentData: (data: Payment | null) => void; // Add setter for payment data
   viewDetailsInstallment: PlanInstallment | null; // Renamed from selectedInstallment
   
   // Payment dialog data - specific for take payment operations
@@ -64,7 +65,7 @@ export interface ManagePlansContextType {
   
   // Add the missing handler methods
   handleMarkAsPaid: (paymentId: string) => void;
-  handleOpenReschedule: (paymentId: string) => void;
+  handleOpenRescheduleDialog: (paymentId: string) => void; // Renamed from handleOpenReschedule
   handleReschedulePayment: (date: Date) => void;
   handleTakePayment: (paymentId: string, installmentDetails?: any) => void;
   
