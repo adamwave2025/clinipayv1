@@ -36,12 +36,12 @@ const PlanDetails = () => {
     selectedInstallment,
     isProcessing,
     viewDetailsInstallment,
+    handleOpenRescheduleDialog,
     
     // Add plan operation handlers
     handleOpenCancelDialog,
     handleOpenPauseDialog,
     handleOpenResumeDialog,
-    handleOpenRescheduleDialog,
     handleSendReminder
   } = useManagePlansContext();
   
@@ -184,7 +184,7 @@ const PlanDetails = () => {
         installments={installments}
         activities={activities}
         onMarkAsPaid={handleMarkAsPaid}
-        onReschedule={handleOpenRescheduleDialog}
+        onReschedule={(paymentId) => handleOpenRescheduleDialog(paymentId)}
         onTakePayment={handleTakePayment}
         onViewDetails={handleViewInstallmentDetails}
         isLoading={isLoadingActivities}
@@ -192,7 +192,7 @@ const PlanDetails = () => {
         onOpenCancelDialog={handleOpenCancelDialog}
         onOpenPauseDialog={handleOpenPauseDialog}
         onOpenResumeDialog={handleOpenResumeDialog}
-        onOpenRescheduleDialog={handleOpenRescheduleDialog}
+        onOpenRescheduleDialog={() => handleOpenRescheduleDialog()}
         onSendReminder={() => selectedPlan && handleSendReminder(selectedPlan.id)}
       />
       
