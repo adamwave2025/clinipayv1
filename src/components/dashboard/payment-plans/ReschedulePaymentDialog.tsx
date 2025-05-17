@@ -20,6 +20,7 @@ interface ReschedulePaymentDialogProps {
   onOpenChange: (open: boolean) => void;
   onConfirm: (date: Date) => void;
   isLoading?: boolean;
+  maxAllowedDate?: Date;
 }
 
 const ReschedulePaymentDialog = ({
@@ -27,8 +28,9 @@ const ReschedulePaymentDialog = ({
   onOpenChange,
   onConfirm,
   isLoading = false,
+  maxAllowedDate,
 }: ReschedulePaymentDialogProps) => {
-  console.log("ReschedulePaymentDialog rendering with open:", open);
+  console.log("ReschedulePaymentDialog rendering with open:", open, "maxAllowedDate:", maxAllowedDate);
   
   // Start with tomorrow's date as default
   const tomorrow = new Date();
@@ -44,11 +46,18 @@ const ReschedulePaymentDialog = ({
     onConfirm(normalizedDate);
   };
   
-  // Function to disable past dates
-  const disabledDates = (date: Date) => {
+  // Function to disable dates
+  const disabledDates = (currentDate: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return date < today;
+    
+    // First check if it's in the past
+    if (currentDate < today) return true;
+    
+    // Then check if it's beyond the max allowed date (if provided)
+    if (maxAllowedDate && currentDate > maxAllowedDate) return true;
+    
+    return false;
   };
   
   return (
@@ -66,36 +75,22 @@ const ReschedulePaymentDialog = ({
             <label htmlFor="rescheduleDate" className="text-sm font-medium">
               New Payment Date
             </label>
-            <div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="rescheduleDate"
-                    variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
-                    disabled={isLoading}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(newDate) => newDate && setDate(newDate)}
-                    disabled={disabledDates}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
+            <div className="mt-2">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={(newDate) => newDate && setDate(newDate)}
+                disabled={disabledDates}
+                initialFocus
+                className="rounded-md border"
+              />
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Select a future date for the rescheduled payment.
+              {maxAllowedDate ? (
+                <>You can select any date up to {format(maxAllowedDate, "PPP")} (before the next payment date).</>
+              ) : (
+                <>Select a future date for the rescheduled payment.</>
+              )}
             </p>
           </div>
         </div>

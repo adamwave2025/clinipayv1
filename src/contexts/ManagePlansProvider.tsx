@@ -500,6 +500,7 @@ export const ManagePlansProvider: React.FC<{
         // Add payment rescheduling dialog properties
         showReschedulePaymentDialog: paymentRescheduleActions.showRescheduleDialog,
         setShowReschedulePaymentDialog: paymentRescheduleActions.setShowRescheduleDialog, // Fixed: Using the correct property name
+        maxAllowedDate: paymentRescheduleActions.maxAllowedDate,
         
         hasOverduePayments,
         hasPaidPayments,
