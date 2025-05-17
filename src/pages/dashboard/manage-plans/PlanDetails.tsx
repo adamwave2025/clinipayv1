@@ -7,6 +7,7 @@ import PlanDetailsView from '@/components/dashboard/payment-plans/PlanDetailsVie
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
+import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 
 const PlanDetails = () => {
   const {
@@ -33,6 +34,12 @@ const PlanDetails = () => {
     viewDetailsInstallment, // Using the renamed property here
     handleViewPaymentDetails,
     
+    // Add refund-related properties
+    refundDialogOpen,
+    setRefundDialogOpen,
+    handleRefund,
+    processRefund,
+    
     // Add plan operation handlers
     handleOpenCancelDialog,
     handleOpenPauseDialog,
@@ -46,10 +53,11 @@ const PlanDetails = () => {
     console.log('PlanDetails - Dialog states:', { 
       showMarkAsPaidDialog, 
       showReschedulePaymentDialog,
+      refundDialogOpen,
       selectedInstallmentId: selectedInstallment?.id,
       viewDetailsInstallmentId: viewDetailsInstallment?.id
     });
-  }, [showMarkAsPaidDialog, showReschedulePaymentDialog, selectedInstallment, viewDetailsInstallment]);
+  }, [showMarkAsPaidDialog, showReschedulePaymentDialog, refundDialogOpen, selectedInstallment, viewDetailsInstallment]);
   
   if (!selectedPlan) {
     return null;
@@ -92,9 +100,18 @@ const PlanDetails = () => {
           payment={paymentData}
           open={showPaymentDetails}
           onOpenChange={setShowPaymentDetails}
-          onRefund={() => {}}
+          onRefund={handleRefund}
         />
       )}
+      
+      <PaymentRefundDialog
+        open={refundDialogOpen}
+        onOpenChange={setRefundDialogOpen}
+        onRefund={processRefund}
+        paymentAmount={paymentData?.amount}
+        patientName={paymentData?.patientName}
+        paymentId={paymentData?.id}
+      />
       
       <ReschedulePaymentDialog
         open={showReschedulePaymentDialog}
