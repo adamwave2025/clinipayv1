@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { isWithinInterval, parseISO, endOfDay, startOfDay } from 'date-fns';
+import { isWithinInterval, parseISO } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { useDashboardData } from '@/components/dashboard/DashboardDataProvider';
 import PaymentTable from '@/components/dashboard/payments/PaymentTable';
@@ -126,28 +125,25 @@ function filterPayments(
   
   return payments.filter(payment => {
     const matchesSearch = search === '' || 
-      payment.patientName?.toLowerCase().includes(search.toLowerCase()) ||
+      payment.patientName.toLowerCase().includes(search.toLowerCase()) ||
       payment.patientEmail?.toLowerCase().includes(search.toLowerCase()) ||
       payment.patientPhone?.includes(search) ||
       payment.reference?.includes(search);
     
-    // Fixed date range filter
+    // Date range filter
     let matchesDateRange = true;
     if (dateRange?.from || dateRange?.to) {
       const paymentDate = parseISO(payment.date);
       
       if (dateRange.from && dateRange.to) {
-        // Both from and to dates are set - use end of day for the to date to include the full day
-        matchesDateRange = isWithinInterval(paymentDate, { 
-          start: startOfDay(dateRange.from), 
-          end: endOfDay(dateRange.to) 
-        });
+        // Both from and to dates are set
+        matchesDateRange = isWithinInterval(paymentDate, { start: dateRange.from, end: dateRange.to });
       } else if (dateRange.from) {
         // Only from date is set
-        matchesDateRange = paymentDate >= startOfDay(dateRange.from);
+        matchesDateRange = paymentDate >= dateRange.from;
       } else if (dateRange.to) {
         // Only to date is set
-        matchesDateRange = paymentDate <= endOfDay(dateRange.to);
+        matchesDateRange = paymentDate <= dateRange.to;
       }
     }
     

@@ -15,23 +15,25 @@ export const useInstallmentHandler = () => {
     try {
       console.log('Viewing payment details for installment:', installment);
       
-      // Store the selected installment regardless of payment status
+      // Don't try to fetch payment details for unpaid installments
+      if (installment.status !== 'paid') {
+        toast.error('No payment information available for unpaid installments');
+        return;
+      }
+
+      // Store the selected installment
       setSelectedInstallment(installment);
       
-      // For paid payments, try to fetch payment details
-      if (installment.status === 'paid') {
-        const details = await fetchPaymentDetails(installment);
-        console.log('Fetched payment details:', details);
-        // Even if we couldn't get payment details, still show the dialog with installment info
+      // Fetch payment details for this installment
+      const details = await fetchPaymentDetails(installment);
+      console.log('Fetched payment details:', details);
+      
+      if (details) {
+        // Open the payment details dialog
+        setShowPaymentDetails(true);
       } else {
-        // For non-paid payments, just clear payment data
-        setPaymentData(null);
-        console.log('Showing installment details for non-paid payment');
+        toast.error('Could not find payment information');
       }
-      
-      // Always open the payment details dialog
-      setShowPaymentDetails(true);
-      
     } catch (error) {
       console.error('Error handling payment details:', error);
       toast.error('Failed to load payment details');

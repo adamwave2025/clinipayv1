@@ -23,16 +23,10 @@ export function usePaymentFetcher() {
       // Apply filters if provided
       if (filters) {
         if (filters.dateFrom) {
-          // Convert to ISO format for proper date comparison
-          const dateFromISO = new Date(filters.dateFrom).toISOString();
-          query = query.gte('created_at', dateFromISO);
+          query = query.gte('created_at', filters.dateFrom);
         }
         if (filters.dateTo) {
-          // Add one day to include the entire end date and convert to ISO
-          const dateTo = new Date(filters.dateTo);
-          dateTo.setDate(dateTo.getDate() + 1);
-          const dateToISO = dateTo.toISOString();
-          query = query.lt('created_at', dateToISO);
+          query = query.lte('created_at', filters.dateTo);
         }
         if (filters.status && filters.status !== 'all') {
           query = query.eq('status', filters.status);

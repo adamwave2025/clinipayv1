@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,6 @@ import PlanDetailsView from '@/components/dashboard/payment-plans/PlanDetailsVie
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
-import InstallmentPaymentDialog from '@/components/dashboard/payment-plans/InstallmentPaymentDialog';
 
 const PlanDetails = () => {
   const {
@@ -20,7 +18,6 @@ const PlanDetails = () => {
     handleMarkAsPaid,
     handleOpenReschedule,
     handleTakePayment,
-    handleViewPaymentDetails,
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
@@ -45,13 +42,12 @@ const PlanDetails = () => {
   // Debug logging for the dialogs
   useEffect(() => {
     console.log('PlanDetails - Dialog states:', { 
-      showPaymentDetails, 
+      showMarkAsPaidDialog, 
       showReschedulePaymentDialog,
       selectedInstallmentId: selectedInstallment?.id,
-      viewDetailsInstallmentId: viewDetailsInstallment?.id,
-      paymentData: paymentData ? 'exists' : 'null'
+      viewDetailsInstallmentId: viewDetailsInstallment?.id
     });
-  }, [showPaymentDetails, showReschedulePaymentDialog, selectedInstallment, viewDetailsInstallment, paymentData]);
+  }, [showMarkAsPaidDialog, showReschedulePaymentDialog, selectedInstallment, viewDetailsInstallment]);
   
   if (!selectedPlan) {
     return null;
@@ -79,7 +75,6 @@ const PlanDetails = () => {
         onMarkAsPaid={handleMarkAsPaid}
         onReschedule={handleOpenReschedule}
         onTakePayment={handleTakePayment}
-        onViewPaymentDetails={handleViewPaymentDetails}
         isLoading={isLoadingActivities}
         isRefreshing={isRefreshing}
         onOpenCancelDialog={handleOpenCancelDialog}
@@ -89,14 +84,14 @@ const PlanDetails = () => {
         onSendReminder={() => selectedPlan && handleSendReminder(selectedPlan.id)}
       />
       
-      {/* Pass the installment data to InstallmentPaymentDialog */}
-      <InstallmentPaymentDialog
-        showDialog={showPaymentDetails}
-        setShowDialog={setShowPaymentDetails}
-        paymentData={paymentData}
-        installment={viewDetailsInstallment}
-        onBack={() => setShowPaymentDetails(false)}
-      />
+      {paymentData && (
+        <PaymentDetailDialog
+          payment={paymentData}
+          open={showPaymentDetails}
+          onOpenChange={setShowPaymentDetails}
+          onRefund={() => {}}
+        />
+      )}
       
       <ReschedulePaymentDialog
         open={showReschedulePaymentDialog}
