@@ -69,11 +69,16 @@ const PlanDetailsDialog = ({
 
   // Function to handle row click and navigate to payment details
   const handleRowClick = (installment: PlanInstallment, e: React.MouseEvent) => {
-    // Only trigger click for paid installments and don't navigate when clicking action buttons
-    if (installment.status === 'paid' && !e.defaultPrevented) {
+    // Only trigger click for paid, refunded, or partially_refunded installments and don't navigate when clicking action buttons
+    if ((installment.status === 'paid' || installment.status === 'refunded' || installment.status === 'partially_refunded') && !e.defaultPrevented) {
       console.log("Row clicked for installment:", installment);
       onViewPaymentDetails(installment);
     }
+  };
+
+  // Function to determine if an installment row should be clickable
+  const isClickableInstallment = (status: string): boolean => {
+    return status === 'paid' || status === 'refunded' || status === 'partially_refunded';
   };
 
   return (
@@ -88,7 +93,7 @@ const PlanDetailsDialog = ({
             onReschedulePlan={onReschedulePlan}
             isPaused={isPlanPaused(selectedPlan)}
             isDisabled={isDisabled}
-            isLoading={isLoadingActivities} // Pass the loading state to show loader in dropdown
+            isLoading={isLoadingActivities}
           />
         </SheetHeader>
 
@@ -159,8 +164,9 @@ const PlanDetailsDialog = ({
                       <TableRow 
                         key={installment.id}
                         onClick={(e) => handleRowClick(installment, e)}
-                        className={installment.status === 'paid' ? 
-                          "cursor-pointer hover:bg-muted transition-colors" : ""}
+                        className={isClickableInstallment(installment.status) 
+                          ? "cursor-pointer hover:bg-muted transition-colors" 
+                          : ""}
                       >
                         <TableCell>{formatDate(installment.dueDate)}</TableCell>
                         <TableCell>{formatCurrency(installment.amount)}</TableCell>
@@ -179,7 +185,9 @@ const PlanDetailsDialog = ({
                         {/* Add Actions column with PaymentActionMenu for unpaid installments */}
                         {(onMarkAsPaid || onReschedule || onTakePayment) && (
                           <TableCell className="text-right">
-                            {installment.status !== 'paid' && (
+                            {installment.status !== 'paid' && 
+                             installment.status !== 'refunded' && 
+                             installment.status !== 'partially_refunded' && (
                               <PaymentActionMenu
                                 paymentId={installment.id}
                                 installment={installment}

@@ -16,7 +16,10 @@ export const useInstallmentHandler = () => {
       console.log('Viewing payment details for installment:', installment);
       
       // Don't try to fetch payment details for unpaid installments
-      if (installment.status == 'sent' || installment.status == 'pending' || installment.status == 'cancelled') {
+      // Allow paid, refunded, and partially_refunded statuses
+      if (installment.status === 'sent' || 
+          installment.status === 'pending' || 
+          installment.status === 'cancelled') {
         toast.error('No payment information available for unpaid installments');
         return;
       }
