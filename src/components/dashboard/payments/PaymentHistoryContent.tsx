@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { isWithinInterval, parseISO } from 'date-fns';
@@ -99,7 +98,7 @@ const PaymentHistoryContent: React.FC = () => {
         payment={selectedPayment}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        onRefund={openRefundDialog}
+        onRefund={() => openRefundDialog(selectedPayment)}
       />
 
       <PaymentRefundDialog

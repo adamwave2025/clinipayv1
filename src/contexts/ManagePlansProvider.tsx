@@ -473,6 +473,7 @@ export const ManagePlansProvider: React.FC<{
         paymentToRefund,
         openRefundDialog,
         processRefund,
+        handleRefund,  // Add the handleRefund property here
         
         // Plan action dialogs and handlers
         showCancelDialog,
