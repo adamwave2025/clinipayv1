@@ -1,4 +1,3 @@
-
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { generateUUID } from './utils.ts';
 
@@ -47,6 +46,8 @@ async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseCl
   const netAmount = amount - (paymentIntent.application_fee_amount || 0) - platformFeeAmount;
   
   try {
+    console.log('Creating payment record for installment payment');
+    
     // Begin transaction
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
@@ -74,7 +75,40 @@ async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseCl
       throw paymentError;
     }
     
-    console.log('Payment record created:', payment.id);
+    console.log('Payment record created:', payment?.id);
+    
+    // Retrieve payment schedule details to get payment_request_id if available
+    const { data: scheduleData, error: scheduleGetError } = await supabase
+      .from('payment_schedule')
+      .select('payment_request_id')
+      .eq('id', paymentScheduleId)
+      .single();
+      
+    if (scheduleGetError) {
+      console.error('Error getting payment schedule data:', scheduleGetError);
+      // Continue processing - this is non-critical
+    }
+    
+    // Update payment request status if it exists
+    if (scheduleData?.payment_request_id) {
+      console.log(`Found payment request ID: ${scheduleData.payment_request_id}, updating status`);
+      
+      const { error: requestUpdateError } = await supabase
+        .from('payment_requests')
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          payment_id: payment?.id
+        })
+        .eq('id', scheduleData.payment_request_id);
+        
+      if (requestUpdateError) {
+        console.error('Error updating payment request:', requestUpdateError);
+        // Non-critical error, continue
+      } else {
+        console.log(`Updated payment request ${scheduleData.payment_request_id} status to 'paid'`);
+      }
+    }
     
     // Update payment schedule status to 'paid'
     const { error: scheduleError } = await supabase
@@ -165,7 +199,7 @@ async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseCl
         plan_id: planId,
         details: {
           amount: amount,
-          paymentId: payment.id,
+          paymentId: payment?.id,
           paymentReference,
           installmentNumber: paidInstallments,
           totalInstallments: planData.total_installments,
@@ -175,9 +209,114 @@ async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseCl
     
     console.log(`Installment payment processing complete for payment schedule ${paymentScheduleId}`);
     
+    // Queue notification for payment success
+    try {
+      console.log('Queueing payment success notification');
+      
+      // Get clinic data
+      const { data: clinicData, error: clinicError } = await supabase
+        .from('clinics')
+        .select('*')
+        .eq('id', clinicId)
+        .single();
+        
+      if (clinicError) {
+        console.error("Error fetching clinic data:", clinicError);
+        console.error("Continuing without clinic data");
+      }
+      
+      // Queue notifications for payment success
+      const patientPayload = {
+        notification_type: "payment_success",
+        notification_method: {
+          email: !!patientEmail,
+          sms: !!patientPhone
+        },
+        patient: {
+          name: patientName || 'Patient',
+          email: patientEmail,
+          phone: patientPhone
+        },
+        payment: {
+          reference: paymentReference,
+          amount: amount,
+          refund_amount: null,
+          payment_link: payment?.id ? `https://clinipay.co.uk/payment-receipt/${payment.id}` : null,
+          message: "Your payment was successful"
+        },
+        clinic: {
+          id: clinicId,
+          name: clinicData?.clinic_name || 'Your healthcare provider',
+          email: clinicData?.email,
+          phone: clinicData?.phone
+        }
+      };
+      
+      const { error: notifyError } = await supabase
+        .from("notification_queue")
+        .insert({
+          type: 'payment_success',
+          payload: patientPayload,
+          payment_id: payment?.id,
+          recipient_type: 'patient'
+        });
+        
+      if (notifyError) {
+        console.error(`Error queueing patient notification: ${notifyError.message}`);
+      } else {
+        console.log(`Successfully queued payment success notification for patient`);
+      }
+      
+      // Queue clinic notification
+      const clinicPayload = {
+        notification_type: "payment_success",
+        notification_method: {
+          email: clinicData?.email_notifications ?? true,
+          sms: clinicData?.sms_notifications ?? false
+        },
+        patient: {
+          name: patientName || 'Anonymous',
+          email: patientEmail,
+          phone: patientPhone
+        },
+        payment: {
+          reference: paymentReference,
+          amount: amount,
+          refund_amount: null,
+          payment_link: payment?.id ? `https://clinipay.co.uk/payment-receipt/${payment.id}` : null,
+          message: "Payment received successfully"
+        },
+        clinic: {
+          id: clinicId,
+          name: clinicData?.clinic_name || 'Your clinic',
+          email: clinicData?.email,
+          phone: clinicData?.phone
+        }
+      };
+      
+      const { error: clinicNotifyError } = await supabase
+        .from("notification_queue")
+        .insert({
+          type: 'payment_success',
+          payload: clinicPayload,
+          payment_id: payment?.id,
+          recipient_type: 'clinic'
+        });
+        
+      if (clinicNotifyError) {
+        console.error(`Error queueing clinic notification: ${clinicNotifyError.message}`);
+      } else {
+        console.log(`Successfully queued payment notification for clinic`);
+      }
+      
+    } catch (notifyErr) {
+      console.error(`Error in notification processing: ${notifyErr.message}`);
+      // Don't throw, just log the error
+    }
+    
     return {
       success: true,
-      paymentId: payment.id,
+      paymentId: payment?.id,
       message: `Payment recorded successfully for installment`
     };
   } catch (error) {
@@ -232,19 +371,21 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
     
     console.log('Payment record created:', payment.id);
     
-    // If this was a payment request, update it
+    // If this payment was for a payment request, update it
     if (requestId) {
-      const { error: requestError } = await supabase
+      console.log(`Updating payment request: ${requestId}`);
+      
+      const { error: requestUpdateError } = await supabase
         .from('payment_requests')
         .update({
           status: 'paid',
-          payment_id: payment.id,
-          paid_at: new Date().toISOString()
+          paid_at: new Date().toISOString(),
+          payment_id: payment.id
         })
         .eq('id', requestId);
         
-      if (requestError) {
-        console.error('Error updating payment request:', requestError);
+      if (requestUpdateError) {
+        console.error('Error updating payment request:', requestUpdateError);
         // Non-critical error, continue
       } else {
         console.log(`Updated payment request ${requestId} status to 'paid'`);
@@ -267,18 +408,117 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
       });
     
     // Queue notification
-    await supabase
-      .from('notification_queue')
-      .insert({
-        type: 'payment_received',
-        recipient_type: 'clinic',
-        payload: {
-          payment_id: payment.id,
-          clinic_id: clinicId,
-          amount: amount,
-          patient_name: patientName
+    try {
+      console.log('Queueing payment notifications');
+      
+      // Get clinic data
+      const { data: clinicData, error: clinicError } = await supabase
+        .from('clinics')
+        .select('*')
+        .eq('id', clinicId)
+        .single();
+        
+      if (clinicError) {
+        console.error("Error fetching clinic data:", clinicError);
+        console.error("Continuing without clinic data");
+      }
+      
+      // Queue patient notification
+      if (patientEmail || patientPhone) {
+        const patientPayload = {
+          notification_type: "payment_success",
+          notification_method: {
+            email: !!patientEmail,
+            sms: !!patientPhone
+          },
+          patient: {
+            name: patientName || 'Patient',
+            email: patientEmail,
+            phone: patientPhone
+          },
+          payment: {
+            reference: paymentReference,
+            amount: amount,
+            refund_amount: null,
+            payment_link: `https://clinipay.co.uk/payment-receipt/${payment.id}`,
+            message: "Your payment was successful"
+          },
+          clinic: {
+            id: clinicId,
+            name: clinicData?.clinic_name || 'Your healthcare provider',
+            email: clinicData?.email,
+            phone: clinicData?.phone
+          }
+        };
+        
+        const { error: notifyError } = await supabase
+          .from("notification_queue")
+          .insert({
+            type: 'payment_success',
+            payload: patientPayload,
+            payment_id: payment.id,
+            recipient_type: 'patient'
+          });
+          
+        if (notifyError) {
+          console.error(`Error queueing patient notification: ${notifyError.message}`);
+        } else {
+          console.log(`Successfully queued payment success notification for patient`);
         }
-      });
+      }
+      
+      // Queue clinic notification
+      const clinicPayload = {
+        notification_type: "payment_success",
+        notification_method: {
+          email: clinicData?.email_notifications ?? true,
+          sms: clinicData?.sms_notifications ?? false
+        },
+        patient: {
+          name: patientName || 'Anonymous',
+          email: patientEmail,
+          phone: patientPhone
+        },
+        payment: {
+          reference: paymentReference,
+          amount: amount,
+          refund_amount: null,
+          payment_link: `https://clinipay.co.uk/payment-receipt/${payment.id}`,
+          message: "Payment received successfully",
+          financial_details: {
+            gross_amount: amount,
+            stripe_fee: paymentIntent.application_fee_amount || 0,
+            platform_fee: platformFeeAmount,
+            net_amount: netAmount
+          }
+        },
+        clinic: {
+          id: clinicId,
+          name: clinicData?.clinic_name || 'Your clinic',
+          email: clinicData?.email,
+          phone: clinicData?.phone
+        }
+      };
+      
+      const { error: clinicNotifyError } = await supabase
+        .from("notification_queue")
+        .insert({
+          type: 'payment_success',
+          payload: clinicPayload,
+          payment_id: payment.id,
+          recipient_type: 'clinic'
+        });
+        
+      if (clinicNotifyError) {
+        console.error(`Error queueing clinic notification: ${clinicNotifyError.message}`);
+      } else {
+        console.log(`Successfully queued payment notification for clinic`);
+      }
+      
+    } catch (notifyErr) {
+      console.error(`Error in notification processing: ${notifyErr.message}`);
+      // Don't throw, just log the error
+    }
     
     return {
       success: true,
@@ -353,4 +593,3 @@ export async function handlePaymentIntentFailed(paymentIntent: any, supabase: Su
     throw error;
   }
 }
-

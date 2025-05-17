@@ -66,6 +66,7 @@ export function useInstallmentPayment(
           amount,
           status,
           due_date,
+          payment_request_id,
           plans!inner(
             id,
             clinic_id,
@@ -157,10 +158,108 @@ export function useInstallmentPayment(
         return { success: false, error: paymentResult.error || 'Payment processing failed' };
       }
       
-      // 5. The webhook will handle updating the payment status, but we'll show success to the user
+      // 5. If the payment is successful, update the status immediately in the database
+      // This is a fallback in case the webhook doesn't trigger immediately
+      try {
+        console.log('Payment succeeded, updating database status as fallback to webhook');
+        
+        // Update payment_schedule record
+        const { error: scheduleUpdateError } = await supabase
+          .from('payment_schedule')
+          .update({
+            status: 'paid',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', paymentId);
+          
+        if (scheduleUpdateError) {
+          console.error('Error updating payment schedule:', scheduleUpdateError);
+          // Non-critical error, continue
+        } else {
+          console.log('Successfully updated payment schedule status to paid');
+        }
+        
+        // If there's a payment_request_id, update that too
+        if (paymentData.payment_request_id) {
+          const { error: requestUpdateError } = await supabase
+            .from('payment_requests')
+            .update({
+              status: 'paid',
+              paid_at: new Date().toISOString()
+            })
+            .eq('id', paymentData.payment_request_id);
+            
+          if (requestUpdateError) {
+            console.error('Error updating payment request:', requestUpdateError);
+            // Non-critical error, continue
+          } else {
+            console.log('Successfully updated payment request status to paid');
+          }
+        }
+        
+        // Get current plan data
+        const { data: planData, error: planFetchError } = await supabase
+          .from('plans')
+          .select('paid_installments, total_installments')
+          .eq('id', paymentData.plan_id)
+          .single();
+          
+        if (!planFetchError && planData) {
+          // Update plan data
+          const paidInstallments = (planData.paid_installments || 0) + 1;
+          const progress = Math.round((paidInstallments / planData.total_installments) * 100);
+          const isCompleted = paidInstallments >= planData.total_installments;
+          
+          const { error: planUpdateError } = await supabase
+            .from('plans')
+            .update({
+              paid_installments: paidInstallments,
+              progress: progress,
+              status: isCompleted ? 'completed' : 'active',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', paymentData.plan_id);
+            
+          if (planUpdateError) {
+            console.error('Error updating plan data:', planUpdateError);
+            // Non-critical error, continue
+          } else {
+            console.log('Successfully updated plan data');
+          }
+          
+          // If not completed, find next due date
+          if (!isCompleted) {
+            const { data: nextPayment, error: nextPaymentError } = await supabase
+              .from('payment_schedule')
+              .select('due_date')
+              .eq('plan_id', paymentData.plan_id)
+              .eq('status', 'pending')
+              .order('due_date', { ascending: true })
+              .limit(1)
+              .single();
+              
+            if (!nextPaymentError && nextPayment) {
+              await supabase
+                .from('plans')
+                .update({
+                  next_due_date: nextPayment.due_date
+                })
+                .eq('id', paymentData.plan_id);
+                
+              console.log('Successfully updated next due date to', nextPayment.due_date);
+            }
+          }
+        }
+        
+      } catch (dbUpdateError: any) {
+        console.error('Error in direct database update fallback:', dbUpdateError.message);
+        // This is a fallback, so we continue even if it fails
+      }
+      
+      // 6. The webhook will handle updating the payment status, but we'll show success to the user
       toast.success('Payment processed successfully');
       
-      // 6. Refresh the payment data
+      // 7. Refresh the payment data
       await onPaymentProcessed();
       
       return { success: true };

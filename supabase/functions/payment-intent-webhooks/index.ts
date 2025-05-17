@@ -53,6 +53,8 @@ serve(async (req) => {
 
     // Get request body for webhook event verification
     const body = await req.text();
+    console.log("Webhook body length:", body.length);
+    console.log("Webhook body preview:", body.substring(0, 200) + "...");
     
     // Get Stripe signature from headers
     const signature = req.headers.get("stripe-signature");
@@ -65,14 +67,19 @@ serve(async (req) => {
       );
     }
     
+    console.log("Stripe signature received:", signature.substring(0, 20) + "...");
+    console.log("Using webhook secret:", stripeWebhookSecret.substring(0, 5) + "...");
+    
     // Verify the webhook signature
     let event;
     
     try {
       event = stripe.webhooks.constructEvent(body, signature, stripeWebhookSecret);
       console.log(`Webhook event verified: ${event.type}`);
+      console.log(`Event ID: ${event.id}`);
     } catch (err: any) {
       console.error(`Webhook signature verification failed: ${err.message}`);
+      console.error("Error details:", err);
       return new Response(
         JSON.stringify({ error: `Webhook Error: ${err.message}` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -95,7 +102,7 @@ serve(async (req) => {
         
       case "charge.refunded":
         console.log("Processing charge.refunded event");
-        result = await handleRefundUpdated(event.data.object, supabaseClient);
+        result = await handleRefundUpdated(event.data.object, stripe, supabaseClient);
         break;
         
       default:
