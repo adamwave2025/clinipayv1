@@ -60,6 +60,7 @@ export class PlanOperationsService {
       }
       
       // Delegate to PlanPauseService for full implementation
+      // Note: PlanPauseService already handles activity logging, so we don't need to log it again here
       const success = await PlanPauseService.pausePlan(plan);
       
       if (!success) {
@@ -67,16 +68,7 @@ export class PlanOperationsService {
         return false;
       }
       
-      // Log activity if not already logged by the service
-      try {
-        await this.logPlanActivity(plan.id, 'plan_paused', { 
-          planId: plan.id,
-          planName: plan.title || plan.planName,
-          pausedAt: new Date().toISOString(),
-        });
-      } catch (err) {
-        console.warn('Could not log plan activity for pause operation:', err);
-      }
+      // Remove duplicate activity logging since it's already done in PlanPauseService
       
       return true;
     } catch (err) {
