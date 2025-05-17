@@ -140,6 +140,8 @@ export function useInstallmentPayment(
         return { success: false, error: intentResult.error || 'Failed to create payment intent' };
       }
       
+      console.log('Payment intent created successfully, proceeding with card payment');
+      
       // 4. Process the payment with Stripe
       // Use the confirmed card completion state passed from the component
       const paymentResult = await processPayment({
