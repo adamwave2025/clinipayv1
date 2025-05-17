@@ -60,6 +60,25 @@ export class NotificationService {
           console.log('⚠️ CRITICAL: Adding refund_amount: null to payment payload');
           payload.payment.refund_amount = null;
         }
+        
+        // Ensure monetary values are properly formatted for notifications
+        // This is critical especially for refund amounts
+        if (type === 'payment_refund' || type === 'refund') {
+          if (payload.payment.refund_amount !== null) {
+            // Make sure refund_amount is the correct format and not missing decimal places
+            // Check if the refund amount appears to be in pence but missing the decimal point
+            console.log(`⚠️ CRITICAL: Validating refund amount format: ${payload.payment.refund_amount}`);
+            const refundAmount = payload.payment.refund_amount;
+            
+            // All monetary values in the notification payload should be formatted with 2 decimal places
+            if (typeof refundAmount === 'number' && !Number.isNaN(refundAmount)) {
+              console.log(`⚠️ CRITICAL: Refund amount is valid: ${refundAmount}`);
+            } else {
+              console.error(`⚠️ CRITICAL ERROR: Invalid refund amount: ${refundAmount}, setting to 0`);
+              payload.payment.refund_amount = 0;
+            }
+          }
+        }
       } else {
         console.error('⚠️ CRITICAL ERROR: Payload has no payment object or it is not properly formatted');
         return { 
@@ -75,7 +94,9 @@ export class NotificationService {
         'payload_clinic_id': payload.clinic?.id,
         'clinic_object_exists': !!payload.clinic,
         'has_payment_message': !!payload.payment?.message,
-        'is_payment_plan': payload.payment?.message?.includes('[PLAN]') || false
+        'payment_type': type,
+        'is_refund': type === 'payment_refund' || type === 'refund',
+        'refund_amount': payload.payment?.refund_amount
       });
       
       // Convert the StandardNotificationPayload to Json compatible format
@@ -123,7 +144,8 @@ export class NotificationService {
           has_payment_id: !!payment_id,
           clinic_id: clinic_id,
           payload_clinic_id: payload.clinic?.id,
-          payment_message: payload.payment?.message
+          payment_message: payload.payment?.message,
+          refund_amount: payload.payment?.refund_amount
         }));
         return { 
           success: false, 

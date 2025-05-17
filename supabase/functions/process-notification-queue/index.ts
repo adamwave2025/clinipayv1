@@ -44,9 +44,28 @@ function processMonetaryValues(obj, parentKey = '') {
     const isMonetaryField = ['amount', 'refund_amount', 'gross_amount', 'stripe_fee', 'platform_fee', 'net_amount'].includes(key);
     
     if (isMonetaryField && typeof value === 'number') {
-      // Convert monetary values from pence to pounds with 2 decimal places
-      result[key] = Number(formatMonetaryValue(value));
-      console.log(`💰 Converted ${key} from ${value}p to £${result[key]}`);
+      // Special handling for refund_amount in payment or payment_refund notification types
+      if ((obj.notification_type === 'payment_refund' || obj.notification_type === 'refund') && key === 'refund_amount') {
+        console.log(`💰 Special handling for refund_amount: ${value}`);
+        
+        // If refund_amount appears to already be in pounds (less than 1000), don't convert
+        if (value < 1000 && value % 1 === 0) {
+          // This might be a value that was already converted (e.g., already in pounds)
+          // But we still want to ensure it has 2 decimal places for formatting in the email
+          result[key] = Number(value.toFixed(2));
+          console.log(`💰 Refund amount appears to be already in pounds: ${value} => ${result[key]}`);
+        } else {
+          // Assume it's in pence and convert to pounds
+          result[key] = Number(formatMonetaryValue(value));
+          console.log(`💰 Converted ${key} from ${value}p to £${result[key]}`);
+        }
+      } 
+      // Regular conversion for other monetary fields
+      else {
+        // Convert monetary values from pence to pounds with 2 decimal places
+        result[key] = Number(formatMonetaryValue(value));
+        console.log(`💰 Converted ${key} from ${value}p to £${result[key]}`);
+      }
     } 
     // Recursively process nested objects
     else if (value && typeof value === 'object') {
@@ -175,6 +194,22 @@ serve(async (req) => {
               email: !!enhancedPayload.patient.email,
               sms: !!enhancedPayload.patient.phone
             };
+          }
+        } else if (notification.type === 'payment_refund' || notification.type === 'refund') {
+          // Special handling for refund notifications - ensure refund_amount is properly formatted
+          console.log(`💰 Special handling for refund notification`);
+          if (enhancedPayload.payment && enhancedPayload.payment.refund_amount !== undefined) {
+            console.log(`💰 Original refund_amount: ${enhancedPayload.payment.refund_amount}`);
+            
+            // If it appears the refund amount is already in pounds but might be missing decimal formatting
+            if (typeof enhancedPayload.payment.refund_amount === 'number') {
+              // We'll still run it through our processor to ensure proper formatting
+              console.log(`💰 Refund amount is a number, will be processed`);
+            } else {
+              // If it's not a number, convert it to a number with 2 decimal places
+              enhancedPayload.payment.refund_amount = Number(parseFloat(String(enhancedPayload.payment.refund_amount)).toFixed(2));
+              console.log(`💰 Converted refund_amount to number: ${enhancedPayload.payment.refund_amount}`);
+            }
           }
         }
         
@@ -361,6 +396,7 @@ async function enrichPayloadWithData(supabase, notification) {
       const formattedAddress = addressParts.length > 0 ? addressParts.join(', ') : null;
       
       enhancedPayload.clinic = {
+        id: clinic.id, // Ensure ID is included
         name: clinic.clinic_name || 'Your healthcare provider',
         email: clinic.email,
         phone: clinic.phone,
@@ -381,6 +417,9 @@ async function enrichPayloadWithData(supabase, notification) {
     const refundAmount = payment.refund_amount ? formatMonetaryValue(payment.refund_amount) : null;
     
     console.log(`💰 Converting amount_paid from cents: ${payment.amount_paid} to display currency: ${amountPaid}`);
+    if (payment.refund_amount) {
+      console.log(`💰 Converting refund_amount from cents: ${payment.refund_amount} to display currency: ${refundAmount}`);
+    }
     
     enhancedPayload.payment = {
       reference: payment.payment_ref || "N/A",

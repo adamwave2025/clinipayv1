@@ -340,7 +340,7 @@ serve(async (req) => {
         console.log(`💰 Formatting payment amount from ${payment.amount_paid}p to £${amountPaidFormatted} for notifications`);
         
         const refundPayload = {
-          notification_type: "payment_refund",
+          notification_type: "refund",
           notification_method: {
             email: !!payment.patient_email,
             sms: !!payment.patient_phone
@@ -359,6 +359,7 @@ serve(async (req) => {
             is_full_refund: isFullRefund
           },
           clinic: {
+            id: payment.clinic_id, // Ensure clinic ID is included
             name: clinicData?.clinic_name || 'Your healthcare provider',
             email: clinicData?.email,
             phone: clinicData?.phone
@@ -388,7 +389,7 @@ serve(async (req) => {
         const refundFeeFormatted = formatMonetaryValue(refundFeeInCents);
         
         const clinicPayload = {
-          notification_type: "payment_refund",
+          notification_type: "refund",
           notification_method: {
             email: clinicData?.email_notifications ?? true,
             sms: clinicData?.sms_notifications ?? true
@@ -414,6 +415,7 @@ serve(async (req) => {
             }
           },
           clinic: {
+            id: payment.clinic_id, // Ensure clinic ID is included
             name: clinicData?.clinic_name || 'Your clinic',
             email: clinicData?.email,
             phone: clinicData?.phone
