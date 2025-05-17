@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { useDashboardData } from '@/components/dashboard/DashboardDataProvider';
 import { Payment } from '@/types/payment';
 import { toast } from 'sonner';
 import { PaymentRefundService } from '@/services/PaymentRefundService';
@@ -8,57 +7,61 @@ import { PaymentRefundService } from '@/services/PaymentRefundService';
 export const useRefundState = () => {
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
-  
-  // Get dashboard data for refund functionality
-  const { handleRefund: dashboardHandleRefund } = useDashboardData();
-  
-  const openRefundDialog = (paymentData: Payment | null) => {
-    if (paymentData && paymentData.id) {
-      setPaymentToRefund(paymentData.id);
-      setRefundDialogOpen(true);
+  const [isProcessingRefund, setIsProcessingRefund] = useState(false);
+
+  // Modified to accept either a Payment object or a payment ID (string)
+  const openRefundDialog = (paymentIdOrData: string | Payment | null) => {
+    if (!paymentIdOrData) {
+      console.error('No payment ID or data provided for refund');
+      return;
+    }
+
+    // If it's a Payment object, extract the ID
+    if (typeof paymentIdOrData === 'object') {
+      setPaymentToRefund(paymentIdOrData.id);
     } else {
-      console.error('No payment data available for refund');
-      toast.error('Cannot process refund: No payment information available');
+      // It's a string (ID)
+      setPaymentToRefund(paymentIdOrData);
+    }
+    
+    setRefundDialogOpen(true);
+  };
+
+  const handleRefund = async (amount?: number, paymentId?: string) => {
+    const refundPaymentId = paymentId || paymentToRefund;
+    
+    if (!refundPaymentId) {
+      console.error('No payment ID provided for refund');
+      toast.error('Cannot process refund: Missing payment ID');
+      return;
+    }
+    
+    try {
+      setIsProcessingRefund(true);
+      
+      const result = await PaymentRefundService.processRefund(refundPaymentId, amount);
+      
+      if (result.success) {
+        toast.success(
+          amount ? `Partial refund of ${amount} processed successfully` : 'Payment refunded successfully'
+        );
+        
+        setRefundDialogOpen(false);
+      } else {
+        toast.error(`Failed to process refund: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      console.error('Error processing refund:', error);
+      toast.error(`Error processing refund: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsProcessingRefund(false);
     }
   };
 
-  const processRefund = async (amountInPounds?: number) => {
-    if (paymentToRefund) {
-      try {
-        const result = await PaymentRefundService.processRefund(paymentToRefund, amountInPounds);
-        if (result.success) {
-          toast.success('Payment has been refunded successfully');
-          setRefundDialogOpen(false);
-        } else {
-          toast.error(`Refund failed: ${result.error || 'Unknown error'}`);
-        }
-      } catch (error) {
-        console.error('Error processing refund:', error);
-        toast.error('An error occurred while processing the refund');
-      }
-    } else {
-      console.error('No payment ID available for refund');
-      toast.error('Cannot process refund: No payment selected');
-    }
+  const processRefund = (amount?: number) => {
+    handleRefund(amount, paymentToRefund || undefined);
   };
-  
-  // Create a wrapper function that handles both contexts
-  const handleRefund = (amountInPounds?: number, paymentId?: string) => {
-    if (paymentId) {
-      // If a payment ID is provided, use it (this comes from PaymentHistory)
-      if (dashboardHandleRefund) {
-        dashboardHandleRefund(amountInPounds, paymentId);
-      } else {
-        // Fallback to our own implementation if dashboardHandleRefund is not available
-        setPaymentToRefund(paymentId);
-        processRefund(amountInPounds);
-      }
-    } else {
-      // If no payment ID is provided, use the current paymentToRefund
-      processRefund(amountInPounds);
-    }
-  };
-  
+
   return {
     refundDialogOpen,
     setRefundDialogOpen,
@@ -66,6 +69,7 @@ export const useRefundState = () => {
     setPaymentToRefund,
     openRefundDialog,
     processRefund,
-    handleRefund
+    handleRefund,
+    isProcessingRefund
   };
 };

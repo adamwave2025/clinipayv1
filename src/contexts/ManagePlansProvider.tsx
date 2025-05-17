@@ -16,6 +16,7 @@ import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { toast } from '@/hooks/use-toast';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { useRefundState } from '@/hooks/payment-plans/useRefundState';
+import { Payment } from '@/types/payment'; // Add this import for the Payment type
 
 export const ManagePlansProvider: React.FC<{
   children: React.ReactNode;
@@ -406,8 +407,9 @@ export const ManagePlansProvider: React.FC<{
   const openRefundDialog = (paymentIdOrData?: string | Payment | null) => {
     if (typeof paymentIdOrData === 'string') {
       // Handle case where a string ID is passed
-      const payment = payments.find(p => p.id === paymentIdOrData);
-      originalOpenRefundDialog(payment);
+      // We don't have access to all payments here, so we'll just pass the ID
+      // The original function will handle finding the payment
+      originalOpenRefundDialog(paymentIdOrData);
     } else {
       // Handle case where a Payment object or null is passed
       originalOpenRefundDialog(paymentIdOrData as Payment | null);
