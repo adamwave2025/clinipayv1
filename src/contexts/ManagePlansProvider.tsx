@@ -368,21 +368,16 @@ export const ManagePlansProvider: React.FC<{
   };
   
   // Fix the handleOpenReschedule function to properly call the payment reschedule actions
-  const handleOpenReschedule = (paymentId: string) => {
+  const handleOpenReschedule = (paymentId: string): Promise<void> => {
     console.log("ManagePlansProvider: Opening reschedule dialog for payment:", paymentId);
     // Direct call to the handleOpenRescheduleDialog from paymentRescheduleActions
-    paymentRescheduleActions.handleOpenRescheduleDialog(paymentId);
-    // Debug to confirm state after the function call
-    setTimeout(() => {
-      console.log("ManagePlansProvider: Dialog state after opening:", 
-        paymentRescheduleActions.showRescheduleDialog,
-        "Selected payment:", paymentRescheduleActions.selectedPaymentId);
-    }, 100);
+    // Ensure it returns a Promise
+    return paymentRescheduleActions.handleOpenRescheduleDialog(paymentId);
   };
   
-  // Create a wrapper function that adapts the signature
-  const handleOpenRescheduleDialog = () => {
-    planRescheduleActions.handleOpenRescheduleDialog();
+  // Fix the handleOpenRescheduleDialog function to properly return a Promise
+  const handleOpenRescheduleDialog = (): Promise<void> => {
+    return planRescheduleActions.handleOpenRescheduleDialog();
   };
   
   // Create handler for payment rescheduling
@@ -499,7 +494,7 @@ export const ManagePlansProvider: React.FC<{
         
         // Add payment rescheduling dialog properties
         showReschedulePaymentDialog: paymentRescheduleActions.showRescheduleDialog,
-        setShowReschedulePaymentDialog: paymentRescheduleActions.setShowRescheduleDialog, // Fixed: Using the correct property name
+        setShowReschedulePaymentDialog: paymentRescheduleActions.setShowReschedulePaymentDialog, // Fixed: Using the correct property name
         
         hasOverduePayments,
         hasPaidPayments,
