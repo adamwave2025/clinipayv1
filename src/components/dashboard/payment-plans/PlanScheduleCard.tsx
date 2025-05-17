@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { Button } from '@/components/ui/button';
@@ -5,6 +6,7 @@ import { Calendar, CheckCircle, CreditCard } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/utils/formatters';
+import StatusBadge from '@/components/common/StatusBadge'; // Fixed import
 
 interface PlanScheduleCardProps {
   installments: PlanInstallment[];

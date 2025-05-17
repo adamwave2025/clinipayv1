@@ -1,136 +1,131 @@
 
-import React, { createContext, useContext } from 'react';
+import { createContext, useContext } from 'react';
 import { Plan } from '@/utils/planTypes';
-import { Payment } from '@/types/payment';
-import { PlanActivity } from '@/utils/planActivityUtils';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
+import { PlanActivity } from '@/utils/planActivityUtils';
+import { Payment } from '@/types/payment';
 
-// Create a dedicated type for payment dialog data
+// Define the type for payment dialog data
 export interface PaymentDialogData {
   paymentId: string;
-  patientName: string;
+  patientName?: string;
   patientEmail?: string;
   patientPhone?: string;
   amount: number;
   isValid: boolean;
 }
 
-export interface ManagePlansContextType {
-  // Search and filter state
+interface ManagePlansContextType {
+  // Search and filtering
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   statusFilter: string;
   setStatusFilter: (status: string) => void;
   
-  // Plan data and state
+  // Data
   plans: Plan[];
-  allPlans: Plan[]; // Add allPlans to expose unfiltered plans
+  allPlans: Plan[];
   isLoading: boolean;
-  installments: any[];
+  installments: PlanInstallment[];
   activities: PlanActivity[];
   isLoadingActivities: boolean;
   
-  // Selected plan state
+  // Selected plan
   selectedPlan: Plan | null;
   showPlanDetails: boolean;
   setShowPlanDetails: (show: boolean) => void;
   
-  // Payment details state - RENAMED to viewDetailsInstallment to avoid conflict
-  showPaymentDetails: boolean;
-  setShowPaymentDetails: (show: boolean) => void;
-  paymentData: Payment | null;
-  viewDetailsInstallment: PlanInstallment | null; // Renamed from selectedInstallment
-  
-  // Payment dialog data - specific for take payment operations
-  paymentDialogData: PaymentDialogData | null;
-  setPaymentDialogData: (data: PaymentDialogData | null) => void;
-  preparePaymentData: (paymentId: string, installmentDetails: PlanInstallment) => boolean; 
-  
-  // NEW: Plan state refresh
+  // Refresh state
   isRefreshing: boolean;
   refreshPlanState: (planId: string) => Promise<void>;
   
-  // View mode toggle state
+  // Payment details
+  showPaymentDetails: boolean;
+  setShowPaymentDetails: (show: boolean) => void;
+  paymentData: Payment | null;
+  viewDetailsInstallment: PlanInstallment | null;
+  
+  // Payment dialog data
+  paymentDialogData: PaymentDialogData | null;
+  setPaymentDialogData: (data: PaymentDialogData | null) => void;
+  
+  // View mode
   isViewMode: boolean;
-  setIsViewMode: (isViewMode: boolean) => void;
+  setIsViewMode: (isView: boolean) => void;
   
   // Action handlers
-  handleViewPlanDetails: (plan: Plan) => Promise<void>;
+  handleViewPlanDetails: (plan: Plan) => void;
   handleCreatePlanClick: () => void;
   handleViewPlansClick: () => void;
-  handleSendReminder: (installmentId: string) => Promise<void>;
-  handleViewPaymentDetails: (installment: any) => Promise<void>;
+  handleSendReminder: (planId: string) => void;
+  handleViewPaymentDetails: (installment: PlanInstallment) => void;
   handleBackToPlans: () => void;
   
-  // Add the missing handler methods
-  handleMarkAsPaid: (paymentId: string) => void;
+  // Individual payment actions
+  handleMarkAsPaid: (paymentId: string, installment: PlanInstallment) => void;
   handleOpenReschedule: (paymentId: string) => void;
-  handleReschedulePayment: (date: Date) => void;
-  handleTakePayment: (paymentId: string, installmentDetails?: any) => void;
+  handleReschedulePayment: (newDate: Date) => Promise<void>;
+  handleTakePayment: (paymentId: string, installment: PlanInstallment) => void;
+  preparePaymentData: (paymentId: string, installmentDetails: PlanInstallment) => boolean;
   
-  // Mark as paid confirmation dialog
+  // Mark as Paid dialog properties
   showMarkAsPaidDialog: boolean;
   setShowMarkAsPaidDialog: (show: boolean) => void;
   confirmMarkAsPaid: () => Promise<void>;
   
-  // Take payment dialog
+  // Take Payment dialog properties
   showTakePaymentDialog: boolean;
   setShowTakePaymentDialog: (show: boolean) => void;
   onPaymentUpdated: () => Promise<void>;
+  selectedInstallment: PlanInstallment | null;
   
   // Refund properties
   refundDialogOpen: boolean;
   setRefundDialogOpen: (open: boolean) => void;
   paymentToRefund: string | null;
-  openRefundDialog: () => void;
-  processRefund: (amount?: number) => void;
+  openRefundDialog: (payment: Payment | null) => void;
+  processRefund: (amount?: number, paymentId?: string) => void;
   
-  // Cancel plan properties
+  // Plan action dialogs and handlers
   showCancelDialog: boolean;
   setShowCancelDialog: (show: boolean) => void;
   handleCancelPlan: () => Promise<void>;
   handleOpenCancelDialog: () => void;
   
-  // Pause plan properties
   showPauseDialog: boolean;
   setShowPauseDialog: (show: boolean) => void;
   handlePausePlan: () => Promise<void>;
   handleOpenPauseDialog: () => void;
   
-  // Resume plan properties
   showResumeDialog: boolean;
   setShowResumeDialog: (show: boolean) => void;
-  handleResumePlan: (resumeDate: Date) => Promise<void>;
+  handleResumePlan: () => Promise<void>;
   handleOpenResumeDialog: () => void;
   hasSentPayments: boolean;
-  hasOverduePayments: boolean;
-  hasPaidPayments: boolean;
-  resumeError?: string | null;
   
-  // Reschedule plan properties (entire plan)
   showRescheduleDialog: boolean;
   setShowRescheduleDialog: (show: boolean) => void;
   handleReschedulePlan: (newStartDate: Date) => Promise<void>;
   handleOpenRescheduleDialog: () => void;
   
-  // Add properties for payment rescheduling (individual payment)
+  // Payment rescheduling dialog properties
   showReschedulePaymentDialog: boolean;
   setShowReschedulePaymentDialog: (show: boolean) => void;
   
   // Plan state helpers
+  hasOverduePayments: boolean;
+  hasPaidPayments: boolean;
   isPlanPaused: (plan: Plan | null) => boolean;
   isProcessing: boolean;
-  
-  // Add the primary selected installment state for payment actions
-  selectedInstallment: PlanInstallment | null;
+  resumeError: string | null;
 }
 
 const ManagePlansContext = createContext<ManagePlansContextType | undefined>(undefined);
 
 export const useManagePlansContext = () => {
   const context = useContext(ManagePlansContext);
-  if (!context) {
-    throw new Error('useManagePlansContext must be used within a ManagePlansProvider');
+  if (context === undefined) {
+    throw new Error("useManagePlansContext must be used within a ManagePlansProvider");
   }
   return context;
 };

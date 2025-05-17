@@ -24,35 +24,10 @@ export const usePaymentDetailsFetcher = () => {
       const isPlanPayment = installment.totalPayments > 1;
       console.log('Is this a plan payment?', isPlanPayment);
       
-      // For unpaid installments, create a placeholder payment object
-      if (installment.status !== 'paid') {
-        console.log('Creating placeholder payment data for unpaid installment');
+      // For paid installments with paymentId, fetch the payment details directly
+      if (installment.status === 'paid' && installment.paymentId) {
+        console.log('Fetching payment details for paid installment with payment ID:', installment.paymentId);
         
-        // Create a basic payment object with installment data
-        const placeholderPayment: Payment = {
-          id: installment.id,
-          status: installment.status,
-          amount: installment.amount,
-          clinicId: installment.planId.split('-')[0] || '',
-          date: installment.dueDate,
-          patientName: 'Patient', // Will be updated with plan data
-          netAmount: installment.amount,
-          paymentMethod: installment.manualPayment ? 'manual' : 'card',
-          type: 'payment_plan',
-          linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
-        };
-        
-        console.log('Created placeholder payment:', placeholderPayment);
-        setPaymentData(placeholderPayment);
-        setIsLoading(false);
-        return placeholderPayment;
-      }
-      
-      // Check if we have a direct payment ID (could happen with manual payments)
-      if (installment.paymentId) {
-        console.log('Fetching payment details directly for payment ID:', installment.paymentId);
-        
-        // Fetch payment details directly using payment ID
         const { data: paymentData, error: paymentError } = await supabase
           .from('payments')
           .select('*')
@@ -66,9 +41,9 @@ export const usePaymentDetailsFetcher = () => {
           return null;
         }
         
-        console.log('Direct payment data:', paymentData);
+        console.log('Retrieved payment data:', paymentData);
         
-        // Format the payment data to match the expected structure
+        // Create payment object from DB data
         const paymentInfo: Payment = {
           id: paymentData.id,
           status: paymentData.status || 'paid',
@@ -80,89 +55,50 @@ export const usePaymentDetailsFetcher = () => {
           refundAmount: paymentData.refund_amount || 0,
           netAmount: paymentData.net_amount || paymentData.amount_paid,
           clinicId: paymentData.clinic_id || '',
-          patientName: paymentData.patient_name || '',
+          patientName: paymentData.patient_name || installment.patientName || '',
           patientEmail: paymentData.patient_email || '',
           patientPhone: paymentData.patient_phone || '',
           manualPayment: paymentData.manual_payment || false,
           paymentMethod: paymentData.manual_payment ? 'manual' : 'card',
-          // Explicitly set the type to payment_plan if this is a plan payment
           type: isPlanPayment ? 'payment_plan' : 'other',
           linkTitle: installment.paymentNumber 
             ? `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
             : 'Payment'
         };
         
-        console.log('Formatted direct payment info:', paymentInfo);
+        console.log('Formatted payment info:', paymentInfo);
         setPaymentData(paymentInfo);
         setIsLoading(false);
         return paymentInfo;
       }
       
-      // If there is no payment request ID or payment ID, we can't fetch payment details
-      if (!installment.paymentRequestId && !installment.paymentId) {
-        console.log('No payment request ID or payment ID found for this installment');
+      // For unpaid installments or those without a paymentId, create a placeholder
+      if (installment.status !== 'paid' || !installment.paymentId) {
+        console.log('Creating placeholder payment data for unpaid/unlinked installment');
         
-        // Try a fallback approach: search for any payment that might be linked to this installment
-        const { data: fallbackPayments, error: fallbackError } = await supabase
-          .from('payments')
-          .select('*')
-          .eq('payment_link_id', installment.id) // Try using installment ID as a potential link
-          .order('paid_at', { ascending: false })
-          .limit(1);
-          
-        if (!fallbackError && fallbackPayments && fallbackPayments.length > 0) {
-          // Found a payment through fallback approach
-          const paymentData = fallbackPayments[0];
-          console.log('Found payment through fallback approach:', paymentData);
-          
-          const paymentInfo: Payment = {
-            id: paymentData.id,
-            status: paymentData.status || 'paid',
-            amount: paymentData.amount_paid,
-            date: formatDateTime(paymentData.paid_at, 'en-GB', 'Europe/London'),
-            reference: paymentData.payment_ref,
-            stripePaymentId: paymentData.stripe_payment_id,
-            refundedAmount: paymentData.refund_amount || 0,
-            refundAmount: paymentData.refund_amount || 0,
-            netAmount: paymentData.net_amount || paymentData.amount_paid,
-            clinicId: paymentData.clinic_id || '',
-            patientName: paymentData.patient_name || '',
-            patientEmail: paymentData.patient_email || '',
-            patientPhone: paymentData.patient_phone || '',
-            paymentMethod: paymentData.manual_payment ? 'manual' : 'card',
-            manualPayment: paymentData.manual_payment || false,
-            type: isPlanPayment ? 'payment_plan' : 'other',
-            linkTitle: installment.paymentNumber 
-              ? `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
-              : 'Payment'
-          };
-          
-          setPaymentData(paymentInfo);
-          setIsLoading(false);
-          return paymentInfo;
-        }
-        
-        // Create a placeholder payment for unpaid/unlinked installment
+        // Create a basic payment object with installment data
         const placeholderPayment: Payment = {
           id: installment.id,
           status: installment.status,
           amount: installment.amount,
-          clinicId: installment.planId.split('-')[0] || '',
+          clinicId: installment.planId ? installment.planId.split('-')[0] || '' : '',
           date: installment.dueDate,
-          patientName: 'Patient',
+          patientName: installment.patientName || 'Patient',
           netAmount: installment.amount,
-          paymentMethod: 'none',
+          paymentMethod: installment.manualPayment ? 'manual' : 'card',
+          manualPayment: installment.manualPayment || false,
           type: 'payment_plan',
           linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
         };
         
+        console.log('Created placeholder payment:', placeholderPayment);
         setPaymentData(placeholderPayment);
         setIsLoading(false);
-        toast.info('Limited payment information available');
         return placeholderPayment;
       }
       
-      console.log('Fetching payment details for request ID:', installment.paymentRequestId);
+      // If we reach here, we need to use the fallback approach with payment request
+      console.log('Using fallback approach for payment request ID:', installment.paymentRequestId);
       
       // First get the payment request details
       const { data: requestData, error: requestError } = await supabase
@@ -226,7 +162,6 @@ export const usePaymentDetailsFetcher = () => {
         patientPhone: requestData.patient_phone || '',
         paymentMethod: requestData.payments.manual_payment ? 'manual' : 'card',
         manualPayment: requestData.payments.manual_payment || false,
-        // Explicitly set the type to payment_plan if this is a plan payment
         type: isPlanPayment ? 'payment_plan' : 'other',
         linkTitle: installment.paymentNumber 
           ? `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
@@ -242,7 +177,8 @@ export const usePaymentDetailsFetcher = () => {
         patientName: requestData.patient_name || 'Patient',
         patientEmail: requestData.patient_email || '',
         patientPhone: requestData.patient_phone || '',
-        paymentMethod: 'none',
+        paymentMethod: installment.manualPayment ? 'manual' : 'card',
+        manualPayment: installment.manualPayment || false,
         type: 'payment_plan',
         linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
       };
