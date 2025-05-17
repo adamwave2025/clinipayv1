@@ -3,105 +3,100 @@ import React from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogDescription
 } from '@/components/ui/dialog';
-import { formatCurrency, formatDateTime } from '@/utils/formatters';
+import { Payment } from '@/types/payment';
+import PaymentReferenceDisplay from '../payment/PaymentReferenceDisplay';
+import { toast } from 'sonner';
+import PaymentSourceSection from './payment-details/PaymentSourceSection';
+import PatientDetailsSection from './payment-details/PatientDetailsSection';
+import CustomMessageSection from './payment-details/CustomMessageSection';
+import PaymentLinkActionsSection from './payment-details/PaymentLinkActionsSection';
 import RefundDetailsSection from './payment-details/RefundDetailsSection';
-import { Button } from '@/components/ui/button';
+import PaymentActionsSection from './payment-details/PaymentActionsSection';
 
 interface PaymentDetailDialogProps {
-  payment: any | null;
+  payment: Payment | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onRefund?: () => void;
+  onRefund?: (paymentId: string) => void;
 }
 
-const PaymentDetailDialog: React.FC<PaymentDetailDialogProps> = ({ payment, open, onOpenChange, onRefund }) => {
-  if (!payment) {
-    return null;
-  }
+const PaymentDetailDialog = ({ 
+  payment, 
+  open, 
+  onOpenChange,
+  onRefund
+}: PaymentDetailDialogProps) => {
+  if (!payment) return null;
+
+  const handleRefund = () => {
+    if (onRefund && payment.status === 'paid') {
+      console.log('Requesting refund for payment:', payment.id);
+      onRefund(payment.id);
+    }
+  };
+
+  const handleCopyReference = () => {
+    if (payment.reference) {
+      navigator.clipboard.writeText(payment.reference);
+      toast.success('Payment reference copied to clipboard');
+    }
+  };
+
+  console.log('Payment in PaymentDetailDialog:', payment);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-xl md:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Payment Details</DialogTitle>
           <DialogDescription>
-            {payment.linkTitle || 'Payment'} for {payment.patientName}
+            View detailed information about this payment.
           </DialogDescription>
         </DialogHeader>
-        
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <span className="text-gray-600">Status:</span>
+        <div className="space-y-4">
+          {/* Payment Source Information */}
+          <PaymentSourceSection payment={payment} />
+          
+          {/* Patient and Payment Details */}
+          <PatientDetailsSection payment={payment} />
+          
+          {/* Custom message if available */}
+          <CustomMessageSection message={payment.message} />
+          
+          {/* Payment link actions */}
+          <PaymentLinkActionsSection 
+            status={payment.status} 
+            paymentUrl={payment.paymentUrl} 
+          />
+          
+          {/* Payment Reference */}
+          {payment.reference && (
+            <div className="mt-2">
+              <PaymentReferenceDisplay 
+                reference={payment.reference} 
+                className="mt-2"
+                onCopy={handleCopyReference}
+              />
             </div>
-            <div>
-              <span className="font-medium">{payment.status}</span>
-            </div>
-            
-            <div>
-              <span className="text-gray-600">Amount:</span>
-            </div>
-            <div>
-              <span className="font-medium">{formatCurrency(payment.amount)}</span>
-            </div>
-            
-            <div>
-              <span className="text-gray-600">Date:</span>
-            </div>
-            <div>
-              <span className="font-medium">{payment.date}</span>
-            </div>
-            
-            <div>
-              <span className="text-gray-600">Reference:</span>
-            </div>
-            <div>
-              <span className="font-medium">{payment.reference || '-'}</span>
-            </div>
-            
-            {payment.stripePaymentId && (
-              <>
-                <div>
-                  <span className="text-gray-600">Stripe Payment ID:</span>
-                </div>
-                <div>
-                  <span className="font-medium">{payment.stripePaymentId}</span>
-                </div>
-              </>
-            )}
-            
-            {payment.dueDate && (
-              <>
-                <div>
-                  <span className="text-gray-600">Due Date:</span>
-                </div>
-                <div>
-                  <span className="font-medium">{payment.dueDate}</span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        <RefundDetailsSection 
-          status={payment.status}
-          refundedAmount={payment.refundedAmount}
-          totalAmount={payment.amount}
-        />
-        
-        <div className="flex justify-end">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-          {onRefund && payment.status !== 'refunded' && payment.status !== 'partially_refunded' && (
-            <Button variant="destructive" onClick={onRefund}>
-              Refund Payment
-            </Button>
           )}
+          
+          {/* Refund information */}
+          <RefundDetailsSection 
+            status={payment.status}
+            refundedAmount={payment.refundedAmount}
+            totalAmount={payment.amount}
+          />
+          
+          {/* Refund action button with explicit manualPayment prop */}
+          <PaymentActionsSection 
+            status={payment.status}
+            onRefund={handleRefund}
+            manualPayment={payment.manualPayment}
+          />
         </div>
       </DialogContent>
     </Dialog>

@@ -4,19 +4,12 @@ import { usePaymentDetailsFetcher } from './usePaymentDetailsFetcher';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { Payment } from '@/types/payment';
 import { toast } from 'sonner';
-import { useRefundState } from './useRefundState';
 
 export const useInstallmentHandler = () => {
   // Renamed to avoid conflict with primary selectedInstallment
   const [selectedInstallment, setSelectedInstallment] = useState<PlanInstallment | null>(null);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const { paymentData, fetchPaymentDetails, setPaymentData } = usePaymentDetailsFetcher();
-  const { 
-    refundDialogOpen, 
-    setRefundDialogOpen, 
-    openRefundDialog, 
-    processRefund 
-  } = useRefundState();
 
   const handleViewPaymentDetails = async (installment: PlanInstallment) => {
     try {
@@ -50,27 +43,12 @@ export const useInstallmentHandler = () => {
     }
   };
 
-  // Handle refund for a payment
-  const handleRefund = () => {
-    if (paymentData) {
-      openRefundDialog(paymentData);
-      setShowPaymentDetails(false); // Close the payment details dialog
-    } else {
-      toast.error('No payment data available for refund');
-    }
-  };
-
   return {
     selectedInstallment,
     setSelectedInstallment,
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    handleViewPaymentDetails,
-    // Add refund-related properties
-    refundDialogOpen,
-    setRefundDialogOpen,
-    handleRefund,
-    processRefund
+    handleViewPaymentDetails
   };
 };
