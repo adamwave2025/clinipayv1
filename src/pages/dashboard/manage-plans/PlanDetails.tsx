@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { Button } from '@/components/ui/button';
@@ -31,7 +30,6 @@ const PlanDetails = () => {
     selectedInstallment, // Use the primary selectedInstallment
     isProcessing,
     viewDetailsInstallment, // Using the renamed property here
-    refreshPlanState, // Use the refreshPlanState function
     
     // Add plan operation handlers
     handleOpenCancelDialog,
@@ -51,30 +49,9 @@ const PlanDetails = () => {
     });
   }, [showMarkAsPaidDialog, showReschedulePaymentDialog, selectedInstallment, viewDetailsInstallment]);
   
-  // Add effect to refresh plan data when coming back to this screen or after actions
-  useEffect(() => {
-    if (selectedPlan?.id) {
-      console.log('PlanDetails - Refreshing plan state for ID:', selectedPlan.id);
-      refreshPlanState(selectedPlan.id);
-    }
-  }, [selectedPlan?.id]);
-  
   if (!selectedPlan) {
     return null;
   }
-
-  // Wrapper functions to ensure plan data is refreshed after actions
-  const handleAfterMarkAsPaid = (id: string, installment: any) => {
-    handleMarkAsPaid(id);
-  };
-  
-  const handleAfterReschedule = (id: string) => {
-    handleOpenReschedule(id);
-  };
-  
-  const handleAfterPayment = (id: string, installment: any) => {
-    handleTakePayment(id, installment);
-  };
 
   return (
     <div className="space-y-6">
@@ -95,9 +72,9 @@ const PlanDetails = () => {
         plan={selectedPlan}
         installments={installments}
         activities={activities}
-        onMarkAsPaid={handleAfterMarkAsPaid}
-        onReschedule={handleAfterReschedule}
-        onTakePayment={handleAfterPayment}
+        onMarkAsPaid={handleMarkAsPaid}
+        onReschedule={handleOpenReschedule}
+        onTakePayment={handleTakePayment}
         isLoading={isLoadingActivities}
         isRefreshing={isRefreshing}
         onOpenCancelDialog={handleOpenCancelDialog}
