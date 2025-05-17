@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { Button } from '@/components/ui/button';
-import { Calendar, CheckCircle, CreditCard } from 'lucide-react';
+import { Calendar, CheckCircle, CreditCard, RefreshCcw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/utils/formatters';
@@ -37,15 +38,22 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
       'cancelled': 'destructive',
       'scheduled': 'secondary',
       'processing': 'secondary',
-      'sent': 'primary'
+      'sent': 'primary',
+      'refunded': 'warning',
+      'partially_refunded': 'warning'
     };
+
+    // Enhanced badge label to show refund status clearly
+    const statusLabel = status === 'refunded' ? 'Refunded' :
+                        status === 'partially_refunded' ? 'Part Refund' :
+                        status.charAt(0).toUpperCase() + status.slice(1);
 
     return (
       <Badge 
         variant={variants[status] as any || 'secondary'} 
         className="capitalize"
       >
-        {status}
+        {statusLabel}
       </Badge>
     );
   };
@@ -89,77 +97,112 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
     }
   };
 
+  // Function to determine if an installment is actionable (not refunded or cancelled)
+  const isActionable = (status: string) => {
+    return !['refunded', 'partially_refunded', 'cancelled'].includes(status);
+  };
+
   return (
-    <div className="space-y-4">
-      {installments.map((installment) => (
-        <div 
+    <div className="space-y-3">
+      {installments.map((installment: PlanInstallment) => (
+        <div
           key={installment.id}
-          className={`p-4 border rounded-md space-y-2 ${onViewDetails ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
-          onClick={(e) => handleInstallmentClick(installment, e)}
+          className={`border rounded-md p-4 transition-colors ${
+            onViewDetails ? 'cursor-pointer hover:bg-gray-50' : ''
+          }`}
+          onClick={(e) => onViewDetails && handleInstallmentClick(installment, e)}
         >
-          <div className="flex justify-between items-center">
-            <div className="font-medium">
-              Payment #{installment.paymentNumber} of {installment.totalPayments}
+          <div className="flex justify-between items-start">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Payment {installment.payment_number || '-'}</span>
+                {getStatusBadge(installment.status)}
+              </div>
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5 mr-1" />
+                {formatDate(installment.due_date)}
+              </div>
             </div>
-            {getStatusBadge(installment.status)}
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <div className="text-sm">
-              <span className="text-muted-foreground mr-1">Due:</span> 
-              {formatDate(installment.dueDate)}
-              {installment.paidDate && (
-                <span className="ml-2">
-                  <span className="text-muted-foreground mr-1">Paid:</span> 
-                  {formatDate(installment.paidDate)}
-                </span>
+            <div className="text-right">
+              <div className="font-medium">{formatCurrency(installment.amount)}</div>
+              {installment.refund_amount > 0 && (
+                <div className="text-sm text-muted-foreground">
+                  <span className="flex items-center">
+                    <RefreshCcw className="h-3 w-3 mr-1" />
+                    Refund: {formatCurrency(installment.refund_amount)}
+                  </span>
+                </div>
               )}
             </div>
-            <div className="font-semibold">
-              {formatCurrency(installment.amount)}
-            </div>
           </div>
           
-          {installment.status !== 'paid' && installment.status !== 'cancelled' && (
-            <div className="flex flex-wrap gap-2 pt-2 action-buttons">
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="flex items-center"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMarkAsPaid(installment.id, installment);
-                }}
-              >
-                <CheckCircle className="mr-1 h-4 w-4" />
-                Mark as Paid
-              </Button>
+          {/* Only show action buttons for actionable statuses */}
+          {isActionable(installment.status) && installment.status !== 'paid' && (
+            <div className="mt-3 flex flex-wrap gap-2 action-buttons">
+              {installment.status === 'pending' && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReschedule(installment.id);
+                    }}
+                  >
+                    <Calendar className="h-3.5 w-3.5 mr-1" />
+                    Reschedule
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTakePayment(installment.id, installment);
+                    }}
+                  >
+                    <CreditCard className="h-3.5 w-3.5 mr-1" />
+                    Take Payment
+                  </Button>
+                </>
+              )}
               
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="flex items-center"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  console.log("Calling onReschedule for payment ID:", installment.id);
-                  onReschedule(installment.id);
-                }}
-              >
-                <Calendar className="mr-1 h-4 w-4" />
-                Reschedule
-              </Button>
-              
-              <Button 
-                size="sm"
-                className="flex items-center"
-                onClick={(e) => {
-                  e.stopPropagation(); 
-                  onTakePayment(installment.id, installment);
-                }}
-              >
-                <CreditCard className="mr-1 h-4 w-4" />
-                Take Payment
-              </Button>
+              {(installment.status === 'due' || installment.status === 'overdue') && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReschedule(installment.id);
+                    }}
+                  >
+                    <Calendar className="h-3.5 w-3.5 mr-1" />
+                    Reschedule
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMarkAsPaid(installment.id, installment);
+                    }}
+                  >
+                    <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                    Mark as Paid
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTakePayment(installment.id, installment);
+                    }}
+                  >
+                    <CreditCard className="h-3.5 w-3.5 mr-1" />
+                    Take Payment
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </div>

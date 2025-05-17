@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext, { PaymentDialogData } from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -46,7 +47,7 @@ export const ManagePlansProvider: React.FC<{
     }
   };
   
-  // NEW: Centralized refresh function that maintains plan card visibility
+  // Enhanced refreshPlanState function that ensures complete refresh after refunds
   const refreshPlanState = async (planId: string) => {
     if (!planId) {
       console.error("Cannot refresh plan state: No plan ID provided");
@@ -57,8 +58,9 @@ export const ManagePlansProvider: React.FC<{
     setIsRefreshing(true);
     
     try {
-      // 1. Refresh the plans list to get updated plan status
+      // 1. First, do a complete refresh of all plans to get newest data
       if (user) {
+        console.log("Fetching all updated plans data");
         await fetchPaymentPlans(user.id);
       }
       
@@ -77,6 +79,13 @@ export const ManagePlansProvider: React.FC<{
           console.log("Could not find refreshed plan in allPlans");
         }
       }
+      
+      // Enhanced logging for troubleshooting refund updates
+      console.log("Plan state refresh completed with:");
+      console.log("- Total plans count:", allPlans.length);
+      console.log("- Current selected plan:", selectedPlan?.id);
+      console.log("- Current selected plan status:", selectedPlan?.status);
+      
     } catch (error) {
       console.error("Error refreshing plan state:", error);
       toast.error("Failed to refresh plan data");
@@ -390,11 +399,46 @@ export const ManagePlansProvider: React.FC<{
     await paymentRescheduleActions.handleReschedulePayment(newDate);
   };
   
-  const processRefund = async () => {
-    console.log("Process refund action called");
+  // Enhanced processRefund function that properly refreshes the UI after a refund
+  const processRefund = async (amount?: number) => {
+    console.log("Processing refund with amount:", amount);
     setRefundDialogOpen(false);
-    // Always reset to patient plans view after operations
-    setIsTemplateView(false);
+    
+    try {
+      // If we have a selected plan and payment to refund
+      if (selectedPlan && paymentToRefund) {
+        console.log("Processing refund for payment:", paymentToRefund);
+        
+        // Call the refund service
+        const { success, error, refundFee } = await PaymentRefundService.processRefund(
+          paymentToRefund,
+          amount
+        );
+        
+        if (success) {
+          // Show success message
+          toast.success(`Payment refunded successfully${refundFee ? ` (fee: £${(refundFee/100).toFixed(2)})` : ''}`);
+          
+          // Do a complete refresh of the plan state
+          console.log("Refund successful, refreshing plan and payment data");
+          await refreshPlanState(selectedPlan.id);
+          
+          // Close any open payment details dialog
+          setShowPaymentDetails(false);
+        } else {
+          toast.error(`Refund failed: ${error || 'Unknown error'}`);
+        }
+      } else {
+        console.error("Cannot process refund: Missing plan or payment ID");
+        toast.error("Cannot process refund: Missing plan or payment ID");
+      }
+    } catch (error) {
+      console.error("Error processing refund:", error);
+      toast.error(`Error processing refund: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    // Reset refund related state
+    setPaymentToRefund(null);
   };
   
   const handleSendReminder = async () => {
@@ -514,3 +558,6 @@ export const ManagePlansProvider: React.FC<{
     </ManagePlansContext.Provider>
   );
 };
+
+// Add missing import at the top
+import { PaymentRefundService } from '@/services/PaymentRefundService';

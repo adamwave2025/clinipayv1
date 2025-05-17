@@ -260,7 +260,7 @@ serve(async (req) => {
         // Check if this payment request is linked to a payment schedule
         const { data: scheduleItem, error: scheduleError } = await supabase
           .from('payment_schedule')
-          .select('*')
+          .select('*, plans!inner(id, status)')
           .eq('payment_request_id', paymentRequest.id)
           .maybeSingle();
           
@@ -280,6 +280,62 @@ serve(async (req) => {
             console.error('❌ Error updating payment schedule:', updateScheduleError);
           } else {
             console.log('✅ Updated payment schedule status to:', scheduleStatus);
+            
+            // NEW: Check if the plan is completed and update it to active
+            if (scheduleItem.plans && scheduleItem.plans.status === 'completed') {
+              console.log('🔄 Changing plan status from completed to active after refund');
+              
+              // Update the plan status to active
+              const { error: updatePlanError } = await supabase
+                .from('plans')
+                .update({ 
+                  status: 'active',
+                  updated_at: currentTimestamp 
+                })
+                .eq('id', scheduleItem.plans.id);
+                
+              if (updatePlanError) {
+                console.error('❌ Error updating plan status:', updatePlanError);
+              } else {
+                console.log('✅ Updated plan status to active after refund');
+                
+                // NEW: Update plan metrics (decrement paid_installments and recalculate progress)
+                // First get the current plan data
+                const { data: planData, error: planError } = await supabase
+                  .from('plans')
+                  .select('paid_installments, total_installments')
+                  .eq('id', scheduleItem.plans.id)
+                  .single();
+                  
+                if (planError) {
+                  console.error('❌ Error fetching plan data for metrics update:', planError);
+                } else {
+                  // Decrement paid installments count (only if it's a full refund)
+                  if (isFullRefund && planData.paid_installments > 0) {
+                    const newPaidInstallments = planData.paid_installments - 1;
+                    const newProgress = Math.round((newPaidInstallments / planData.total_installments) * 100);
+                    
+                    console.log(`📊 Updating plan metrics: ${newPaidInstallments}/${planData.total_installments} (${newProgress}%)`);
+                    
+                    const { error: metricsError } = await supabase
+                      .from('plans')
+                      .update({ 
+                        paid_installments: newPaidInstallments,
+                        progress: newProgress
+                      })
+                      .eq('id', scheduleItem.plans.id);
+                      
+                    if (metricsError) {
+                      console.error('❌ Error updating plan metrics:', metricsError);
+                    } else {
+                      console.log('✅ Successfully updated plan metrics after refund');
+                    }
+                  }
+                }
+              }
+            } else {
+              console.log(`ℹ️ Plan not in completed state (${scheduleItem.plans?.status || 'unknown'}), no status change needed`);
+            }
             
             // Record the refund activity
             const activityPayload = {
