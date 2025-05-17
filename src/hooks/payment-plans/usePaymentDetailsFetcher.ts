@@ -14,8 +14,8 @@ export const usePaymentDetailsFetcher = () => {
     
     try {
       console.log('Installation in fetchPaymentDetails:', installment);
-      console.log('Payment ID:', installment.paymentId || 'Not set');
-      console.log('Payment Request ID:', installment.paymentRequestId || 'Not set');
+      console.log('Payment ID:', installment.id || 'Not set');
+      console.log('Payment Plan ID:', installment.planId || 'Not set');
       console.log('Manual payment flag:', installment.manualPayment || false);
       
       // Determine if this is a payment plan payment
@@ -24,14 +24,14 @@ export const usePaymentDetailsFetcher = () => {
       console.log('Is this a plan payment?', isPlanPayment);
       
       // Check if we have a direct payment ID (could happen with manual payments)
-      if (installment.paymentId) {
-        console.log('Fetching payment details directly for payment ID:', installment.paymentId);
-        
+      if (installment.id) {
+        console.log('Fetching payment details directly for payment ID:', installment.id);
+  
         // Fetch payment details directly using payment ID
         const { data: paymentData, error: paymentError } = await supabase
           .from('payments')
           .select('*')
-          .eq('id', installment.paymentId)
+          .eq('payment_schedule_id', installment.id)
           .single();
           
         if (paymentError) {
@@ -61,7 +61,9 @@ export const usePaymentDetailsFetcher = () => {
           type: isPlanPayment ? 'payment_plan' : 'other',
           linkTitle: installment.paymentNumber 
             ? `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
-            : 'Payment'
+            : 'Payment',
+          // Add the due date from the installment
+          dueDate: installment.dueDate ? formatDateTime(installment.dueDate, 'en-GB', 'Europe/London') : null
         };
         
         console.log('Formatted direct payment info:', paymentInfo);
@@ -103,7 +105,9 @@ export const usePaymentDetailsFetcher = () => {
             type: isPlanPayment ? 'payment_plan' : 'other',
             linkTitle: installment.paymentNumber 
               ? `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
-              : 'Payment'
+              : 'Payment',
+            // Add the due date from the installment
+            dueDate: installment.dueDate ? formatDateTime(installment.dueDate, 'en-GB', 'Europe/London') : null
           };
           
           setPaymentData(paymentInfo);
@@ -182,7 +186,9 @@ export const usePaymentDetailsFetcher = () => {
         type: isPlanPayment ? 'payment_plan' : 'other',
         linkTitle: installment.paymentNumber 
           ? `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
-          : 'Payment'
+          : 'Payment',
+        // Add the due date from the installment
+        dueDate: installment.dueDate ? formatDateTime(installment.dueDate, 'en-GB', 'Europe/London') : null
       } : null;
       
       console.log('Formatted payment info:', paymentInfo);

@@ -19,13 +19,15 @@ interface PlanPaymentsListProps {
   onMarkAsPaid: (paymentId: string, installmentDetails: PlanInstallment) => void;
   onReschedule: (paymentId: string) => void;
   onTakePayment?: (paymentId: string, installmentDetails: PlanInstallment) => void;
+  onViewDetails?: (installment: PlanInstallment) => void;
 }
 
 const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
   installments,
   onMarkAsPaid,
   onReschedule,
-  onTakePayment
+  onTakePayment,
+  onViewDetails
 }) => {
   const determineStatus = (installment: PlanInstallment): 'paid' | 'upcoming' | 'overdue' => {
     if (installment.status === 'paid') {
@@ -133,7 +135,11 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
               });
               
               return (
-                <TableRow key={installment.id}>
+                <TableRow 
+                  key={installment.id}
+                  className={onViewDetails && installment.status !== 'pending' && installment.status !== 'sent' && installment.status !== 'cancelled' ? 'cursor-pointer hover:bg-muted' : ''}
+                  onClick={() => onViewDetails && installment.status !== 'pending' && installment.status !== 'sent' && installment.status !== 'cancelled' ? onViewDetails(installment) : null}
+                >
                   <TableCell>
                     {installment.paymentNumber} of {installment.totalPayments}
                   </TableCell>
@@ -146,7 +152,7 @@ const PlanPaymentsList: React.FC<PlanPaymentsListProps> = ({
                     />
                   </TableCell>
                   <TableCell className="text-right">
-                    {status !== 'paid' && (
+                    {status !== 'paid' && ['refunded', 'partially_refunded'].indexOf(installment.status) === -1 && (
                       <PaymentActionMenu
                         paymentId={installment.id}
                         installment={installment}

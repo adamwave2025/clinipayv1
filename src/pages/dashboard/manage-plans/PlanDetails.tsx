@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ const PlanDetails = () => {
     selectedInstallment, // Use the primary selectedInstallment
     isProcessing,
     viewDetailsInstallment, // Using the renamed property here
+    handleViewPaymentDetails,
     
     // Add plan operation handlers
     handleOpenCancelDialog,
@@ -75,6 +77,7 @@ const PlanDetails = () => {
         onMarkAsPaid={handleMarkAsPaid}
         onReschedule={handleOpenReschedule}
         onTakePayment={handleTakePayment}
+        onViewPaymentDetails={handleViewPaymentDetails}
         isLoading={isLoadingActivities}
         isRefreshing={isRefreshing}
         onOpenCancelDialog={handleOpenCancelDialog}
