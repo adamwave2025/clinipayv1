@@ -3,7 +3,7 @@ import { useState, useRef } from 'react';
 import { PaymentFormValues } from '@/components/payment/form/FormSchema';
 import { toast } from 'sonner';
 import { PaymentLinkData } from './usePaymentLinkData';
-import { useStripePayment } from './useStripePayment';
+import { useStripePayment } from '@/modules/payment/hooks/useStripePayment';
 import { usePaymentIntent } from './usePaymentIntent';
 import { usePaymentRecord } from './usePaymentRecord';
 import { isPaymentLinkActive } from '@/utils/planActivityUtils';
