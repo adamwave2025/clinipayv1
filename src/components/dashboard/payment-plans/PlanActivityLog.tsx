@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { PlanActivity, getActionTypeLabel, capitalize } from '@/utils/planActivityUtils';
 import { formatDate, formatCurrency, formatDateTime } from '@/utils/formatters';
@@ -41,6 +40,7 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
         return <FileText className="h-4 w-4 text-purple-500" />;
       case 'payment_made':
       case 'payment_marked_paid':
+      case 'card_payment_processed':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'payment_failed':
         return <AlertCircle className="h-4 w-4 text-red-500" />;
@@ -100,6 +100,29 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
               )}
               {activity.details?.reference && <p>Reference: {activity.details.reference}</p>}
               {activity.details?.manualPayment && <p className="text-amber-600">Manual payment</p>}
+            </div>
+          </>
+        );
+      case 'card_payment_processed': 
+        return (
+          <>
+            <div className="font-medium">
+              Card payment processed
+              {activity.details?.amount ? ` for ${formatCurrency(activity.details.amount)}` : ''}
+            </div>
+            <div className="mt-1 space-y-1 text-sm">
+              {activity.details?.payment_number && activity.details?.total_payments ? (
+                <p>Payment: {activity.details.payment_number} of {activity.details.total_payments}</p>
+              ) : (
+                <p>Payment processed successfully</p>
+              )}
+              {activity.details?.stripe_payment_id && 
+                <p className="text-xs text-gray-500">Reference: {activity.details.stripe_payment_id}</p>
+              }
+              {activity.details?.processed_at && 
+                <p className="text-xs text-gray-500">Processed: {formatDate(activity.details.processed_at)}</p>
+              }
+              <p className="text-green-600">Online card payment</p>
             </div>
           </>
         );

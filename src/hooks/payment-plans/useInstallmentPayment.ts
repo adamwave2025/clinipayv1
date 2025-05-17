@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { useStripePayment } from '@/modules/payment/hooks/useStripePayment';
 import { usePaymentIntent } from '@/hooks/usePaymentIntent';
@@ -23,7 +22,6 @@ export function useInstallmentPayment(
     formData: PaymentFormValues, 
     isCardComplete: boolean = false
   ): Promise<{ success: boolean; error?: string }> => {
-    // Enhanced validation for payment ID
     if (!paymentId) {
       console.error('Payment ID is required but was not provided');
       toast.error('Payment ID is required');
