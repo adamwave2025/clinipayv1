@@ -99,7 +99,7 @@ interface ManagePlansContextType {
   
   showResumeDialog: boolean;
   setShowResumeDialog: (show: boolean) => void;
-  handleResumePlan: () => Promise<void>;
+  handleResumePlan: (newStartDate: Date) => Promise<void>; // Updated to include parameter
   handleOpenResumeDialog: () => void;
   hasSentPayments: boolean;
   

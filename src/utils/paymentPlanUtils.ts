@@ -15,6 +15,7 @@ export interface PlanInstallment {
   paymentRequestId?: string;
   paymentId?: string;
   manualPayment?: boolean;
+  patientName?: string; // Added patientName property
   // Add any other fields that might be needed
 }
 
@@ -34,7 +35,8 @@ export const formatInstallmentFromDb = (data: any): PlanInstallment => {
     totalPayments: data.total_payments || 0,
     paymentRequestId: data.payment_request_id,
     paymentId: data.payment_id,
-    manualPayment: data.manualPayment || false
+    manualPayment: data.manualPayment || false,
+    patientName: data.patient_name || null  // Added patientName mapping
   };
 };
 
@@ -61,7 +63,8 @@ export const formatPlanInstallments = (installments: any[]): PlanInstallment[] =
       totalPayments: item.total_payments || 0,
       paymentRequestId: item.payment_request_id,
       paymentId: item.payment_id,
-      manualPayment: item.manualPayment || false
+      manualPayment: item.manualPayment || false,
+      patientName: item.patient_name || null  // Added patientName mapping
     };
   });
 };
