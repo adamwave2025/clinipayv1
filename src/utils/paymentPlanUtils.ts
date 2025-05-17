@@ -15,8 +15,7 @@ export interface PlanInstallment {
   paymentRequestId?: string;
   paymentId?: string;
   manualPayment?: boolean;
-  // Add payment_schedule_id explicitly to match database schema
-  payment_schedule_id?: string;
+  // Add any other fields that might be needed
 }
 
 /**
@@ -35,8 +34,7 @@ export const formatInstallmentFromDb = (data: any): PlanInstallment => {
     totalPayments: data.total_payments || 0,
     paymentRequestId: data.payment_request_id,
     paymentId: data.payment_id,
-    manualPayment: data.manualPayment || false,
-    payment_schedule_id: data.id // Include the payment_schedule_id field
+    manualPayment: data.manualPayment || false
   };
 };
 
@@ -63,8 +61,7 @@ export const formatPlanInstallments = (installments: any[]): PlanInstallment[] =
       totalPayments: item.total_payments || 0,
       paymentRequestId: item.payment_request_id,
       paymentId: item.payment_id,
-      manualPayment: item.manualPayment || false,
-      payment_schedule_id: item.id // Include the payment_schedule_id field
+      manualPayment: item.manualPayment || false
     };
   });
 };

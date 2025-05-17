@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
@@ -28,8 +27,8 @@ export const ManagePlansDialogs = () => {
     hasPaidPayments,
     
     // Plan rescheduling (entire plan)
-    showRescheduleDialog,
-    setShowRescheduleDialog,
+    showRescheduleDialog: showReschedulePlanDialog,
+    setShowRescheduleDialog: setShowReschedulePlanDialog,
     handleReschedulePlan,
     
     // Payment rescheduling (individual payment)
@@ -113,8 +112,8 @@ export const ManagePlansDialogs = () => {
       
       {/* Dialog for rescheduling an entire plan */}
       <ReschedulePlanDialog
-        showDialog={showRescheduleDialog}
-        setShowDialog={setShowRescheduleDialog}
+        showDialog={showReschedulePlanDialog}
+        setShowDialog={setShowReschedulePlanDialog}
         onConfirm={handleReschedulePlan}
         planName={selectedPlan.title || selectedPlan.planName || ''}
         patientName={selectedPlan.patientName || ''}

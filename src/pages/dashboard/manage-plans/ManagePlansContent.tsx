@@ -30,6 +30,7 @@ const ManagePlansContent: React.FC = () => {
     handleOpenResumeDialog,
     handleOpenRescheduleDialog,
     handleMarkAsPaid,
+    handleOpenReschedule,
     handleTakePayment,
     isPlanPaused
   } = useManagePlansContext();
@@ -76,10 +77,10 @@ const ManagePlansContent: React.FC = () => {
         onCancelPlan={handleOpenCancelDialog}
         onPausePlan={handleOpenPauseDialog}
         onResumePlan={handleOpenResumeDialog}
-        onReschedulePlan={() => handleOpenRescheduleDialog()} // Call with no parameters for plan reschedule
+        onReschedulePlan={handleOpenRescheduleDialog}
         isPlanPaused={isPlanPaused}
         onMarkAsPaid={handleMarkAsPaid}
-        onReschedule={handleOpenRescheduleDialog} // Pass the unified function
+        onReschedule={handleOpenReschedule}
         onTakePayment={handleTakePayment}
       />
       

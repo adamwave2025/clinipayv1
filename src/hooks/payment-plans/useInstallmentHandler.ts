@@ -60,7 +60,6 @@ export const useInstallmentHandler = () => {
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    setPaymentData, // Make sure we explicitly return setPaymentData here
     handleViewPaymentDetails
   };
 };

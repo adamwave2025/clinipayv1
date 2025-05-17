@@ -39,7 +39,6 @@ export interface ManagePlansContextType {
   showPaymentDetails: boolean;
   setShowPaymentDetails: (show: boolean) => void;
   paymentData: Payment | null;
-  setPaymentData: (data: Payment | null) => void; // Add setter for payment data
   viewDetailsInstallment: PlanInstallment | null; // Renamed from selectedInstallment
   
   // Payment dialog data - specific for take payment operations
@@ -65,8 +64,7 @@ export interface ManagePlansContextType {
   
   // Add the missing handler methods
   handleMarkAsPaid: (paymentId: string) => void;
-  // Modified function for reschedule handling - supports both plan and payment rescheduling
-  handleOpenRescheduleDialog: (paymentId?: string) => void;
+  handleOpenReschedule: (paymentId: string) => void;
   handleReschedulePayment: (date: Date) => void;
   handleTakePayment: (paymentId: string, installmentDetails?: any) => void;
   
@@ -109,14 +107,15 @@ export interface ManagePlansContextType {
   hasPaidPayments: boolean;
   resumeError?: string | null;
   
-  // Reschedule payment dialog properties
-  showReschedulePaymentDialog: boolean; 
-  setShowReschedulePaymentDialog: (show: boolean) => void;
-  
-  // Reschedule plan dialog properties - adding these properties
+  // Reschedule plan properties (entire plan)
   showRescheduleDialog: boolean;
   setShowRescheduleDialog: (show: boolean) => void;
   handleReschedulePlan: (newStartDate: Date) => Promise<void>;
+  handleOpenRescheduleDialog: () => void;
+  
+  // Add properties for payment rescheduling (individual payment)
+  showReschedulePaymentDialog: boolean;
+  setShowReschedulePaymentDialog: (show: boolean) => void;
   
   // Plan state helpers
   isPlanPaused: (plan: Plan | null) => boolean;

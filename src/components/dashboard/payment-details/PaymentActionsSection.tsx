@@ -13,8 +13,8 @@ const PaymentActionsSection = ({
   onRefund,
   manualPayment = false // Default to false
 }: PaymentActionsSectionProps) => {
-  // Always hide refund button if status isn't paid or no handler
-  if (status !== 'paid' || !onRefund) {
+  // Always hide refund button for manual payments or if status isn't paid or no handler
+  if (status !== 'paid' || !onRefund || manualPayment === true) {
     console.log('Hiding refund button:', { 
       status, 
       hasOnRefund: !!onRefund, 
