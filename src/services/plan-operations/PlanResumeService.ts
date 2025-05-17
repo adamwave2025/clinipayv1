@@ -27,10 +27,26 @@ export class PlanResumeService {
       
       console.log(`Resuming plan ${plan.id} with date:`, formattedDate);
       
+      // First check if plan has any paid payments to determine the correct status
+      const { data: paidPayments, error: countError } = await supabase
+        .from('payment_schedule')
+        .select('id')
+        .eq('plan_id', plan.id)
+        .eq('status', 'paid');
+
+      if (countError) {
+        console.error('Error checking paid payments:', countError);
+        // Continue with the operation even if this check fails
+      }
+
+      const hasPaidPayments = paidPayments && paidPayments.length > 0;
+      console.log(`Plan has paid payments: ${hasPaidPayments ? 'YES' : 'NO'}`);
+      
       // Call our complete_resume_plan database function
       const { data, error } = await supabase.rpc('complete_resume_plan', {
         p_plan_id: plan.id,
-        p_resume_date: formattedDate
+        p_resume_date: formattedDate,
+        p_target_status: hasPaidPayments ? 'active' : 'pending'
       });
       
       if (error) {
@@ -48,6 +64,28 @@ export class PlanResumeService {
       }
       
       console.log('Plan resumed successfully:', result);
+      
+      // Create an activity log entry for the plan resumption
+      const { error: activityError } = await supabase
+        .from('payment_activity')
+        .insert({
+          clinic_id: plan.clinic_id,
+          patient_id: plan.patient_id,
+          plan_id: plan.id,
+          payment_link_id: plan.payment_link_id,
+          action_type: 'plan_resumed',
+          details: {
+            planName: plan.title || plan.planName,
+            resumeDate: formattedDate,
+            nextDueDate: formattedDate
+          }
+        });
+      
+      if (activityError) {
+        console.warn('Error creating activity log for plan resume:', activityError);
+        // Continue even if activity log fails
+      }
+      
       return true;
     } catch (error) {
       console.error('Error in resumePlan:', error);

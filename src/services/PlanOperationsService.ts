@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
@@ -8,6 +7,7 @@ import { PlanCancelService } from './plan-operations/PlanCancelService';
 import { PlanPauseService } from './plan-operations/PlanPauseService';
 import { format } from 'date-fns';
 import { PlanPaymentService } from './plan-operations/PlanPaymentService';
+import { PlanResumeService } from './plan-operations/PlanResumeService';
 
 /**
  * Service for performing operations on payment plans
@@ -86,47 +86,26 @@ export class PlanOperationsService {
   }
   
   /**
-   * Resume a payment plan
+   * Resume a plan that was previously paused
+   * @param plan The plan to resume
+   * @param resumeDate Optional date to resume from (defaults to tomorrow if not provided)
+   * @returns Promise<boolean> Success or failure
    */
-  static async resumePlan(plan: Plan, resumeDate: Date): Promise<boolean> {
+  static async resumePlan(plan: Plan, resumeDate?: Date): Promise<boolean> {
     try {
-      if (!plan || !plan.id) {
-        console.error('Cannot resume plan: Invalid plan object');
-        return false;
+      console.log(`PlanOperationsService: Resuming plan ${plan.id}`);
+      const result = await PlanResumeService.resumePlan(plan, resumeDate);
+      
+      if (result) {
+        toast.success('Payment plan resumed successfully');
+      } else {
+        toast.error('Failed to resume payment plan');
       }
       
-      // Format date properly for DB using date-fns
-      const formattedDate = format(resumeDate, 'yyyy-MM-dd');
-      console.log('Resuming plan with date:', formattedDate);
-      
-      // Call the Supabase function to handle the complex resume logic
-      const { data, error } = await supabase
-        .rpc('complete_resume_plan', {
-          p_plan_id: plan.id,
-          p_resume_date: formattedDate
-        });
-      
-      if (error) {
-        console.error('Error resuming plan:', error);
-        return false;
-      }
-      
-      console.log('Resume plan result:', data);
-      
-      // Log activity if not already logged by the database function
-      try {
-        await this.logPlanActivity(plan.id, 'plan_resumed', { 
-          planId: plan.id,
-          planName: plan.title || plan.planName,
-          resumeDate: formattedDate
-        });
-      } catch (err) {
-        console.warn('Could not log plan activity for resume operation:', err);
-      }
-      
-      return true;
-    } catch (err) {
-      console.error('Error in resumePlan:', err);
+      return result;
+    } catch (error) {
+      console.error('Error resuming plan:', error);
+      toast.error(`Failed to resume plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
   }

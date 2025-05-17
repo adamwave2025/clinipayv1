@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { PlanActivity, capitalize } from '@/utils/planActivityUtils';
 import { formatDate, formatCurrency, formatDateTime } from '@/utils/formatters';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -21,23 +21,40 @@ interface ActivityLogProps {
   isLoading?: boolean;
 }
 
-const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false }) => {
-  // Add useEffect to debug the activity data
+const ActivityLog: React.FC<ActivityLogProps> = React.memo(({ 
+  activities, 
+  isLoading = false
+}) => {
+  // Use state to store deduplicated activities
+  const [processedActivities, setProcessedActivities] = useState<PlanActivity[]>([]);
+  
+  // Memoize and deduplicate activities to prevent duplicate rendering
   useEffect(() => {
-    console.log('ActivityLog - Received activities:', activities);
-    if (activities?.length > 0) {
-      // Log details of each activity to help debug
-      activities.forEach(activity => {
-        console.log(`Activity ${activity.id} (${activity.actionType}):`, {
-          details: activity.details,
-          timestamp: activity.performedAt
-        });
-      });
+    if (!Array.isArray(activities)) {
+      console.warn('ActivityLog - activities is not an array:', activities);
+      setProcessedActivities([]);
+      return;
     }
+    
+    // Create a Map using activity IDs as keys to eliminate duplicates
+    const uniqueActivities = new Map<string, PlanActivity>();
+    
+    activities.forEach(activity => {
+      if (!uniqueActivities.has(activity.id)) {
+        uniqueActivities.set(activity.id, activity);
+      }
+    });
+    
+    // Convert map back to array and sort by date (newest first)
+    const deduplicatedActivities = Array.from(uniqueActivities.values())
+      .sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime());
+    
+    console.log('ActivityLog - Processed activities:', deduplicatedActivities.length);
+    setProcessedActivities(deduplicatedActivities);
   }, [activities]);
   
-  // Function to get icon based on action type
-  const getActivityIcon = (activity: PlanActivity) => {
+  // Function to get icon based on action type - memoized for performance
+  const getActivityIcon = useCallback((activity: PlanActivity) => {
     switch (activity.actionType) {
       case 'plan_created':
         return <FileText className="h-4 w-4 text-purple-500" />;
@@ -65,15 +82,10 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       default:
         return <FileText className="h-4 w-4 text-gray-500" />;
     }
-  };
+  }, []);
 
   // Function to render the content based on activity type
-  const renderActivityContent = (activity: PlanActivity) => {
-    // Debug logging to trace data issues
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`Rendering activity (${activity.actionType}):`, activity.details);
-    }
-    
+  const renderActivityContent = useCallback((activity: PlanActivity) => {
     switch (activity.actionType) {
       case 'plan_created':
         return (
@@ -249,7 +261,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
           <div className="font-medium">{activity.actionType.replace(/_/g, ' ')}</div>
         );
     }
-  };
+  }, []);
 
   if (isLoading) {
     return (
@@ -261,15 +273,15 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
 
   return (
     <div className="space-y-4">
-      {activities.length === 0 ? (
+      {processedActivities.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
           No activity recorded yet
         </div>
       ) : (
         <div className="space-y-3">
-          {activities.map((activity) => (
+          {processedActivities.map((activity) => (
             <div 
-              key={activity.id} 
+              key={`${activity.id}-${activity.actionType}`} 
               className="flex items-start p-3 border rounded-md bg-background shadow-sm"
             >
               <div className="mr-3 text-lg">
@@ -287,6 +299,27 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, isLoading = false
       )}
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary re-renders
+  if (prevProps.isLoading !== nextProps.isLoading) return false;
+  
+  // Compare activities by length and IDs
+  if (prevProps.activities.length !== nextProps.activities.length) return false;
+  
+  // If activities array references are different but contents are the same
+  const prevIds = new Set(prevProps.activities.map(a => a.id));
+  const nextIds = new Set(nextProps.activities.map(a => a.id));
+  
+  if (prevIds.size !== nextIds.size) return false;
+  
+  for (const id of prevIds) {
+    if (!nextIds.has(id)) return false;
+  }
+  
+  return true;
+});
+
+// Add display name for debugging
+ActivityLog.displayName = 'ActivityLog';
 
 export default ActivityLog;
