@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { isWithinInterval, parseISO } from 'date-fns';
@@ -10,6 +11,7 @@ import PaymentHistoryFilters from '@/components/dashboard/payments/PaymentHistor
 import { toast } from 'sonner';
 import { generatePaymentsCsv, downloadCsv } from '@/utils/csvExport';
 import { format } from 'date-fns';
+import { parse } from 'date-fns';
 import { Payment } from '@/types/payment';
 
 const PaymentHistoryContent: React.FC = () => {
@@ -133,16 +135,15 @@ function filterPayments(
     // Date range filter
     let matchesDateRange = true;
     if (dateRange?.from || dateRange?.to) {
-      const paymentDate = parseISO(payment.date);
+      const paymentDate = parse(payment.date, 'dd/MM/yyyy', new Date());
+      console.log('payment date', paymentDate, dateRange);
+
       
       if (dateRange.from && dateRange.to) {
-        // Both from and to dates are set
         matchesDateRange = isWithinInterval(paymentDate, { start: dateRange.from, end: dateRange.to });
       } else if (dateRange.from) {
-        // Only from date is set
         matchesDateRange = paymentDate >= dateRange.from;
       } else if (dateRange.to) {
-        // Only to date is set
         matchesDateRange = paymentDate <= dateRange.to;
       }
     }
