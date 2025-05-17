@@ -24,7 +24,6 @@ const PlanDetails = () => {
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    setPaymentData, // Make sure this exists in the context
     showReschedulePaymentDialog,
     setShowReschedulePaymentDialog,
     handleReschedulePayment,
@@ -45,6 +44,8 @@ const PlanDetails = () => {
   
   // Create a local state to handle the payment detail dialog
   const [viewInstallment, setViewInstallment] = useState<PlanInstallment | null>(null);
+  const [localPaymentData, setLocalPaymentData] = useState<Payment | null>(null);
+  const [showLocalPaymentDetails, setShowLocalPaymentDetails] = useState(false);
   
   // Debug logging for the dialogs
   useEffect(() => {
@@ -69,7 +70,7 @@ const PlanDetails = () => {
     const installmentPayment: Payment = {
       id: installment.id,
       amount: installment.amount,
-      clinicId: selectedPlan?.clinic_id || '',
+      clinicId: selectedPlan?.clinicId || '',
       date: installment.paidDate || installment.dueDate,
       netAmount: installment.amount,
       patientName: selectedPlan?.patientName || '',
@@ -89,8 +90,8 @@ const PlanDetails = () => {
       linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
     };
     
-    setPaymentData(installmentPayment);
-    setShowPaymentDetails(true);
+    setLocalPaymentData(installmentPayment);
+    setShowLocalPaymentDetails(true);
   };
 
   return (
@@ -125,11 +126,22 @@ const PlanDetails = () => {
         onSendReminder={() => selectedPlan && handleSendReminder(selectedPlan.id)}
       />
       
+      {/* Use context-provided payment dialog for existing flows */}
       {paymentData && (
         <PaymentDetailDialog
           payment={paymentData}
           open={showPaymentDetails}
           onOpenChange={setShowPaymentDetails}
+          onRefund={() => {}}
+        />
+      )}
+      
+      {/* Use local payment dialog for installment clicks */}
+      {localPaymentData && (
+        <PaymentDetailDialog
+          payment={localPaymentData}
+          open={showLocalPaymentDetails}
+          onOpenChange={setShowLocalPaymentDetails}
           onRefund={() => {}}
         />
       )}
