@@ -12,23 +12,15 @@ export class PlanPaymentMetrics {
    */
   static async getAccuratePaidInstallmentCount(planId: string): Promise<number> {
     try {
-      console.log(`Counting paid installments for plan ${planId}`);
-      
-      const { count, error, data } = await supabase
+      const { count, error } = await supabase
         .from('payment_schedule')
-        .select('id, status', { count: 'exact' })
+        .select('id', { count: 'exact', head: true })
         .eq('plan_id', planId)
         .eq('status', 'paid');
         
       if (error) {
         console.error('Error counting paid installments:', error);
         return 0;
-      }
-      
-      // Log what we found for debugging
-      console.log(`Found ${count} paid installments for plan ${planId}`);
-      if (data && data.length > 0) {
-        console.log('Paid installments:', data.map(item => item.id));
       }
       
       return count || 0;
@@ -46,10 +38,6 @@ export class PlanPaymentMetrics {
     
     // Ensure progress doesn't exceed 100%
     const progress = Math.floor((paidInstallments / totalInstallments) * 100);
-    
-    // Log the calculation for debugging
-    console.log(`Calculating progress: ${paidInstallments}/${totalInstallments} = ${progress}%`);
-    
     return Math.min(progress, 100);
   }
   
@@ -59,36 +47,20 @@ export class PlanPaymentMetrics {
    */
   static async updatePlanPaymentMetrics(planId: string): Promise<{success: boolean, error?: any}> {
     try {
-      console.log(`Updating payment metrics for plan ${planId}`);
-      
       // Get the current plan data
       const { data: plan, error: planError } = await supabase
         .from('plans')
-        .select('total_installments, paid_installments, progress')
+        .select('total_installments')
         .eq('id', planId)
         .single();
         
-      if (planError) {
-        console.error('Error fetching plan data:', planError);
-        throw planError;
-      }
-      
-      console.log('Current plan metrics:', {
-        total_installments: plan.total_installments,
-        paid_installments: plan.paid_installments,
-        progress: plan.progress
-      });
+      if (planError) throw planError;
       
       // Count actual paid installments
       const paidInstallments = await this.getAccuratePaidInstallmentCount(planId);
       
       // Calculate progress
       const progress = this.calculateProgress(paidInstallments, plan.total_installments);
-      
-      console.log('New plan metrics to update:', {
-        paid_installments: paidInstallments,
-        progress: progress
-      });
       
       // Update the plan
       const { error: updateError } = await supabase
@@ -100,12 +72,7 @@ export class PlanPaymentMetrics {
         })
         .eq('id', planId);
         
-      if (updateError) {
-        console.error('Error updating plan metrics:', updateError);
-        throw updateError;
-      }
-      
-      console.log(`Successfully updated plan ${planId} metrics: ${paidInstallments}/${plan.total_installments} (${progress}%)`);
+      if (updateError) throw updateError;
       
       return { success: true };
     } catch (error) {

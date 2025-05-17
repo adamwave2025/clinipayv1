@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Plan } from '@/utils/planTypes';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -11,18 +11,6 @@ interface PlanProgressCardProps {
 }
 
 const PlanProgressCard: React.FC<PlanProgressCardProps> = ({ plan, isLoading }) => {
-  // Add logging to debug the plan data
-  useEffect(() => {
-    console.log('PlanProgressCard - Plan data:', {
-      id: plan.id,
-      paidInstallments: plan.paidInstallments,
-      totalInstallments: plan.totalInstallments,
-      progress: plan.progress,
-      progress_calculated: plan.totalInstallments > 0 ? 
-        (plan.paidInstallments / plan.totalInstallments) * 100 : 0
-    });
-  }, [plan]);
-
   if (isLoading) {
     return (
       <Card>
@@ -38,11 +26,10 @@ const PlanProgressCard: React.FC<PlanProgressCardProps> = ({ plan, isLoading }) 
     );
   }
 
-  // Calculate progress as a percentage based directly on the database values
-  // Use the plan.paidInstallments which should be the accurate count from the database
-  const progress = typeof plan.progress === 'number' ? plan.progress : 
+  // Calculate progress percentage
+  const progress = plan.progress || 
     (plan.totalInstallments > 0 ? 
-      Math.floor((plan.paidInstallments / plan.totalInstallments) * 100) : 0);
+      (plan.paidInstallments / plan.totalInstallments) * 100 : 0);
 
   return (
     <Card>

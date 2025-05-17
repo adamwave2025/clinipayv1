@@ -12,7 +12,7 @@ export const usePaymentRescheduleActions = (
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   
-  const handleOpenRescheduleDialog = async (paymentId: string): Promise<void> => {
+  const handleOpenRescheduleDialog = (paymentId: string) => {
     console.log("[usePaymentRescheduleActions] Opening reschedule dialog for payment:", paymentId);
     setSelectedPaymentId(paymentId);
     setShowRescheduleDialog(true);
@@ -20,15 +20,12 @@ export const usePaymentRescheduleActions = (
     setTimeout(() => {
       console.log("[usePaymentRescheduleActions] Dialog state after update:", showRescheduleDialog, "selectedPaymentId:", selectedPaymentId);
     }, 100);
-    
-    // Return a resolved Promise to satisfy the TypeScript requirement
-    return Promise.resolve();
   };
   
-  const handleReschedulePayment = async (newDate: Date): Promise<void> => {
+  const handleReschedulePayment = async (newDate: Date) => {
     if (!selectedPaymentId) {
       toast.error('No payment selected for rescheduling');
-      return Promise.reject(new Error('No payment selected for rescheduling'));
+      return;
     }
     
     setIsProcessing(true);
@@ -46,8 +43,7 @@ export const usePaymentRescheduleActions = (
       if (fetchError) {
         console.error("Error fetching payment data:", fetchError);
         toast.error('Failed to fetch payment data for rescheduling');
-        setIsProcessing(false);
-        return Promise.reject(fetchError);
+        return { success: false, error: fetchError };
       }
       
       // If payment has an associated payment request, cancel it first
@@ -64,8 +60,7 @@ export const usePaymentRescheduleActions = (
         if (cancelError) {
           console.error("Error cancelling existing payment request:", cancelError);
           toast.error('Failed to cancel existing payment request');
-          setIsProcessing(false);
-          return Promise.reject(cancelError);
+          return { success: false, error: cancelError };
         } else {
           console.log("Successfully cancelled existing payment request");
         }
@@ -85,16 +80,16 @@ export const usePaymentRescheduleActions = (
           await onPaymentRescheduled(planId);
         }
         
-        return Promise.resolve();
+        return { success: true };
       } else {
         toast.error('Failed to reschedule payment');
         console.error('Error rescheduling payment:', result.error);
-        return Promise.reject(result.error);
+        return { success: false, error: result.error };
       }
     } catch (error) {
       console.error('Error in handleReschedulePayment:', error);
       toast.error('An error occurred while rescheduling the payment');
-      return Promise.reject(error);
+      return { success: false, error };
     } finally {
       setIsProcessing(false);
       setSelectedPaymentId(null);

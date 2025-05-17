@@ -63,9 +63,9 @@ export interface ManagePlansContextType {
   handleBackToPlans: () => void;
   
   // Add the missing handler methods
-  handleMarkAsPaid: (paymentId: string) => Promise<void>;
-  handleOpenReschedule: (paymentId: string) => Promise<void>;
-  handleReschedulePayment: (date: Date) => Promise<void>;
+  handleMarkAsPaid: (paymentId: string) => void;
+  handleOpenReschedule: (paymentId: string) => void;
+  handleReschedulePayment: (date: Date) => void;
   handleTakePayment: (paymentId: string, installmentDetails?: any) => void;
   
   // Mark as paid confirmation dialog
