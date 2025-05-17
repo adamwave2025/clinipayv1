@@ -9,8 +9,6 @@ import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/Resche
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { Payment } from '@/types/payment';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 const PlanDetails = () => {
   const {
@@ -48,7 +46,6 @@ const PlanDetails = () => {
   const [viewInstallment, setViewInstallment] = useState<PlanInstallment | null>(null);
   const [localPaymentData, setLocalPaymentData] = useState<Payment | null>(null);
   const [showLocalPaymentDetails, setShowLocalPaymentDetails] = useState(false);
-  const [isLoadingPaymentDetails, setIsLoadingPaymentDetails] = useState(false);
   
   // Debug logging for the dialogs
   useEffect(() => {
@@ -64,123 +61,37 @@ const PlanDetails = () => {
     return null;
   }
 
-  // Function to fetch complete payment data from the database
-  const fetchCompletePaymentData = async (installment: PlanInstallment): Promise<Payment | null> => {
-    console.log('Fetching complete payment data for installment:', installment);
-    setIsLoadingPaymentDetails(true);
+  // Function to handle viewing details of an installment
+  const handleViewInstallmentDetails = (installment: PlanInstallment) => {
+    console.log('Viewing details for installment:', installment);
+    setViewInstallment(installment);
     
-    try {
-      // Check if this is a paid installment with a payment ID
-      if (installment.status === 'paid' && installment.paymentId) {
-        // Fetch the complete payment record with all details
-        const { data, error } = await supabase
-          .from('payments')
-          .select(`
-            id, 
-            amount_paid, 
-            paid_at, 
-            patient_name, 
-            patient_email, 
-            patient_phone, 
-            status, 
-            payment_ref, 
-            stripe_payment_id,
-            refund_amount,
-            net_amount,
-            clinic_id,
-            manual_payment,
-            patient_id
-          `)
-          .eq('id', installment.paymentId)
-          .single();
-          
-        if (error) {
-          console.error('Error fetching payment:', error);
-          toast.error('Could not load complete payment details');
-          return null;
-        }
-        
-        if (data) {
-          console.log('Found payment data:', data);
-          
-          // Create a properly formatted Payment object
-          const completePayment: Payment = {
-            id: data.id,
-            amount: data.amount_paid,
-            clinicId: data.clinic_id,
-            date: data.paid_at,
-            patientName: data.patient_name || selectedPlan?.patientName || 'Patient',
-            patientEmail: data.patient_email || '',
-            patientPhone: data.patient_phone || '',
-            status: data.status || 'paid',
-            netAmount: data.net_amount || data.amount_paid,
-            paymentMethod: data.manual_payment ? 'manual' : 'card',
-            reference: data.payment_ref,
-            paymentReference: data.payment_ref,
-            stripePaymentId: data.stripe_payment_id,
-            refundAmount: data.refund_amount || 0,
-            refundedAmount: data.refund_amount || 0,
-            manualPayment: data.manual_payment || false,
-            type: 'payment_plan',
-            linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
-          };
-          
-          return completePayment;
-        }
-      }
-      
-      // If payment not found or unpaid installment, return a placeholder Payment object
-      return createPlaceholderPayment(installment);
-      
-    } catch (error) {
-      console.error('Error in fetchCompletePaymentData:', error);
-      toast.error('Failed to retrieve payment details');
-      return createPlaceholderPayment(installment);
-    } finally {
-      setIsLoadingPaymentDetails(false);
-    }
-  };
-  
-  // Helper function to create a placeholder Payment object for unpaid installments
-  const createPlaceholderPayment = (installment: PlanInstallment): Payment => {
-    return {
+    // Create a payment object from the installment data
+    const installmentPayment: Payment = {
       id: installment.id,
       amount: installment.amount,
-      clinicId: selectedPlan?.clinicId || '', // Fixed: Use clinicId instead of clinic_id
+      clinicId: selectedPlan?.clinicId || '',
       date: installment.paidDate || installment.dueDate,
       netAmount: installment.amount,
-      patientName: selectedPlan?.patientName || 'Patient',
+      patientName: selectedPlan?.patientName || '',
       status: installment.status,
       paymentMethod: installment.manualPayment ? 'manual' : 'card',
-      // Set other required fields with appropriate values
+      // Set other required fields with appropriate values or defaults
       stripePaymentId: installment.paymentId || '',
       refundAmount: 0,
       refundedAmount: 0,
       // Optional fields
       paymentReference: '',
       reference: '',
-      patientEmail: selectedPlan?.patientEmail || '',
-      patientPhone: selectedPlan?.patients?.phone || '',
+      patientEmail: '',
+      patientPhone: '',
       manualPayment: installment.manualPayment || false,
       type: 'payment_plan',
       linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
     };
-  };
-
-  // Function to handle viewing details of an installment
-  const handleViewInstallmentDetails = async (installment: PlanInstallment) => {
-    console.log('Viewing details for installment:', installment);
-    setViewInstallment(installment);
     
-    // Fetch complete payment data
-    const paymentData = await fetchCompletePaymentData(installment);
-    
-    if (paymentData) {
-      setLocalPaymentData(paymentData);
-      setShowLocalPaymentDetails(true);
-    } else {
-      toast.error('Could not retrieve payment details');
-    }
+    setLocalPaymentData(installmentPayment);
+    setShowLocalPaymentDetails(true);
   };
 
   return (
@@ -206,7 +117,7 @@ const PlanDetails = () => {
         onReschedule={handleOpenReschedule}
         onTakePayment={handleTakePayment}
         onViewDetails={handleViewInstallmentDetails}
-        isLoading={isLoadingActivities || isLoadingPaymentDetails}
+        isLoading={isLoadingActivities}
         isRefreshing={isRefreshing}
         onOpenCancelDialog={handleOpenCancelDialog}
         onOpenPauseDialog={handleOpenPauseDialog}
