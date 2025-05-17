@@ -2,7 +2,7 @@
 import React from 'react';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { Button } from '@/components/ui/button';
-import { Calendar, CheckCircle, CreditCard } from 'lucide-react';
+import { Calendar, CheckCircle, CreditCard, Eye } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/utils/formatters';
@@ -13,6 +13,7 @@ interface PlanScheduleCardProps {
   onMarkAsPaid: (id: string, installment: PlanInstallment) => void;
   onReschedule: (id: string) => void;
   onTakePayment: (id: string, installment: PlanInstallment) => void;
+  onViewDetails: (installment: PlanInstallment) => void;
 }
 
 const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
@@ -20,7 +21,8 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
   isLoading,
   onMarkAsPaid,
   onReschedule,
-  onTakePayment
+  onTakePayment,
+  onViewDetails
 }) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -84,7 +86,8 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
       {installments.map((installment) => (
         <div 
           key={installment.id}
-          className="p-4 border rounded-md space-y-2"
+          className="p-4 border rounded-md space-y-2 cursor-pointer hover:bg-muted transition-colors"
+          onClick={() => onViewDetails(installment)}
         >
           <div className="flex justify-between items-center">
             <div className="font-medium">
@@ -110,12 +113,15 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
           </div>
           
           {installment.status !== 'paid' && installment.status !== 'cancelled' && (
-            <div className="flex flex-wrap gap-2 pt-2">
+            <div className="flex flex-wrap gap-2 pt-2" onClick={(e) => e.stopPropagation()}>
               <Button 
                 variant="outline" 
                 size="sm"
                 className="flex items-center"
-                onClick={() => onMarkAsPaid(installment.id, installment)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMarkAsPaid(installment.id, installment);
+                }}
               >
                 <CheckCircle className="mr-1 h-4 w-4" />
                 Mark as Paid
@@ -125,7 +131,8 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
                 variant="outline" 
                 size="sm"
                 className="flex items-center"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   console.log("Calling onReschedule for payment ID:", installment.id);
                   onReschedule(installment.id);
                 }}
@@ -137,7 +144,10 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
               <Button 
                 size="sm"
                 className="flex items-center"
-                onClick={() => onTakePayment(installment.id, installment)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTakePayment(installment.id, installment);
+                }}
               >
                 <CreditCard className="mr-1 h-4 w-4" />
                 Take Payment
