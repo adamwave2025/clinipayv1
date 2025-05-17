@@ -1,18 +1,15 @@
-import React, { useEffect } from 'react';
+
+import React from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
-import CancelPlanDialog from '@/components/dashboard/payment-plans/CancelPlanDialog';
-import PausePlanDialog from '@/components/dashboard/payment-plans/PausePlanDialog';
-import ResumePlanDialog from '@/components/dashboard/payment-plans/ResumePlanDialog';
-import ReschedulePlanDialog from '@/components/dashboard/payment-plans/ReschedulePlanDialog';
-import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
-import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
+import PlanActionDialogs from '@/components/dashboard/payment-plans/PlanActionDialogs';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
+import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import TakePaymentDialog from '@/components/dashboard/payment-plans/TakePaymentDialog';
 
-export const ManagePlansDialogs = () => {
+const ManagePlansDialogs = () => {
   const {
-    selectedPlan,
+    // Plan operation dialogs
     showCancelDialog,
     setShowCancelDialog,
     handleCancelPlan,
@@ -22,123 +19,71 @@ export const ManagePlansDialogs = () => {
     showResumeDialog,
     setShowResumeDialog,
     handleResumePlan,
-    hasSentPayments,
-    hasOverduePayments,
-    hasPaidPayments,
-    
-    // Plan rescheduling (entire plan)
-    showRescheduleDialog: showReschedulePlanDialog,
-    setShowRescheduleDialog: setShowReschedulePlanDialog,
+    showRescheduleDialog,
+    setShowRescheduleDialog,
     handleReschedulePlan,
     
-    // Payment rescheduling (individual payment)
-    showReschedulePaymentDialog,
-    setShowReschedulePaymentDialog,
-    handleReschedulePayment,
-    
-    isProcessing,
-    refundDialogOpen,
-    setRefundDialogOpen,
-    paymentToRefund,
-    processRefund,
-    resumeError,
-    
-    // Add the mark as paid dialog props
+    // Payment operation dialogs
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
-    selectedInstallment, // Using the primary selectedInstallment
-    
-    // Add the take payment dialog props
+    showReschedulePaymentDialog,
+    setShowReschedulePaymentDialog,
+    handleReschedulePayment,
+    showPaymentDetails,
+    setShowPaymentDetails,
+    paymentData,
     showTakePaymentDialog,
     setShowTakePaymentDialog,
     onPaymentUpdated,
+    paymentDialogData,
     
-    // Payment dialog data
-    paymentDialogData
+    // State and shared data
+    selectedPlan,
+    selectedInstallment,
+    isProcessing,
+    hasSentPayments,
+    hasOverduePayments,
+    hasPaidPayments
   } = useManagePlansContext();
-
-  // Early return if no plan is selected
-  if (!selectedPlan) {
-    console.log('No selectedPlan, returning null from ManagePlansDialogs');
-    return null;
-  }
-  
-  // Log the state of dialogData and selectedInstallment for debugging
-  useEffect(() => {
-    if (showTakePaymentDialog) {
-      console.log("[ManagePlansDialogs] TakePaymentDialog should be opening with:", {
-        selectedInstallment,
-        dialogShowing: showTakePaymentDialog
-      });
-    }
-  }, [showTakePaymentDialog, selectedInstallment]);
 
   return (
     <>
-      <CancelPlanDialog
-        showDialog={showCancelDialog}
-        setShowDialog={setShowCancelDialog}
-        onConfirm={handleCancelPlan}
-        planName={selectedPlan.title || selectedPlan.planName || ''}
-        patientName={selectedPlan.patientName || ''}
-        isProcessing={isProcessing}
-        isLoading={false}
-      />
-      
-      <PausePlanDialog
-        showDialog={showPauseDialog}
-        setShowDialog={setShowPauseDialog}
-        onConfirm={handlePausePlan}
-        planName={selectedPlan.title || selectedPlan.planName || ''}
-        patientName={selectedPlan.patientName || ''}
-        isProcessing={isProcessing}
-        isLoading={false}
-        hasSentPayments={hasSentPayments}
-      />
-      
-      <ResumePlanDialog
-        showDialog={showResumeDialog}
-        setShowDialog={setShowResumeDialog}
-        onConfirm={handleResumePlan}
-        planName={selectedPlan.title || selectedPlan.planName || ''}
-        patientName={selectedPlan.patientName || ''}
+      {/* Plan action dialogs */}
+      <PlanActionDialogs
+        showCancelDialog={showCancelDialog}
+        setShowCancelDialog={setShowCancelDialog}
+        showPauseDialog={showPauseDialog}
+        setShowPauseDialog={setShowPauseDialog}
+        showResumeDialog={showResumeDialog}
+        setShowResumeDialog={setShowResumeDialog}
+        showRescheduleDialog={showRescheduleDialog}
+        setShowRescheduleDialog={setShowRescheduleDialog}
+        
+        selectedPlan={selectedPlan}
+        
+        handleCancelPlan={handleCancelPlan}
+        handlePausePlan={handlePausePlan}
+        handleResumePlan={handleResumePlan}
+        handleReschedulePlan={handleReschedulePlan}
+        
         isProcessing={isProcessing}
         hasSentPayments={hasSentPayments}
         hasOverduePayments={hasOverduePayments}
         hasPaidPayments={hasPaidPayments}
-        resumeError={resumeError}
       />
       
-      {/* Dialog for rescheduling an entire plan */}
-      <ReschedulePlanDialog
-        showDialog={showReschedulePlanDialog}
-        setShowDialog={setShowReschedulePlanDialog}
-        onConfirm={handleReschedulePlan}
-        planName={selectedPlan.title || selectedPlan.planName || ''}
-        patientName={selectedPlan.patientName || ''}
-        startDate={selectedPlan.startDate}
-        isProcessing={isProcessing}
-        isLoading={false}
-        hasSentPayments={hasSentPayments}
-        hasOverduePayments={hasOverduePayments}
-      />
+      {/* Payment detail dialog */}
+      {paymentData && (
+        <PaymentDetailDialog
+          payment={paymentData}
+          open={showPaymentDetails}
+          onOpenChange={setShowPaymentDetails}
+          onRefund={() => {}}
+        />
+      )}
       
-      {/* Dialog for rescheduling an individual payment */}
-      <ReschedulePaymentDialog
-        open={showReschedulePaymentDialog} 
-        onOpenChange={(open) => {
-          console.log(`Setting reschedule payment dialog to ${open ? 'open' : 'closed'}`);
-          setShowReschedulePaymentDialog(open);
-        }}
-        onConfirm={(date) => {
-          console.log(`Confirming reschedule payment with date: ${date.toISOString()}`);
-          handleReschedulePayment(date);
-        }}
-        isLoading={isProcessing}
-      />
-      
-      {/* Mark as Paid dialog */}
+      {/* Mark as paid confirmation dialog */}
       <MarkAsPaidConfirmDialog
         open={showMarkAsPaidDialog}
         onOpenChange={setShowMarkAsPaidDialog}
@@ -146,31 +91,26 @@ export const ManagePlansDialogs = () => {
         isLoading={isProcessing}
         installment={selectedInstallment}
       />
-
-      {/* Take payment dialog - Enhanced version with better validation */}
-      {selectedInstallment && showTakePaymentDialog && (
+      
+      {/* Reschedule payment dialog */}
+      <ReschedulePaymentDialog
+        open={showReschedulePaymentDialog}
+        onOpenChange={setShowReschedulePaymentDialog}
+        onConfirm={handleReschedulePayment}
+        isLoading={isProcessing}
+      />
+      
+      {/* Take payment dialog */}
+      {paymentDialogData && (
         <TakePaymentDialog
           open={showTakePaymentDialog}
-          onOpenChange={(open) => {
-            console.log(`Setting take payment dialog to ${open ? 'open' : 'closed'}`);
-            setShowTakePaymentDialog(open);
-          }}
-          patientName={selectedPlan.patientName || ''}
-          patientEmail={selectedPlan.patientEmail || ''}
-          patientPhone={selectedPlan.patients?.phone || ''}
-          amount={selectedInstallment.amount || 0}
-          paymentId={selectedInstallment.id || ''}
+          onOpenChange={setShowTakePaymentDialog}
           onPaymentProcessed={onPaymentUpdated}
-        />
-      )}
-      
-      {paymentToRefund && (
-        <PaymentRefundDialog
-          open={refundDialogOpen}
-          onOpenChange={setRefundDialogOpen}
-          paymentId={paymentToRefund}
-          onRefund={processRefund}
-          onConfirm={processRefund}
+          paymentId={paymentDialogData.paymentId}
+          amount={paymentDialogData.amount}
+          patientName={paymentDialogData.patientName}
+          patientEmail={paymentDialogData.patientEmail}
+          patientPhone={paymentDialogData.patientPhone}
         />
       )}
     </>
