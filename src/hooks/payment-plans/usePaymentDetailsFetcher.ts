@@ -1,13 +1,13 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { toast } from 'sonner';
 import { formatCurrency, formatDateTime } from '@/utils/formatters';
-import { Payment } from '@/types/payment';
 
 export const usePaymentDetailsFetcher = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [paymentData, setPaymentData] = useState<Payment | null>(null);
+  const [paymentData, setPaymentData] = useState<any | null>(null);
 
   const fetchPaymentDetails = async (installment: PlanInstallment) => {
     setIsLoading(true);
@@ -17,31 +17,6 @@ export const usePaymentDetailsFetcher = () => {
       console.log('Payment ID:', installment.paymentId || 'Not set');
       console.log('Payment Request ID:', installment.paymentRequestId || 'Not set');
       console.log('Manual payment flag:', installment.manualPayment || false);
-      
-      // Handle unpaid installments
-      if (installment.status !== 'paid') {
-        console.log('Creating payment placeholder for unpaid installment:', installment.status);
-        
-        // Format and return a placeholder payment object with available data
-        const unpaidPayment: Payment = {
-          id: installment.id,
-          status: installment.status,
-          amount: installment.amount,
-          date: formatDateTime(installment.dueDate, 'en-GB', 'Europe/London'),
-          patientName: 'Patient',  // This will need to be filled from the plan or context
-          patientEmail: '',
-          clinicId: '',
-          netAmount: installment.amount,
-          paymentMethod: '',
-          type: 'payment_plan',
-          linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments} (${installment.status})`,
-        };
-        
-        console.log('Created placeholder payment for unpaid installment:', unpaidPayment);
-        setPaymentData(unpaidPayment);
-        setIsLoading(false);
-        return unpaidPayment;
-      }
       
       // Determine if this is a payment plan payment
       // If we have totalPayments and paymentNumber, it's likely a plan payment

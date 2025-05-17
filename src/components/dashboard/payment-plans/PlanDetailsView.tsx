@@ -11,7 +11,6 @@ import PlanActivityCard from './PlanActivityCard';
 import { PlanActivity } from '@/utils/planActivityUtils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
-import { PlanInstallment } from '@/utils/paymentPlanUtils';
 
 interface PlanDetailsViewProps {
   plan: Plan;
@@ -20,7 +19,6 @@ interface PlanDetailsViewProps {
   onMarkAsPaid: (id: string, installment: any) => void;
   onReschedule: (id: string) => void;
   onTakePayment: (id: string, installment: any) => void;
-  onViewDetails: (installment: PlanInstallment) => void;  // Add this new prop
   isLoading: boolean;
   isRefreshing?: boolean;
   onOpenCancelDialog?: () => void;
@@ -37,7 +35,6 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
   onMarkAsPaid,
   onReschedule,
   onTakePayment,
-  onViewDetails,  // Add this new prop
   isLoading,
   isRefreshing = false,
   onOpenCancelDialog,
@@ -98,7 +95,6 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
                   onMarkAsPaid={onMarkAsPaid}
                   onReschedule={onReschedule}
                   onTakePayment={onTakePayment}
-                  onViewDetails={onViewDetails} // Pass the handler to view details
                 />
               </CardContent>
             </TabsContent>

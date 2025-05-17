@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { Button } from '@/components/ui/button';
@@ -31,17 +30,13 @@ const PlanDetails = () => {
     selectedInstallment, // Use the primary selectedInstallment
     isProcessing,
     viewDetailsInstallment, // Using the renamed property here
-    handleViewPaymentDetails, // Add this to the destructured properties
     
     // Add plan operation handlers
     handleOpenCancelDialog,
     handleOpenPauseDialog,
     handleOpenResumeDialog,
     handleOpenRescheduleDialog,
-    handleSendReminder,
-    
-    // Add refund dialog handler
-    openRefundDialog
+    handleSendReminder
   } = useManagePlansContext();
   
   // Debug logging for the dialogs
@@ -87,16 +82,14 @@ const PlanDetails = () => {
         onOpenResumeDialog={handleOpenResumeDialog}
         onOpenRescheduleDialog={handleOpenRescheduleDialog}
         onSendReminder={() => selectedPlan && handleSendReminder(selectedPlan.id)}
-        onViewDetails={handleViewPaymentDetails} // Add this new prop
       />
       
-      {/* Use PaymentDetailDialog for all installment details */}
       {paymentData && (
         <PaymentDetailDialog
           payment={paymentData}
           open={showPaymentDetails}
           onOpenChange={setShowPaymentDetails}
-          onRefund={openRefundDialog}
+          onRefund={() => {}}
         />
       )}
       
