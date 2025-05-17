@@ -265,7 +265,7 @@ export class PlanOperationsService {
       // - Checking for associated payment requests
       // - Updating the payment schedule status
       // - Updating the plan progress and metrics
-      // - Recording activity
+      // - Recording activity with 'manual_payment_recorded' type
       const result = await PlanPaymentService.recordManualPayment(installmentId);
       
       if (!result.success) {
@@ -273,27 +273,8 @@ export class PlanOperationsService {
         return false;
       }
       
-      // Make sure we have an activity log entry for manual payment
-      if (planId) {
-        // Get the payment schedule data for the activity log
-        const { data: scheduleData } = await supabase
-          .from('payment_schedule')
-          .select('payment_number, total_payments, amount, due_date')
-          .eq('id', installmentId)
-          .single();
-          
-        if (scheduleData) {
-          await this.logPlanActivity(planId, 'payment_marked_paid', { 
-            installmentId: installmentId,
-            paymentNumber: scheduleData.payment_number,
-            totalPayments: scheduleData.total_payments,
-            amount: scheduleData.amount,
-            dueDate: scheduleData.due_date,
-            paidAt: new Date().toISOString(),
-            manualPayment: true
-          });
-        }
-      }
+      // Remove duplicate activity logging since PlanPaymentService already logs with 'manual_payment_recorded' action type
+      // This prevents duplicate entries in the activity log
       
       console.log('Payment successfully marked as paid');
       return true;
