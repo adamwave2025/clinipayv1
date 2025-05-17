@@ -1,170 +1,109 @@
+
 import React from 'react';
-import { PlanInstallment } from '@/utils/paymentPlanUtils';
-import { Button } from '@/components/ui/button';
-import { Calendar, CheckCircle, CreditCard } from 'lucide-react';
+import { formatCurrency, formatDate, formatDateTime } from '@/utils/formatters';
+import { StatusBadge } from '@/components/common/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
-import { formatCurrency } from '@/utils/formatters';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
+import { PlanInstallment } from '@/utils/paymentPlanUtils';
+import PaymentActionMenu from './PaymentActionMenu';
 
 interface PlanScheduleCardProps {
   installments: PlanInstallment[];
-  isLoading: boolean;
-  onMarkAsPaid: (id: string, installment: PlanInstallment) => void;
-  onReschedule: (id: string) => void;
-  onTakePayment: (id: string, installment: PlanInstallment) => void;
+  isLoading?: boolean;
+  onMarkAsPaid?: (installmentId: string) => void;
+  onReschedule?: (installmentId: string) => void;
+  onTakePayment?: (installmentId: string, installmentDetails?: PlanInstallment) => void;
   onViewDetails?: (installment: PlanInstallment) => void;
 }
 
 const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
   installments,
-  isLoading,
+  isLoading = false,
   onMarkAsPaid,
   onReschedule,
   onTakePayment,
-  onViewDetails
+  onViewDetails,
 }) => {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, string> = {
-      'paid': 'success',
-      'due': 'secondary',
-      'overdue': 'destructive',
-      'paused': 'warning',
-      'pending': 'outline',
-      'cancelled': 'destructive',
-      'scheduled': 'secondary',
-      'processing': 'secondary',
-      'sent': 'primary'
-    };
-
-    return (
-      <Badge 
-        variant={variants[status] as any || 'secondary'} 
-        className="capitalize"
-      >
-        {status}
-      </Badge>
-    );
+  const handleRowClick = (installment: PlanInstallment, e: React.MouseEvent) => {
+    // Only trigger if not clicking on an action button (which has its own handlers)
+    if (!e.defaultPrevented && onViewDetails) {
+      console.log("Row clicked for installment:", installment);
+      onViewDetails(installment);
+    }
   };
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
-          <div 
-            key={i}
-            className="p-4 border rounded-md space-y-2"
-          >
-            <div className="flex justify-between items-center">
-              <Skeleton className="h-6 w-24" />
-              <Skeleton className="h-6 w-16" />
-            </div>
-            <div className="flex justify-between items-center">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-8 w-32" />
-            </div>
-          </div>
+      <div className="space-y-2">
+        {[...Array(3)].map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
         ))}
       </div>
     );
   }
 
-  if (!installments || installments.length === 0) {
-    return (
-      <div className="p-6 text-center border border-dashed rounded-md">
-        <p className="text-muted-foreground">No payments scheduled for this plan.</p>
-      </div>
-    );
-  }
-
-  const handleInstallmentClick = (installment: PlanInstallment, e: React.MouseEvent) => {
-    // Only handle the click if it wasn't on a button (to prevent action buttons from triggering view)
-    if (e.target instanceof Node && 
-        !e.currentTarget.querySelector('.action-buttons')?.contains(e.target as Node) &&
-        onViewDetails) {
-      onViewDetails(installment);
-    }
-  };
-
   return (
-    <div className="space-y-4">
-      {installments.map((installment) => (
-        <div 
-          key={installment.id}
-          className={`p-4 border rounded-md space-y-2 ${onViewDetails ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
-          onClick={(e) => handleInstallmentClick(installment, e)}
-        >
-          <div className="flex justify-between items-center">
-            <div className="font-medium">
-              Payment #{installment.paymentNumber} of {installment.totalPayments}
-            </div>
-            {getStatusBadge(installment.status)}
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <div className="text-sm">
-              <span className="text-muted-foreground mr-1">Due:</span> 
-              {formatDate(installment.dueDate)}
-              {installment.paidDate && (
-                <span className="ml-2">
-                  <span className="text-muted-foreground mr-1">Paid:</span> 
-                  {formatDate(installment.paidDate)}
-                </span>
-              )}
-            </div>
-            <div className="font-semibold">
-              {formatCurrency(installment.amount)}
-            </div>
-          </div>
-          
-          {installment.status !== 'paid' && installment.status !== 'cancelled' && (
-            <div className="flex flex-wrap gap-2 pt-2 action-buttons">
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="flex items-center"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMarkAsPaid(installment.id, installment);
-                }}
-              >
-                <CheckCircle className="mr-1 h-4 w-4" />
-                Mark as Paid
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="flex items-center"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  console.log("Calling onReschedule for payment ID:", installment.id);
-                  onReschedule(installment.id);
-                }}
-              >
-                <Calendar className="mr-1 h-4 w-4" />
-                Reschedule
-              </Button>
-              
-              <Button 
-                size="sm"
-                className="flex items-center"
-                onClick={(e) => {
-                  e.stopPropagation(); 
-                  onTakePayment(installment.id, installment);
-                }}
-              >
-                <CreditCard className="mr-1 h-4 w-4" />
-                Take Payment
-              </Button>
-            </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Due Date</TableHead>
+          <TableHead>Amount</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Paid Date</TableHead>
+          {(onMarkAsPaid || onReschedule || onTakePayment) && (
+            <TableHead className="text-right">Actions</TableHead>
           )}
-        </div>
-      ))}
-    </div>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {installments.map((installment) => (
+          <TableRow 
+            key={installment.id} 
+            className="cursor-pointer hover:bg-muted transition-colors"
+            onClick={(e) => handleRowClick(installment, e)}
+          >
+            <TableCell>{formatDate(installment.dueDate)}</TableCell>
+            <TableCell>{formatCurrency(installment.amount)}</TableCell>
+            <TableCell>
+              <StatusBadge 
+                status={installment.status} 
+                originalStatus={installment.originalStatus}
+                manualPayment={installment.manualPayment}
+              />
+            </TableCell>
+            <TableCell>
+              {installment.paidDate 
+                ? formatDateTime(installment.paidDate, 'en-GB', 'Europe/London') 
+                : '-'}
+            </TableCell>
+            {(onMarkAsPaid || onReschedule || onTakePayment) && (
+              <TableCell className="text-right">
+                {installment.status !== 'paid' && (
+                  <PaymentActionMenu
+                    paymentId={installment.id}
+                    installment={installment}
+                    onMarkAsPaid={onMarkAsPaid || (() => {})}
+                    onReschedule={onReschedule || (() => {})}
+                    onTakePayment={onTakePayment ? 
+                      (id: string, instDetails: PlanInstallment) => {
+                        e.preventDefault(); // Stop propagation
+                        onTakePayment(id, instDetails);
+                      } : undefined}
+                  />
+                )}
+              </TableCell>
+            )}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 };
 
