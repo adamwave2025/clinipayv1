@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
@@ -17,6 +16,15 @@ export const usePaymentDetailsFetcher = () => {
       console.log('Payment ID:', installment.paymentId || 'Not set');
       console.log('Payment Request ID:', installment.paymentRequestId || 'Not set');
       console.log('Manual payment flag:', installment.manualPayment || false);
+      console.log('Payment status:', installment.status || 'unknown');
+      
+      // If the payment is not paid, we won't have payment data but still want to show installment details
+      if (installment.status !== 'paid') {
+        console.log('Payment not paid, returning null payment data but keeping installment data available for the dialog');
+        setPaymentData(null);
+        setIsLoading(false);
+        return null;
+      }
       
       // Determine if this is a payment plan payment
       // If we have totalPayments and paymentNumber, it's likely a plan payment

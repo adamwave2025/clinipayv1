@@ -89,11 +89,12 @@ const PlanDetails = () => {
         onSendReminder={() => selectedPlan && handleSendReminder(selectedPlan.id)}
       />
       
-      {/* Use InstallmentPaymentDialog for payment details */}
+      {/* Pass the installment data to InstallmentPaymentDialog */}
       <InstallmentPaymentDialog
         showDialog={showPaymentDetails}
         setShowDialog={setShowPaymentDetails}
         paymentData={paymentData}
+        installment={viewDetailsInstallment}
         onBack={() => setShowPaymentDetails(false)}
       />
       

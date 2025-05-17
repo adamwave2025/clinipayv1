@@ -86,14 +86,12 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
       {installments.map((installment) => (
         <div 
           key={installment.id}
-          className={`p-4 border rounded-md space-y-2 ${
-            installment.status === 'paid' && onViewPaymentDetails
-              ? 'hover:bg-muted cursor-pointer transition-colors'
-              : ''
-          }`}
-          onClick={() => {
-            // Only trigger the click handler for paid payments and if the handler exists
-            if (installment.status === 'paid' && onViewPaymentDetails) {
+          className="p-4 border rounded-md space-y-2 hover:bg-muted cursor-pointer transition-colors"
+          onClick={(e) => {
+            // Prevent the click handler from firing if clicking on buttons
+            if ((e.target as Element).closest('button')) return;
+            
+            if (onViewPaymentDetails) {
               onViewPaymentDetails(installment);
             }
           }}
@@ -121,12 +119,10 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
             </div>
           </div>
           
-          {installment.status === 'paid' && onViewPaymentDetails && (
-            <div className="text-xs text-right text-muted-foreground flex items-center justify-end">
-              <ExternalLink className="h-3 w-3 mr-1" />
-              Click to view payment details
-            </div>
-          )}
+          <div className="text-xs text-right text-muted-foreground flex items-center justify-end">
+            <ExternalLink className="h-3 w-3 mr-1" />
+            Click to view payment details
+          </div>
           
           {installment.status !== 'paid' && installment.status !== 'cancelled' && (
             <div className="flex flex-wrap gap-2 pt-2">
