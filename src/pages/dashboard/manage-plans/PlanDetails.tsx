@@ -141,11 +141,11 @@ const PlanDetails = () => {
     }
   };
   
-  // Create a wrapper function for the handleOpenReschedule method to match the expected signature
+  // Create a wrapper function for the handleOpenRescheduleDialog method to match the expected signature
   const handleRescheduleWrapper = (installmentId: string) => {
-    if (handleOpenReschedule) {
-      console.log('Calling handleOpenReschedule for installment ID:', installmentId);
-      handleOpenReschedule(installmentId);
+    if (handleOpenRescheduleDialog) {
+      console.log('Calling handleOpenRescheduleDialog for installment ID:', installmentId);
+      handleOpenRescheduleDialog();
     }
   };
 
@@ -170,7 +170,7 @@ const PlanDetails = () => {
         activities={activities}
         onMarkAsPaid={handleMarkAsPaid}
         onReschedule={handleRescheduleWrapper} 
-        onTakePayment={handleOpenReschedule ? (id, details) => handleOpenReschedule(id) : undefined}
+        onTakePayment={handleOpenRescheduleDialog ? (id, details) => handleOpenRescheduleDialog() : undefined}
         onViewDetails={handleViewInstallmentDetails}
         isLoading={isLoadingActivities}
         isRefreshing={isRefreshing}
@@ -219,3 +219,4 @@ const PlanDetails = () => {
 };
 
 export default PlanDetails;
+
