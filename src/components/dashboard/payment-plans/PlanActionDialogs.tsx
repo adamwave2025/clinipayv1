@@ -50,7 +50,7 @@ const PlanActionDialogs: React.FC<PlanActionDialogsProps> = ({
   isProcessing,
   hasSentPayments = false,
   hasOverduePayments = false,
-  hasPaidPayments = false
+  hasPaidPayments = false // Add this prop with default value
 }) => {
   return (
     <>
@@ -81,7 +81,7 @@ const PlanActionDialogs: React.FC<PlanActionDialogsProps> = ({
         isProcessing={isProcessing}
         hasSentPayments={hasSentPayments}
         hasOverduePayments={hasOverduePayments}
-        hasPaidPayments={hasPaidPayments}
+        hasPaidPayments={hasPaidPayments} // Add this prop
       />
 
       <ReschedulePlanDialog
@@ -90,7 +90,7 @@ const PlanActionDialogs: React.FC<PlanActionDialogsProps> = ({
         onConfirm={handleReschedulePlan}
         planName={selectedPlan?.title || selectedPlan?.planName || 'Payment Plan'}
         patientName={selectedPlan?.patientName || 'Patient'}
-        startDate={selectedPlan?.startDate}
+        startDate={selectedPlan?.startDate} // Add this prop
         isProcessing={isProcessing}
         hasSentPayments={hasSentPayments}
         hasOverduePayments={hasOverduePayments}

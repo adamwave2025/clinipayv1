@@ -1,31 +1,11 @@
-
 import React, { useEffect } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import PlanDetailsView from '@/components/dashboard/payment-plans/PlanDetailsView';
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
-
-// Create a PlanDetailsView component that accepts the props passed to it
-const PlanDetailsView = ({
-  plan,
-  installments,
-  activities,
-  onMarkAsPaid,
-  onReschedule,
-  onTakePayment,
-  isLoading,
-  isRefreshing,
-  onOpenCancelDialog,
-  onOpenPauseDialog,
-  onOpenResumeDialog,
-  onOpenRescheduleDialog,
-  onSendReminder
-}) => {
-  // This is just a placeholder - we'll actually use the PlanDetailsView from elsewhere
-  return <div>Plan Details View</div>;
-};
 
 const PlanDetails = () => {
   const {
@@ -88,7 +68,6 @@ const PlanDetails = () => {
       
       <h2 className="text-2xl font-bold">{selectedPlan.title || selectedPlan.planName}</h2>
       
-      {/* We have fixed the PlanDetailsView component to match the context */}
       <PlanDetailsView
         plan={selectedPlan}
         installments={installments}
@@ -102,7 +81,7 @@ const PlanDetails = () => {
         onOpenPauseDialog={handleOpenPauseDialog}
         onOpenResumeDialog={handleOpenResumeDialog}
         onOpenRescheduleDialog={handleOpenRescheduleDialog}
-        onSendReminder={() => selectedPlan && handleSendReminder()}
+        onSendReminder={() => selectedPlan && handleSendReminder(selectedPlan.id)}
       />
       
       {paymentData && (

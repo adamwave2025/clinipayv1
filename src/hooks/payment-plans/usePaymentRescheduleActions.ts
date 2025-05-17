@@ -11,60 +11,11 @@ export const usePaymentRescheduleActions = (
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
-  const [maxAllowedDate, setMaxAllowedDate] = useState<Date | undefined>(undefined);
   
-  const handleOpenRescheduleDialog = async (paymentId: string): Promise<void> => {
+  const handleOpenRescheduleDialog = (paymentId: string) => {
     console.log("[usePaymentRescheduleActions] Opening reschedule dialog for payment:", paymentId);
     setSelectedPaymentId(paymentId);
-    
-    try {
-      // Get the current payment's information
-      const { data: currentPayment, error: paymentError } = await supabase
-        .from('payment_schedule')
-        .select('id, payment_number, due_date')
-        .eq('id', paymentId)
-        .single();
-      
-      if (paymentError) {
-        console.error('Error fetching current payment details:', paymentError);
-        throw paymentError;
-      }
-      
-      // Find the next payment after this one
-      const { data: nextPayment, error: nextPaymentError } = await supabase
-        .from('payment_schedule')
-        .select('id, due_date')
-        .eq('plan_id', planId)
-        .gt('payment_number', currentPayment.payment_number)
-        .order('payment_number', { ascending: true })
-        .limit(1)
-        .single();
-      
-      if (nextPaymentError && nextPaymentError.code !== 'PGRST116') { // PGRST116 is "no rows returned" which is fine
-        console.error('Error fetching next payment details:', nextPaymentError);
-      }
-      
-      // If there's a next payment, set its due date as the max allowed date
-      if (nextPayment && nextPayment.due_date) {
-        // Subtract one day from next payment date to prevent scheduling on the same day
-        const nextDate = new Date(nextPayment.due_date);
-        nextDate.setDate(nextDate.getDate() - 1);
-        setMaxAllowedDate(nextDate);
-        console.log("Setting max allowed date to:", nextDate.toISOString());
-      } else {
-        // If no next payment, don't set a max date restriction
-        setMaxAllowedDate(undefined);
-        console.log("No next payment found, no max date restriction applied");
-      }
-      
-    } catch (error) {
-      console.error("Error determining date restrictions:", error);
-      // Even if there's an error, still open dialog but without restrictions
-      setMaxAllowedDate(undefined);
-    }
-    
     setShowRescheduleDialog(true);
-    
     // Debug log to verify state is being set correctly
     setTimeout(() => {
       console.log("[usePaymentRescheduleActions] Dialog state after update:", showRescheduleDialog, "selectedPaymentId:", selectedPaymentId);
@@ -150,7 +101,6 @@ export const usePaymentRescheduleActions = (
     setShowRescheduleDialog,
     isProcessing,
     selectedPaymentId,
-    maxAllowedDate,
     handleOpenRescheduleDialog,
     handleReschedulePayment
   };
