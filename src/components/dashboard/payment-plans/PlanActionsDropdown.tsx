@@ -41,12 +41,12 @@ const PlanActionsDropdown = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {onPausePlan && (
+        {onPausePlan && !isPaused && (
           <DropdownMenuItem onClick={onPausePlan} disabled={isDisabled || isLoading}>
             Pause Plan
           </DropdownMenuItem>
         )}
-        {onResumePlan && (
+        {onResumePlan && isPaused && (
           <DropdownMenuItem onClick={onResumePlan} disabled={isDisabled || isLoading}>
             Resume Plan
           </DropdownMenuItem>

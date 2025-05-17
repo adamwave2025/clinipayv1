@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
@@ -160,9 +161,6 @@ export const usePlanResumeActions = (
       if (refreshPlanState) {
         await refreshPlanState(selectedPlan.id);
       }
-      
-      // Keep the plan details modal open
-      // setShowPlanDetails(false);
     } catch (error) {
       console.error('Error resuming plan:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
