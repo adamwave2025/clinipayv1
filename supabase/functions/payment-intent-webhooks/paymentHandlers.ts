@@ -1,3 +1,4 @@
+
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { generateUUID } from './utils.ts';
 
@@ -126,10 +127,22 @@ async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseCl
     
     console.log(`Updated payment schedule ${paymentScheduleId} status to 'paid'`);
     
-    // Update plan details - increment paid_installments and progress
+    // MODIFIED: Count actual paid installments from payment_schedule table
+    const { count: paidInstallments, error: countError } = await supabase
+      .from('payment_schedule')
+      .select('id', { count: 'exact', head: true })
+      .eq('plan_id', planId)
+      .eq('status', 'paid');
+      
+    if (countError) {
+      console.error('Error counting paid installments:', countError);
+      throw countError;
+    }
+
+    // Get plan details to calculate progress correctly
     const { data: planData, error: planFetchError } = await supabase
       .from('plans')
-      .select('paid_installments, total_installments')
+      .select('total_installments')
       .eq('id', planId)
       .single();
       
@@ -139,7 +152,6 @@ async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseCl
     }
     
     // Calculate new values
-    const paidInstallments = (planData.paid_installments || 0) + 1;
     const progress = Math.round((paidInstallments / planData.total_installments) * 100);
     
     // Determine if all installments are paid
