@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { useStripePayment } from '@/modules/payment/hooks/useStripePayment';
 import { usePaymentIntent } from '@/hooks/usePaymentIntent';
@@ -198,56 +199,68 @@ export function useInstallmentPayment(
           }
         }
         
-        // Get current plan data
-        const { data: planData, error: planFetchError } = await supabase
-          .from('plans')
-          .select('paid_installments, total_installments')
-          .eq('id', paymentData.plan_id)
-          .single();
-          
-        if (!planFetchError && planData) {
-          // Update plan data
-          const paidInstallments = (planData.paid_installments || 0) + 1;
-          const progress = Math.round((paidInstallments / planData.total_installments) * 100);
-          const isCompleted = paidInstallments >= planData.total_installments;
-          
-          const { error: planUpdateError } = await supabase
+        // MODIFIED: Get accurate count of paid installments by querying the database
+        // instead of incrementing a counter
+        const { count: paidInstallments, error: countError } = await supabase
+          .from('payment_schedule')
+          .select('id', { count: 'exact', head: true })
+          .eq('plan_id', paymentData.plan_id)
+          .eq('status', 'paid');
+        
+        if (countError) {
+          console.error('Error counting paid installments:', countError);
+          // Continue with fallback method if counting fails
+        } else {
+          // Get current plan data
+          const { data: planData, error: planFetchError } = await supabase
             .from('plans')
-            .update({
-              paid_installments: paidInstallments,
-              progress: progress,
-              status: isCompleted ? 'completed' : 'active',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', paymentData.plan_id);
+            .select('total_installments')
+            .eq('id', paymentData.plan_id)
+            .single();
             
-          if (planUpdateError) {
-            console.error('Error updating plan data:', planUpdateError);
-            // Non-critical error, continue
-          } else {
-            console.log('Successfully updated plan data');
-          }
-          
-          // If not completed, find next due date
-          if (!isCompleted) {
-            const { data: nextPayment, error: nextPaymentError } = await supabase
-              .from('payment_schedule')
-              .select('due_date')
-              .eq('plan_id', paymentData.plan_id)
-              .eq('status', 'pending')
-              .order('due_date', { ascending: true })
-              .limit(1)
-              .single();
+          if (!planFetchError && planData) {
+            // Update plan data
+            const progress = Math.round((paidInstallments / planData.total_installments) * 100);
+            const isCompleted = paidInstallments >= planData.total_installments;
+            
+            const { error: planUpdateError } = await supabase
+              .from('plans')
+              .update({
+                paid_installments: paidInstallments,
+                progress: progress,
+                status: isCompleted ? 'completed' : 'active',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', paymentData.plan_id);
               
-            if (!nextPaymentError && nextPayment) {
-              await supabase
-                .from('plans')
-                .update({
-                  next_due_date: nextPayment.due_date
-                })
-                .eq('id', paymentData.plan_id);
+            if (planUpdateError) {
+              console.error('Error updating plan data:', planUpdateError);
+              // Non-critical error, continue
+            } else {
+              console.log('Successfully updated plan data with accurate paid count');
+            }
+            
+            // If not completed, find next due date
+            if (!isCompleted) {
+              const { data: nextPayment, error: nextPaymentError } = await supabase
+                .from('payment_schedule')
+                .select('due_date')
+                .eq('plan_id', paymentData.plan_id)
+                .eq('status', 'pending')
+                .order('due_date', { ascending: true })
+                .limit(1)
+                .single();
                 
-              console.log('Successfully updated next due date to', nextPayment.due_date);
+              if (!nextPaymentError && nextPayment) {
+                await supabase
+                  .from('plans')
+                  .update({
+                    next_due_date: nextPayment.due_date
+                  })
+                  .eq('id', paymentData.plan_id);
+                  
+                console.log('Successfully updated next due date to', nextPayment.due_date);
+              }
             }
           }
         }

@@ -40,12 +40,29 @@ export class PlanService {
         return;
       }
       
-      // Increment paid installments
-      const paidInstallments = Math.min((planData.paid_installments || 0) + 1, planData.total_installments);
+      // MODIFIED: Count actual paid installments from payment_schedule table
+      // instead of incrementing a counter
+      const { count: paidInstallments, error: countError } = await supabaseClient
+        .from("payment_schedule")
+        .select("id", { count: 'exact', head: true })
+        .eq("plan_id", scheduleData.plan_id)
+        .eq("status", "paid");
+        
+      if (countError) {
+        console.error("Error counting paid installments:", countError);
+        // Fallback to old method if count fails
+        console.log("Falling back to increment method for paid installments");
+      }
+      
+      // Use counted value if available, otherwise fallback to increment method
+      const totalPaid = countError ? 
+        Math.min((planData.paid_installments || 0) + 1, planData.total_installments) :
+        paidInstallments;
+        
       const totalInstallments = planData.total_installments || scheduleData.total_payments;
       
       // Calculate new progress percentage - Cap at 100%
-      const progress = Math.min(Math.floor((paidInstallments / totalInstallments) * 100) || 0, 100);
+      const progress = Math.min(Math.floor((totalPaid / totalInstallments) * 100) || 0, 100);
 
       // Get all schedule entries for this plan to find next due date and check for overdue
       const { data: allScheduleEntries, error: entriesError } = await supabaseClient
@@ -85,9 +102,9 @@ export class PlanService {
         console.log(`Current plan status: ${newStatus}`);
         
         // If all installments are paid, mark as completed (overrides all other status changes)
-        if (paidInstallments >= totalInstallments) {
+        if (totalPaid >= totalInstallments) {
           newStatus = 'completed';
-          console.log(`All installments paid (${paidInstallments}/${totalInstallments}), marking plan as completed`);
+          console.log(`All installments paid (${totalPaid}/${totalInstallments}), marking plan as completed`);
         } 
         // Any payment made on a plan that's not cancelled or completed should make it active
         else if (newStatus !== 'cancelled' && newStatus !== 'completed' && newStatus !== 'paused') {
@@ -101,7 +118,7 @@ export class PlanService {
           - Plan ID: ${planData.id}
           - Old status: ${planData.status}
           - New status: ${newStatus}
-          - Paid installments: ${paidInstallments}/${totalInstallments}
+          - Paid installments: ${totalPaid}/${totalInstallments}
           - Progress: ${progress}%
           - Next due date: ${nextDueDate || 'None'}
         `);
@@ -110,7 +127,7 @@ export class PlanService {
         const { error: planUpdateError } = await supabaseClient
           .from("plans")
           .update({
-            paid_installments: paidInstallments,
+            paid_installments: totalPaid,
             progress: progress,
             next_due_date: nextDueDate,
             status: newStatus
@@ -230,7 +247,7 @@ export class PlanService {
         // Get the current plan data
         const { data: planData, error: planError } = await supabaseClient
           .from("plans")
-          .select("paid_installments, total_installments")
+          .select("total_installments")
           .eq("id", scheduleData.plan_id)
           .single();
           
@@ -244,15 +261,26 @@ export class PlanService {
           return;
         }
         
-        // Decrement the paid installments count
-        const newPaidCount = Math.max(0, (planData.paid_installments || 1) - 1);
-        const progress = Math.floor((newPaidCount / planData.total_installments) * 100) || 0;
+        // MODIFIED: Count actual paid installments from payment_schedule table
+        // instead of decrementing a counter
+        const { count: paidInstallments, error: countError } = await supabaseClient
+          .from("payment_schedule")
+          .select("id", { count: 'exact', head: true })
+          .eq("plan_id", scheduleData.plan_id)
+          .eq("status", "paid");
+          
+        if (countError) {
+          console.error("Error counting paid installments after refund:", countError);
+          return;
+        }
+        
+        const progress = Math.floor((paidInstallments / planData.total_installments) * 100) || 0;
         
         // Update the plan
         const { error: planUpdateError } = await supabaseClient
           .from("plans")
           .update({
-            paid_installments: newPaidCount,
+            paid_installments: paidInstallments,
             progress: progress,
             // Don't change the status - let the cron job handle that
           })
@@ -261,7 +289,7 @@ export class PlanService {
         if (planUpdateError) {
           console.error("Error updating plan:", planUpdateError);
         } else {
-          console.log(`Updated plan ${scheduleData.plan_id} paid_installments to ${newPaidCount}`);
+          console.log(`Updated plan ${scheduleData.plan_id} paid_installments to ${paidInstallments}`);
         }
       }
     } catch (error) {
