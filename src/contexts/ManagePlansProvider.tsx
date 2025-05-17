@@ -15,6 +15,7 @@ import { usePaymentRescheduleActions } from '@/hooks/payment-plans/usePaymentRes
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { toast } from '@/hooks/use-toast';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
+import { useRefundState } from '@/hooks/payment-plans/useRefundState';
 
 export const ManagePlansProvider: React.FC<{
   children: React.ReactNode;
@@ -401,6 +402,17 @@ export const ManagePlansProvider: React.FC<{
     console.log("Send reminder action called");
   };
 
+  // Use the refund state hook
+  const {
+    refundDialogOpen,
+    setRefundDialogOpen,
+    paymentToRefund,
+    setPaymentToRefund,
+    openRefundDialog,
+    processRefund,
+    handleRefund
+  } = useRefundState();
+  
   return (
     <ManagePlansContext.Provider
       value={{
@@ -473,6 +485,7 @@ export const ManagePlansProvider: React.FC<{
         paymentToRefund,
         openRefundDialog,
         processRefund,
+        handleRefund,
         
         // Plan action dialogs and handlers
         showCancelDialog,
