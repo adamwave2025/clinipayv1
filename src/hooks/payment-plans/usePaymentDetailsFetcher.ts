@@ -4,10 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { toast } from 'sonner';
 import { formatCurrency, formatDateTime } from '@/utils/formatters';
+import { Payment } from '@/types/payment';
 
 export const usePaymentDetailsFetcher = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [paymentData, setPaymentData] = useState<any | null>(null);
+  const [paymentData, setPaymentData] = useState<Payment | null>(null);
 
   const fetchPaymentDetails = async (installment: PlanInstallment) => {
     setIsLoading(true);
@@ -22,6 +23,30 @@ export const usePaymentDetailsFetcher = () => {
       // If we have totalPayments and paymentNumber, it's likely a plan payment
       const isPlanPayment = installment.totalPayments > 1;
       console.log('Is this a plan payment?', isPlanPayment);
+      
+      // For unpaid installments, create a placeholder payment object
+      if (installment.status !== 'paid') {
+        console.log('Creating placeholder payment data for unpaid installment');
+        
+        // Create a basic payment object with installment data
+        const placeholderPayment: Payment = {
+          id: installment.id,
+          status: installment.status,
+          amount: installment.amount,
+          clinicId: installment.planId.split('-')[0] || '',
+          date: installment.dueDate,
+          patientName: 'Patient', // Will be updated with plan data
+          netAmount: installment.amount,
+          paymentMethod: installment.manualPayment ? 'manual' : 'card',
+          type: 'payment_plan',
+          linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
+        };
+        
+        console.log('Created placeholder payment:', placeholderPayment);
+        setPaymentData(placeholderPayment);
+        setIsLoading(false);
+        return placeholderPayment;
+      }
       
       // Check if we have a direct payment ID (could happen with manual payments)
       if (installment.paymentId) {
@@ -44,19 +69,22 @@ export const usePaymentDetailsFetcher = () => {
         console.log('Direct payment data:', paymentData);
         
         // Format the payment data to match the expected structure
-        const paymentInfo = {
+        const paymentInfo: Payment = {
           id: paymentData.id,
-          status: paymentData.status,
+          status: paymentData.status || 'paid',
           amount: paymentData.amount_paid,
           date: formatDateTime(paymentData.paid_at, 'en-GB', 'Europe/London'),
           reference: paymentData.payment_ref,
           stripePaymentId: paymentData.stripe_payment_id,
-          refundedAmount: paymentData.refund_amount,
-          refundedAt: paymentData.refunded_at ? formatDateTime(paymentData.refunded_at, 'en-GB', 'Europe/London') : null,
-          patientName: paymentData.patient_name,
-          patientEmail: paymentData.patient_email,
-          patientPhone: paymentData.patient_phone,
+          refundedAmount: paymentData.refund_amount || 0,
+          refundAmount: paymentData.refund_amount || 0,
+          netAmount: paymentData.net_amount || paymentData.amount_paid,
+          clinicId: paymentData.clinic_id || '',
+          patientName: paymentData.patient_name || '',
+          patientEmail: paymentData.patient_email || '',
+          patientPhone: paymentData.patient_phone || '',
           manualPayment: paymentData.manual_payment || false,
+          paymentMethod: paymentData.manual_payment ? 'manual' : 'card',
           // Explicitly set the type to payment_plan if this is a plan payment
           type: isPlanPayment ? 'payment_plan' : 'other',
           linkTitle: installment.paymentNumber 
@@ -87,18 +115,21 @@ export const usePaymentDetailsFetcher = () => {
           const paymentData = fallbackPayments[0];
           console.log('Found payment through fallback approach:', paymentData);
           
-          const paymentInfo = {
+          const paymentInfo: Payment = {
             id: paymentData.id,
             status: paymentData.status || 'paid',
             amount: paymentData.amount_paid,
             date: formatDateTime(paymentData.paid_at, 'en-GB', 'Europe/London'),
             reference: paymentData.payment_ref,
             stripePaymentId: paymentData.stripe_payment_id,
-            refundedAmount: paymentData.refund_amount,
-            refundedAt: paymentData.refunded_at ? formatDateTime(paymentData.refunded_at, 'en-GB', 'Europe/London') : null,
-            patientName: paymentData.patient_name,
-            patientEmail: paymentData.patient_email,
-            patientPhone: paymentData.patient_phone,
+            refundedAmount: paymentData.refund_amount || 0,
+            refundAmount: paymentData.refund_amount || 0,
+            netAmount: paymentData.net_amount || paymentData.amount_paid,
+            clinicId: paymentData.clinic_id || '',
+            patientName: paymentData.patient_name || '',
+            patientEmail: paymentData.patient_email || '',
+            patientPhone: paymentData.patient_phone || '',
+            paymentMethod: paymentData.manual_payment ? 'manual' : 'card',
             manualPayment: paymentData.manual_payment || false,
             type: isPlanPayment ? 'payment_plan' : 'other',
             linkTitle: installment.paymentNumber 
@@ -111,10 +142,24 @@ export const usePaymentDetailsFetcher = () => {
           return paymentInfo;
         }
         
-        // No payment information found
-        toast.error('No payment information available');
+        // Create a placeholder payment for unpaid/unlinked installment
+        const placeholderPayment: Payment = {
+          id: installment.id,
+          status: installment.status,
+          amount: installment.amount,
+          clinicId: installment.planId.split('-')[0] || '',
+          date: installment.dueDate,
+          patientName: 'Patient',
+          netAmount: installment.amount,
+          paymentMethod: 'none',
+          type: 'payment_plan',
+          linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
+        };
+        
+        setPaymentData(placeholderPayment);
         setIsLoading(false);
-        return null;
+        toast.info('Limited payment information available');
+        return placeholderPayment;
       }
       
       console.log('Fetching payment details for request ID:', installment.paymentRequestId);
@@ -123,10 +168,10 @@ export const usePaymentDetailsFetcher = () => {
       const { data: requestData, error: requestError } = await supabase
         .from('payment_requests')
         .select(`
-          id, payment_id, patient_name, patient_email, patient_phone,
+          id, payment_id, patient_name, patient_email, patient_phone, clinic_id,
           payments (
             id, amount_paid, status, paid_at, payment_ref, 
-            stripe_payment_id, refund_amount, refunded_at, manual_payment
+            stripe_payment_id, refund_amount, refunded_at, manual_payment, net_amount
           )
         `)
         .eq('id', installment.paymentRequestId)
@@ -165,25 +210,42 @@ export const usePaymentDetailsFetcher = () => {
       }
       
       // Extract payment information from the request
-      const paymentInfo = requestData.payments ? {
+      const paymentInfo: Payment = requestData.payments ? {
         id: requestData.payments.id || requestData.payment_id,
         status: requestData.payments.status || 'paid',
         amount: requestData.payments.amount_paid,
         date: formatDateTime(requestData.payments.paid_at, 'en-GB', 'Europe/London'),
         reference: requestData.payments.payment_ref,
         stripePaymentId: requestData.payments.stripe_payment_id,
-        refundedAmount: requestData.payments.refund_amount,
-        refundedAt: requestData.payments.refunded_at ? formatDateTime(requestData.payments.refunded_at, 'en-GB', 'Europe/London') : null,
-        patientName: requestData.patient_name,
-        patientEmail: requestData.patient_email,
-        patientPhone: requestData.patient_phone,
+        refundedAmount: requestData.payments.refund_amount || 0,
+        refundAmount: requestData.payments.refund_amount || 0,
+        netAmount: requestData.payments.net_amount || requestData.payments.amount_paid,
+        clinicId: requestData.clinic_id || '',
+        patientName: requestData.patient_name || '',
+        patientEmail: requestData.patient_email || '',
+        patientPhone: requestData.patient_phone || '',
+        paymentMethod: requestData.payments.manual_payment ? 'manual' : 'card',
         manualPayment: requestData.payments.manual_payment || false,
         // Explicitly set the type to payment_plan if this is a plan payment
         type: isPlanPayment ? 'payment_plan' : 'other',
         linkTitle: installment.paymentNumber 
           ? `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
           : 'Payment'
-      } : null;
+      } : {
+        // Placeholder payment if no payment data is found
+        id: installment.id,
+        status: installment.status,
+        amount: installment.amount,
+        date: installment.dueDate,
+        clinicId: requestData.clinic_id || '',
+        netAmount: installment.amount,
+        patientName: requestData.patient_name || 'Patient',
+        patientEmail: requestData.patient_email || '',
+        patientPhone: requestData.patient_phone || '',
+        paymentMethod: 'none',
+        type: 'payment_plan',
+        linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
+      };
       
       console.log('Formatted payment info:', paymentInfo);
       setPaymentData(paymentInfo);

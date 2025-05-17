@@ -15,16 +15,30 @@ export const useInstallmentHandler = () => {
     try {
       console.log('Viewing payment details for installment:', installment);
       
-      // Don't try to fetch payment details for unpaid installments
-      if (installment.status !== 'paid') {
-        toast.error('No payment information available for unpaid installments');
-        return;
-      }
-
       // Store the selected installment
       setSelectedInstallment(installment);
       
-      // Fetch payment details for this installment
+      // For unpaid installments, create a basic payment object
+      if (installment.status !== 'paid') {
+        const basicPayment: Payment = {
+          id: installment.id,
+          status: installment.status,
+          amount: installment.amount,
+          clinicId: installment.planId.split('-')[0] || '',
+          date: installment.dueDate,
+          patientName: 'Patient', // Will be updated from plan data
+          netAmount: installment.amount,
+          paymentMethod: installment.manualPayment ? 'manual' : 'none',
+          linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`,
+          type: 'payment_plan'
+        };
+        
+        setPaymentData(basicPayment);
+        setShowPaymentDetails(true);
+        return;
+      }
+      
+      // Fetch payment details for paid installments
       const details = await fetchPaymentDetails(installment);
       console.log('Fetched payment details:', details);
       

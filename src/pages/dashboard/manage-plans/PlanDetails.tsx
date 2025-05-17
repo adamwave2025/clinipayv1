@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -6,6 +7,8 @@ import PlanDetailsView from '@/components/dashboard/payment-plans/PlanDetailsVie
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
+import { PlanInstallment } from '@/utils/paymentPlanUtils';
+import { Payment } from '@/types/payment';
 
 const PlanDetails = () => {
   const {
@@ -21,15 +24,16 @@ const PlanDetails = () => {
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
+    setPaymentData, // Make sure this exists in the context
     showReschedulePaymentDialog,
     setShowReschedulePaymentDialog,
     handleReschedulePayment,
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
     confirmMarkAsPaid,
-    selectedInstallment, // Use the primary selectedInstallment
+    selectedInstallment,
     isProcessing,
-    viewDetailsInstallment, // Using the renamed property here
+    viewDetailsInstallment,
     
     // Add plan operation handlers
     handleOpenCancelDialog,
@@ -38,6 +42,9 @@ const PlanDetails = () => {
     handleOpenRescheduleDialog,
     handleSendReminder
   } = useManagePlansContext();
+  
+  // Create a local state to handle the payment detail dialog
+  const [viewInstallment, setViewInstallment] = useState<PlanInstallment | null>(null);
   
   // Debug logging for the dialogs
   useEffect(() => {
@@ -52,6 +59,39 @@ const PlanDetails = () => {
   if (!selectedPlan) {
     return null;
   }
+
+  // Function to handle viewing details of an installment
+  const handleViewInstallmentDetails = (installment: PlanInstallment) => {
+    console.log('Viewing details for installment:', installment);
+    setViewInstallment(installment);
+    
+    // Create a payment object from the installment data
+    const installmentPayment: Payment = {
+      id: installment.id,
+      amount: installment.amount,
+      clinicId: selectedPlan?.clinic_id || '',
+      date: installment.paidDate || installment.dueDate,
+      netAmount: installment.amount,
+      patientName: selectedPlan?.patientName || '',
+      status: installment.status,
+      paymentMethod: installment.manualPayment ? 'manual' : 'card',
+      // Set other required fields with appropriate values or defaults
+      stripePaymentId: installment.paymentId || '',
+      refundAmount: 0,
+      refundedAmount: 0,
+      // Optional fields
+      paymentReference: '',
+      reference: '',
+      patientEmail: '',
+      patientPhone: '',
+      manualPayment: installment.manualPayment || false,
+      type: 'payment_plan',
+      linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
+    };
+    
+    setPaymentData(installmentPayment);
+    setShowPaymentDetails(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -75,6 +115,7 @@ const PlanDetails = () => {
         onMarkAsPaid={handleMarkAsPaid}
         onReschedule={handleOpenReschedule}
         onTakePayment={handleTakePayment}
+        onViewDetails={handleViewInstallmentDetails}
         isLoading={isLoadingActivities}
         isRefreshing={isRefreshing}
         onOpenCancelDialog={handleOpenCancelDialog}
