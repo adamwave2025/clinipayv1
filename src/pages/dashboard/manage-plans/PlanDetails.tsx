@@ -118,12 +118,13 @@ const PlanDetails = () => {
         installment={selectedInstallment}
       />
       
-      {/* Add Payment Refund Dialog */}
+      {/* Fix PaymentRefundDialog props */}
       <PaymentRefundDialog
         open={refundDialogOpen} 
         onOpenChange={setRefundDialogOpen}
         onRefund={processRefund}
-        paymentData={paymentData}
+        paymentAmount={paymentData?.amount}
+        patientName={paymentData?.patientName}
       />
     </div>
   );

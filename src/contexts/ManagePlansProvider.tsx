@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import ManagePlansContext, { PaymentDialogData } from './ManagePlansContext';
 import { useAuth } from './AuthContext';
@@ -398,10 +397,22 @@ export const ManagePlansProvider: React.FC<{
     setRefundDialogOpen,
     paymentToRefund,
     setPaymentToRefund,
-    openRefundDialog,
+    openRefundDialog: originalOpenRefundDialog,
     processRefund,
     handleRefund
   } = useRefundState();
+  
+  // Create a wrapper function that can adapt to different function signatures
+  const openRefundDialog = (paymentIdOrData?: string | Payment | null) => {
+    if (typeof paymentIdOrData === 'string') {
+      // Handle case where a string ID is passed
+      const payment = payments.find(p => p.id === paymentIdOrData);
+      originalOpenRefundDialog(payment);
+    } else {
+      // Handle case where a Payment object or null is passed
+      originalOpenRefundDialog(paymentIdOrData as Payment | null);
+    }
+  };
   
   return (
     <ManagePlansContext.Provider

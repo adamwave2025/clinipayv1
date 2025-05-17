@@ -99,7 +99,7 @@ const PaymentHistoryContent: React.FC = () => {
         payment={selectedPayment}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        onRefund={openRefundDialog}
+        onRefund={() => selectedPayment && openRefundDialog(selectedPayment.id)}
       />
 
       <PaymentRefundDialog
