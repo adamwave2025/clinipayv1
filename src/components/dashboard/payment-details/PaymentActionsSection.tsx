@@ -5,25 +5,25 @@ import { Button } from '@/components/ui/button';
 interface PaymentActionsSectionProps {
   status: string;
   onRefund?: () => void;
-  manualPayment?: boolean;
+  manualPayment?: boolean; // Add prop to indicate manual payment
 }
 
 const PaymentActionsSection = ({ 
   status, 
   onRefund,
-  manualPayment = false
+  manualPayment = false // Default to false
 }: PaymentActionsSectionProps) => {
-  // Show refund button only for paid payments and only if a refund handler exists
-  // Important: We're removing the restriction on manual payments to allow refunds for both types
-  if (status !== 'paid' || !onRefund) {
+  // Always hide refund button for manual payments or if status isn't paid or no handler
+  if (status !== 'paid' || !onRefund || manualPayment === true) {
     console.log('Hiding refund button:', { 
       status, 
-      hasOnRefund: !!onRefund
+      hasOnRefund: !!onRefund, 
+      manualPayment
     });
     return null;
   }
   
-  console.log('Displaying refund button, payment type:', manualPayment ? 'manual' : 'online');
+  console.log('Displaying refund button');
   return (
     <div className="flex justify-end mt-4">
       <Button 

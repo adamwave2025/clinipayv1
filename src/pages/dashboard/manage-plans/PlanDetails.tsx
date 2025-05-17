@@ -9,11 +9,6 @@ import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/Resche
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { Payment } from '@/types/payment';
-import { toast } from 'sonner';
-import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
-import { PaymentRefundService } from '@/services/PaymentRefundService';
-import { useRefundState } from '@/hooks/payment-plans/useRefundState';
-import { usePaymentDetailsFetcher } from '@/hooks/payment-plans/usePaymentDetailsFetcher';
 
 const PlanDetails = () => {
   const {
@@ -38,7 +33,6 @@ const PlanDetails = () => {
     selectedInstallment,
     isProcessing,
     viewDetailsInstallment,
-    refreshPlanState,
     
     // Add plan operation handlers
     handleOpenCancelDialog,
@@ -50,22 +44,8 @@ const PlanDetails = () => {
   
   // Create a local state to handle the payment detail dialog
   const [viewInstallment, setViewInstallment] = useState<PlanInstallment | null>(null);
+  const [localPaymentData, setLocalPaymentData] = useState<Payment | null>(null);
   const [showLocalPaymentDetails, setShowLocalPaymentDetails] = useState(false);
-  
-  // Use payment details fetcher to load data from DB
-  const { fetchPaymentDetails, paymentData: localPaymentData, setPaymentData: setLocalPaymentData } = usePaymentDetailsFetcher();
-  
-  // Use refund state for handling refunds
-  const { 
-    refundDialogOpen, 
-    setRefundDialogOpen, 
-    paymentToRefund, 
-    setPaymentToRefund,
-    processRefund: handleRefundAmount
-  } = useRefundState();
-  
-  // Track local processing state
-  const [isRefundProcessing, setIsRefundProcessing] = useState(false);
   
   // Debug logging for the dialogs
   useEffect(() => {
@@ -82,68 +62,36 @@ const PlanDetails = () => {
   }
 
   // Function to handle viewing details of an installment
-  const handleViewInstallmentDetails = async (installment: PlanInstallment) => {
+  const handleViewInstallmentDetails = (installment: PlanInstallment) => {
     console.log('Viewing details for installment:', installment);
     setViewInstallment(installment);
     
-    // Fetch complete payment data from the database for this installment
-    // This will handle both paid and unpaid installments appropriately
-    const paymentData = await fetchPaymentDetails(installment);
+    // Create a payment object from the installment data
+    const installmentPayment: Payment = {
+      id: installment.id,
+      amount: installment.amount,
+      clinicId: selectedPlan?.clinicId || '',
+      date: installment.paidDate || installment.dueDate,
+      netAmount: installment.amount,
+      patientName: selectedPlan?.patientName || '',
+      status: installment.status,
+      paymentMethod: installment.manualPayment ? 'manual' : 'card',
+      // Set other required fields with appropriate values or defaults
+      stripePaymentId: installment.paymentId || '',
+      refundAmount: 0,
+      refundedAmount: 0,
+      // Optional fields
+      paymentReference: '',
+      reference: '',
+      patientEmail: '',
+      patientPhone: '',
+      manualPayment: installment.manualPayment || false,
+      type: 'payment_plan',
+      linkTitle: `Payment ${installment.paymentNumber} of ${installment.totalPayments}`
+    };
+    
+    setLocalPaymentData(installmentPayment);
     setShowLocalPaymentDetails(true);
-  };
-  
-  // Handler for initiating a refund
-  const handleRefundPayment = (paymentId: string) => {
-    setPaymentToRefund(paymentId);
-    setRefundDialogOpen(true);
-  };
-  
-  // Process the refund with the provided amount
-  const processRefund = async (amount?: number, paymentId?: string) => {
-    if (!paymentId) {
-      console.error("No payment ID provided for refund");
-      return;
-    }
-    
-    setIsRefundProcessing(true);
-    
-    try {
-      console.log(`Processing refund of amount ${amount} for payment ${paymentId}`);
-      
-      const result = await PaymentRefundService.processRefund(paymentId, amount);
-      
-      if (result.success) {
-        toast.success("Refund processed successfully");
-        
-        // Close the refund dialog
-        setRefundDialogOpen(false);
-        
-        // Refresh the plan data to show updated payment status
-        if (selectedPlan) {
-          await refreshPlanState(selectedPlan.id);
-        }
-        
-        // If this was for the local payment dialog, refresh its data
-        if (localPaymentData && localPaymentData.id === paymentId) {
-          const updatedPayment = await fetchPaymentDetails(viewInstallment!);
-        }
-        
-        // If this was for the context payment dialog
-        if (paymentData && paymentData.id === paymentId) {
-          // Refresh the payment data in the context
-          if (viewDetailsInstallment) {
-            await fetchPaymentDetails(viewDetailsInstallment);
-          }
-        }
-      } else {
-        toast.error(`Refund failed: ${result.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error processing refund:', error);
-      toast.error('An error occurred while processing the refund');
-    } finally {
-      setIsRefundProcessing(false);
-    }
   };
 
   return (
@@ -184,7 +132,7 @@ const PlanDetails = () => {
           payment={paymentData}
           open={showPaymentDetails}
           onOpenChange={setShowPaymentDetails}
-          onRefund={() => handleRefundPayment(paymentData.id)}
+          onRefund={() => {}}
         />
       )}
       
@@ -194,7 +142,7 @@ const PlanDetails = () => {
           payment={localPaymentData}
           open={showLocalPaymentDetails}
           onOpenChange={setShowLocalPaymentDetails}
-          onRefund={() => handleRefundPayment(localPaymentData.id)}
+          onRefund={() => {}}
         />
       )}
       
@@ -212,17 +160,6 @@ const PlanDetails = () => {
         isLoading={isProcessing}
         installment={selectedInstallment}
       />
-      
-      {/* Refund Dialog for payment plan installments */}
-      {paymentToRefund && (
-        <PaymentRefundDialog
-          open={refundDialogOpen}
-          onOpenChange={setRefundDialogOpen}
-          onRefund={processRefund}
-          paymentId={paymentToRefund}
-          isLoading={isRefundProcessing}
-        />
-      )}
     </div>
   );
 };
