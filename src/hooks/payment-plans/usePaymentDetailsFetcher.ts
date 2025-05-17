@@ -15,7 +15,11 @@ export const usePaymentDetailsFetcher = () => {
     
     try {
       console.log('Installation in fetchPaymentDetails:', installment);
-      console.log('Payment ID:', installment.paymentId || 'Not set');
+      
+      // Updated to access payment object correctly
+      const paymentData = installment.payment || {};
+      console.log('Payment Data:', paymentData);
+      console.log('Payment ID from payment object:', paymentData?.id || 'Not set');
       console.log('Payment Request ID:', installment.paymentRequestId || 'Not set');
       console.log('Manual payment flag:', installment.manualPayment || false);
       
@@ -48,15 +52,16 @@ export const usePaymentDetailsFetcher = () => {
         return placeholderPayment;
       }
       
-      // Check if we have a direct payment ID (could happen with manual payments)
-      if (installment.paymentId) {
-        console.log('Fetching payment details directly for payment ID:', installment.paymentId);
+      // Check if we have a direct payment ID from the payment object
+      const paymentId = paymentData?.id || null;
+      if (paymentId) {
+        console.log('Fetching payment details directly for payment ID:', paymentId);
         
         // Fetch payment details directly using payment ID
-        const { data: paymentData, error: paymentError } = await supabase
+        const { data: directPaymentData, error: paymentError } = await supabase
           .from('payments')
           .select('*')
-          .eq('id', installment.paymentId)
+          .eq('id', paymentId)
           .single();
           
         if (paymentError) {
@@ -66,25 +71,25 @@ export const usePaymentDetailsFetcher = () => {
           return null;
         }
         
-        console.log('Direct payment data:', paymentData);
+        console.log('Direct payment data:', directPaymentData);
         
         // Format the payment data to match the expected structure
         const paymentInfo: Payment = {
-          id: paymentData.id,
-          status: paymentData.status || 'paid',
-          amount: paymentData.amount_paid,
-          date: formatDateTime(paymentData.paid_at, 'en-GB', 'Europe/London'),
-          reference: paymentData.payment_ref,
-          stripePaymentId: paymentData.stripe_payment_id,
-          refundedAmount: paymentData.refund_amount || 0,
-          refundAmount: paymentData.refund_amount || 0,
-          netAmount: paymentData.net_amount || paymentData.amount_paid,
-          clinicId: paymentData.clinic_id || '',
-          patientName: paymentData.patient_name || '',
-          patientEmail: paymentData.patient_email || '',
-          patientPhone: paymentData.patient_phone || '',
-          manualPayment: paymentData.manual_payment || false,
-          paymentMethod: paymentData.manual_payment ? 'manual' : 'card',
+          id: directPaymentData.id,
+          status: directPaymentData.status || 'paid',
+          amount: directPaymentData.amount_paid,
+          date: formatDateTime(directPaymentData.paid_at, 'en-GB', 'Europe/London'),
+          reference: directPaymentData.payment_ref,
+          stripePaymentId: directPaymentData.stripe_payment_id,
+          refundedAmount: directPaymentData.refund_amount || 0,
+          refundAmount: directPaymentData.refund_amount || 0,
+          netAmount: directPaymentData.net_amount || directPaymentData.amount_paid,
+          clinicId: directPaymentData.clinic_id || '',
+          patientName: directPaymentData.patient_name || '',
+          patientEmail: directPaymentData.patient_email || '',
+          patientPhone: directPaymentData.patient_phone || '',
+          manualPayment: directPaymentData.manual_payment || false,
+          paymentMethod: directPaymentData.manual_payment ? 'manual' : 'card',
           // Explicitly set the type to payment_plan if this is a plan payment
           type: isPlanPayment ? 'payment_plan' : 'other',
           linkTitle: installment.paymentNumber 
@@ -99,7 +104,7 @@ export const usePaymentDetailsFetcher = () => {
       }
       
       // If there is no payment request ID or payment ID, we can't fetch payment details
-      if (!installment.paymentRequestId && !installment.paymentId) {
+      if (!installment.paymentRequestId && !paymentData?.id) {
         console.log('No payment request ID or payment ID found for this installment');
         
         // Try a fallback approach: search for any payment that might be linked to this installment

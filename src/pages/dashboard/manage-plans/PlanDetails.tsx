@@ -77,12 +77,12 @@ const PlanDetails = () => {
       status: installment.status,
       paymentMethod: installment.manualPayment ? 'manual' : 'card',
       // Set other required fields with appropriate values or defaults
-      stripePaymentId: installment.paymentId || '',
-      refundAmount: 0,
-      refundedAmount: 0,
+      stripePaymentId: installment.payment?.id || '',
+      refundAmount: installment.refundAmount || 0,
+      refundedAmount: installment.refundAmount || 0,
       // Optional fields
-      paymentReference: '',
-      reference: '',
+      paymentReference: installment.paymentReference || '',
+      reference: installment.clientReference || '',
       patientEmail: '',
       patientPhone: '',
       manualPayment: installment.manualPayment || false,
