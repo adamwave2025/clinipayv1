@@ -146,7 +146,7 @@ const PlanDetails = () => {
     return {
       id: installment.id,
       amount: installment.amount,
-      clinicId: selectedPlan?.clinicId || '',
+      clinicId: selectedPlan?.clinicId || '', // Fixed: Use clinicId instead of clinic_id
       date: installment.paidDate || installment.dueDate,
       netAmount: installment.amount,
       patientName: selectedPlan?.patientName || 'Patient',

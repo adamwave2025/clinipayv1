@@ -17,9 +17,9 @@ interface PlanDetailsViewProps {
   plan: Plan;
   installments: any[];
   activities: PlanActivity[];
-  onMarkAsPaid: (id: string, installment: any) => void;
+  onMarkAsPaid: (id: string, installment?: any) => void;
   onReschedule: (id: string) => void;
-  onTakePayment: (id: string, installment: any) => void;
+  onTakePayment: (id: string, installment?: any) => void;
   onViewDetails?: (installment: PlanInstallment) => void;
   isLoading: boolean;
   isRefreshing?: boolean;
@@ -95,7 +95,7 @@ const PlanDetailsView: React.FC<PlanDetailsViewProps> = ({
                 <PlanScheduleCard 
                   installments={installments}
                   isLoading={isLoading}
-                  onMarkAsPaid={onMarkAsPaid}
+                  onMarkAsPaid={(id) => onMarkAsPaid(id)}
                   onReschedule={onReschedule}
                   onTakePayment={onTakePayment}
                   onViewDetails={onViewDetails}

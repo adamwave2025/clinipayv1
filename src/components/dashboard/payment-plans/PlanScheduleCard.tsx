@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { formatCurrency, formatDate, formatDateTime } from '@/utils/formatters';
-import { StatusBadge } from '@/components/common/StatusBadge';
+import StatusBadge from '@/components/common/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -92,9 +92,12 @@ const PlanScheduleCard: React.FC<PlanScheduleCardProps> = ({
                     onMarkAsPaid={onMarkAsPaid || (() => {})}
                     onReschedule={onReschedule || (() => {})}
                     onTakePayment={onTakePayment ? 
-                      (id: string, instDetails: PlanInstallment) => {
-                        e.preventDefault(); // Stop propagation
-                        onTakePayment(id, instDetails);
+                      (id: string, installmentDetails?: PlanInstallment) => {
+                        // Prevent the row click when clicking on menu actions
+                        // We can't use e here since it's not in scope
+                        if (onTakePayment) {
+                          onTakePayment(id, installmentDetails);
+                        }
                       } : undefined}
                   />
                 )}
