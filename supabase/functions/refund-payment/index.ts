@@ -243,131 +243,211 @@ serve(async (req) => {
       );
     }
 
-    // Update the payment plan to reflect this refund
+    // Multi-path update for payment plan, schedule, and activity tracking
     try {
-      // First check if this payment is linked to a payment request
-      const { data: paymentRequest, error: requestError } = await supabase
-        .from('payment_requests')
-        .select('*')
-        .eq('payment_id', paymentId)
-        .maybeSingle();
+      console.log('🔄 Starting multi-path update for related plan data');
+      let planId = null;
+      let scheduleItem = null;
+      let updatePath = 'none';
       
-      if (requestError) {
-        console.error('❌ Error checking payment request:', requestError);
-      } else if (paymentRequest) {
-        console.log('📋 Found payment request:', paymentRequest.id);
-        
-        // Check if this payment request is linked to a payment schedule
-        const { data: scheduleItem, error: scheduleError } = await supabase
+      // Path 1: Direct payment_schedule_id link in the payment
+      if (payment.payment_schedule_id) {
+        console.log(`📋 Path 1: Payment has direct payment_schedule_id: ${payment.payment_schedule_id}`);
+        const { data: scheduleData, error: scheduleError } = await supabase
           .from('payment_schedule')
           .select('*')
-          .eq('payment_request_id', paymentRequest.id)
+          .eq('id', payment.payment_schedule_id)
+          .single();
+          
+        if (scheduleError) {
+          console.error('❌ Path 1 Error: Error fetching payment schedule:', scheduleError);
+        } else if (scheduleData) {
+          console.log('✅ Path 1 Success: Found payment schedule item via direct link:', scheduleData.id);
+          scheduleItem = scheduleData;
+          planId = scheduleData.plan_id;
+          updatePath = 'direct_link';
+        }
+      }
+      
+      // Path 2: Payment linked through payment_request (existing path)
+      if (!scheduleItem) {
+        console.log('🔍 Path 2: Checking payment_requests link');
+        const { data: paymentRequest, error: requestError } = await supabase
+          .from('payment_requests')
+          .select('*')
+          .eq('payment_id', paymentId)
+          .maybeSingle();
+          
+        if (requestError) {
+          console.error('❌ Path 2 Error: Error checking payment request:', requestError);
+        } else if (paymentRequest) {
+          console.log('📋 Path 2: Found payment request:', paymentRequest.id);
+          
+          const { data: scheduleData, error: scheduleError } = await supabase
+            .from('payment_schedule')
+            .select('*')
+            .eq('payment_request_id', paymentRequest.id)
+            .maybeSingle();
+            
+          if (scheduleError) {
+            console.error('❌ Path 2 Error: Error checking payment schedule:', scheduleError);
+          } else if (scheduleData) {
+            console.log('✅ Path 2 Success: Found payment schedule item via payment request:', scheduleData.id);
+            scheduleItem = scheduleData;
+            planId = scheduleData.plan_id;
+            updatePath = 'payment_request';
+          }
+        }
+      }
+      
+      // Path 3: Try to find by matching payment_link_id and patient_id if both are available
+      if (!scheduleItem && payment.payment_link_id && payment.patient_id) {
+        console.log('🔍 Path 3: Attempting lookup by payment_link_id and patient_id');
+        const { data: scheduleData, error: scheduleError } = await supabase
+          .from('payment_schedule')
+          .select('*')
+          .eq('payment_link_id', payment.payment_link_id)
+          .eq('patient_id', payment.patient_id)
+          .order('due_date', { ascending: true })
+          .limit(1)
           .maybeSingle();
           
         if (scheduleError) {
-          console.error('❌ Error checking payment schedule:', scheduleError);
-        } else if (scheduleItem) {
-          console.log('📋 Found payment schedule item:', scheduleItem.id);
+          console.error('❌ Path 3 Error: Error checking payment schedule:', scheduleError);
+        } else if (scheduleData) {
+          console.log('✅ Path 3 Success: Found payment schedule item via payment_link_id and patient_id:', scheduleData.id);
+          scheduleItem = scheduleData;
+          planId = scheduleData.plan_id;
+          updatePath = 'link_patient_match';
+        }
+      }
+      
+      // Path 4: Last resort - find by plan with matching patient_id and payment_link_id
+      if (!scheduleItem && payment.payment_link_id && payment.patient_id) {
+        console.log('🔍 Path 4: Attempting to find plan directly via patient_id and payment_link_id');
+        const { data: planData, error: planError } = await supabase
+          .from('plans')
+          .select('id')
+          .eq('payment_link_id', payment.payment_link_id)
+          .eq('patient_id', payment.patient_id)
+          .maybeSingle();
           
-          // Update the payment schedule status
-          const scheduleStatus = isFullRefund ? 'refunded' : 'partially_refunded';
-          const { error: updateScheduleError } = await supabase
-            .from('payment_schedule')
-            .update({ status: scheduleStatus })
-            .eq('id', scheduleItem.id);
+        if (planError) {
+          console.error('❌ Path 4 Error: Error checking plans:', planError);
+        } else if (planData) {
+          console.log('📋 Path 4: Found plan directly:', planData.id);
+          planId = planData.id;
+          updatePath = 'direct_plan';
+        }
+      }
+      
+      console.log(`🔄 Multi-path lookup result - Plan ID: ${planId}, Update Path: ${updatePath}`);
+      
+      // If we found a plan or schedule item, process the updates
+      if (scheduleItem) {
+        // Update the payment schedule status
+        const scheduleStatus = isFullRefund ? 'refunded' : 'partially_refunded';
+        const { error: updateScheduleError } = await supabase
+          .from('payment_schedule')
+          .update({ status: scheduleStatus })
+          .eq('id', scheduleItem.id);
+          
+        if (updateScheduleError) {
+          console.error('❌ Error updating payment schedule:', updateScheduleError);
+        } else {
+          console.log('✅ Updated payment schedule status to:', scheduleStatus);
+        }
+        
+        // Record the refund activity with the plan_id from the schedule item
+        if (planId) {
+          const activityPayload = {
+            patient_id: scheduleItem.patient_id,
+            payment_link_id: scheduleItem.payment_link_id,
+            clinic_id: scheduleItem.clinic_id,
+            plan_id: planId, 
+            action_type: 'payment_refund',
+            details: {
+              payment_number: scheduleItem.payment_number,
+              total_payments: scheduleItem.total_payments,
+              refund_amount: refundAmountToStore,
+              is_full_refund: isFullRefund,
+              payment_reference: payment.payment_ref || '',
+              refund_date: currentTimestamp,
+              original_amount: scheduleItem.amount / 100, // Convert cents to pounds
+              update_path: updatePath
+            }
+          };
+          
+          const { error: activityError } = await supabase
+            .from('payment_activity')
+            .insert(activityPayload);
             
-          if (updateScheduleError) {
-            console.error('❌ Error updating payment schedule:', updateScheduleError);
+          if (activityError) {
+            console.error('❌ Error recording refund activity:', activityError);
           } else {
-            console.log('✅ Updated payment schedule status to:', scheduleStatus);
+            console.log('✅ Recorded refund activity successfully with plan_id:', planId);
+          }
+        }
+      }
+      
+      // If we have a plan_id and this is a full refund, update the plan progress
+      if (planId && isFullRefund) {
+        try {
+          // Get the current plan status
+          const { data: planData, error: planError } = await supabase
+            .from('plans')
+            .select('*')
+            .eq('id', planId)
+            .single();
             
-            // Record the refund activity - now including the plan_id field from scheduleItem
-            const activityPayload = {
-              patient_id: scheduleItem.patient_id,
-              payment_link_id: scheduleItem.payment_link_id,
-              clinic_id: scheduleItem.clinic_id,
-              plan_id: scheduleItem.plan_id, // Add the plan_id from the schedule item
-              action_type: 'payment_refund',
-              details: {
-                payment_number: scheduleItem.payment_number,
-                total_payments: scheduleItem.total_payments,
-                refund_amount: refundAmountToStore,
-                is_full_refund: isFullRefund,
-                payment_reference: payment.payment_ref || '',
-                refund_date: currentTimestamp,
-                original_amount: scheduleItem.amount / 100 // Convert cents to pounds
-              }
-            };
+          if (planError) {
+            console.error('❌ Error fetching plan data:', planError);
+          } else if (planData) {
+            console.log('📋 Found plan:', planData.id, 'with current paid_installments:', planData.paid_installments);
             
-            const { error: activityError } = await supabase
-              .from('payment_activity')
-              .insert(activityPayload);
-              
-            if (activityError) {
-              console.error('❌ Error recording refund activity:', activityError);
-            } else {
-              console.log('✅ Recorded refund activity successfully with plan_id:', scheduleItem.plan_id);
+            // Decrement the paid installments count and recalculate progress
+            const newPaidInstallments = Math.max(0, planData.paid_installments - 1);
+            const newProgress = Math.floor((newPaidInstallments / planData.total_installments) * 100);
+            
+            // Determine new status if necessary
+            let newPlanStatus = planData.status;
+            if (planData.status === 'completed' && newPaidInstallments < planData.total_installments) {
+              newPlanStatus = 'active';
             }
             
-            // If we have a plan_id and this is a full refund, update the plan progress
-            if (scheduleItem.plan_id && isFullRefund) {
-              try {
-                // Get the current plan status
-                const { data: planData, error: planError } = await supabase
-                  .from('plans')
-                  .select('*')
-                  .eq('id', scheduleItem.plan_id)
-                  .single();
-                  
-                if (planError) {
-                  console.error('❌ Error fetching plan data:', planError);
-                } else if (planData) {
-                  console.log('📋 Found plan:', planData.id, 'with current paid_installments:', planData.paid_installments);
-                  
-                  // Decrement the paid installments count and recalculate progress
-                  const newPaidInstallments = Math.max(0, planData.paid_installments - 1);
-                  const newProgress = Math.floor((newPaidInstallments / planData.total_installments) * 100);
-                  
-                  // Determine new status if necessary
-                  let newPlanStatus = planData.status;
-                  if (planData.status === 'completed' && newPaidInstallments < planData.total_installments) {
-                    newPlanStatus = 'active';
-                  }
-                  
-                  console.log(`📊 Updating plan metrics: paid_installments=${newPaidInstallments}, progress=${newProgress}%, status=${newPlanStatus}`);
-                  
-                  // Update the plan
-                  const { error: updatePlanError } = await supabase
-                    .from('plans')
-                    .update({
-                      paid_installments: newPaidInstallments,
-                      progress: newProgress,
-                      status: newPlanStatus
-                    })
-                    .eq('id', scheduleItem.plan_id);
-                    
-                  if (updatePlanError) {
-                    console.error('❌ Error updating plan:', updatePlanError);
-                  } else {
-                    console.log('✅ Updated plan successfully');
-                  }
-                }
-              } catch (planUpdateError) {
-                console.error('❌ Error in plan update logic:', planUpdateError);
-              }
+            console.log(`📊 Updating plan metrics: paid_installments=${newPaidInstallments}, progress=${newProgress}%, status=${newPlanStatus}`);
+            
+            // Update the plan
+            const { error: updatePlanError } = await supabase
+              .from('plans')
+              .update({
+                paid_installments: newPaidInstallments,
+                progress: newProgress,
+                status: newPlanStatus
+              })
+              .eq('id', planId);
+              
+            if (updatePlanError) {
+              console.error('❌ Error updating plan:', updatePlanError);
+            } else {
+              console.log('✅ Updated plan successfully');
             }
           }
-        } else {
-          console.log('ℹ️ This payment is not linked to a payment schedule');
+        } catch (planUpdateError) {
+          console.error('❌ Error in plan update logic:', planUpdateError);
         }
-      } else {
-        console.log('ℹ️ This payment is not linked to a payment request');
+      } else if (planId && !isFullRefund) {
+        console.log("💡 Not updating plan metrics for partial refund, only recording activity");
+      } else if (!planId) {
+        console.log("⚠️ No plan found to update metrics or record activity");
       }
+      
     } catch (planUpdateError) {
-      console.error('❌ Error updating payment plan:', planUpdateError);
+      console.error('❌ Error updating payment plan relationships:', planUpdateError);
       // Don't fail the whole refund if plan update fails
     }
     
+    // Continue with notification processing as before
     const { data: clinicData, error: clinicError } = await supabase
       .from('clinics')
       .select('*')
