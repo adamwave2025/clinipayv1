@@ -305,10 +305,9 @@ export const ManagePlansProvider: React.FC<{
   
   // Create wrapper functions for refund state to ensure proper typing
   // This explicitly wraps the refundState functions to match the expected types in context
-  const handleOpenRefundDialog = (paymentData: Payment | null) => {
-    if (paymentData) {
-      refundState.openRefundDialog(paymentData);
-    }
+  const handleOpenRefundDialog = (paymentDataOrId: Payment | string) => {
+    // Forward the call to the refundState hook's openRefundDialog function
+    refundState.openRefundDialog(paymentDataOrId);
   };
   
   const handleProcessRefund = (amount?: number) => {

@@ -78,11 +78,11 @@ export interface ManagePlansContextType {
   setShowTakePaymentDialog: (show: boolean) => void;
   onPaymentUpdated: () => Promise<void>;
   
-  // Refund properties - FIXED to use Payment | null type
+  // Refund properties - Updated to use correct type signature
   refundDialogOpen: boolean;
   setRefundDialogOpen: (open: boolean) => void;
   paymentToRefund: string | null;
-  openRefundDialog: (paymentData: Payment | null) => void; // Updated to correct type
+  openRefundDialog: (paymentData: Payment | string) => void; // Updated to accept either Payment or string
   processRefund: (amount?: number) => void;
   
   // Cancel plan properties
