@@ -119,8 +119,9 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
               ) : (
                 <p>Payment processed successfully</p>
               )}
-              {activity.details?.stripe_payment_id && 
-                <p className="text-xs text-gray-500">Reference: {activity.details.stripe_payment_id}</p>
+              {/* Use payment_ref instead of stripe_payment_id */}
+              {activity.details?.payment_ref && 
+                <p className="text-xs text-gray-500">Reference: {activity.details.payment_ref}</p>
               }
               {activity.details?.processed_at && 
                 <p className="text-xs text-gray-500">Processed: {formatDate(activity.details.processed_at)}</p>
@@ -211,8 +212,9 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
               {activity.details?.paymentNumber && activity.details?.totalPayments && (
                 <p>Payment {activity.details.paymentNumber} of {activity.details.totalPayments}</p>
               )}
-              {activity.details?.payment_reference && (
-                <p className="text-xs text-gray-500">Reference: {activity.details.payment_reference}</p>
+              {/* Use payment_ref instead of payment_reference */}
+              {activity.details?.payment_ref && (
+                <p className="text-xs text-gray-500">Reference: {activity.details.payment_ref}</p>
               )}
             </div>
           </>
@@ -228,8 +230,9 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
               {activity.details?.paymentNumber && activity.details?.totalPayments && (
                 <p>Payment {activity.details.paymentNumber} of {activity.details.totalPayments}</p>
               )}
-              {activity.details?.payment_reference && (
-                <p className="text-xs text-gray-500">Reference: {activity.details.payment_reference}</p>
+              {/* Use payment_ref instead of payment_reference */}
+              {activity.details?.payment_ref && (
+                <p className="text-xs text-gray-500">Reference: {activity.details.payment_ref}</p>
               )}
             </div>
           </>

@@ -63,7 +63,9 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
                     ) : (
                       <p>Reusable link: {payment.title || 'Payment'}</p>
                     )}
-                    {payment.reference && <p>Reference: {payment.reference}</p>}
+                    {/* Use payment_ref first if available, then fall back to reference */}
+                    {payment.payment_ref && <p>Reference: {payment.payment_ref}</p>}
+                    {!payment.payment_ref && payment.reference && <p>Reference: {payment.reference}</p>}
                   </div>
                   <p className="text-sm text-gray-500 mt-1">
                     {formatDateTime(payment.date, 'en-GB', 'Europe/London')}
@@ -93,8 +95,11 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
                     </div>
                     <div className="mt-1 space-y-1 text-sm">
                       <p>{activity.details?.planName ? `Payment plan: ${activity.details.planName}` : 'Payment'}</p>
-                      {activity.details?.reference && <p>Reference: {activity.details.reference}</p>}
-                      {activity.details?.payment_reference && <p>Reference: {activity.details.payment_reference}</p>}
+                      {/* Use payment_ref first if available, then fall back to other reference fields */}
+                      {activity.details?.payment_ref && <p>Reference: {activity.details.payment_ref}</p>}
+                      {!activity.details?.payment_ref && activity.details?.reference && <p>Reference: {activity.details.reference}</p>}
+                      {!activity.details?.payment_ref && !activity.details?.reference && activity.details?.payment_reference && 
+                        <p>Reference: {activity.details.payment_reference}</p>}
                     </div>
                     <p className="text-sm text-gray-500 mt-1">
                       {formatDateTime(activity.performedAt, 'en-GB', 'Europe/London')}

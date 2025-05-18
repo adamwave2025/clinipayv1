@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { PlanActivity, capitalize } from '@/utils/planActivityUtils';
 import { formatDate, formatCurrency, formatDateTime } from '@/utils/formatters';
@@ -133,8 +132,11 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
               ) : (
                 <p>Payment processed successfully</p>
               )}
-              {activity.details?.stripe_payment_id && 
-                <p className="text-xs text-gray-500">Reference: {activity.details.stripe_payment_id}</p>
+              {activity.details?.payment_reference && 
+                <p className="text-xs text-gray-500">Reference: {activity.details.payment_reference}</p>
+              }
+              {!activity.details?.payment_reference && activity.details?.payment_ref && 
+                <p className="text-xs text-gray-500">Reference: {activity.details.payment_ref}</p>
               }
               {activity.details?.processed_at && 
                 <p className="text-xs text-gray-500">Processed: {formatDate(activity.details.processed_at)}</p>
@@ -229,7 +231,10 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
               {activity.details?.payment_reference && (
                 <p className="text-xs text-gray-500">Reference: {activity.details.payment_reference}</p>
               )}
-              {activity.details?.reference && !activity.details?.payment_reference && (
+              {activity.details?.payment_ref && !activity.details?.payment_reference && (
+                <p className="text-xs text-gray-500">Reference: {activity.details.payment_ref}</p>
+              )}
+              {activity.details?.reference && !activity.details?.payment_reference && !activity.details?.payment_ref && (
                 <p className="text-xs text-gray-500">Reference: {activity.details.reference}</p>
               )}
             </div>
