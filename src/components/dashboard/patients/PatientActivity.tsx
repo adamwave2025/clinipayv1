@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDateTime, formatCurrency, formatDate } from '@/utils/formatters';
 import { getActionTypeLabel, capitalize } from '@/utils/planActivityUtils';
+import { supabase } from "@/integrations/supabase/client";
 import {
   CreditCard,
   MessageCircle,
@@ -28,6 +29,43 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
   planActivities,
   isLoading = false
 }) => {
+  // State to store payment references
+  const [paymentRefs, setPaymentRefs] = useState<Record<string, string>>({});
+  
+  // Fetch payment references for activities that have payment schedule IDs
+  useEffect(() => {
+    const fetchPaymentRefs = async () => {
+      if (!planActivities.length) return;
+      
+      const scheduleIds = planActivities
+        .filter(activity => 
+          ['payment_made', 'payment_refund', 'partial_refund'].includes(activity.actionType) && 
+          activity.details?.payment_schedule_id
+        )
+        .map(activity => activity.details?.payment_schedule_id);
+        
+      if (!scheduleIds.length) return;
+      
+      const { data } = await supabase
+        .from('payments')
+        .select('payment_schedule_id, payment_ref')
+        .in('payment_schedule_id', scheduleIds);
+        
+      if (data && data.length > 0) {
+        const refMap = data.reduce((map, item) => {
+          if (item.payment_schedule_id && item.payment_ref) {
+            map[item.payment_schedule_id] = item.payment_ref;
+          }
+          return map;
+        }, {} as Record<string, string>);
+        
+        setPaymentRefs(refMap);
+      }
+    };
+    
+    fetchPaymentRefs();
+  }, [planActivities]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-4">
@@ -63,7 +101,8 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
                     ) : (
                       <p>Reusable link: {payment.title || 'Payment'}</p>
                     )}
-                    {payment.reference && <p>Reference: {payment.reference}</p>}
+                    {payment.payment_ref && <p>Reference: {payment.payment_ref}</p>}
+                    {!payment.payment_ref && payment.reference && <p>Reference: {payment.reference}</p>}
                   </div>
                   <p className="text-sm text-gray-500 mt-1">
                     {formatDateTime(payment.date, 'en-GB', 'Europe/London')}
@@ -93,8 +132,13 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
                     </div>
                     <div className="mt-1 space-y-1 text-sm">
                       <p>{activity.details?.planName ? `Payment plan: ${activity.details.planName}` : 'Payment'}</p>
-                      {activity.details?.reference && <p>Reference: {activity.details.reference}</p>}
-                      {activity.details?.payment_reference && <p>Reference: {activity.details.payment_reference}</p>}
+                      {activity.details?.payment_schedule_id && paymentRefs[activity.details.payment_schedule_id] ? (
+                        <p>Reference: {paymentRefs[activity.details.payment_schedule_id]}</p>
+                      ) : activity.details?.payment_ref ? (
+                        <p>Reference: {activity.details.payment_ref}</p>
+                      ) : activity.details?.reference ? (
+                        <p>Reference: {activity.details.reference}</p>
+                      ) : null}
                     </div>
                     <p className="text-sm text-gray-500 mt-1">
                       {formatDateTime(activity.performedAt, 'en-GB', 'Europe/London')}

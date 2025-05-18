@@ -1,8 +1,8 @@
-
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { PlanActivity, capitalize } from '@/utils/planActivityUtils';
 import { formatDate, formatCurrency, formatDateTime } from '@/utils/formatters';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { supabase } from "@/integrations/supabase/client";
 import {
   FileText,
   CreditCard,
@@ -28,6 +28,9 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
   // Use state to store deduplicated activities
   const [processedActivities, setProcessedActivities] = useState<PlanActivity[]>([]);
   
+  // State to store payment references
+  const [paymentRefs, setPaymentRefs] = useState<Record<string, string>>({});
+  
   // Memoize and deduplicate activities to prevent duplicate rendering
   useEffect(() => {
     if (!Array.isArray(activities)) {
@@ -52,6 +55,40 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
     console.log('ActivityLog - Processed activities:', deduplicatedActivities.length);
     setProcessedActivities(deduplicatedActivities);
   }, [activities]);
+  
+  // Fetch payment references for activities that have payment schedule IDs
+  useEffect(() => {
+    const fetchPaymentRefs = async () => {
+      if (!processedActivities.length) return;
+      
+      const scheduleIds = processedActivities
+        .filter(activity => 
+          activity.actionType === 'card_payment_processed' && 
+          activity.details?.payment_schedule_id
+        )
+        .map(activity => activity.details?.payment_schedule_id);
+        
+      if (!scheduleIds.length) return;
+      
+      const { data } = await supabase
+        .from('payments')
+        .select('payment_schedule_id, payment_ref')
+        .in('payment_schedule_id', scheduleIds);
+        
+      if (data && data.length > 0) {
+        const refMap = data.reduce((map, item) => {
+          if (item.payment_schedule_id && item.payment_ref) {
+            map[item.payment_schedule_id] = item.payment_ref;
+          }
+          return map;
+        }, {} as Record<string, string>);
+        
+        setPaymentRefs(refMap);
+      }
+    };
+    
+    fetchPaymentRefs();
+  }, [processedActivities]);
   
   // Function to get icon based on action type - memoized for performance
   const getActivityIcon = useCallback((activity: PlanActivity) => {
@@ -133,9 +170,13 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
               ) : (
                 <p>Payment processed successfully</p>
               )}
-              {activity.details?.stripe_payment_id && 
-                <p className="text-xs text-gray-500">Reference: {activity.details.stripe_payment_id}</p>
-              }
+              {activity.details?.payment_schedule_id && paymentRefs[activity.details.payment_schedule_id] ? (
+                <p className="text-xs text-gray-500">Reference: {paymentRefs[activity.details.payment_schedule_id]}</p>
+              ) : activity.details?.payment_ref ? (
+                <p className="text-xs text-gray-500">Reference: {activity.details.payment_ref}</p>
+              ) : activity.details?.reference ? (
+                <p className="text-xs text-gray-500">Reference: {activity.details.reference}</p>
+              ) : null}
               {activity.details?.processed_at && 
                 <p className="text-xs text-gray-500">Processed: {formatDate(activity.details.processed_at)}</p>
               }
@@ -271,7 +312,7 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
           <div className="font-medium">{activity.actionType.replace(/_/g, ' ')}</div>
         );
     }
-  }, []);
+  }, [paymentRefs]);
 
   if (isLoading) {
     return (
