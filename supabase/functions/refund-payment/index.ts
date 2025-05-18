@@ -281,11 +281,12 @@ serve(async (req) => {
           } else {
             console.log('✅ Updated payment schedule status to:', scheduleStatus);
             
-            // Record the refund activity
+            // Record the refund activity - now including the plan_id field from scheduleItem
             const activityPayload = {
               patient_id: scheduleItem.patient_id,
               payment_link_id: scheduleItem.payment_link_id,
               clinic_id: scheduleItem.clinic_id,
+              plan_id: scheduleItem.plan_id, // Add the plan_id from the schedule item
               action_type: 'payment_refund',
               details: {
                 payment_number: scheduleItem.payment_number,
@@ -299,13 +300,61 @@ serve(async (req) => {
             };
             
             const { error: activityError } = await supabase
-              .from('payment_plan_activities')
+              .from('payment_activity')
               .insert(activityPayload);
               
             if (activityError) {
               console.error('❌ Error recording refund activity:', activityError);
             } else {
-              console.log('✅ Recorded refund activity successfully');
+              console.log('✅ Recorded refund activity successfully with plan_id:', scheduleItem.plan_id);
+            }
+            
+            // If we have a plan_id and this is a full refund, update the plan progress
+            if (scheduleItem.plan_id && isFullRefund) {
+              try {
+                // Get the current plan status
+                const { data: planData, error: planError } = await supabase
+                  .from('plans')
+                  .select('*')
+                  .eq('id', scheduleItem.plan_id)
+                  .single();
+                  
+                if (planError) {
+                  console.error('❌ Error fetching plan data:', planError);
+                } else if (planData) {
+                  console.log('📋 Found plan:', planData.id, 'with current paid_installments:', planData.paid_installments);
+                  
+                  // Decrement the paid installments count and recalculate progress
+                  const newPaidInstallments = Math.max(0, planData.paid_installments - 1);
+                  const newProgress = Math.floor((newPaidInstallments / planData.total_installments) * 100);
+                  
+                  // Determine new status if necessary
+                  let newPlanStatus = planData.status;
+                  if (planData.status === 'completed' && newPaidInstallments < planData.total_installments) {
+                    newPlanStatus = 'active';
+                  }
+                  
+                  console.log(`📊 Updating plan metrics: paid_installments=${newPaidInstallments}, progress=${newProgress}%, status=${newPlanStatus}`);
+                  
+                  // Update the plan
+                  const { error: updatePlanError } = await supabase
+                    .from('plans')
+                    .update({
+                      paid_installments: newPaidInstallments,
+                      progress: newProgress,
+                      status: newPlanStatus
+                    })
+                    .eq('id', scheduleItem.plan_id);
+                    
+                  if (updatePlanError) {
+                    console.error('❌ Error updating plan:', updatePlanError);
+                  } else {
+                    console.log('✅ Updated plan successfully');
+                  }
+                }
+              } catch (planUpdateError) {
+                console.error('❌ Error in plan update logic:', planUpdateError);
+              }
             }
           }
         } else {
