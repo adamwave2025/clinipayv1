@@ -139,7 +139,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
       toast.success(
         isFullRefund 
           ? 'Payment refunded successfully' 
-          : `Partial refund of ${formatCurrency(refundAmount)} processed successfully`
+          : `Partial refund of ${formatCurrency(refundAmount * 100)} processed successfully`
       );
       
       // Stagger dialog closures to prevent UI freezing

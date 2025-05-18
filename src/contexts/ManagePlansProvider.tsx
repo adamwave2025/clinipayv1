@@ -419,7 +419,8 @@ export const ManagePlansProvider: React.FC<{
   
   const handleRefund = async (amount?: number, paymentId?: string) => {
     // Use the provided paymentId if available, otherwise fall back to the state variable
-    const refundPaymentId = paymentId || paymentToRefund;
+    console.log('areeeeeeeeee weeeeeeeeeee callllllllinnnnnnff ttttthississ')
+    const refundPaymentId = paymentToRefund || paymentId;
     console.log('Handling refund for payment ID:', refundPaymentId, 'amount:', amount);
     
     if (!refundPaymentId) {
@@ -442,7 +443,8 @@ export const ManagePlansProvider: React.FC<{
       
       const refundAmount = amount || payment.amount;
       const epsilon = 0.001;
-      const isFullRefund = Math.abs(payment.amount - refundAmount) < epsilon;
+      console.log('difffeee ', Math.abs(selectedPlan.installmentAmount/100 - refundAmount))
+      const isFullRefund = Math.abs(selectedPlan.installmentAmount/100 - refundAmount) < epsilon;
 
       // Process the refund through the service
       const result = await PaymentRefundService.processRefund(refundPaymentId, refundAmount);
@@ -458,7 +460,7 @@ export const ManagePlansProvider: React.FC<{
       toast.success(
         isFullRefund 
           ? 'Payment refunded successfully' 
-          : `Partial refund of ${formatCurrency(refundAmount)} processed successfully`
+          : `Partial refund of ${formatCurrency(refundAmount * 100)} processed successfully`
       );
       
       // First close the refund dialog
