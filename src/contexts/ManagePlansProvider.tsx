@@ -443,7 +443,6 @@ export const ManagePlansProvider: React.FC<{
       
       const refundAmount = amount || payment.amount;
       const epsilon = 0.001;
-      console.log('difffeee ', Math.abs(selectedPlan.installmentAmount/100 - refundAmount))
       const isFullRefund = Math.abs(selectedPlan.installmentAmount/100 - refundAmount) < epsilon;
 
       // Process the refund through the service
