@@ -297,14 +297,7 @@ export const ManagePlansProvider: React.FC<{
   const [showPauseDialog, setShowPauseDialog] = useState(false);
   
   // Get refund state from hook
-  const {
-    refundDialogOpen,
-    setRefundDialogOpen,
-    paymentToRefund,
-    openRefundDialog,
-    processRefund,
-    isLoading: isRefundLoading
-  } = useRefundState();
+  const refundState = useRefundState();
   
   // Use the improved resume actions hook with refreshPlanState
   const { 
@@ -327,11 +320,6 @@ export const ManagePlansProvider: React.FC<{
   const handleOpenPauseDialog = () => {
     console.log("Opening pause dialog");
     setShowPauseDialog(true);
-  };
-  
-  const openRefundDialog = () => {
-    console.log("Opening refund dialog");
-    setRefundDialogOpen(true);
   };
   
   // Use updated action handlers that leverage refreshPlanState
@@ -420,13 +408,7 @@ export const ManagePlansProvider: React.FC<{
     await paymentRescheduleActions.handleReschedulePayment(newDate);
   };
   
-  const processRefund = async () => {
-    console.log("Process refund action called");
-    setRefundDialogOpen(false);
-    // Always reset to patient plans view after operations
-    setIsTemplateView(false);
-  };
-  
+  // Create handler for sending reminders
   const handleSendReminder = async () => {
     console.log("Send reminder action called");
   };
@@ -497,12 +479,12 @@ export const ManagePlansProvider: React.FC<{
         onPaymentUpdated,
         selectedInstallment, // This is the primary selectedInstallment state from useInstallmentActions
         
-        // Refund properties
-        refundDialogOpen,
-        setRefundDialogOpen,
-        paymentToRefund,
-        openRefundDialog,
-        processRefund,
+        // Refund properties - use the refundState directly
+        refundDialogOpen: refundState.refundDialogOpen,
+        setRefundDialogOpen: refundState.setRefundDialogOpen,
+        paymentToRefund: refundState.paymentToRefund,
+        openRefundDialog: refundState.openRefundDialog,
+        processRefund: refundState.processRefund,
         
         // Plan action dialogs and handlers
         showCancelDialog,
@@ -537,7 +519,7 @@ export const ManagePlansProvider: React.FC<{
         // Plan state helpers
         isPlanPaused,
         isProcessing: isProcessingInstallment || planRescheduleActions.isProcessing || 
-                     paymentRescheduleActions.isProcessing || isRefreshing || isRefundLoading,
+                     paymentRescheduleActions.isProcessing || isRefreshing || refundState.isLoading,
         resumeError
       }}
     >

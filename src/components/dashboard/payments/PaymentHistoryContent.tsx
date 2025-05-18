@@ -38,6 +38,13 @@ const PaymentHistoryContent: React.FC = () => {
     typeFilter,
     statusFilter
   });
+  
+  // Create a wrapper function that matches the expected signature
+  const handleOpenRefund = () => {
+    if (selectedPayment) {
+      openRefundDialog(selectedPayment);
+    }
+  };
 
   const handleDownloadReport = () => {
     if (filteredPayments.length === 0) {
@@ -99,7 +106,7 @@ const PaymentHistoryContent: React.FC = () => {
         payment={selectedPayment}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        onRefund={openRefundDialog}
+        onRefund={handleOpenRefund}
       />
 
       <PaymentRefundDialog

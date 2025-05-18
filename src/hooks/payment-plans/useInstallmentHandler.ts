@@ -13,14 +13,8 @@ export const useInstallmentHandler = () => {
   const { paymentData, fetchPaymentDetails, setPaymentData } = usePaymentDetailsFetcher();
   
   // Get refund functionality
-  const { 
-    refundDialogOpen, 
-    setRefundDialogOpen, 
-    openRefundDialog, 
-    processRefund,
-    isLoading: isRefundLoading 
-  } = useRefundState();
-
+  const refundState = useRefundState();
+  
   const handleViewPaymentDetails = async (installment: PlanInstallment) => {
     try {
       console.log('Viewing payment details for installment:', installment);
@@ -55,7 +49,7 @@ export const useInstallmentHandler = () => {
   
   const handleRefund = () => {
     if (paymentData && paymentData.status === 'paid') {
-      openRefundDialog(paymentData);
+      refundState.openRefundDialog(paymentData);
     }
   };
 
@@ -68,9 +62,11 @@ export const useInstallmentHandler = () => {
     handleViewPaymentDetails,
     // Refund related functions
     handleRefund,
-    refundDialogOpen,
-    setRefundDialogOpen,
-    processRefund,
-    isRefundLoading
+    refundDialogOpen: refundState.refundDialogOpen,
+    setRefundDialogOpen: refundState.setRefundDialogOpen,
+    processRefund: refundState.processRefund,
+    isRefundLoading: refundState.isLoading,
+    // Export the openRefundDialog function for external use
+    openRefundDialog: refundState.openRefundDialog
   };
 };
