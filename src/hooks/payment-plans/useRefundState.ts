@@ -11,12 +11,18 @@ export const useRefundState = () => {
   // Get dashboard data for refund functionality
   const { handleRefund } = useDashboardData();
   
-  const openRefundDialog = (paymentData: Payment | null) => {
-    if (paymentData && paymentData.id) {
-      setPaymentToRefund(paymentData.id);
+  // Updated to accept either a Payment object or a payment ID string
+  const openRefundDialog = (paymentDataOrId: Payment | string) => {
+    // Check if we received a Payment object or a string ID
+    const paymentId = typeof paymentDataOrId === 'string' 
+      ? paymentDataOrId 
+      : paymentDataOrId?.id;
+      
+    if (paymentId) {
+      setPaymentToRefund(paymentId);
       setRefundDialogOpen(true);
     } else {
-      console.error('No payment data available for refund');
+      console.error('No payment ID available for refund');
     }
   };
 

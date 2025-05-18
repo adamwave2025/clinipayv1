@@ -44,6 +44,7 @@ const DashboardContent = () => {
   // Create a wrapper function that matches the expected signature
   const handleOpenRefund = () => {
     if (selectedPayment) {
+      // Pass the actual payment object instead of just the ID
       openRefundDialog(selectedPayment);
     }
   };

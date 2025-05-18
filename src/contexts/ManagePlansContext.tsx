@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext } from 'react';
 import { Plan } from '@/utils/planTypes';
 import { Payment } from '@/types/payment';
@@ -77,11 +78,11 @@ export interface ManagePlansContextType {
   setShowTakePaymentDialog: (show: boolean) => void;
   onPaymentUpdated: () => Promise<void>;
   
-  // Refund properties
+  // Refund properties - FIXED to use Payment | null type
   refundDialogOpen: boolean;
   setRefundDialogOpen: (open: boolean) => void;
   paymentToRefund: string | null;
-  openRefundDialog: () => void;
+  openRefundDialog: (paymentData: Payment | null) => void; // Updated to correct type
   processRefund: (amount?: number) => void;
   
   // Cancel plan properties

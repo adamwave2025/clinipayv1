@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { isWithinInterval, parseISO } from 'date-fns';
@@ -42,6 +41,7 @@ const PaymentHistoryContent: React.FC = () => {
   // Create a wrapper function that matches the expected signature
   const handleOpenRefund = () => {
     if (selectedPayment) {
+      // Pass the actual payment object instead of just the ID
       openRefundDialog(selectedPayment);
     }
   };
@@ -143,8 +143,6 @@ function filterPayments(
     let matchesDateRange = true;
     if (dateRange?.from || dateRange?.to) {
       const paymentDate = parse(payment.date, 'dd/MM/yyyy', new Date());
-      console.log('payment date', paymentDate, dateRange);
-
       
       if (dateRange.from && dateRange.to) {
         matchesDateRange = isWithinInterval(paymentDate, { start: dateRange.from, end: dateRange.to });
