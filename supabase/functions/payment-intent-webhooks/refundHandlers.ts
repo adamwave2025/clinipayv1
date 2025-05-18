@@ -100,13 +100,11 @@ export async function handleRefundUpdated(refund: any, stripeClient: Stripe, sup
     } else if (requestData) {
       console.log(`Found associated payment request: ${requestData.id}`);
       
-      // Update payment plan if needed - passing false for the third parameter to indicate 
-      // that we don't want to reduce the paid installments count regardless of whether 
-      // this is a full or partial refund
+      // Update payment plan if needed - handle both full and partial refunds the same way
       await PlanService.updatePlanAfterRefund(
         supabaseClient,
         requestData.id,
-        isFullRefund // This flag now only affects the status, not the paid_installments count
+        true // Treat all refunds the same way to update metrics
       );
     }
     
