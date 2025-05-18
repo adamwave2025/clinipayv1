@@ -66,13 +66,15 @@ const ManagePlansHeader: React.FC<{
 
 // Create a wrapper component that can access the context
 const PaymentDetailsDialogWrapper = () => {
-  const { paymentData, showPaymentDetails, setShowPaymentDetails } = useManagePlansContext();
+  const { paymentData, showPaymentDetails, setShowPaymentDetails, openRefundDialog } = useManagePlansContext();
+  console.log('payment data in manage plans page', paymentData, showPaymentDetails, setShowPaymentDetails, openRefundDialog)
   
   return (
     <PaymentDetailDialog
       payment={paymentData}
       open={showPaymentDetails}
       onOpenChange={setShowPaymentDetails}
+      onRefund={openRefundDialog}
     />
   );
 };

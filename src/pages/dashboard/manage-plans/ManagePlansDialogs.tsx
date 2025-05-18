@@ -40,9 +40,9 @@ export const ManagePlansDialogs = () => {
     refundDialogOpen,
     setRefundDialogOpen,
     paymentToRefund,
-    processRefund,
+    handleRefund,
     resumeError,
-    
+    paymentData,    
     // Add the mark as paid dialog props
     showMarkAsPaidDialog,
     setShowMarkAsPaidDialog,
@@ -169,8 +169,9 @@ export const ManagePlansDialogs = () => {
           open={refundDialogOpen}
           onOpenChange={setRefundDialogOpen}
           paymentId={paymentToRefund}
-          onRefund={processRefund}
-          onConfirm={processRefund}
+          onRefund={handleRefund}
+          paymentAmount={paymentData?.amount}
+          patientName={paymentData?.patientName}
         />
       )}
     </>

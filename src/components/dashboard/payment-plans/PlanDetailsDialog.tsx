@@ -42,6 +42,7 @@ interface PlanDetailsDialogProps {
   onMarkAsPaid?: (installmentId: string) => void;
   onReschedule?: (installmentId: string) => void;
   onTakePayment?: (installmentId: string, installmentDetails?: PlanInstallment) => void;
+  onOpenRefundDialog?: (paymentId: string) => void;
 }
 
 const PlanDetailsDialog = ({
@@ -60,7 +61,8 @@ const PlanDetailsDialog = ({
   isPlanPaused,
   onMarkAsPaid,
   onReschedule,
-  onTakePayment
+  onTakePayment,
+  onOpenRefundDialog
 }: PlanDetailsDialogProps) => {
   if (!selectedPlan) return null;
   
@@ -69,6 +71,7 @@ const PlanDetailsDialog = ({
 
   // Function to handle row click and navigate to payment details
   const handleRowClick = (installment: PlanInstallment, e: React.MouseEvent) => {
+    console.log('refund dialog', onOpenRefundDialog)
     // Only trigger click for paid, refunded, or partially_refunded installments and don't navigate when clicking action buttons
     if ((installment.status === 'paid' || installment.status === 'refunded' || installment.status === 'partially_refunded') && !e.defaultPrevented) {
       console.log("Row clicked for installment:", installment);

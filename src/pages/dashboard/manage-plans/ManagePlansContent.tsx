@@ -5,6 +5,7 @@ import ActivePlansTable from '@/components/dashboard/payment-plans/ActivePlansTa
 import { useManagePlansContext } from '@/contexts/ManagePlansContext';
 import PlanDetailsDialog from '@/components/dashboard/payment-plans/PlanDetailsDialog';
 import ManagePlansDialogs from './ManagePlansDialogs';
+import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 
 const ManagePlansContent: React.FC = () => {
   const {
@@ -32,7 +33,12 @@ const ManagePlansContent: React.FC = () => {
     handleMarkAsPaid,
     handleOpenReschedule,
     handleTakePayment,
-    isPlanPaused
+    isPlanPaused,
+    openRefundDialog,
+    refundDialogOpen,
+    setRefundDialogOpen,
+    paymentData,
+    handleRefund,
   } = useManagePlansContext();
 
   // Calculate the total number of plans from the unfiltered allPlans array
@@ -40,6 +46,8 @@ const ManagePlansContent: React.FC = () => {
   
   console.log('ManagePlansContent rendering with showPlanDetails:', showPlanDetails);
   console.log('ManagePlansContent has selectedPlan:', selectedPlan?.id);
+  console.log('open refund dialog in managenlans content', openRefundDialog);
+  console.log(paymentData)
 
   return (
     <div className="space-y-6">
@@ -82,7 +90,16 @@ const ManagePlansContent: React.FC = () => {
         onMarkAsPaid={handleMarkAsPaid}
         onReschedule={handleOpenReschedule}
         onTakePayment={handleTakePayment}
+        onOpenRefundDialog={openRefundDialog}
       />
+
+      {/* <PaymentRefundDialog
+        open={refundDialogOpen}
+        onOpenChange={setRefundDialogOpen}
+        onRefund={handleRefund}
+        paymentAmount={paymentData?.amount}
+        patientName={paymentData?.patientName}
+      />     */}
       
       {/* Include the ManagePlansDialogs component here */}
       <ManagePlansDialogs />

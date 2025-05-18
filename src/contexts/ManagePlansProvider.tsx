@@ -17,6 +17,8 @@ import { toast } from '@/hooks/use-toast';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPlanFromDb } from '@/utils/planDataFormatter';
+import { PaymentRefundService } from '@/services/PaymentRefundService';
+import { formatCurrency } from '@/utils/formatters';
 
 export const ManagePlansProvider: React.FC<{
   children: React.ReactNode;
@@ -296,6 +298,9 @@ export const ManagePlansProvider: React.FC<{
   const [showPauseDialog, setShowPauseDialog] = useState(false);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
+  const [isProcessingRefund, setIsProcessingRefund] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+
   
   // Use the improved resume actions hook with refreshPlanState
   const { 
@@ -320,8 +325,9 @@ export const ManagePlansProvider: React.FC<{
     setShowPauseDialog(true);
   };
   
-  const openRefundDialog = () => {
-    console.log("Opening refund dialog");
+  const openRefundDialog = (paymentId: string) => {
+    console.log("Opening refund dialog for paymentId", paymentId);
+    setPaymentToRefund(paymentId);
     setRefundDialogOpen(true);
   };
   
@@ -411,11 +417,89 @@ export const ManagePlansProvider: React.FC<{
     await paymentRescheduleActions.handleReschedulePayment(newDate);
   };
   
-  const processRefund = async () => {
-    console.log("Process refund action called");
-    setRefundDialogOpen(false);
-    // Always reset to patient plans view after operations
-    setIsTemplateView(false);
+  const handleRefund = async (amount?: number, paymentId?: string) => {
+    // Use the provided paymentId if available, otherwise fall back to the state variable
+    const refundPaymentId = paymentId || paymentToRefund;
+    console.log('Handling refund for payment ID:', refundPaymentId, 'amount:', amount);
+    
+    if (!refundPaymentId) {
+      console.error('No payment ID provided for refund');
+      return;
+    }
+    
+    // Create a unique ID for the toast to allow dismissal
+    const loadingToastId = toast.loading('Processing refund...');
+    
+    try {
+      setIsProcessingRefund(true);
+      
+      const payment = paymentData;
+      if (!payment) {
+        console.error('Payment not found for ID:', refundPaymentId);
+        throw new Error('Payment not found');
+      }
+      console.log('Found payment to refund:', payment);
+      
+      const refundAmount = amount || payment.amount;
+      const epsilon = 0.001;
+      const isFullRefund = Math.abs(payment.amount - refundAmount) < epsilon;
+
+      // Process the refund through the service
+      const result = await PaymentRefundService.processRefund(refundPaymentId, refundAmount);
+      
+      // Always dismiss the loading toast
+      toast.dismiss(loadingToastId);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Refund processing failed');
+      }
+      
+      // // Update the local state with the refunded payment
+      // setPayments(PaymentRefundService.getUpdatedPaymentAfterRefund(
+      //   payments, 
+      //   refundPaymentId, 
+      //   refundAmount
+      // ));
+      
+      // Show success message
+      toast.success(
+        isFullRefund 
+          ? 'Payment refunded successfully' 
+          : `Partial refund of ${formatCurrency(refundAmount)} processed successfully`
+      );
+      
+      // Stagger dialog closures to prevent UI freezing
+      // First close the refund dialog
+      setRefundDialogOpen(false);
+      
+      // Wait a small amount of time before closing the detail dialog
+      // This gives the UI time to process the first dialog closure
+      setTimeout(() => {
+        setDetailDialogOpen(false);
+        // Then clear the payment to refund state
+        setTimeout(() => {
+          setPaymentToRefund(null);
+          setIsProcessingRefund(false);
+        }, 50);
+      }, 100);
+      
+    } catch (error: any) {
+      // Always dismiss the loading toast
+      toast.dismiss(loadingToastId);
+      
+      console.error('Error refunding payment:', error);
+      toast.error(`Failed to refund payment: ${error.message}`);
+      
+      // Still need to reset state on error, but do it in a staggered way
+      setTimeout(() => {
+        setIsProcessingRefund(false);
+        setRefundDialogOpen(false);
+        setTimeout(() => {
+          setDetailDialogOpen(false);
+          setPaymentToRefund(null);
+        }, 50);
+      }, 100);
+    }
   };
   
   const handleSendReminder = async () => {
@@ -429,8 +513,7 @@ export const ManagePlansProvider: React.FC<{
         searchQuery,
         setSearchQuery,
         statusFilter,
-        setStatusFilter,
-        
+        setStatusFilter,        
         // Plan data
         plans,
         allPlans,
@@ -493,7 +576,10 @@ export const ManagePlansProvider: React.FC<{
         setRefundDialogOpen,
         paymentToRefund,
         openRefundDialog,
-        processRefund,
+        handleRefund,
+        isProcessingRefund,
+        detailDialogOpen,
+        setDetailDialogOpen,
         
         // Plan action dialogs and handlers
         showCancelDialog,
