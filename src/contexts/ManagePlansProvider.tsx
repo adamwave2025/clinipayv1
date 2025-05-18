@@ -15,6 +15,8 @@ import { usePaymentRescheduleActions } from '@/hooks/payment-plans/usePaymentRes
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { toast } from '@/hooks/use-toast';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
+import { supabase } from '@/integrations/supabase/client';
+import { formatPlanFromDb } from '@/utils/planDataFormatter';
 
 export const ManagePlansProvider: React.FC<{
   children: React.ReactNode;
@@ -46,7 +48,8 @@ export const ManagePlansProvider: React.FC<{
     }
   };
   
-  // NEW: Centralized refresh function that maintains plan card visibility
+  // MODIFIED: Centralized refresh function that maintains plan card visibility
+  // and directly fetches plan data from the database
   const refreshPlanState = async (planId: string) => {
     if (!planId) {
       console.error("Cannot refresh plan state: No plan ID provided");
@@ -65,16 +68,34 @@ export const ManagePlansProvider: React.FC<{
       // 2. If this is for the currently selected plan, refresh its details too
       if (selectedPlan && selectedPlan.id === planId) {
         console.log("Refreshing selected plan details");
+        
         // Get fresh installment data
         await fetchPlanInstallmentsData(planId);
         
-        // The selected plan might need updating from the fresh data
-        const refreshedPlan = allPlans.find(p => p.id === planId);
-        if (refreshedPlan) {
-          console.log("Found refreshed plan data with status:", refreshedPlan.status);
+        // IMPROVED: Directly fetch the updated plan data from the database
+        // instead of looking it up in the potentially stale allPlans array
+        const { data: updatedPlanData, error } = await supabase
+          .from('plans')
+          .select(`
+            *,
+            patients (
+              id, name, email, phone
+            )
+          `)
+          .eq('id', planId)
+          .single();
+        
+        if (error) {
+          console.error("Error fetching refreshed plan:", error);
+        } else if (updatedPlanData) {
+          // Format and update the selected plan state with fresh data
+          const refreshedPlan = formatPlanFromDb(updatedPlanData);
+          if (!refreshedPlan.patientName && refreshedPlan.patients?.name) {
+            refreshedPlan.patientName = refreshedPlan.patients.name;
+            refreshedPlan.patientEmail = refreshedPlan.patients.email;
+          }
+          console.log("Setting refreshed plan with new data:", refreshedPlan);
           setSelectedPlan(refreshedPlan);
-        } else {
-          console.log("Could not find refreshed plan in allPlans");
         }
       }
     } catch (error) {
