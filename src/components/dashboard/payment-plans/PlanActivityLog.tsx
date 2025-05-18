@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+
+import React, { useEffect } from 'react';
 import { PlanActivity, getActionTypeLabel, capitalize } from '@/utils/planActivityUtils';
 import { formatDate, formatCurrency, formatDateTime } from '@/utils/formatters';
-import { supabase } from "@/integrations/supabase/client";
 import {
   FileText,
   CreditCard,
@@ -20,9 +20,6 @@ interface PlanActivityLogProps {
 }
 
 const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
-  // State to store payment references
-  const [paymentRefs, setPaymentRefs] = useState<Record<string, string>>({});
-  
   // Add useEffect to debug the activity data
   useEffect(() => {
     console.log('PlanActivityLog - Received activities:', activities);
@@ -35,40 +32,6 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
         });
       });
     }
-  }, [activities]);
-  
-  // Fetch payment references for activities that have payment schedule IDs
-  useEffect(() => {
-    const fetchPaymentRefs = async () => {
-      if (!activities.length) return;
-      
-      const scheduleIds = activities
-        .filter(activity => 
-          activity.actionType === 'card_payment_processed' && 
-          activity.details?.payment_schedule_id
-        )
-        .map(activity => activity.details?.payment_schedule_id);
-        
-      if (!scheduleIds.length) return;
-      
-      const { data } = await supabase
-        .from('payments')
-        .select('payment_schedule_id, payment_ref')
-        .in('payment_schedule_id', scheduleIds);
-        
-      if (data && data.length > 0) {
-        const refMap = data.reduce((map, item) => {
-          if (item.payment_schedule_id && item.payment_ref) {
-            map[item.payment_schedule_id] = item.payment_ref;
-          }
-          return map;
-        }, {} as Record<string, string>);
-        
-        setPaymentRefs(refMap);
-      }
-    };
-    
-    fetchPaymentRefs();
   }, [activities]);
   
   // Function to get icon based on action type
@@ -156,13 +119,9 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
               ) : (
                 <p>Payment processed successfully</p>
               )}
-              {activity.details?.payment_schedule_id && paymentRefs[activity.details.payment_schedule_id] ? (
-                <p className="text-xs text-gray-500">Reference: {paymentRefs[activity.details.payment_schedule_id]}</p>
-              ) : activity.details?.payment_ref ? (
-                <p className="text-xs text-gray-500">Reference: {activity.details.payment_ref}</p>
-              ) : activity.details?.reference ? (
-                <p className="text-xs text-gray-500">Reference: {activity.details.reference}</p>
-              ) : null}
+              {activity.details?.stripe_payment_id && 
+                <p className="text-xs text-gray-500">Reference: {activity.details.stripe_payment_id}</p>
+              }
               {activity.details?.processed_at && 
                 <p className="text-xs text-gray-500">Processed: {formatDate(activity.details.processed_at)}</p>
               }
