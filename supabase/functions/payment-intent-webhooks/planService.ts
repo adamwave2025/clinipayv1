@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
@@ -240,14 +239,20 @@ export class PlanService {
       
       console.log(`Updated payment schedule ${scheduleData.id} status to ${isFullRefund ? 'refunded' : 'partially_refunded'}`);
       
-      // If this is a full refund, we need to update the plan's paid_installments count
-      if (isFullRefund && scheduleData.plan_id) {
-        console.log(`Updating plan ${scheduleData.plan_id} for refunded payment`);
+      // MODIFIED: Do not reduce the paid_installments count even for full refunds
+      // We'll just update the status of the payment schedule item but leave the plan's
+      // paid_installments count unchanged
+      
+      if (scheduleData.plan_id) {
+        console.log(`Plan ${scheduleData.plan_id} metrics will not be adjusted for refunded payments`);
         
-        // Get the current plan data
+        // MODIFIED: Only update the plan with a status change if needed,
+        // but don't decrease the paid_installments count
+        
+        // Get the current plan data just to log information
         const { data: planData, error: planError } = await supabaseClient
           .from("plans")
-          .select("total_installments")
+          .select("total_installments, paid_installments")
           .eq("id", scheduleData.plan_id)
           .single();
           
@@ -261,36 +266,7 @@ export class PlanService {
           return;
         }
         
-        // MODIFIED: Count actual paid installments from payment_schedule table
-        // instead of decrementing a counter
-        const { count: paidInstallments, error: countError } = await supabaseClient
-          .from("payment_schedule")
-          .select("id", { count: 'exact', head: true })
-          .eq("plan_id", scheduleData.plan_id)
-          .eq("status", "paid");
-          
-        if (countError) {
-          console.error("Error counting paid installments after refund:", countError);
-          return;
-        }
-        
-        const progress = Math.floor((paidInstallments / planData.total_installments) * 100) || 0;
-        
-        // Update the plan
-        const { error: planUpdateError } = await supabaseClient
-          .from("plans")
-          .update({
-            paid_installments: paidInstallments,
-            progress: progress,
-            // Don't change the status - let the cron job handle that
-          })
-          .eq("id", scheduleData.plan_id);
-          
-        if (planUpdateError) {
-          console.error("Error updating plan:", planUpdateError);
-        } else {
-          console.log(`Updated plan ${scheduleData.plan_id} paid_installments to ${paidInstallments}`);
-        }
+        console.log(`Plan metrics remaining unchanged: paid_installments=${planData.paid_installments}, total=${planData.total_installments}`);
       }
     } catch (error) {
       console.error("Error updating plan after refund:", error);
