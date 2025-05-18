@@ -76,8 +76,8 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
       case 'plan_resumed':
         return <PlayCircle className="h-4 w-4 text-green-500" />;
       case 'payment_refunded':
-        return <RefreshCcw className="h-4 w-4 text-orange-500" />;
       case 'payment_refund':
+      case 'partial_refund':
         return <RefreshCcw className="h-4 w-4 text-orange-500" />;
       case 'payment_reminder_sent':
         return <MessageCircle className="h-4 w-4 text-blue-500" />;
@@ -212,15 +212,16 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
         );
       case 'payment_refunded':
       case 'payment_refund':
+      case 'partial_refund':
+        const isPartial = activity.actionType === 'partial_refund';
         return (
           <>
-            <div className="font-medium">Payment refunded</div>
+            <div className="font-medium">
+              {isPartial ? "Payment partially refunded" : "Payment fully refunded"}
+            </div>
             <div className="mt-1 space-y-1 text-sm">
               {activity.details?.refundAmount && (
                 <p>Refund amount: {formatCurrency(activity.details.refundAmount)}</p>
-              )}
-              {activity.details?.isFullRefund !== undefined && (
-                <p>{activity.details.isFullRefund ? "Full refund" : "Partial refund"}</p>
               )}
               {activity.details?.paymentNumber && activity.details?.totalPayments && (
                 <p>Payment {activity.details.paymentNumber} of {activity.details.totalPayments}</p>

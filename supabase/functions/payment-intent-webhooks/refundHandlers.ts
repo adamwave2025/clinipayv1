@@ -66,7 +66,7 @@ export async function handleRefundUpdated(refund: any, stripeClient: Stripe, sup
     
     // Check if this is a full or partial refund
     const paymentAmount = paymentData.amount_paid;
-    const refundAmount = refund.amount / 100; // Convert from cents to pounds
+    const refundAmount = refund.amount;
     const isFullRefund = refundAmount >= paymentAmount;
     
     console.log(`Refund amount: ${refundAmount}, Payment amount: ${paymentAmount}, Full refund: ${isFullRefund}`);
@@ -100,11 +100,11 @@ export async function handleRefundUpdated(refund: any, stripeClient: Stripe, sup
     } else if (requestData) {
       console.log(`Found associated payment request: ${requestData.id}`);
       
-      // Update payment plan if needed
+      // Update payment plan if needed - handle both full and partial refunds the same way
       await PlanService.updatePlanAfterRefund(
         supabaseClient,
         requestData.id,
-        isFullRefund
+        true // Treat all refunds the same way to update metrics
       );
     }
     

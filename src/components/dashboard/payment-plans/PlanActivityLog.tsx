@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { PlanActivity, getActionTypeLabel, capitalize } from '@/utils/planActivityUtils';
 import { formatDate, formatCurrency, formatDateTime } from '@/utils/formatters';
@@ -56,6 +57,8 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
       case 'plan_resumed':
         return <PlayCircle className="h-4 w-4 text-green-500" />;
       case 'payment_refunded':
+      case 'payment_refund':
+      case 'partial_refund':
         return <RefreshCcw className="h-4 w-4 text-orange-500" />;
       case 'payment_reminder_sent':
         return <MessageCircle className="h-4 w-4 text-blue-500" />;
@@ -194,9 +197,10 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
           </>
         );
       case 'payment_refunded':
+      case 'payment_refund':
         return (
           <>
-            <div className="font-medium">Payment refunded</div>
+            <div className="font-medium">Payment fully refunded</div>
             <div className="mt-1 space-y-1 text-sm">
               {activity.details?.refundAmount && (
                 <p>Refund amount: {formatCurrency(activity.details.refundAmount)}</p>
@@ -206,6 +210,26 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
               )}
               {activity.details?.paymentNumber && activity.details?.totalPayments && (
                 <p>Payment {activity.details.paymentNumber} of {activity.details.totalPayments}</p>
+              )}
+              {activity.details?.payment_reference && (
+                <p className="text-xs text-gray-500">Reference: {activity.details.payment_reference}</p>
+              )}
+            </div>
+          </>
+        );
+      case 'partial_refund':
+        return (
+          <>
+            <div className="font-medium">Payment partially refunded</div>
+            <div className="mt-1 space-y-1 text-sm">
+              {activity.details?.refundAmount && (
+                <p>Refund amount: {formatCurrency(activity.details.refundAmount)}</p>
+              )}
+              {activity.details?.paymentNumber && activity.details?.totalPayments && (
+                <p>Payment {activity.details.paymentNumber} of {activity.details.totalPayments}</p>
+              )}
+              {activity.details?.payment_reference && (
+                <p className="text-xs text-gray-500">Reference: {activity.details.payment_reference}</p>
               )}
             </div>
           </>

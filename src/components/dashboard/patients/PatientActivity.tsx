@@ -12,7 +12,8 @@ import {
   PauseCircle,
   PlayCircle,
   CalendarClock,
-  FileText
+  FileText,
+  RefreshCcw
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
@@ -74,19 +75,26 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
             {/* Only include specific activity types for patient view */}
             {planActivities
               .filter(activity => 
-                ['payment_made', 'payment_refund'].includes(activity.actionType))
+                ['payment_made', 'payment_refund', 'partial_refund'].includes(activity.actionType))
               .map((activity) => (
                 <div key={activity.id} className="flex items-start gap-3 p-3 border rounded-md">
                   <div className="mt-1">
-                    <CreditCard className="h-4 w-4 text-green-500" />
+                    {activity.actionType.includes('refund') ? (
+                      <RefreshCcw className="h-4 w-4 text-orange-500" />
+                    ) : (
+                      <CreditCard className="h-4 w-4 text-green-500" />
+                    )}
                   </div>
                   <div className="flex-1">
                     <div className="font-medium">
-                      Payment received for {formatCurrency(activity.details?.amount || 0)}
+                      {activity.actionType.includes('refund') 
+                        ? `Payment ${activity.actionType === 'partial_refund' ? 'partially' : 'fully'} refunded for ${formatCurrency(activity.details?.refundAmount || 0)}` 
+                        : `Payment received for ${formatCurrency(activity.details?.amount || 0)}`}
                     </div>
                     <div className="mt-1 space-y-1 text-sm">
                       <p>{activity.details?.planName ? `Payment plan: ${activity.details.planName}` : 'Payment'}</p>
                       {activity.details?.reference && <p>Reference: {activity.details.reference}</p>}
+                      {activity.details?.payment_reference && <p>Reference: {activity.details.payment_reference}</p>}
                     </div>
                     <p className="text-sm text-gray-500 mt-1">
                       {formatDateTime(activity.performedAt, 'en-GB', 'Europe/London')}

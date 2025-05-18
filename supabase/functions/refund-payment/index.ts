@@ -360,17 +360,21 @@ serve(async (req) => {
         
         // Record the refund activity with the plan_id from the schedule item
         if (planId) {
+          // Use different action type based on whether it's a full or partial refund
+          const actionType = isFullRefund ? 'payment_refund' : 'partial_refund';
+          
           const activityPayload = {
             patient_id: scheduleItem.patient_id,
             payment_link_id: scheduleItem.payment_link_id,
             clinic_id: scheduleItem.clinic_id,
             plan_id: planId, 
-            action_type: 'payment_refund',
+            action_type: actionType,
             details: {
               payment_number: scheduleItem.payment_number,
               total_payments: scheduleItem.total_payments,
-              refund_amount: refundAmountToStore,
+              refundAmount: refundAmountToStore,
               is_full_refund: isFullRefund,
+              isFullRefund: isFullRefund,
               payment_reference: payment.payment_ref || '',
               refund_date: currentTimestamp,
               original_amount: scheduleItem.amount / 100, // Convert cents to pounds
@@ -385,12 +389,12 @@ serve(async (req) => {
           if (activityError) {
             console.error('❌ Error recording refund activity:', activityError);
           } else {
-            console.log('✅ Recorded refund activity successfully with plan_id:', planId);
+            console.log(`✅ Recorded ${actionType} activity successfully with plan_id:`, planId);
           }
         }
       }
       
-      // MODIFIED: Update plan metrics for both full AND partial refunds the same way
+      // Update plan metrics for both full AND partial refunds the same way
       if (planId) {
         try {
           // Get the current plan status and metrics
