@@ -390,7 +390,7 @@ serve(async (req) => {
         }
       }
       
-      // MODIFIED: Update plan metrics for both full AND partial refunds
+      // MODIFIED: Update plan metrics for both full AND partial refunds the same way
       if (planId) {
         try {
           // Get the current plan status and metrics
@@ -405,69 +405,56 @@ serve(async (req) => {
           } else if (planData) {
             console.log('📋 Found plan:', planData.id, 'with current paid_installments:', planData.paid_installments);
             
-            // For full refunds: decrement paid installments
-            // For partial refunds: don't change paid installments count
-            let newPaidInstallments = planData.paid_installments;
-            let updateRequired = false;
-            
-            if (isFullRefund) {
-              newPaidInstallments = Math.max(0, planData.paid_installments - 1);
-              updateRequired = true;
-              console.log(`💰 Full refund: Decrementing paid installments to ${newPaidInstallments}`);
-            } else {
-              // For partial refunds, we don't decrement the counter but still update next_due_date
-              console.log(`💰 Partial refund: Not changing paid installments count, but updating other metrics`);
-              updateRequired = true;
-            }
+            // For both full and partial refunds: decrement paid installments
+            let newPaidInstallments = Math.max(0, planData.paid_installments - 1);
+            console.log(`💰 Refund: Decrementing paid installments to ${newPaidInstallments}`);
             
             // Recalculate progress for both full and partial refunds
             const newProgress = Math.floor((newPaidInstallments / planData.total_installments) * 100);
+            
+            // Log what we're updating
+            console.log(`📊 Updating plan metrics for ${isFullRefund ? 'full' : 'partial'} refund: paid_installments=${newPaidInstallments}, progress=${newProgress}%`);
             
             // Determine new status if necessary
             let newPlanStatus = planData.status;
             if (planData.status === 'completed' && newPaidInstallments < planData.total_installments) {
               newPlanStatus = 'active';
+              console.log(`🔄 Changing plan status from completed to active`);
             }
             
-            // For both full and partial refunds, we need to update the next due date
-            // This will query for the earliest pending payment and update next_due_date
-            if (updateRequired) {
-              console.log(`📊 Updating plan metrics for ${isFullRefund ? 'full' : 'partial'} refund: paid_installments=${newPaidInstallments}, progress=${newProgress}%, status=${newPlanStatus}`);
+            // Find the earliest unpaid payment date
+            const { data: nextPayments, error: nextPaymentsError } = await supabase
+              .from('payment_schedule')
+              .select('due_date')
+              .eq('plan_id', planId)
+              .in('status', ['pending', 'sent', 'overdue'])
+              .order('due_date', { ascending: true })
+              .limit(1);
               
-              // Find the earliest unpaid payment date
-              const { data: nextPayments, error: nextPaymentsError } = await supabase
-                .from('payment_schedule')
-                .select('due_date')
-                .eq('plan_id', planId)
-                .in('status', ['pending', 'sent', 'overdue'])
-                .order('due_date', { ascending: true })
-                .limit(1);
-                
-              let nextDueDate = null;
-              if (!nextPaymentsError && nextPayments && nextPayments.length > 0) {
-                nextDueDate = nextPayments[0].due_date;
-                console.log(`🗓️ Found next due date: ${nextDueDate}`);
-              } else {
-                console.log('📅 No upcoming payments found');
-              }
+            let nextDueDate = null;
+            if (!nextPaymentsError && nextPayments && nextPayments.length > 0) {
+              nextDueDate = nextPayments[0].due_date;
+              console.log(`🗓️ Found next due date: ${nextDueDate}`);
+            } else {
+              console.log('📅 No upcoming payments found');
+            }
+            
+            // Update the plan with all calculated metrics
+            const { error: updatePlanError } = await supabase
+              .from('plans')
+              .update({
+                paid_installments: newPaidInstallments,
+                progress: newProgress,
+                status: newPlanStatus,
+                next_due_date: nextDueDate,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', planId);
               
-              // Update the plan with all calculated metrics
-              const { error: updatePlanError } = await supabase
-                .from('plans')
-                .update({
-                  paid_installments: newPaidInstallments,
-                  progress: newProgress,
-                  status: newPlanStatus,
-                  next_due_date: nextDueDate,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', planId);
-                
-              if (updatePlanError) {
-                console.error('❌ Error updating plan:', updatePlanError);
-              } else {
-                console.log('✅ Updated plan successfully with metrics and next_due_date');
-              }
+            if (updatePlanError) {
+              console.error('❌ Error updating plan:', updatePlanError);
+            } else {
+              console.log('✅ Updated plan successfully with metrics and next_due_date');
             }
           }
         } catch (planUpdateError) {
