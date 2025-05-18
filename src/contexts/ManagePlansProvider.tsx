@@ -461,26 +461,21 @@ export const ManagePlansProvider: React.FC<{
           : `Partial refund of ${formatCurrency(refundAmount)} processed successfully`
       );
       
-      // Stagger dialog closures to prevent UI freezing
       // First close the refund dialog
       setRefundDialogOpen(false);
       
-      // Wait a small amount of time before closing the detail dialog
-      // This gives the UI time to process the first dialog closure
-      setTimeout(() => {
-        setDetailDialogOpen(false);
-        // Then clear the payment to refund state
-        setTimeout(() => {
-          setPaymentToRefund(null);
-          setIsProcessingRefund(false);
-          
-          // ADDED: Refresh the plan state if we have a selected plan
-          if (selectedPlan) {
-            console.log('Refreshing plan state after refund for plan:', selectedPlan.id);
-            refreshPlanState(selectedPlan.id);
-          }
-        }, 50);
-      }, 100);
+      // Important: Also close the payment details dialog
+      setShowPaymentDetails(false);
+      
+      // Then clear the payment to refund state and payment data
+      setPaymentToRefund(null);
+      setIsProcessingRefund(false);
+      
+      // ADDED: Refresh the plan state if we have a selected plan
+      if (selectedPlan) {
+        console.log('Refreshing plan state after refund for plan:', selectedPlan.id);
+        await refreshPlanState(selectedPlan.id);
+      }
       
     } catch (error: any) {
       // Always dismiss the loading toast
@@ -489,15 +484,11 @@ export const ManagePlansProvider: React.FC<{
       console.error('Error refunding payment:', error);
       toast.error(`Failed to refund payment: ${error.message}`);
       
-      // Still need to reset state on error, but do it in a staggered way
-      setTimeout(() => {
-        setIsProcessingRefund(false);
-        setRefundDialogOpen(false);
-        setTimeout(() => {
-          setDetailDialogOpen(false);
-          setPaymentToRefund(null);
-        }, 50);
-      }, 100);
+      // Still need to reset state on error
+      setIsProcessingRefund(false);
+      setRefundDialogOpen(false);
+      setShowPaymentDetails(false);
+      setPaymentToRefund(null);
     }
   };
   
