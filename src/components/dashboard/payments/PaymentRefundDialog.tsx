@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,51 +39,71 @@ const PaymentRefundDialog: React.FC<PaymentRefundDialogProps> = ({
   const [refundAmount, setRefundAmount] = useState<number>(paymentAmount);
   const [refundAmountDisplay, setRefundAmountDisplay] = useState<string>('');
   const [isPartialRefund, setIsPartialRefund] = useState<boolean>(false);
-  const [hasError, setHasError] = useState<boolean>(false);
-  
-  // Choose between onRefund and onConfirm (for compatibility)
-  const handleRefund = onRefund || onConfirm;
+  const [error, setError] = useState<string | null>(null);
 
-  // Format display value and validate
+  // Reset state when dialog opens or payment amount changes
   useEffect(() => {
-    if (open) {
-      // Format the initial amount when dialog opens
-      const formattedAmount = penceToPounds(paymentAmount).toFixed(2);
-      setRefundAmountDisplay(formattedAmount);
-      setRefundAmount(penceToPounds(paymentAmount));
-      setIsPartialRefund(false);
-      setHasError(false);
-    }
+    // Convert from pence to pounds for display
+    const amountInPounds = penceToPounds(paymentAmount);
+    setRefundAmount(amountInPounds); // Start with full amount
+    setRefundAmountDisplay(amountInPounds.toFixed(2));
+    setIsPartialRefund(false);
+    setError(null);
   }, [open, paymentAmount]);
-  
-  // Handle text input change for currency
+
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value;
+    const value = e.target.value;
+    setRefundAmountDisplay(value);
     
-    // Allow only numbers, one decimal point, and limit to 2 decimal places
-    if (/^[0-9]*\.?[0-9]{0,2}$/.test(inputValue) || inputValue === '') {
-      setRefundAmountDisplay(inputValue);
-      
-      // Convert to number for internal state
-      const numericValue = inputValue === '' ? 0 : parseFloat(inputValue);
+    const numericValue = parseFloat(value);
+    if (isNaN(numericValue)) {
+      setError('Please enter a valid amount');
+      return;
+    }
+    
+    const amountInPounds = penceToPounds(paymentAmount);
+    if (numericValue <= 0) {
+      setError('Refund amount must be greater than 0');
+    } else if (numericValue > amountInPounds) {
+      setError(`Refund amount cannot exceed ${formatCurrency(paymentAmount)}`);
+    } else {
+      setError(null);
       setRefundAmount(numericValue);
-      
-      // Validate against maximum refund amount
-      const maxRefundInPounds = penceToPounds(paymentAmount);
-      setHasError(numericValue > maxRefundInPounds || numericValue <= 0);
     }
   };
 
-  // Process refund
-  const handleProcessRefund = () => {
-    if (handleRefund) {
-      if (isPartialRefund) {
-        // Partial refund with specified amount (already in pounds)
-        handleRefund(refundAmount, paymentId);
-      } else {
-        // Full refund (pass amount in pounds)
-        handleRefund(penceToPounds(paymentAmount), paymentId);
-      }
+  const toggleRefundType = () => {
+    setIsPartialRefund(!isPartialRefund);
+    if (!isPartialRefund) {
+      // When switching to partial, keep the current amount
+    } else {
+      // When switching to full, reset to full amount
+      const amountInPounds = penceToPounds(paymentAmount);
+      setRefundAmount(amountInPounds);
+      setRefundAmountDisplay(amountInPounds.toFixed(2));
+    }
+  };
+  
+  const handleSubmit = () => {
+    // Use onConfirm if provided (for compatibility), otherwise use onRefund
+    const handler = onConfirm || onRefund;
+    
+    if (!handler) {
+      console.error('No refund handler provided');
+      return;
+    }
+    
+    if (isPartialRefund && error) {
+      return;
+    }
+    
+    // If it's a full refund or the amount equals the full amount, pass undefined amount for full refund
+    const isFullRefund = !isPartialRefund || refundAmount === penceToPounds(paymentAmount);
+    
+    if (isFullRefund) {
+      handler(undefined, paymentId);
+    } else {
+      handler(refundAmount, paymentId);
     }
   };
 
@@ -94,71 +113,75 @@ const PaymentRefundDialog: React.FC<PaymentRefundDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Refund Payment</DialogTitle>
           <DialogDescription>
-            Process a refund for {patientName}'s payment of {formatCurrency(paymentAmount)}
+            {isPartialRefund 
+              ? "Specify the amount to refund to the patient." 
+              : "This will fully refund the payment to the patient."}
           </DialogDescription>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <div className="flex items-center">
-              <input
-                type="radio"
-                id="fullRefund"
-                name="refundType"
-                checked={!isPartialRefund}
-                onChange={() => setIsPartialRefund(false)}
-                className="mr-2"
-              />
-              <Label htmlFor="fullRefund">Full refund ({formatCurrency(paymentAmount)})</Label>
-            </div>
-            
-            <div className="flex items-center">
-              <input
-                type="radio"
-                id="partialRefund"
-                name="refundType"
-                checked={isPartialRefund}
-                onChange={() => setIsPartialRefund(true)}
-                className="mr-2"
-              />
-              <Label htmlFor="partialRefund">Partial refund</Label>
-            </div>
-            
-            {isPartialRefund && (
-              <div className="ml-6 mt-2">
-                <Label htmlFor="amount" className="text-sm">Refund amount</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2">£</span>
-                  <Input
-                    id="amount"
-                    type="text"
-                    value={refundAmountDisplay}
-                    onChange={handleAmountChange}
-                    className="pl-7 mt-1"
-                    placeholder="0.00"
-                  />
-                </div>
-                {hasError && (
-                  <p className="text-xs text-red-500 mt-1">
-                    Refund amount must be between £0.01 and {formatCurrency(paymentAmount)}.
-                  </p>
-                )}
-              </div>
-            )}
+        <div className="py-4">
+          <div className="mb-4">
+            <p className="text-sm text-gray-700">
+              Patient: <span className="font-medium">{patientName}</span>
+            </p>
+            <p className="text-sm text-gray-700">
+              Payment amount: <span className="font-medium">{formatCurrency(paymentAmount)}</span>
+            </p>
           </div>
+          
+          <div className="flex items-center space-x-2 mb-4">
+            <Button
+              type="button"
+              variant={!isPartialRefund ? "default" : "outline"}
+              onClick={() => setIsPartialRefund(false)}
+              className="flex-1"
+            >
+              Full Refund
+            </Button>
+            <Button
+              type="button"
+              variant={isPartialRefund ? "default" : "outline"}
+              onClick={() => setIsPartialRefund(true)}
+              className="flex-1"
+            >
+              Partial Refund
+            </Button>
+          </div>
+
+          {isPartialRefund && (
+            <div className="mb-4">
+              <Label htmlFor="refund-amount" className="block mb-2">
+                Refund Amount (£)
+              </Label>
+              <Input
+                id="refund-amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={penceToPounds(paymentAmount)}
+                value={refundAmountDisplay}
+                onChange={handleAmountChange}
+                className={error ? "border-red-500" : ""}
+              />
+              {error && (
+                <p className="text-red-500 text-sm mt-1">{error}</p>
+              )}
+            </div>
+          )}
         </div>
-        
+
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isLoading}
+          >
             Cancel
           </Button>
           <Button 
-            onClick={handleProcessRefund}
-            disabled={
-              isLoading || 
-              (isPartialRefund && hasError)
-            }
-            variant="destructive"
+            onClick={handleSubmit}
+            disabled={isLoading || (isPartialRefund && !!error)}
+            className="bg-red-500 hover:bg-red-700"
           >
             {isLoading ? (
               <>
@@ -166,7 +189,7 @@ const PaymentRefundDialog: React.FC<PaymentRefundDialogProps> = ({
                 Processing...
               </>
             ) : (
-              'Process Refund'
+              `${isPartialRefund ? 'Partial' : 'Full'} Refund`
             )}
           </Button>
         </DialogFooter>

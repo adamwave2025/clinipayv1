@@ -17,6 +17,7 @@ import { toast } from '@/hooks/use-toast';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPlanFromDb } from '@/utils/planDataFormatter';
+import { useRefundState } from '@/hooks/payment-plans/useRefundState';
 
 export const ManagePlansProvider: React.FC<{
   children: React.ReactNode;
@@ -294,8 +295,16 @@ export const ManagePlansProvider: React.FC<{
   // Set up properties for plan action dialogs
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showPauseDialog, setShowPauseDialog] = useState(false);
-  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
-  const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
+  
+  // Get refund state from hook
+  const {
+    refundDialogOpen,
+    setRefundDialogOpen,
+    paymentToRefund,
+    openRefundDialog,
+    processRefund,
+    isLoading: isRefundLoading
+  } = useRefundState();
   
   // Use the improved resume actions hook with refreshPlanState
   const { 
@@ -527,7 +536,8 @@ export const ManagePlansProvider: React.FC<{
         
         // Plan state helpers
         isPlanPaused,
-        isProcessing: isProcessingInstallment || planRescheduleActions.isProcessing || paymentRescheduleActions.isProcessing || isRefreshing,
+        isProcessing: isProcessingInstallment || planRescheduleActions.isProcessing || 
+                     paymentRescheduleActions.isProcessing || isRefreshing || isRefundLoading,
         resumeError
       }}
     >

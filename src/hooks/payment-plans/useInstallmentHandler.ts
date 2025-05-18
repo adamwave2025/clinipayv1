@@ -4,12 +4,22 @@ import { usePaymentDetailsFetcher } from './usePaymentDetailsFetcher';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { Payment } from '@/types/payment';
 import { toast } from 'sonner';
+import { useRefundState } from './useRefundState';
 
 export const useInstallmentHandler = () => {
   // Renamed to avoid conflict with primary selectedInstallment
   const [selectedInstallment, setSelectedInstallment] = useState<PlanInstallment | null>(null);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const { paymentData, fetchPaymentDetails, setPaymentData } = usePaymentDetailsFetcher();
+  
+  // Get refund functionality
+  const { 
+    refundDialogOpen, 
+    setRefundDialogOpen, 
+    openRefundDialog, 
+    processRefund,
+    isLoading: isRefundLoading 
+  } = useRefundState();
 
   const handleViewPaymentDetails = async (installment: PlanInstallment) => {
     try {
@@ -42,6 +52,12 @@ export const useInstallmentHandler = () => {
       toast.error('Failed to load payment details');
     }
   };
+  
+  const handleRefund = () => {
+    if (paymentData && paymentData.status === 'paid') {
+      openRefundDialog(paymentData);
+    }
+  };
 
   return {
     selectedInstallment,
@@ -49,6 +65,12 @@ export const useInstallmentHandler = () => {
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    handleViewPaymentDetails
+    handleViewPaymentDetails,
+    // Refund related functions
+    handleRefund,
+    refundDialogOpen,
+    setRefundDialogOpen,
+    processRefund,
+    isRefundLoading
   };
 };

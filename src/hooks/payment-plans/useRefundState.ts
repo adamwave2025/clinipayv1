@@ -6,6 +6,7 @@ import { Payment } from '@/types/payment';
 export const useRefundState = () => {
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Get dashboard data for refund functionality
   const { handleRefund } = useDashboardData();
@@ -19,13 +20,22 @@ export const useRefundState = () => {
     }
   };
 
-  const processRefund = (amountInPounds?: number) => {
-    if (paymentToRefund) {
-      // Amount is already in pounds from the dialog, pass it directly
-      handleRefund(amountInPounds, paymentToRefund);
-      setRefundDialogOpen(false);
-    } else {
+  const processRefund = async (amountInPounds?: number) => {
+    if (!paymentToRefund) {
       console.error('No payment ID available for refund');
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      // Amount is already in pounds from the dialog, pass it directly
+      await handleRefund(amountInPounds, paymentToRefund);
+      setRefundDialogOpen(false);
+    } catch (error) {
+      console.error('Error processing refund:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -35,6 +45,7 @@ export const useRefundState = () => {
     paymentToRefund,
     setPaymentToRefund,
     openRefundDialog,
-    processRefund
+    processRefund,
+    isLoading
   };
 };
