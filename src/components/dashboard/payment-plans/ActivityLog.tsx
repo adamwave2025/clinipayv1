@@ -77,6 +77,8 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
         return <PlayCircle className="h-4 w-4 text-green-500" />;
       case 'payment_refunded':
         return <RefreshCcw className="h-4 w-4 text-orange-500" />;
+      case 'payment_refund':
+        return <RefreshCcw className="h-4 w-4 text-orange-500" />;
       case 'payment_reminder_sent':
         return <MessageCircle className="h-4 w-4 text-blue-500" />;
       default:
@@ -209,6 +211,7 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
           </>
         );
       case 'payment_refunded':
+      case 'payment_refund':
         return (
           <>
             <div className="font-medium">Payment refunded</div>
@@ -216,11 +219,17 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
               {activity.details?.refundAmount && (
                 <p>Refund amount: {formatCurrency(activity.details.refundAmount)}</p>
               )}
-              {activity.details?.isFullRefund && (
-                <p>Full refund</p>
+              {activity.details?.isFullRefund !== undefined && (
+                <p>{activity.details.isFullRefund ? "Full refund" : "Partial refund"}</p>
               )}
               {activity.details?.paymentNumber && activity.details?.totalPayments && (
                 <p>Payment {activity.details.paymentNumber} of {activity.details.totalPayments}</p>
+              )}
+              {activity.details?.payment_reference && (
+                <p className="text-xs text-gray-500">Reference: {activity.details.payment_reference}</p>
+              )}
+              {activity.details?.reference && !activity.details?.payment_reference && (
+                <p className="text-xs text-gray-500">Reference: {activity.details.reference}</p>
               )}
             </div>
           </>
