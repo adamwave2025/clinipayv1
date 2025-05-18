@@ -4,17 +4,13 @@ import { usePaymentDetailsFetcher } from './usePaymentDetailsFetcher';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import { Payment } from '@/types/payment';
 import { toast } from 'sonner';
-import { useRefundState } from './useRefundState';
 
 export const useInstallmentHandler = () => {
   // Renamed to avoid conflict with primary selectedInstallment
   const [selectedInstallment, setSelectedInstallment] = useState<PlanInstallment | null>(null);
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const { paymentData, fetchPaymentDetails, setPaymentData } = usePaymentDetailsFetcher();
-  
-  // Get refund functionality
-  const refundState = useRefundState();
-  
+
   const handleViewPaymentDetails = async (installment: PlanInstallment) => {
     try {
       console.log('Viewing payment details for installment:', installment);
@@ -46,12 +42,6 @@ export const useInstallmentHandler = () => {
       toast.error('Failed to load payment details');
     }
   };
-  
-  const handleRefund = () => {
-    if (paymentData && paymentData.status === 'paid') {
-      refundState.openRefundDialog(paymentData);
-    }
-  };
 
   return {
     selectedInstallment,
@@ -59,14 +49,6 @@ export const useInstallmentHandler = () => {
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    handleViewPaymentDetails,
-    // Refund related functions
-    handleRefund,
-    refundDialogOpen: refundState.refundDialogOpen,
-    setRefundDialogOpen: refundState.setRefundDialogOpen,
-    processRefund: refundState.processRefund,
-    isRefundLoading: refundState.isLoading,
-    // Export the openRefundDialog function for external use
-    openRefundDialog: refundState.openRefundDialog
+    handleViewPaymentDetails
   };
 };

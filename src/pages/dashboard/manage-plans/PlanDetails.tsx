@@ -7,7 +7,6 @@ import PlanDetailsView from '@/components/dashboard/payment-plans/PlanDetailsVie
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
-import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 
 const PlanDetails = () => {
   const {
@@ -39,12 +38,7 @@ const PlanDetails = () => {
     handleOpenPauseDialog,
     handleOpenResumeDialog,
     handleOpenRescheduleDialog,
-    handleSendReminder,
-    
-    // Refund related properties 
-    refundDialogOpen,
-    setRefundDialogOpen,
-    processRefund
+    handleSendReminder
   } = useManagePlansContext();
   
   // Debug logging for the dialogs
@@ -98,19 +92,9 @@ const PlanDetails = () => {
           payment={paymentData}
           open={showPaymentDetails}
           onOpenChange={setShowPaymentDetails}
-          onRefund={() => setRefundDialogOpen(true)}
+          onRefund={() => {}}
         />
       )}
-      
-      <PaymentRefundDialog
-        open={refundDialogOpen}
-        onOpenChange={setRefundDialogOpen}
-        onRefund={processRefund}
-        paymentAmount={paymentData?.amount || 0}
-        patientName={paymentData?.patientName || 'Patient'}
-        paymentId={paymentData?.id}
-        isLoading={isProcessing}
-      />
       
       <ReschedulePaymentDialog
         open={showReschedulePaymentDialog}

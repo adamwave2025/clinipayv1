@@ -6,42 +6,26 @@ import { Payment } from '@/types/payment';
 export const useRefundState = () => {
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   
   // Get dashboard data for refund functionality
   const { handleRefund } = useDashboardData();
   
-  // Updated to accept either a Payment object or a payment ID string
-  const openRefundDialog = (paymentDataOrId: Payment | string) => {
-    // Check if we received a Payment object or a string ID
-    const paymentId = typeof paymentDataOrId === 'string' 
-      ? paymentDataOrId 
-      : paymentDataOrId?.id;
-      
-    if (paymentId) {
-      setPaymentToRefund(paymentId);
+  const openRefundDialog = (paymentData: Payment | null) => {
+    if (paymentData && paymentData.id) {
+      setPaymentToRefund(paymentData.id);
       setRefundDialogOpen(true);
     } else {
-      console.error('No payment ID available for refund');
+      console.error('No payment data available for refund');
     }
   };
 
-  const processRefund = async (amountInPounds?: number) => {
-    if (!paymentToRefund) {
-      console.error('No payment ID available for refund');
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    try {
+  const processRefund = (amountInPounds?: number) => {
+    if (paymentToRefund) {
       // Amount is already in pounds from the dialog, pass it directly
-      await handleRefund(amountInPounds, paymentToRefund);
+      handleRefund(amountInPounds, paymentToRefund);
       setRefundDialogOpen(false);
-    } catch (error) {
-      console.error('Error processing refund:', error);
-    } finally {
-      setIsLoading(false);
+    } else {
+      console.error('No payment ID available for refund');
     }
   };
   
@@ -51,7 +35,6 @@ export const useRefundState = () => {
     paymentToRefund,
     setPaymentToRefund,
     openRefundDialog,
-    processRefund,
-    isLoading
+    processRefund
   };
 };

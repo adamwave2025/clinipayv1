@@ -17,8 +17,6 @@ import { toast } from '@/hooks/use-toast';
 import { PlanOperationsService } from '@/services/PlanOperationsService';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPlanFromDb } from '@/utils/planDataFormatter';
-import { useRefundState } from '@/hooks/payment-plans/useRefundState';
-import { Payment } from '@/types/payment';
 
 export const ManagePlansProvider: React.FC<{
   children: React.ReactNode;
@@ -119,19 +117,13 @@ export const ManagePlansProvider: React.FC<{
     handleBackToPlans
   } = usePlanDetailsView();
 
-  // Get refund state from hook first to avoid naming conflicts
-  const refundState = useRefundState();
-  
-  // Now use installment handler hooks with refund state properly set up
+  // Use installment handler hooks - with renamed variable to avoid conflict
   const {
     showPaymentDetails,
     setShowPaymentDetails,
     paymentData,
-    selectedInstallment: viewDetailsInstallment,
-    handleViewPaymentDetails,
-    handleRefund: installmentHandlerRefund,
-    refundDialogOpen: installmentRefundDialogOpen,
-    setRefundDialogOpen: setInstallmentRefundDialogOpen
+    selectedInstallment: viewDetailsInstallment,  // Renamed to viewDetailsInstallment
+    handleViewPaymentDetails
   } = useInstallmentHandler();
   
   // Define onPaymentUpdated function for the take payment dialog
@@ -302,17 +294,8 @@ export const ManagePlansProvider: React.FC<{
   // Set up properties for plan action dialogs
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showPauseDialog, setShowPauseDialog] = useState(false);
-  
-  // Create wrapper functions for refund state to ensure proper typing
-  // This explicitly wraps the refundState functions to match the expected types in context
-  const handleOpenRefundDialog = (paymentDataOrId: Payment | string) => {
-    // Forward the call to the refundState hook's openRefundDialog function
-    refundState.openRefundDialog(paymentDataOrId);
-  };
-  
-  const handleProcessRefund = (amount?: number) => {
-    refundState.processRefund(amount);
-  };
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [paymentToRefund, setPaymentToRefund] = useState<string | null>(null);
   
   // Use the improved resume actions hook with refreshPlanState
   const { 
@@ -335,6 +318,11 @@ export const ManagePlansProvider: React.FC<{
   const handleOpenPauseDialog = () => {
     console.log("Opening pause dialog");
     setShowPauseDialog(true);
+  };
+  
+  const openRefundDialog = () => {
+    console.log("Opening refund dialog");
+    setRefundDialogOpen(true);
   };
   
   // Use updated action handlers that leverage refreshPlanState
@@ -423,7 +411,13 @@ export const ManagePlansProvider: React.FC<{
     await paymentRescheduleActions.handleReschedulePayment(newDate);
   };
   
-  // Create handler for sending reminders
+  const processRefund = async () => {
+    console.log("Process refund action called");
+    setRefundDialogOpen(false);
+    // Always reset to patient plans view after operations
+    setIsTemplateView(false);
+  };
+  
   const handleSendReminder = async () => {
     console.log("Send reminder action called");
   };
@@ -458,7 +452,7 @@ export const ManagePlansProvider: React.FC<{
         showPaymentDetails,
         setShowPaymentDetails,
         paymentData,
-        viewDetailsInstallment,
+        viewDetailsInstallment, // Changed from selectedInstallment to viewDetailsInstallment
         
         // Payment dialog data
         paymentDialogData,
@@ -478,7 +472,7 @@ export const ManagePlansProvider: React.FC<{
         
         // Individual payment actions
         handleMarkAsPaid,
-        handleOpenReschedule,
+        handleOpenReschedule, // This is the fixed function to open the payment reschedule dialog
         handleReschedulePayment,
         handleTakePayment,
         preparePaymentData,
@@ -492,14 +486,14 @@ export const ManagePlansProvider: React.FC<{
         showTakePaymentDialog,
         setShowTakePaymentDialog,
         onPaymentUpdated,
-        selectedInstallment,
+        selectedInstallment, // This is the primary selectedInstallment state from useInstallmentActions
         
-        // Use our wrapped refund state functions to avoid type issues
-        refundDialogOpen: refundState.refundDialogOpen,
-        setRefundDialogOpen: refundState.setRefundDialogOpen,
-        paymentToRefund: refundState.paymentToRefund,
-        openRefundDialog: handleOpenRefundDialog,
-        processRefund: handleProcessRefund,
+        // Refund properties
+        refundDialogOpen,
+        setRefundDialogOpen,
+        paymentToRefund,
+        openRefundDialog,
+        processRefund,
         
         // Plan action dialogs and handlers
         showCancelDialog,
@@ -533,8 +527,7 @@ export const ManagePlansProvider: React.FC<{
         
         // Plan state helpers
         isPlanPaused,
-        isProcessing: isProcessingInstallment || planRescheduleActions.isProcessing || 
-                     paymentRescheduleActions.isProcessing || isRefreshing || refundState.isLoading,
+        isProcessing: isProcessingInstallment || planRescheduleActions.isProcessing || paymentRescheduleActions.isProcessing || isRefreshing,
         resumeError
       }}
     >

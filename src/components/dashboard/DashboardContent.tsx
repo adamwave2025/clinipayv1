@@ -7,7 +7,6 @@ import PaymentRefundDialog from './payments/PaymentRefundDialog';
 import LaunchPadCard from './LaunchPadCard';
 import { useDashboardData } from './DashboardDataProvider';
 import { useClinicData } from '@/hooks/useClinicData';
-import { Payment } from '@/types/payment';
 
 const DashboardContent = () => {
   const {
@@ -40,14 +39,6 @@ const DashboardContent = () => {
   const paymentLinksExist = paymentLinks.length > 0 || rawPaymentLinks.some(link => link.paymentPlan === true);
   
   const hasSentPaymentLink = payments.some(payment => payment.status === 'sent');
-  
-  // Create a wrapper function that matches the expected signature
-  const handleOpenRefund = () => {
-    if (selectedPayment) {
-      // Pass the actual payment object instead of just the ID
-      openRefundDialog(selectedPayment);
-    }
-  };
 
   return (
     <>
@@ -71,7 +62,7 @@ const DashboardContent = () => {
         payment={selectedPayment}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        onRefund={handleOpenRefund}
+        onRefund={openRefundDialog}
       />
 
       <PaymentRefundDialog
