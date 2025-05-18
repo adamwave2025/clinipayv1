@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
@@ -406,29 +405,12 @@ export class PlanOperationsService {
       if (paymentData.payment_schedule_id) {
         const { data: scheduleData } = await supabase
           .from('payment_schedule')
-          .select('plan_id, payment_number, total_payments, id')
+          .select('plan_id, payment_number, total_payments')
           .eq('id', paymentData.payment_schedule_id)
           .single();
           
         if (scheduleData) {
           planId = scheduleData.plan_id;
-          
-          // Update the payment_schedule status to match the refund status
-          const scheduleStatus = isFullRefund ? 'refunded' : 'partially_refunded';
-          const { error: scheduleError } = await supabase
-            .from('payment_schedule')
-            .update({ 
-              status: scheduleStatus,
-              updated_at: now
-            })
-            .eq('id', paymentData.payment_schedule_id);
-            
-          if (scheduleError) {
-            console.error('Error updating payment schedule status:', scheduleError);
-            // Continue with the refund process even if updating the schedule fails
-          } else {
-            console.log(`Updated payment schedule ${paymentData.payment_schedule_id} to ${scheduleStatus} status`);
-          }
           
           // Log activity if we have a plan ID
           if (planId) {
@@ -439,9 +421,7 @@ export class PlanOperationsService {
               isFullRefund,
               refundedAt: now,
               paymentNumber: scheduleData.payment_number,
-              totalPayments: scheduleData.total_payments,
-              scheduleId: paymentData.payment_schedule_id,
-              scheduleStatus: scheduleStatus
+              totalPayments: scheduleData.total_payments
             });
           }
         }
