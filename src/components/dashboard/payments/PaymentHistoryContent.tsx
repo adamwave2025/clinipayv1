@@ -27,6 +27,7 @@ const PaymentHistoryContent: React.FC = () => {
     selectedPayment 
   } = useDashboardData();
 
+  // Local state for filters
   const [search, setSearch] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -38,6 +39,11 @@ const PaymentHistoryContent: React.FC = () => {
     typeFilter,
     statusFilter
   });
+
+  // Create a wrapper function to adapt parameter types
+  const handleRefundClick = (paymentId: string) => {
+    openRefundDialog(paymentId);
+  };
 
   const handleDownloadReport = () => {
     if (filteredPayments.length === 0) {
@@ -99,7 +105,7 @@ const PaymentHistoryContent: React.FC = () => {
         payment={selectedPayment}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        onRefund={openRefundDialog}
+        onRefund={handleRefundClick}
       />
 
       <PaymentRefundDialog

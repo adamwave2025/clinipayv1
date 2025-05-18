@@ -93,13 +93,14 @@ const ManagePlansContent: React.FC = () => {
         onOpenRefundDialog={openRefundDialog}
       />
 
-      {/* <PaymentRefundDialog
+      {/* Payment Refund Dialog */}
+      <PaymentRefundDialog
         open={refundDialogOpen}
         onOpenChange={setRefundDialogOpen}
         onRefund={handleRefund}
         paymentAmount={paymentData?.amount}
         patientName={paymentData?.patientName}
-      />     */}
+      />
       
       {/* Include the ManagePlansDialogs component here */}
       <ManagePlansDialogs />

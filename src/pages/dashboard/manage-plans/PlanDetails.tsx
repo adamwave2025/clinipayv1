@@ -7,7 +7,6 @@ import PlanDetailsView from '@/components/dashboard/payment-plans/PlanDetailsVie
 import PaymentDetailDialog from '@/components/dashboard/PaymentDetailDialog';
 import ReschedulePaymentDialog from '@/components/dashboard/payment-plans/ReschedulePaymentDialog';
 import MarkAsPaidConfirmDialog from '@/components/dashboard/payment-plans/MarkAsPaidConfirmDialog';
-import { useDashboardData } from '@/components/dashboard/DashboardDataProvider';
 import PaymentRefundDialog from '@/components/dashboard/payments/PaymentRefundDialog';
 
 const PlanDetails = () => {
@@ -35,6 +34,7 @@ const PlanDetails = () => {
     viewDetailsInstallment, // Using the renamed property here
     handleViewPaymentDetails,
     openRefundDialog,
+    refundDialogOpen,
     setRefundDialogOpen,
     paymentToRefund,
     handleRefund,
@@ -46,8 +46,6 @@ const PlanDetails = () => {
     handleOpenRescheduleDialog,
     handleSendReminder
   } = useManagePlansContext();
-
-  console.log('payment dataedfbhedytfghjutrydtfghutyrdfgcvhgyg', openRefundDialog);
   
   // Debug logging for the dialogs
   useEffect(() => {
@@ -103,6 +101,14 @@ const PlanDetails = () => {
           onRefund={openRefundDialog}
         />
       )}
+      
+      <PaymentRefundDialog
+        open={refundDialogOpen}
+        onOpenChange={setRefundDialogOpen}
+        onRefund={handleRefund}
+        paymentAmount={paymentData?.amount}
+        patientName={paymentData?.patientName}
+      />
       
       <ReschedulePaymentDialog
         open={showReschedulePaymentDialog}

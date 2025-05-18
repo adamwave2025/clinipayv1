@@ -40,6 +40,11 @@ const DashboardContent = () => {
   
   const hasSentPaymentLink = payments.some(payment => payment.status === 'sent');
 
+  // Create a wrapper function to adapt parameter types 
+  const handleRefundClick = (paymentId: string) => {
+    openRefundDialog(paymentId);
+  };
+
   return (
     <>
       <LaunchPadCard 
@@ -53,7 +58,7 @@ const DashboardContent = () => {
       <div className="mb-8">
         <RecentPaymentsCard 
           payments={payments} 
-          onRefund={openRefundDialog}
+          onRefund={handleRefundClick}
           onPaymentClick={handlePaymentClick}
         />
       </div>
@@ -62,7 +67,7 @@ const DashboardContent = () => {
         payment={selectedPayment}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        onRefund={openRefundDialog}
+        onRefund={handleRefundClick}
       />
 
       <PaymentRefundDialog

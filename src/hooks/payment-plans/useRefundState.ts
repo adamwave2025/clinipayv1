@@ -10,9 +10,9 @@ export const useRefundState = () => {
   // Get dashboard data for refund functionality
   const { handleRefund } = useDashboardData();
   
-  const openRefundDialog = (paymentData: Payment | null) => {
-    if (paymentData && paymentData.id) {
-      setPaymentToRefund(paymentData.id);
+  const openRefundDialog = (paymentId: string) => {
+    if (paymentId) {
+      setPaymentToRefund(paymentId);
       setRefundDialogOpen(true);
     } else {
       console.error('No payment data available for refund');
