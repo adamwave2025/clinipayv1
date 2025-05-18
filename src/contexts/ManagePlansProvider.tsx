@@ -454,13 +454,6 @@ export const ManagePlansProvider: React.FC<{
         throw new Error(result.error || 'Refund processing failed');
       }
       
-      // // Update the local state with the refunded payment
-      // setPayments(PaymentRefundService.getUpdatedPaymentAfterRefund(
-      //   payments, 
-      //   refundPaymentId, 
-      //   refundAmount
-      // ));
-      
       // Show success message
       toast.success(
         isFullRefund 
@@ -480,6 +473,12 @@ export const ManagePlansProvider: React.FC<{
         setTimeout(() => {
           setPaymentToRefund(null);
           setIsProcessingRefund(false);
+          
+          // ADDED: Refresh the plan state if we have a selected plan
+          if (selectedPlan) {
+            console.log('Refreshing plan state after refund for plan:', selectedPlan.id);
+            refreshPlanState(selectedPlan.id);
+          }
         }, 50);
       }, 100);
       

@@ -53,9 +53,11 @@ const PlanDetails = () => {
       showMarkAsPaidDialog, 
       showReschedulePaymentDialog,
       selectedInstallmentId: selectedInstallment?.id,
-      viewDetailsInstallmentId: viewDetailsInstallment?.id
+      viewDetailsInstallmentId: viewDetailsInstallment?.id,
+      refundDialogOpen, // Add this for debugging
+      paymentToRefund // Add this for debugging
     });
-  }, [showMarkAsPaidDialog, showReschedulePaymentDialog, selectedInstallment, viewDetailsInstallment]);
+  }, [showMarkAsPaidDialog, showReschedulePaymentDialog, selectedInstallment, viewDetailsInstallment, refundDialogOpen, paymentToRefund]);
   
   if (!selectedPlan) {
     return null;
