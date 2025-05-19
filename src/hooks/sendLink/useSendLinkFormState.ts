@@ -1,6 +1,6 @@
+
 import { useState } from 'react';
 import { Patient } from '@/hooks/usePatients';
-import { addDays } from 'date-fns';
 
 export interface SendLinkFormData {
   patientName: string;
@@ -13,6 +13,10 @@ export interface SendLinkFormData {
 }
 
 export function useSendLinkFormState() {
+  // Initialize with today's date with noon time to avoid timezone issues
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  
   const [formData, setFormData] = useState<SendLinkFormData>({
     patientName: '',
     patientEmail: '',
@@ -20,7 +24,7 @@ export function useSendLinkFormState() {
     selectedLink: '',
     customAmount: '',
     message: '',
-    startDate: new Date(),
+    startDate: today,
   });
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isCreatingNewPatient, setIsCreatingNewPatient] = useState(false);
@@ -38,6 +42,7 @@ export function useSendLinkFormState() {
 
   const handleDateChange = (date: Date | undefined) => {
     if (date) {
+      console.log('Handling date change in form state:', date.toISOString());
       setFormData(prev => ({ ...prev, startDate: date }));
     }
   };
@@ -76,6 +81,10 @@ export function useSendLinkFormState() {
   };
 
   const resetForm = () => {
+    // Reset with today's date at noon
+    const resetDate = new Date();
+    resetDate.setHours(12, 0, 0, 0);
+    
     setFormData({
       patientName: '',
       patientEmail: '',
@@ -83,7 +92,7 @@ export function useSendLinkFormState() {
       selectedLink: '',
       customAmount: '',
       message: '',
-      startDate: new Date(),
+      startDate: resetDate,
     });
     setSelectedPatient(null);
     setIsCreatingNewPatient(false);

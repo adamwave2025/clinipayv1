@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,6 +76,19 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
     
     // Return true if the date is before today
     return compareDate < today;
+  };
+
+  // Create a safe handler for date changes that normalizes the date at midnight UTC
+  const handleDateSelection = (date: Date | undefined) => {
+    if (date) {
+      // Normalize the date to midnight in UTC to prevent timezone issues
+      const normalizedDate = new Date(date);
+      normalizedDate.setHours(12, 0, 0, 0); // Set to noon to avoid timezone crossing issues
+      onDateChange(normalizedDate);
+      console.log('Selected date:', normalizedDate.toISOString());
+    } else {
+      onDateChange(undefined);
+    }
   };
 
   return (
@@ -206,7 +218,7 @@ const SendLinkForm: React.FC<SendLinkFormProps> = ({
               <Calendar
                 mode="single"
                 selected={formData.startDate}
-                onSelect={onDateChange}
+                onSelect={handleDateSelection}
                 disabled={isDateDisabled}
                 initialFocus
                 className={cn("p-3 pointer-events-auto")}

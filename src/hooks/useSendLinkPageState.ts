@@ -90,7 +90,8 @@ export function useSendLinkPageState() {
         patientEmail: formData.patientEmail,
         isCreatingNewPatient,
         selectedPatient: selectedPatient?.id,
-        isPaymentPlan
+        isPaymentPlan,
+        startDate: formData.startDate instanceof Date ? formData.startDate.toISOString() : formData.startDate
       });
       
       // Step 1: Create or get the patient first - this is the critical step
@@ -125,11 +126,14 @@ export function useSendLinkPageState() {
         
         console.log('Scheduling plan with patient ID:', patientId);
         console.log('Selected plan details:', selectedLink);
+        console.log('Start date:', formData.startDate);
         
-        // Convert startDate to string format for the API
+        // Ensure we have a properly formatted date string for the API
         const startDateString = formData.startDate instanceof Date 
           ? formData.startDate.toISOString().split('T')[0]
           : formData.startDate;
+          
+        console.log('Formatted start date for API:', startDateString);
           
         // Create plan data with string date
         const planFormData = {
