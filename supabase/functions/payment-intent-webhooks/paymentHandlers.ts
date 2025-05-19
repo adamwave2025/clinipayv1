@@ -1,3 +1,4 @@
+
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { generateUUID } from './utils.ts';
 import { PatientService } from './patientService.ts';  // New import
@@ -443,7 +444,7 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
       }
     }
     
-    // If this payment was for a payment request, update it
+    // If this payment was for a payment request, update it and check if it's part of a plan
     if (requestId) {
       console.log(`Updating payment request: ${requestId}`);
       
@@ -462,10 +463,171 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
         // Non-critical error, continue
       } else {
         console.log(`Updated payment request ${requestId} status to 'paid'`);
+
+        // NEW: Check if this payment request is associated with a payment_schedule
+        const { data: scheduleData, error: scheduleError } = await supabase
+          .from('payment_schedule')
+          .select(`
+            id, 
+            patient_id, 
+            payment_link_id, 
+            clinic_id,
+            payment_number,
+            total_payments,
+            payment_frequency,
+            plan_id
+          `)
+          .eq('payment_request_id', requestId)
+          .single();
+          
+        if (!scheduleError && scheduleData) {
+          console.log(`Found payment schedule entry: ${scheduleData.id} for plan: ${scheduleData.plan_id}`);
+          
+          // Update the payment schedule status
+          const { error: updateScheduleError } = await supabase
+            .from('payment_schedule')
+            .update({ 
+              status: 'paid',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', scheduleData.id);
+            
+          if (updateScheduleError) {
+            console.error('Error updating payment schedule status:', updateScheduleError);
+          } else {
+            console.log(`Updated payment schedule ${scheduleData.id} status to 'paid'`);
+          }
+          
+          // Update the payment record with payment_schedule_id for consistency
+          await supabase
+            .from('payments')
+            .update({ payment_schedule_id: scheduleData.id })
+            .eq('id', payment.id);
+          
+          // Update plan data if this payment is linked to a plan
+          if (scheduleData.plan_id) {
+            console.log(`Updating plan data for plan: ${scheduleData.plan_id}`);
+            
+            try {
+              // Get current plan data
+              const { data: planData, error: planFetchError } = await supabase
+                .from('plans')
+                .select('total_installments, paid_installments, status')
+                .eq('id', scheduleData.plan_id)
+                .single();
+                
+              if (planFetchError) {
+                console.error('Error fetching plan details:', planFetchError);
+              } else {
+                // Count actual paid installments from payment_schedule table
+                const { count: paidInstallments, error: countError } = await supabase
+                  .from('payment_schedule')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('plan_id', scheduleData.plan_id)
+                  .eq('status', 'paid');
+                  
+                if (countError) {
+                  console.error('Error counting paid installments:', countError);
+                } else {
+                  // Calculate new values
+                  const progress = Math.round((paidInstallments / planData.total_installments) * 100);
+                  
+                  // Determine if all installments are paid
+                  const isCompleted = paidInstallments >= planData.total_installments;
+                  
+                  console.log(`Plan update details:
+                    - Paid installments: ${paidInstallments}/${planData.total_installments}
+                    - Progress: ${progress}%
+                    - Completed: ${isCompleted}
+                  `);
+                  
+                  // Update plan with new values
+                  const { error: planUpdateError } = await supabase
+                    .from('plans')
+                    .update({
+                      paid_installments: paidInstallments,
+                      progress: progress,
+                      status: isCompleted ? 'completed' : 'active',
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('id', scheduleData.plan_id);
+                    
+                  if (planUpdateError) {
+                    console.error('Error updating plan record:', planUpdateError);
+                  } else {
+                    console.log(`Successfully updated plan record. New progress: ${progress}%`);
+                  }
+                  
+                  // Update next due date if not completed
+                  if (!isCompleted) {
+                    // Find the next unpaid installment
+                    const { data: nextPayment, error: nextPaymentError } = await supabase
+                      .from('payment_schedule')
+                      .select('due_date')
+                      .eq('plan_id', scheduleData.plan_id)
+                      .eq('status', 'pending')
+                      .order('due_date', { ascending: true })
+                      .limit(1)
+                      .single();
+                      
+                    if (nextPayment && !nextPaymentError) {
+                      // Update plan's next due date
+                      await supabase
+                        .from('plans')
+                        .update({
+                          next_due_date: nextPayment.due_date
+                        })
+                        .eq('id', scheduleData.plan_id);
+                        
+                      console.log(`Updated plan ${scheduleData.plan_id} next due date to ${nextPayment.due_date}`);
+                    }
+                  } else {
+                    // If completed, set next_due_date to null
+                    await supabase
+                      .from('plans')
+                      .update({
+                        next_due_date: null
+                      })
+                      .eq('id', scheduleData.plan_id);
+                      
+                    console.log(`Plan ${scheduleData.plan_id} completed, next_due_date set to null`);
+                  }
+                  
+                  // Record payment activity for plan payment
+                  try {
+                    await supabase
+                      .from('payment_activity')
+                      .insert({
+                        payment_link_id: scheduleData.payment_link_id,
+                        patient_id: patientId || scheduleData.patient_id,
+                        clinic_id: clinicId,
+                        action_type: 'installment_payment_received',
+                        plan_id: scheduleData.plan_id,
+                        details: {
+                          amount: amount,
+                          paymentId: payment.id,
+                          paymentReference,
+                          installmentNumber: paidInstallments,
+                          totalInstallments: planData.total_installments,
+                          progress: progress
+                        }
+                      });
+                      
+                    console.log('Recorded plan payment activity');
+                  } catch (activityError) {
+                    console.error('Error recording plan payment activity:', activityError);
+                  }
+                }
+              }
+            } catch (planError) {
+              console.error('Error updating plan:', planError);
+            }
+          }
+        }
       }
     }
     
-    // Record payment activity - using the resolved patient_id for consistency
+    // Record payment activity
     await supabase
       .from('payment_activity')
       .insert({
