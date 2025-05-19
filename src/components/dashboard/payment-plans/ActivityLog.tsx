@@ -59,7 +59,7 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
         return <FileText className="h-4 w-4 text-purple-500" />;
       case 'payment_made':
       case 'payment_marked_paid':
-      case 'card_payment_processed':
+      case 'card_payment_processed': // Added the new action type here
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'payment_failed':
         return <AlertCircle className="h-4 w-4 text-red-500" />;
@@ -105,7 +105,7 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
         return (
           <>
             <div className="font-medium">
-              {activity.actionType === 'payment_marked_paid' ? 'Payment marked as paid' : 'Payment received'} 
+              {activity.actionType === 'payment_marked_paid' ? 'Payment manually marked as paid' : 'Payment received'} 
               {activity.details?.amount ? ` for ${formatCurrency(activity.details.amount)}` : ''}
             </div>
             <div className="mt-1 space-y-1 text-sm">
@@ -127,11 +127,18 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
               {activity.details?.amount ? ` for ${formatCurrency(activity.details.amount)}` : ''}
             </div>
             <div className="mt-1 space-y-1 text-sm">
-              {activity.details?.payment_number && activity.details?.total_payments ? (
-                <p>Payment: {activity.details.payment_number} of {activity.details.total_payments}</p>
+              {activity.details?.paymentNumber && activity.details?.totalPayments ? (
+                <p>Payment: {activity.details.paymentNumber} of {activity.details.totalPayments}</p>
               ) : (
-                <p>Payment processed successfully</p>
+                activity.details?.installmentNumber && activity.details?.totalInstallments ? (
+                  <p>Payment: {activity.details.installmentNumber} of {activity.details.totalInstallments}</p>
+                ) : (
+                  <p>Payment processed successfully</p>
+                )
               )}
+              {activity.details?.paymentReference && 
+                <p className="text-xs text-gray-500">Reference: {activity.details.paymentReference}</p>
+              }
               {activity.details?.payment_ref && 
                 <p className="text-xs text-gray-500">Reference: {activity.details.payment_ref}</p>
               }

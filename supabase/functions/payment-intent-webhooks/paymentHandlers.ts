@@ -1,4 +1,3 @@
-
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { generateUUID } from './utils.ts';
 import { PatientService } from './patientService.ts';  // New import
@@ -230,14 +229,14 @@ async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseCl
       }
     }
     
-    // Record payment activity
+    // Record payment activity - CHANGED ACTION TYPE HERE
     await supabase
       .from('payment_activity')
       .insert({
         payment_link_id: paymentLinkId,
         patient_id: patientId, // Now using the resolved patient ID
         clinic_id: clinicId,
-        action_type: 'installment_payment_received',
+        action_type: 'card_payment_processed', // Changed from 'installment_payment_received'
         plan_id: planId,
         details: {
           amount: amount,
@@ -593,7 +592,7 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
                     console.log(`Plan ${scheduleData.plan_id} completed, next_due_date set to null`);
                   }
                   
-                  // Record payment activity for plan payment
+                  // Record payment activity for plan payment - CHANGED ACTION TYPE HERE
                   try {
                     await supabase
                       .from('payment_activity')
@@ -601,7 +600,7 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
                         payment_link_id: scheduleData.payment_link_id,
                         patient_id: patientId || scheduleData.patient_id,
                         clinic_id: clinicId,
-                        action_type: 'installment_payment_received',
+                        action_type: 'card_payment_processed', // Changed from 'installment_payment_received'
                         plan_id: scheduleData.plan_id,
                         details: {
                           amount: amount,
@@ -627,7 +626,7 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
       }
     }
     
-    // Record payment activity
+    // Record payment activity - UNCHANGED as this wasn't related to installments
     await supabase
       .from('payment_activity')
       .insert({

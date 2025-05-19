@@ -116,10 +116,17 @@ const PlanActivityLog: React.FC<PlanActivityLogProps> = ({ activities }) => {
               {activity.details?.payment_number && activity.details?.total_payments ? (
                 <p>Payment: {activity.details.payment_number} of {activity.details.total_payments}</p>
               ) : (
-                <p>Payment processed successfully</p>
+                activity.details?.installmentNumber && activity.details?.totalInstallments ? (
+                  <p>Payment: {activity.details.installmentNumber} of {activity.details.totalInstallments}</p>
+                ) : (
+                  <p>Payment processed successfully</p>
+                )
               )}
               {activity.details?.payment_ref && 
                 <p className="text-xs text-gray-500">Reference: {activity.details.payment_ref}</p>
+              }
+              {activity.details?.paymentReference && 
+                <p className="text-xs text-gray-500">Reference: {activity.details.paymentReference}</p>
               }
               {activity.details?.processed_at && 
                 <p className="text-xs text-gray-500">Processed: {formatDate(activity.details.processed_at)}</p>
