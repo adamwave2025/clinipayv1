@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -26,31 +25,49 @@ function formatMonetaryValue(amountInPence) {
 /**
  * Recursively process an object to convert all numeric values that appear to be monetary amounts
  * from pence/cents to properly formatted pounds/dollars with 2 decimal places
+ * 
+ * @param obj The object to process
+ * @param parentKey The key of the parent object (used for recursion)
+ * @param isRawMonetaryValue Whether the values in this object are raw monetary values in pence/cents
+ * @returns The processed object with formatted monetary values
  */
-function processMonetaryValues(obj, parentKey = '') {
+function processMonetaryValues(obj, parentKey = '', isRawMonetaryValue = false) {
   // Skip if it's not an object or if it's null
   if (!obj || typeof obj !== 'object') return obj;
   
+  // Check if this object has a flag indicating raw monetary values
+  const hasRawMonetaryValues = obj.monetary_values_in_pence === true || isRawMonetaryValue;
+  
   // Process arrays
   if (Array.isArray(obj)) {
-    return obj.map(item => processMonetaryValues(item));
+    return obj.map(item => processMonetaryValues(item, '', hasRawMonetaryValues));
   }
   
   // Process objects
   const result = {...obj};
   
+  // Remove the flag from the final payload (we don't need it in the output)
+  if ('monetary_values_in_pence' in result) {
+    console.log(`🏁 Found monetary_values_in_pence flag: ${result.monetary_values_in_pence}`);
+    delete result.monetary_values_in_pence;
+  }
+  
   for (const [key, value] of Object.entries(obj)) {
-    // Special handling for known monetary fields
-    const isMonetaryField = ['amount', 'refund_amount', 'gross_amount', 'stripe_fee', 'platform_fee', 'net_amount'].includes(key);
+    // Skip the flag - we already handled it
+    if (key === 'monetary_values_in_pence') continue;
     
-    if (isMonetaryField && typeof value === 'number') {
+    // Special handling for known monetary fields
+    const isMonetaryField = ['amount', 'refund_amount', 'gross_amount', 'stripe_fee', 'platform_fee', 'net_amount', 'refund_fee'].includes(key);
+    
+    if (isMonetaryField && typeof value === 'number' && hasRawMonetaryValues) {
       // Convert monetary values from pence to pounds with 2 decimal places
-      result[key] = Number(formatMonetaryValue(value));
-      console.log(`💰 Converted ${key} from ${value}p to £${result[key]}`);
+      const formattedValue = Number(formatMonetaryValue(value));
+      result[key] = formattedValue;
+      console.log(`💰 Converted ${key} from ${value}p to £${formattedValue}`);
     } 
     // Recursively process nested objects
     else if (value && typeof value === 'object') {
-      result[key] = processMonetaryValues(value, key);
+      result[key] = processMonetaryValues(value, key, hasRawMonetaryValues);
     }
   }
   
@@ -179,12 +196,19 @@ serve(async (req) => {
         }
         
         // STEP 2: Now convert ALL monetary values consistently to pounds with 2 decimal places
-        // This ensures the emails show correct formatting like £1000.00 instead of £1000 or £100000
-        console.log(`💰 Processing monetary values in notification payload`);
+        // Check if we have a flag indicating raw monetary values
+        const hasRawValues = enhancedPayload.monetary_values_in_pence === true;
+        if (hasRawValues) {
+          console.log(`🏁 Notification ${notification.id} has raw monetary values flag set`);
+        }
+        
+        console.log(`💰 Processing monetary values in notification payload ${notification.id}`);
+        console.log(`💰 Raw payload sample:`, JSON.stringify(enhancedPayload).substring(0, 200) + "...");
+        
         enhancedPayload = processMonetaryValues(enhancedPayload);
 
         console.log(`📤 Sending notification to webhook: ${webhookUrl.substring(0, 30)}...`);
-        console.log(`📋 Payload: ${JSON.stringify(enhancedPayload).substring(0, 200)}...`);
+        console.log(`📋 Processed payload sample:`, JSON.stringify(enhancedPayload).substring(0, 200) + "...");
 
         // Send notification to the appropriate webhook
         const response = await fetch(webhookUrl, {
@@ -274,8 +298,7 @@ serve(async (req) => {
 
 /**
  * Enriches the notification payload with additional data from the database
- * IMPORTANT: Monetary values in the database are stored in cents (1/100 of currency unit)
- * This function converts them to display currency (pounds/dollars) before returning
+ * IMPORTANT: This function now preserves raw monetary values (in pence/cents) when the flag is present
  */
 async function enrichPayloadWithData(supabase, notification) {
   try {
@@ -326,10 +349,20 @@ async function enrichPayloadWithData(supabase, notification) {
     
     console.log(`📝 Found payment data for ID ${paymentId}`);
     
+    // Check if the original payload has a flag indicating raw monetary values
+    const hasRawMonetaryValues = payload.monetary_values_in_pence === true;
+    console.log(`🏁 Original payload monetary_values_in_pence flag: ${hasRawMonetaryValues}`);
+    
     // Create enhanced payload based on recipient type
     let enhancedPayload = { 
       notification_type: notification.type === 'payment_success' ? 'payment_success' : 'payment_failed'
     };
+    
+    // Preserve the raw monetary values flag if present
+    if (hasRawMonetaryValues) {
+      enhancedPayload.monetary_values_in_pence = true;
+      console.log(`🏁 Preserving monetary_values_in_pence flag in enhanced payload`);
+    }
     
     // Set notification_method based on available patient contact details
     if (recipientType === 'patient') {
@@ -375,32 +408,60 @@ async function enrichPayloadWithData(supabase, notification) {
       phone: payment.patient_phone || payload.patient_phone
     };
     
-    // IMPORTANT: Convert monetary values from cents to display currency with 2 decimal places
-    // Add payment data with amounts converted from cents to display currency
-    const amountPaid = payment.amount_paid ? formatMonetaryValue(payment.amount_paid) : "0.00";
-    const refundAmount = payment.refund_amount ? formatMonetaryValue(payment.refund_amount) : null;
-    
-    console.log(`💰 Converting amount_paid from cents: ${payment.amount_paid} to display currency: ${amountPaid}`);
-    
-    enhancedPayload.payment = {
-      reference: payment.payment_ref || "N/A",
-      amount: Number(amountPaid), // Converted from cents to pounds/dollars with 2 decimal places
-      refund_amount: refundAmount ? Number(refundAmount) : null, // Converted from cents to pounds/dollars
-      payment_link: `https://clinipay.co.uk/payment-receipt/${payment.id}`,
-      message: notification.type === 'payment_success' ? 
-        "Your payment was successful" : 
-        "Your payment has failed"
-    };
-    
-    // For clinic notifications, add financial details
-    if (recipientType === 'clinic') {
-      // Convert all financial values from cents to pounds/dollars with 2 decimal places
-      enhancedPayload.payment.financial_details = {
-        gross_amount: Number(amountPaid), // Already converted above
-        stripe_fee: Number(formatMonetaryValue(payment.stripe_fee || 0)),
-        platform_fee: Number(formatMonetaryValue(payment.platform_fee || 0)),
-        net_amount: Number(formatMonetaryValue(payment.net_amount || 0))
+    // Add payment data
+    // IMPORTANT: When flag is present, preserve raw monetary values
+    if (hasRawMonetaryValues) {
+      console.log(`💰 Using raw amounts (pence) for payment - amount_paid: ${payment.amount_paid}, refund_amount: ${payment.refund_amount || null}`);
+      
+      enhancedPayload.payment = {
+        reference: payment.payment_ref || "N/A",
+        amount: payment.amount_paid, // Keep as raw pence value
+        refund_amount: payment.refund_amount, // Keep as raw pence value
+        payment_link: `https://clinipay.co.uk/payment-receipt/${payment.id}`,
+        message: notification.type === 'payment_success' ? 
+          "Your payment was successful" : 
+          "Your payment has failed"
       };
+      
+      // For clinic notifications with raw values, add financial details in raw pence
+      if (recipientType === 'clinic') {
+        enhancedPayload.payment.financial_details = {
+          gross_amount: payment.amount_paid,
+          stripe_fee: payment.stripe_fee || 0,
+          platform_fee: payment.platform_fee || 0,
+          net_amount: payment.net_amount || 0
+        };
+        console.log(`💰 Added raw financial details in pence for clinic notification`);
+      }
+    } 
+    // Otherwise convert values from pence to display currency
+    else {
+      const amountPaid = payment.amount_paid ? formatMonetaryValue(payment.amount_paid) : "0.00";
+      const refundAmount = payment.refund_amount ? formatMonetaryValue(payment.refund_amount) : null;
+      
+      console.log(`💰 Converting amount_paid from cents: ${payment.amount_paid} to display currency: ${amountPaid}`);
+      
+      enhancedPayload.payment = {
+        reference: payment.payment_ref || "N/A",
+        amount: Number(amountPaid), // Converted from cents to pounds/dollars with 2 decimal places
+        refund_amount: refundAmount ? Number(refundAmount) : null, // Converted from cents to pounds/dollars
+        payment_link: `https://clinipay.co.uk/payment-receipt/${payment.id}`,
+        message: notification.type === 'payment_success' ? 
+          "Your payment was successful" : 
+          "Your payment has failed"
+      };
+      
+      // For clinic notifications, add financial details
+      if (recipientType === 'clinic') {
+        // Convert all financial values from cents to pounds/dollars with 2 decimal places
+        enhancedPayload.payment.financial_details = {
+          gross_amount: Number(amountPaid), // Already converted above
+          stripe_fee: Number(formatMonetaryValue(payment.stripe_fee || 0)),
+          platform_fee: Number(formatMonetaryValue(payment.platform_fee || 0)),
+          net_amount: Number(formatMonetaryValue(payment.net_amount || 0))
+        };
+        console.log(`💰 Added formatted financial details for clinic notification`);
+      }
     }
     
     console.log(`✨ Successfully enriched payload for ${recipientType} notification`);

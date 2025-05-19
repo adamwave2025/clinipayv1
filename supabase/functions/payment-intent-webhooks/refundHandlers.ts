@@ -108,11 +108,12 @@ export async function handleRefundUpdated(refund: any, stripeClient: Stripe, sup
       );
     }
     
-    // Queue notifications for the refund
+    // Queue notifications for the refund with the monetary_values_in_pence flag
     await NotificationService.queueRefundNotifications(
       supabaseClient,
       paymentData,
-      refundAmount
+      refundAmount,
+      true  // Pass true to indicate values are in pence/cents
     );
     
     console.log("Refund processing completed successfully");

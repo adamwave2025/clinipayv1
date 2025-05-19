@@ -416,12 +416,12 @@ serve(async (req) => {
     
     try {
       if (payment.patient_email || payment.patient_phone) {
-        // Format all monetary values to proper currency values with 2 decimal places
-        const refundAmountFormatted = formatMonetaryValue(refundAmountToStore);
-        const amountPaidFormatted = formatMonetaryValue(payment.amount_paid);
+        // IMPORTANT: Store raw monetary values (in pence/cents) in the notification payloads
+        // Add a flag to indicate these are raw values that need processing
+        // Don't format or convert values here - let the notification processor handle it
         
-        console.log(`💰 Formatting refund amount from ${refundAmountToStore}p to £${refundAmountFormatted} for notifications`);
-        console.log(`💰 Formatting payment amount from ${payment.amount_paid}p to £${amountPaidFormatted} for notifications`);
+        console.log(`💰 Adding refund amount ${refundAmountToStore}p to notification payload (raw pence value)`);
+        console.log(`💰 Adding payment amount ${payment.amount_paid}p to notification payload (raw pence value)`);
         
         const refundPayload = {
           notification_type: "payment_refund",
@@ -436,8 +436,8 @@ serve(async (req) => {
           },
           payment: {
             reference: payment.payment_ref,
-            amount: Number(amountPaidFormatted), // Using formatted amount with decimals
-            refund_amount: Number(refundAmountFormatted), // Using formatted amount with decimals
+            amount: payment.amount_paid, // Raw amount in pence
+            refund_amount: refundAmountToStore, // Raw amount in pence
             payment_link: `https://clinipay.co.uk/payment-receipt/${paymentId}`,
             message: isFullRefund ? "Your payment has been fully refunded" : "Your payment has been partially refunded",
             is_full_refund: isFullRefund
@@ -446,7 +446,9 @@ serve(async (req) => {
             name: clinicData?.clinic_name || 'Your healthcare provider',
             email: clinicData?.email,
             phone: clinicData?.phone
-          }
+          },
+          // Add a flag indicating these are raw monetary values in pence
+          monetary_values_in_pence: true
         };
         
         const { error: notifyError } = await supabase
@@ -465,11 +467,7 @@ serve(async (req) => {
           console.log(`✅ Successfully queued refund notification for patient`);
         }
         
-        // Format financial details for clinic notification
-        const stripeFeeFormatted = formatMonetaryValue(payment.stripe_fee || 0);
-        const platformFeeFormatted = formatMonetaryValue(payment.platform_fee || 0);
-        const netAmountFormatted = formatMonetaryValue(payment.net_amount || 0);
-        const refundFeeFormatted = formatMonetaryValue(refundFeeInCents);
+        // Clinic notification with raw monetary values
         
         const clinicPayload = {
           notification_type: "payment_refund",
@@ -484,24 +482,26 @@ serve(async (req) => {
           },
           payment: {
             reference: payment.payment_ref,
-            amount: Number(amountPaidFormatted), // Using formatted amount with decimals
-            refund_amount: Number(refundAmountFormatted), // Using formatted amount with decimals
+            amount: payment.amount_paid, // Raw amount in pence
+            refund_amount: refundAmountToStore, // Raw amount in pence
             payment_link: `https://clinipay.co.uk/payment-receipt/${paymentId}`,
             message: isFullRefund ? "Full payment refund processed" : "Partial payment refund processed",
             is_full_refund: isFullRefund,
             financial_details: {
-              gross_amount: Number(amountPaidFormatted), // Using formatted amount with decimals
-              stripe_fee: Number(stripeFeeFormatted), // Using formatted amount with decimals
-              platform_fee: Number(platformFeeFormatted), // Using formatted amount with decimals
-              net_amount: Number(netAmountFormatted), // Using formatted amount with decimals
-              refund_fee: Number(refundFeeFormatted) // Using formatted amount with decimals
+              gross_amount: payment.amount_paid, // Raw amount in pence
+              stripe_fee: payment.stripe_fee || 0, // Raw amount in pence
+              platform_fee: payment.platform_fee || 0, // Raw amount in pence
+              net_amount: payment.net_amount || 0, // Raw amount in pence
+              refund_fee: refundFeeInCents // Raw amount in cents
             }
           },
           clinic: {
             name: clinicData?.clinic_name || 'Your clinic',
             email: clinicData?.email,
             phone: clinicData?.phone
-          }
+          },
+          // Add a flag indicating these are raw monetary values in pence
+          monetary_values_in_pence: true
         };
         
         const { error: clinicNotifyError } = await supabase
