@@ -137,12 +137,53 @@ export async function handleCreatePaymentIntent(req: Request) {
 
     console.log(`Payment intent created: ${paymentIntent.id}`);
     console.log(`Payment intent metadata:`, paymentIntent.metadata);
+    
+    // If we have a payment_schedule_id, log payment activity now, using the payment reference
+    if (payment_schedule_id && planId) {
+      try {
+        // First get patient details from the plan
+        const { data: planData } = await supabase
+          .from("plans")
+          .select("patient_id")
+          .eq("id", planId)
+          .single();
+          
+        if (planData) {
+          console.log(`Recording payment activity for payment schedule ${payment_schedule_id}`);
+          
+          // Log payment activity to the payment_activity table
+          await supabase.from("payment_activity").insert({
+            payment_link_id: paymentLinkId,
+            patient_id: planData.patient_id,
+            clinic_id: clinicId,
+            action_type: 'card_payment_initiated',
+            plan_id: planId,
+            details: {
+              payment_id: payment_schedule_id,
+              amount: amount,
+              initiated_at: new Date().toISOString(),
+              payment_method: 'card',
+              payment_ref: paymentReference,
+              stripe_payment_intent_id: paymentIntent.id
+            }
+          });
+          
+          console.log(`Payment activity recorded with payment_ref: ${paymentReference}`);
+        } else {
+          console.warn(`Could not find patient_id for plan ${planId}`);
+        }
+      } catch (activityError) {
+        console.error("Error recording payment activity:", activityError);
+        // Non-critical error, continue with payment intent creation
+      }
+    }
 
     return new Response(JSON.stringify({
       success: true,
       clientSecret: paymentIntent.client_secret,
       paymentLinkId,
       requestId,
+      paymentReference, // Return the payment reference to the client
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200

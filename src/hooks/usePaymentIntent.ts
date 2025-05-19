@@ -148,12 +148,13 @@ export function usePaymentIntent() {
       }
       
       console.log('Associated payment link ID:', paymentIntentData.paymentLinkId);
-      // Removed success toast notification
+      console.log('Payment reference:', paymentIntentData.paymentReference || 'Not provided');
       
       return {
         success: true,
         clientSecret: paymentIntentData.clientSecret,
-        associatedPaymentLinkId: paymentIntentData.paymentLinkId
+        associatedPaymentLinkId: paymentIntentData.paymentLinkId,
+        paymentReference: paymentIntentData.paymentReference
       };
     } catch (error: any) {
       console.error('Error creating payment intent:', error);

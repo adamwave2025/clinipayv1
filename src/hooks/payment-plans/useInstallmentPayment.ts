@@ -145,6 +145,10 @@ export function useInstallmentPayment(
         return { success: false, error: intentResult.error || 'Failed to create payment intent' };
       }
       
+      // Save the payment_ref returned from the payment intent creation
+      const paymentRef = intentResult.paymentReference;
+      console.log('Payment reference from intent creation:', paymentRef);
+      
       // 4. Process the payment with Stripe
       const paymentResult = await processPayment({
         clientSecret: intentResult.clientSecret,
@@ -158,6 +162,21 @@ export function useInstallmentPayment(
       if (!paymentResult.success) {
         console.error('Payment processing failed:', paymentResult.error);
         return { success: false, error: paymentResult.error || 'Payment processing failed' };
+      }
+      
+      // After successful payment, fetch the payment record to get the payment_ref
+      if (paymentResult.paymentIntent?.id) {
+        const { data: paymentRecord } = await supabase
+          .from('payments')
+          .select('payment_ref')
+          .eq('stripe_payment_id', paymentResult.paymentIntent.id)
+          .single();
+          
+        if (paymentRecord) {
+          console.log('Retrieved payment record with payment_ref:', paymentRecord.payment_ref);
+        } else {
+          console.log('Payment record not found yet, will use generated payment_ref:', paymentRef);
+        }
       }
       
       // 5. If the payment is successful, update the status immediately in the database
@@ -265,24 +284,8 @@ export function useInstallmentPayment(
           }
         }
 
-        // 6. NEW: Log payment activity to the payment_activity table
-        // This ensures activity is logged regardless of webhook timing
-        await PlanPaymentMetrics.logPaymentActivity(
-          paymentData.plans.payment_link_id,
-          paymentData.plans.patient_id,
-          paymentData.plans.clinic_id,
-          paymentData.plan_id,
-          'card_payment_processed',
-          {
-            payment_id: paymentId,
-            amount: amount,
-            payment_number: paymentData.payment_number,
-            total_payments: paymentData.total_payments,
-            processed_at: new Date().toISOString(),
-            payment_method: 'card',
-            stripe_payment_id: paymentResult.paymentIntent?.id || 'unknown'
-          }
-        );
+        // NOTE: Payment activity is now recorded in the create-payment-intent edge function
+        // so we don't need to record it here again
         
         // 7. Use the PlanPaymentMetrics service to ensure the count is accurate
         await PlanPaymentMetrics.updatePlanPaymentMetrics(paymentData.plan_id);
