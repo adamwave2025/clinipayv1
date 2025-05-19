@@ -212,7 +212,6 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
           <>
             <div className="font-medium">Resumed plan</div>
             <div className="mt-1 space-y-1 text-sm">
-              <p>Next payment date: {formatDate(activity.details?.resumeDate || activity.details?.nextDueDate || 'Not specified')}</p>
             </div>
           </>
         );
