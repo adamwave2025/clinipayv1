@@ -1,10 +1,6 @@
+
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { generateUUID } from './utils.ts';
-
-export const paymentIntentWebhookHandlers = {
-  handlePaymentIntentSucceeded,
-  handlePaymentIntentFailed
-};
 
 export async function handlePaymentIntentSucceeded(paymentIntent: any, supabase: SupabaseClient) {
   console.log(`Processing successful payment: ${paymentIntent.id}`);
@@ -131,12 +127,12 @@ async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseCl
     
     console.log(`Updated payment schedule ${paymentScheduleId} status to 'paid'`);
     
-    // MODIFIED: Count installments with paid, refunded or partially_refunded status as "paid"
+    // MODIFIED: Count actual paid installments from payment_schedule table
     const { count: paidInstallments, error: countError } = await supabase
       .from('payment_schedule')
       .select('id', { count: 'exact', head: true })
       .eq('plan_id', planId)
-      .in('status', ['paid', 'refunded', 'partially_refunded']);
+      .eq('status', 'paid');
       
     if (countError) {
       console.error('Error counting paid installments:', countError);
