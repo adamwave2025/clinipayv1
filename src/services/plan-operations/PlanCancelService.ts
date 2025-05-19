@@ -68,7 +68,6 @@ export class PlanCancelService {
       }
       
       // 3. Add an activity log entry
-      // CHANGED: Updated action_type from 'cancel_plan' to 'plan_cancelled' for consistency
       const { error: activityError } = await supabase
         .from('payment_activity')
         .insert({
@@ -76,7 +75,7 @@ export class PlanCancelService {
           patient_id: plan.patientId,
           clinic_id: plan.clinicId,
           plan_id: plan.id, // Make sure to include plan_id for easier activity tracking
-          action_type: 'plan_cancelled', // Changed from 'cancel_plan' to 'plan_cancelled'
+          action_type: 'plan_cancelled', // Using consistent 'plan_cancelled' action type
           details: {
             plan_name: plan.title || plan.planName,
             previous_status: plan.status
