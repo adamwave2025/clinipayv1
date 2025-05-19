@@ -92,6 +92,24 @@ export const UnifiedAuthProvider: React.FC<{ children: ReactNode }> = ({ childre
       
       console.log('[AUTH] Sign up successful, verification may be required');
       
+      if (data.user) {
+        console.log('[AUTH] Calling handle-new-signup for user:', data.user.id);
+        
+        // Call edge function to handle verification setup
+        const { error: webhookError } = await supabase.functions.invoke('handle-new-signup', {
+          method: 'POST',
+          body: { 
+            id: data.user.id,
+            email: email,
+            clinic_name: clinicName
+          }
+        });
+        
+        if (webhookError) {
+          console.error('[AUTH] Error calling handle-new-signup:', webhookError);
+        }
+      }
+      
       return { 
         error: null,
         verificationSent: true
