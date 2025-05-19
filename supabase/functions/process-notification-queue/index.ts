@@ -16,9 +16,9 @@ const MAX_RETRIES = 3;
  * This ensures consistency in all notification payloads
  */
 function formatMonetaryValue(amountInPence) {
-  if (amountInPence === null || amountInPence === undefined) return 0.00;
+  if (amountInPence === null || amountInPence === undefined) return "0.00";
   
-  // Convert from pence to pounds and ensure 2 decimal places
+  // Convert from pence to pounds and ensure 2 decimal places as a STRING
   return (amountInPence / 100).toFixed(2);
 }
 
@@ -60,8 +60,9 @@ function processMonetaryValues(obj, parentKey = '', isRawMonetaryValue = false) 
     const isMonetaryField = ['amount', 'refund_amount', 'gross_amount', 'stripe_fee', 'platform_fee', 'net_amount', 'refund_fee'].includes(key);
     
     if (isMonetaryField && typeof value === 'number' && hasRawMonetaryValues) {
-      // Convert monetary values from pence to pounds with 2 decimal places
-      const formattedValue = Number(formatMonetaryValue(value));
+      // Convert monetary values from pence to pounds with 2 decimal places as STRING (not number)
+      // This is the key change to ensure consistent decimal display
+      const formattedValue = formatMonetaryValue(value);
       result[key] = formattedValue;
       console.log(`💰 Converted ${key} from ${value}p to £${formattedValue}`);
     } 
@@ -443,8 +444,8 @@ async function enrichPayloadWithData(supabase, notification) {
       
       enhancedPayload.payment = {
         reference: payment.payment_ref || "N/A",
-        amount: Number(amountPaid), // Converted from cents to pounds/dollars with 2 decimal places
-        refund_amount: refundAmount ? Number(refundAmount) : null, // Converted from cents to pounds/dollars
+        amount: amountPaid, // Converted and formatted as string with 2 decimal places
+        refund_amount: refundAmount, // Converted and formatted as string with 2 decimal places
         payment_link: `https://clinipay.co.uk/payment-receipt/${payment.id}`,
         message: notification.type === 'payment_success' ? 
           "Your payment was successful" : 
@@ -453,12 +454,12 @@ async function enrichPayloadWithData(supabase, notification) {
       
       // For clinic notifications, add financial details
       if (recipientType === 'clinic') {
-        // Convert all financial values from cents to pounds/dollars with 2 decimal places
+        // Convert all financial values from cents to pounds/dollars with 2 decimal places as strings
         enhancedPayload.payment.financial_details = {
-          gross_amount: Number(amountPaid), // Already converted above
-          stripe_fee: Number(formatMonetaryValue(payment.stripe_fee || 0)),
-          platform_fee: Number(formatMonetaryValue(payment.platform_fee || 0)),
-          net_amount: Number(formatMonetaryValue(payment.net_amount || 0))
+          gross_amount: amountPaid, // Already converted above
+          stripe_fee: formatMonetaryValue(payment.stripe_fee || 0),
+          platform_fee: formatMonetaryValue(payment.platform_fee || 0),
+          net_amount: formatMonetaryValue(payment.net_amount || 0)
         };
         console.log(`💰 Added formatted financial details for clinic notification`);
       }
