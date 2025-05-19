@@ -160,27 +160,7 @@ export function useInstallmentPayment(
         return { success: false, error: paymentResult.error || 'Payment processing failed' };
       }
       
-      // 5. If the payment is successful, fetch the payment record to get payment_ref
-      if (paymentResult.paymentIntent?.id) {
-        console.log('Fetching payment record for Stripe payment ID:', paymentResult.paymentIntent.id);
-        
-        const { data: paymentRecord, error: paymentRecordError } = await supabase
-          .from('payments')
-          .select('id, payment_ref')
-          .eq('stripe_payment_id', paymentResult.paymentIntent.id)
-          .single();
-          
-        if (paymentRecordError) {
-          console.error('Error fetching payment record:', paymentRecordError);
-        } else if (paymentRecord) {
-          console.log('Retrieved payment record:', paymentRecord);
-          console.log('Payment reference:', paymentRecord.payment_ref);
-        } else {
-          console.log('No payment record found with stripe_payment_id:', paymentResult.paymentIntent.id);
-        }
-      }
-      
-      // 6. If the payment is successful, update the status immediately in the database
+      // 5. If the payment is successful, update the status immediately in the database
       // This is a fallback in case the webhook doesn't trigger immediately
       try {
         console.log('Payment succeeded, updating database status as fallback to webhook');
