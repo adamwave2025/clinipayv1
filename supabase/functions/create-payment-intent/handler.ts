@@ -156,7 +156,7 @@ export async function handleCreatePaymentIntent(req: Request) {
             payment_link_id: paymentLinkId,
             patient_id: planData.patient_id,
             clinic_id: clinicId,
-            action_type: 'card_payment_initiated',
+            action_type: 'card_payment_processed', // Changed from 'card_payment_initiated' to 'card_payment_processed'
             plan_id: planId,
             details: {
               payment_id: payment_schedule_id,
@@ -164,7 +164,7 @@ export async function handleCreatePaymentIntent(req: Request) {
               initiated_at: new Date().toISOString(),
               payment_method: 'card',
               payment_ref: paymentReference,
-              stripe_payment_intent_id: paymentIntent.id
+              stripe_payment_id: paymentIntent.id
             }
           });
           

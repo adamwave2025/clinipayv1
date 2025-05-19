@@ -75,7 +75,7 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
             {/* Only include specific activity types for patient view */}
             {planActivities
               .filter(activity => 
-                ['payment_made', 'payment_refund', 'partial_refund'].includes(activity.actionType))
+                ['payment_made', 'payment_refund', 'partial_refund', 'card_payment_processed'].includes(activity.actionType))
               .map((activity) => (
                 <div key={activity.id} className="flex items-start gap-3 p-3 border rounded-md">
                   <div className="mt-1">
@@ -95,6 +95,7 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
                       <p>{activity.details?.planName ? `Payment plan: ${activity.details.planName}` : 'Payment'}</p>
                       {activity.details?.reference && <p>Reference: {activity.details.reference}</p>}
                       {activity.details?.payment_reference && <p>Reference: {activity.details.payment_reference}</p>}
+                      {activity.details?.payment_ref && <p>Reference: {activity.details.payment_ref}</p>}
                     </div>
                     <p className="text-sm text-gray-500 mt-1">
                       {formatDateTime(activity.performedAt, 'en-GB', 'Europe/London')}
