@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -394,79 +394,8 @@ serve(async (req) => {
         }
       }
       
-      // Update plan metrics for both full AND partial refunds the same way
-      if (planId) {
-        try {
-          // Get the current plan status and metrics
-          const { data: planData, error: planError } = await supabase
-            .from('plans')
-            .select('*')
-            .eq('id', planId)
-            .single();
-            
-          if (planError) {
-            console.error('❌ Error fetching plan data:', planError);
-          } else if (planData) {
-            console.log('📋 Found plan:', planData.id, 'with current paid_installments:', planData.paid_installments);
-            
-            // For both full and partial refunds: decrement paid installments
-            let newPaidInstallments = Math.max(0, planData.paid_installments - 1);
-            console.log(`💰 Refund: Decrementing paid installments to ${newPaidInstallments}`);
-            
-            // Recalculate progress for both full and partial refunds
-            const newProgress = Math.floor((newPaidInstallments / planData.total_installments) * 100);
-            
-            // Log what we're updating
-            console.log(`📊 Updating plan metrics for ${isFullRefund ? 'full' : 'partial'} refund: paid_installments=${newPaidInstallments}, progress=${newProgress}%`);
-            
-            // Determine new status if necessary
-            let newPlanStatus = planData.status;
-            if (planData.status === 'completed' && newPaidInstallments < planData.total_installments) {
-              newPlanStatus = 'active';
-              console.log(`🔄 Changing plan status from completed to active`);
-            }
-            
-            // Find the earliest unpaid payment date
-            const { data: nextPayments, error: nextPaymentsError } = await supabase
-              .from('payment_schedule')
-              .select('due_date')
-              .eq('plan_id', planId)
-              .in('status', ['pending', 'sent', 'overdue'])
-              .order('due_date', { ascending: true })
-              .limit(1);
-              
-            let nextDueDate = null;
-            if (!nextPaymentsError && nextPayments && nextPayments.length > 0) {
-              nextDueDate = nextPayments[0].due_date;
-              console.log(`🗓️ Found next due date: ${nextDueDate}`);
-            } else {
-              console.log('📅 No upcoming payments found');
-            }
-            
-            // Update the plan with all calculated metrics
-            const { error: updatePlanError } = await supabase
-              .from('plans')
-              .update({
-                paid_installments: newPaidInstallments,
-                progress: newProgress,
-                status: newPlanStatus,
-                next_due_date: nextDueDate,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', planId);
-              
-            if (updatePlanError) {
-              console.error('❌ Error updating plan:', updatePlanError);
-            } else {
-              console.log('✅ Updated plan successfully with metrics and next_due_date');
-            }
-          }
-        } catch (planUpdateError) {
-          console.error('❌ Error in plan update logic:', planUpdateError);
-        }
-      } else if (!planId) {
-        console.log("⚠️ No plan found to update metrics or record activity");
-      }
+      // REMOVED: Update plan metrics for both full AND partial refunds
+      // The logic that decrements paid_installments has been removed as requested
       
     } catch (planUpdateError) {
       console.error('❌ Error updating payment plan relationships:', planUpdateError);

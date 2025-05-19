@@ -100,11 +100,11 @@ export async function handleRefundUpdated(refund: any, stripeClient: Stripe, sup
     } else if (requestData) {
       console.log(`Found associated payment request: ${requestData.id}`);
       
-      // Update payment plan if needed - handle both full and partial refunds the same way
+      // Update payment schedule status if needed
       await PlanService.updatePlanAfterRefund(
         supabaseClient,
         requestData.id,
-        true // Treat all refunds the same way to update metrics
+        isFullRefund
       );
     }
     
