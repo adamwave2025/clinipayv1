@@ -281,6 +281,23 @@ export class PlanOperationsService {
           .select('payment_number, total_payments, amount, due_date')
           .eq('id', installmentId)
           .single();
+
+        // Get the payment reference from the payments table
+        let paymentReference = `CLN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        
+        // Try to get the payment record first to use its payment_ref
+        const { data: paymentRecord } = await supabase
+          .from('payments')
+          .select('payment_ref')
+          .eq('payment_schedule_id', installmentId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (paymentRecord?.payment_ref) {
+          paymentReference = paymentRecord.payment_ref;
+          console.log('Using payment reference from payment record:', paymentReference);
+        }
           
         if (scheduleData) {
           await this.logPlanActivity(planId, 'payment_marked_paid', { 
@@ -290,7 +307,8 @@ export class PlanOperationsService {
             amount: scheduleData.amount,
             dueDate: scheduleData.due_date,
             paidAt: new Date().toISOString(),
-            manualPayment: true
+            manualPayment: true,
+            paymentReference: paymentReference // MODIFIED: Added payment reference
           });
         }
       }

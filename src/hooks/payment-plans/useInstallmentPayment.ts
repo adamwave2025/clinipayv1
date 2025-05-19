@@ -205,7 +205,7 @@ export function useInstallmentPayment(
           .from('payment_schedule')
           .select('id', { count: 'exact', head: true })
           .eq('plan_id', paymentData.plan_id)
-          .eq('status', 'paid');
+          .in('status', ['paid', 'refunded', 'partially_refunded']);
         
         if (countError) {
           console.error('Error counting paid installments:', countError);
@@ -265,6 +265,23 @@ export function useInstallmentPayment(
           }
         }
 
+        // Get the payment reference from the payments table or generate a new one
+        let paymentReference = `CLN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        
+        // Try to get the payment record first to use its payment_ref
+        const { data: paymentRecord } = await supabase
+          .from('payments')
+          .select('payment_ref')
+          .eq('payment_schedule_id', paymentId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (paymentRecord?.payment_ref) {
+          paymentReference = paymentRecord.payment_ref;
+          console.log('Using payment reference from payment record:', paymentReference);
+        }
+
         // 6. NEW: Log payment activity to the payment_activity table
         // This ensures activity is logged regardless of webhook timing
         await PlanPaymentMetrics.logPaymentActivity(
@@ -280,6 +297,7 @@ export function useInstallmentPayment(
             total_payments: paymentData.total_payments,
             processed_at: new Date().toISOString(),
             payment_method: 'card',
+            paymentReference: paymentReference, // MODIFIED: Added payment reference
             stripe_payment_id: paymentResult.paymentIntent?.id || 'unknown'
           }
         );
