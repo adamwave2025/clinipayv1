@@ -1,3 +1,4 @@
+
 import { Payment, PaymentLink } from '@/types/payment';
 import { formatDate } from '@/utils/formatters';
 
@@ -7,13 +8,13 @@ export function usePaymentFormatter() {
       // Format the date correctly using our utility function
       const paidDate = payment.paid_at ? new Date(payment.paid_at) : new Date();
       
-      // Determine the payment type - NEW: Use payment_type field if available
+      // Determine the payment type - Use payment_type field if available
       let paymentType: Payment['type'] = 'consultation'; // Default type as fallback
       let linkTitle: string | undefined = undefined;
       let description: string | undefined = undefined;
       let paymentLinkId: string | undefined = undefined;
       
-      // NEW: Check if payment has payment_type field
+      // Check if payment has direct payment_type and payment_title fields (new approach)
       if (payment.payment_type) {
         console.log(`Using direct payment_type: ${payment.payment_type}`);
         // Ensure type is one of the allowed values
@@ -26,7 +27,7 @@ export function usePaymentFormatter() {
           linkTitle = payment.payment_title;
         }
       }
-      // If linked to a payment link, use that type and title
+      // If direct fields aren't available, fall back to payment_links relationship data
       else if (payment.payment_links) {
         console.log(`Using payment_links type: ${payment.payment_links.type}`);
         // Check if this is a payment plan first
