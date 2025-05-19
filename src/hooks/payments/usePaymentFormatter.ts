@@ -9,7 +9,7 @@ export function usePaymentFormatter() {
       const paidDate = payment.paid_at ? new Date(payment.paid_at) : new Date();
       
       // Determine the payment type
-      let paymentType: Payment['type'] = payment.payment_type || 'consultation'; // First check direct field
+      let paymentType: Payment['type'] = payment.payment_type || 'other'; // First check direct field
       let linkTitle: string | undefined = payment.payment_title; // First check direct field
       let description: string | undefined = undefined;
       let paymentLinkId: string | undefined = undefined;
