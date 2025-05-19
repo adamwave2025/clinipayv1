@@ -39,6 +39,7 @@ export function usePaymentLinkSender() {
       let paymentLinkId = null;
       let paymentTitle = '';
       let isPaymentPlan = false;
+      let isCustomAmount = false;
 
       if (formData.selectedLink) {
         const selectedPaymentLink = paymentLinks.find(link => link.id === formData.selectedLink);
@@ -59,6 +60,7 @@ export function usePaymentLinkSender() {
       } else if (formData.customAmount) {
         // formData.customAmount += "00";
         amount = Number(formData.customAmount) * 100;
+        isCustomAmount = true;
         console.log('⚠️ CRITICAL: Using custom amount:', amount);
       }
 
@@ -75,7 +77,7 @@ export function usePaymentLinkSender() {
         finalPatientId,
         formData,
         paymentLinkId,
-        formData.selectedLink ? null : amount
+        isCustomAmount ? amount : null
       );
       
       // Step 6: Determine notification methods and send notifications
@@ -111,7 +113,8 @@ export function usePaymentLinkSender() {
             amount: amount,
             refund_amount: null,
             payment_link: `https://clinipay.co.uk/payment/${paymentRequest.id}`,
-            message: formData.message || (paymentTitle ? `Payment for ${paymentTitle}` : "Payment request")
+            message: formData.message || (paymentTitle ? `Payment for ${paymentTitle}` : "Payment request"),
+            is_custom_amount: isCustomAmount
           }
         }, notificationMethod);
 

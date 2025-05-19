@@ -13,9 +13,16 @@ export function usePaymentFormatter() {
       let linkTitle: string | undefined = undefined;
       let description: string | undefined = undefined;
       let paymentLinkId: string | undefined = undefined;
+      let isCustomAmount: boolean = false;
       
+      // FIXED: Check if this was a custom amount payment
+      if (payment.custom_amount && !payment.payment_link_id) {
+        paymentType = 'other';
+        linkTitle = 'Custom Payment';
+        isCustomAmount = true;
+      }
       // If linked to a payment link, use that type and title
-      if (payment.payment_links) {
+      else if (payment.payment_links) {
         // Check if this is a payment plan first
         if (payment.payment_links.payment_plan === true) {
           paymentType = 'payment_plan';
@@ -57,6 +64,7 @@ export function usePaymentFormatter() {
         linkTitle,
         description,
         paymentLinkId,
+        isCustomAmount,
         reference: payment.payment_ref || undefined,
         paymentReference: payment.payment_ref || undefined,
         manualPayment: payment.manual_payment || false,

@@ -386,6 +386,24 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
   console.log(`Processing standard payment for clinic ${clinicId}, amount: ${amount}p, reference: ${paymentReference}`);
   
   try {
+    // If we have a request ID, get any custom payment information from it
+    let isCustomAmount = false;
+    
+    if (requestId) {
+      // Check if this was a custom amount payment from the payment_requests table
+      const { data: requestData, error: requestError } = await supabase
+        .from('payment_requests')
+        .select('is_custom_amount, custom_amount')
+        .eq('id', requestId)
+        .single();
+        
+      if (!requestError && requestData) {
+        isCustomAmount = requestData.is_custom_amount === true || 
+                        (requestData.custom_amount !== null && !paymentLinkId);
+        console.log(`Request ${requestId} custom amount status:`, isCustomAmount);
+      }
+    }
+    
     // Create payment record
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
@@ -402,7 +420,8 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
         status: 'paid',
         net_amount: netAmount,
         platform_fee: platformFeeAmount,
-        stripe_fee: paymentIntent.application_fee_amount || 0
+        stripe_fee: paymentIntent.application_fee_amount || 0,
+        custom_amount: isCustomAmount ? amount : null
       })
       .select()
       .single();

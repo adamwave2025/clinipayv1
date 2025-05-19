@@ -22,7 +22,8 @@ export function usePaymentRequestService() {
         paymentLinkId,
         amount: customAmount,
         patientName: formData.patientName,
-        message: formData.message || null
+        message: formData.message || null,
+        isCustomAmount: !!customAmount && !paymentLinkId
       });
 
       const { data, error } = await supabase
@@ -36,7 +37,8 @@ export function usePaymentRequestService() {
           patient_email: formData.patientEmail,
           patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,
           status: 'sent',
-          message: formData.message || null
+          message: formData.message || null,
+          is_custom_amount: !!customAmount && !paymentLinkId
         })
         .select();
 
