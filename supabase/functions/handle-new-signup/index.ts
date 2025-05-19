@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.29.0";
 
@@ -105,7 +106,10 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
             email: email,
             verificationUrl: verificationUrl,
             userId: id,
-            clinicName: requestData.clinic_name // Pass along clinic name for the email template
+            // Fix the [object Object] issue by properly formatting the clinic name
+            clinicName: typeof clinic_name === 'object' ? 
+              (clinic_name?.name || 'your clinic') : 
+              clinic_name || 'your clinic'
           })
         });
         
@@ -232,6 +236,18 @@ async function handleResendVerification(supabase, requestData, corsHeaders) {
       throw tokenError;
     }
     
+    // Get clinic name for this user
+    const { data: clinicData, error: clinicError } = await supabase
+      .from('clinics')
+      .select('name')
+      .eq('id', userId)
+      .maybeSingle();
+      
+    let clinicName = 'your clinic';
+    if (!clinicError && clinicData && clinicData.name) {
+      clinicName = clinicData.name;
+    }
+    
     // Generate verification URL with token
     const baseUrl = Deno.env.get("SITE_URL") || "https://clinipay.co.uk";
     const verificationUrl = `${baseUrl}/verify-email?token=${token}&userId=${userId}`;
@@ -250,6 +266,7 @@ async function handleResendVerification(supabase, requestData, corsHeaders) {
             email: email,
             verificationUrl: verificationUrl,
             userId: userId,
+            clinicName: clinicName,
             resend: true
           })
         });

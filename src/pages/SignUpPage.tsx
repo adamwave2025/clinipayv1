@@ -62,10 +62,13 @@ const SignUpPage = () => {
     console.log('Starting sign up process...', { email: formData.email, clinicName: formData.clinicName });
     
     try {
+      // Make sure clinic name is a string, not an object
+      const clinicName = typeof formData.clinicName === 'string' ? formData.clinicName : String(formData.clinicName);
+      
       const { error, verificationSent } = await signUp(
         formData.email, 
         formData.password, 
-        formData.clinicName
+        clinicName
       );
       
       if (error) {
