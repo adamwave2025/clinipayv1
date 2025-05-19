@@ -265,21 +265,27 @@ export function useInstallmentPayment(
           }
         }
 
-        // Get the payment reference from the payments table or generate a new one
-        let paymentReference = `CLN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        // Important: Wait for the payment to be recorded by the webhook before trying to fetch the reference
+        // Delay slightly to allow webhook to process the payment first
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Try to get the payment record first to use its payment_ref
+        // Try to get the payment record to use its payment_ref
         const { data: paymentRecord } = await supabase
           .from('payments')
-          .select('payment_ref')
+          .select('payment_ref, id')
           .eq('payment_schedule_id', paymentId)
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
           
+        // Use the payment reference from the created payment record, or generate a fallback
+        let paymentReference = `CLN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        
         if (paymentRecord?.payment_ref) {
           paymentReference = paymentRecord.payment_ref;
           console.log('Using payment reference from payment record:', paymentReference);
+        } else {
+          console.log('No payment record found yet, using generated reference:', paymentReference);
         }
 
         // 6. NEW: Log payment activity to the payment_activity table
@@ -297,7 +303,8 @@ export function useInstallmentPayment(
             total_payments: paymentData.total_payments,
             processed_at: new Date().toISOString(),
             payment_method: 'card',
-            paymentReference: paymentReference, // MODIFIED: Added payment reference
+            paymentReference: paymentReference, // Use the proper payment reference
+            payment_record_id: paymentRecord?.id || 'pending',
             stripe_payment_id: paymentResult.paymentIntent?.id || 'unknown'
           }
         );

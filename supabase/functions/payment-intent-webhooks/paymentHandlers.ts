@@ -1,3 +1,4 @@
+
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { generateUUID } from './utils.ts';
 
@@ -212,7 +213,7 @@ async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseCl
         details: {
           amount: amount,
           paymentId: payment?.id,
-          paymentReference: paymentReference,  // MODIFIED: Added payment reference
+          paymentReference: payment?.payment_ref || paymentReference,  // Use payment_ref from the payment record
           installmentNumber: paidInstallments,
           totalInstallments: planData.total_installments,
           progress: progress
@@ -250,7 +251,7 @@ async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseCl
           phone: patientPhone
         },
         payment: {
-          reference: paymentReference,
+          reference: payment?.payment_ref || paymentReference,
           amount: amount,
           refund_amount: null,
           payment_link: payment?.id ? `https://clinipay.co.uk/payment-receipt/${payment.id}` : null,
@@ -292,7 +293,7 @@ async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseCl
           phone: patientPhone
         },
         payment: {
-          reference: paymentReference,
+          reference: payment?.payment_ref || paymentReference,
           amount: amount,
           refund_amount: null,
           payment_link: payment?.id ? `https://clinipay.co.uk/payment-receipt/${payment.id}` : null,
@@ -415,7 +416,7 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
         details: {
           amount: amount,
           paymentId: payment.id,
-          paymentReference: paymentReference  // MODIFIED: Added payment reference
+          paymentReference: payment.payment_ref  // Use the payment_ref from the payment record
         }
       });
     
@@ -449,7 +450,7 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
             phone: patientPhone
           },
           payment: {
-            reference: paymentReference,
+            reference: payment.payment_ref,
             amount: amount,
             refund_amount: null,
             payment_link: `https://clinipay.co.uk/payment-receipt/${payment.id}`,
@@ -492,7 +493,7 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
           phone: patientPhone
         },
         payment: {
-          reference: paymentReference,
+          reference: payment.payment_ref,
           amount: amount,
           refund_amount: null,
           payment_link: `https://clinipay.co.uk/payment-receipt/${payment.id}`,
