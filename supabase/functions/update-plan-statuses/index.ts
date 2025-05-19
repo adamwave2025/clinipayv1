@@ -55,7 +55,7 @@ async function getAccuratePaidInstallmentCount(supabase: any, planId: string): P
       .from('payment_schedule')
       .select('id', { count: 'exact', head: true })
       .eq('plan_id', planId)
-      .in('status', ['paid', 'refunded', 'partially_refunded']);
+      .eq('status', 'paid');
       
     if (error) {
       console.error('Error counting paid installments:', error);

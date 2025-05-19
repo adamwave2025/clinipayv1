@@ -37,17 +37,12 @@ export const usePlanCore = () => {
   // Update the hasPaidPayments and hasOverduePayments state when installments change
   useEffect(() => {
     if (installments.length > 0) {
-      // Count installments with paid, refunded or partially_refunded status as "paid"
-      const hasPaid = installments.some(installment => 
-        ['paid', 'refunded', 'partially_refunded'].includes(installment.status)
-      );
+      const hasPaid = installments.some(installment => installment.status === 'paid');
       setHasPaidPayments(hasPaid);
       
       const hasOverdue = installments.some(installment => {
         if (installment.status === 'overdue') return true;
-        if (installment.status === 'paid' || installment.status === 'cancelled' || 
-            installment.status === 'paused' || installment.status === 'refunded' || 
-            installment.status === 'partially_refunded') {
+        if (installment.status === 'paid' || installment.status === 'cancelled' || installment.status === 'paused') {
           return false;
         }
         const now = new Date();

@@ -40,12 +40,13 @@ export class PlanService {
         return;
       }
       
-      // MODIFIED: Count actual paid, refunded, and partially_refunded installments
+      // MODIFIED: Count actual paid installments from payment_schedule table
+      // instead of incrementing a counter
       const { count: paidInstallments, error: countError } = await supabaseClient
         .from("payment_schedule")
         .select("id", { count: 'exact', head: true })
         .eq("plan_id", scheduleData.plan_id)
-        .in("status", ["paid", "refunded", "partially_refunded"]);
+        .eq("status", "paid");
         
       if (countError) {
         console.error("Error counting paid installments:", countError);
@@ -239,9 +240,9 @@ export class PlanService {
       
       console.log(`Updated payment schedule ${scheduleData.id} status to ${isFullRefund ? 'refunded' : 'partially_refunded'}`);
       
-      // Update the plan metrics if we have a plan_id
-      if (scheduleData.plan_id) {
-        console.log(`Updating plan ${scheduleData.plan_id} metrics after refund`);
+      // If this is a full refund, we need to update the plan's paid_installments count
+      if (isFullRefund && scheduleData.plan_id) {
+        console.log(`Updating plan ${scheduleData.plan_id} for refunded payment`);
         
         // Get the current plan data
         const { data: planData, error: planError } = await supabaseClient
@@ -260,12 +261,13 @@ export class PlanService {
           return;
         }
         
-        // MODIFIED: Count actual paid installments including refunded and partially refunded
+        // MODIFIED: Count actual paid installments from payment_schedule table
+        // instead of decrementing a counter
         const { count: paidInstallments, error: countError } = await supabaseClient
           .from("payment_schedule")
           .select("id", { count: 'exact', head: true })
           .eq("plan_id", scheduleData.plan_id)
-          .in("status", ["paid", "refunded", "partially_refunded"]);
+          .eq("status", "paid");
           
         if (countError) {
           console.error("Error counting paid installments after refund:", countError);
