@@ -1,4 +1,3 @@
-
 import { Payment, PaymentLink } from '@/types/payment';
 import { formatDate } from '@/utils/formatters';
 
@@ -144,8 +143,8 @@ export function usePaymentFormatter() {
         paymentUrl,
         isCustomAmount,
         paymentLinkId,
-        reference: '', // Use a dash for unpaid payment requests
-        paymentReference: '', // Use a dash for unpaid payment requests
+        reference: '', // Set to empty string instead of a dash for unpaid payment requests
+        paymentReference: '', // Set to empty string instead of a dash for unpaid payment requests
         manualPayment: false // Requests are never manual payments
       };
     });
