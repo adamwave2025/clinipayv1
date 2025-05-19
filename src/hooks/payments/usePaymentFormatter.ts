@@ -144,8 +144,8 @@ export function usePaymentFormatter() {
         paymentUrl,
         isCustomAmount,
         paymentLinkId,
-        paymentReference: request.id, // Use request ID as reference
-        reference: request.id, // Use request ID as reference
+        reference: '-', // Use a dash for unpaid payment requests
+        paymentReference: '-', // Use a dash for unpaid payment requests
         manualPayment: false // Requests are never manual payments
       };
     });
