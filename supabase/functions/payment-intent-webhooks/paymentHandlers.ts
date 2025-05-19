@@ -386,60 +386,6 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
   console.log(`Processing standard payment for clinic ${clinicId}, amount: ${amount}p, reference: ${paymentReference}`);
   
   try {
-    // NEW: Variables to store payment link details
-    let paymentLinkType: string | null = null;
-    let paymentLinkTitle: string | null = null;
-
-    // NEW: If this payment is linked to a payment request or payment link, fetch link details
-    if (requestId) {
-      console.log(`Payment has requestId: ${requestId}, fetching associated payment link details`);
-      
-      // Get payment link details via the request
-      const { data: requestData, error: requestError } = await supabase
-        .from('payment_requests')
-        .select(`payment_link_id`)
-        .eq('id', requestId)
-        .maybeSingle();
-        
-      if (!requestError && requestData && requestData.payment_link_id) {
-        console.log(`Found payment_link_id from request: ${requestData.payment_link_id}`);
-        
-        // Fetch the payment link type and title
-        const { data: linkData, error: linkError } = await supabase
-          .from('payment_links')
-          .select('type, title')
-          .eq('id', requestData.payment_link_id)
-          .maybeSingle();
-          
-        if (!linkError && linkData) {
-          paymentLinkType = linkData.type;
-          paymentLinkTitle = linkData.title;
-          console.log(`Retrieved payment link type: ${paymentLinkType}, title: ${paymentLinkTitle}`);
-        } else {
-          console.error('Error or no data when fetching payment link:', linkError);
-        }
-      } else {
-        console.log(`No payment_link_id found for request ${requestId}`);
-      }
-    } else if (paymentLinkId) {
-      // If we have a direct payment link ID (not through a request), fetch its details
-      console.log(`Payment has direct paymentLinkId: ${paymentLinkId}, fetching details`);
-      
-      const { data: linkData, error: linkError } = await supabase
-        .from('payment_links')
-        .select('type, title')
-        .eq('id', paymentLinkId)
-        .maybeSingle();
-        
-      if (!linkError && linkData) {
-        paymentLinkType = linkData.type;
-        paymentLinkTitle = linkData.title;
-        console.log(`Retrieved payment link type: ${paymentLinkType}, title: ${paymentLinkTitle}`);
-      } else {
-        console.error('Error or no data when fetching payment link:', linkError);
-      }
-    }
-
     // Create payment record
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
@@ -456,10 +402,7 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
         status: 'paid',
         net_amount: netAmount,
         platform_fee: platformFeeAmount,
-        stripe_fee: paymentIntent.application_fee_amount || 0,
-        // NEW: Include payment type information if available
-        payment_type: paymentLinkType || null,
-        payment_title: paymentLinkTitle || null
+        stripe_fee: paymentIntent.application_fee_amount || 0
       })
       .select()
       .single();

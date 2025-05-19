@@ -460,8 +460,6 @@ export type Database = {
           payment_link_id: string | null
           payment_ref: string | null
           payment_schedule_id: string | null
-          payment_title: string | null
-          payment_type: string | null
           platform_fee: number | null
           refund_amount: number | null
           refunded_at: string | null
@@ -485,8 +483,6 @@ export type Database = {
           payment_link_id?: string | null
           payment_ref?: string | null
           payment_schedule_id?: string | null
-          payment_title?: string | null
-          payment_type?: string | null
           platform_fee?: number | null
           refund_amount?: number | null
           refunded_at?: string | null
@@ -510,8 +506,6 @@ export type Database = {
           payment_link_id?: string | null
           payment_ref?: string | null
           payment_schedule_id?: string | null
-          payment_title?: string | null
-          payment_type?: string | null
           platform_fee?: number | null
           refund_amount?: number | null
           refunded_at?: string | null
