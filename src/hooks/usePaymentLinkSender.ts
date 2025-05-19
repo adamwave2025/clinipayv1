@@ -57,7 +57,8 @@ export function usePaymentLinkSender() {
           console.error('⚠️ CRITICAL ERROR: Selected payment link not found in available links');
         }
       } else if (formData.customAmount) {
-        amount = Number(formData.customAmount);
+        // formData.customAmount += "00";
+        amount = Number(formData.customAmount) * 100;
         console.log('⚠️ CRITICAL: Using custom amount:', amount);
       }
 
