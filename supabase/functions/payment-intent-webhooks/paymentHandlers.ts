@@ -1,6 +1,6 @@
-
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { generateUUID } from './utils.ts';
+import { PatientService } from './patientService.ts';  // New import
 
 export async function handlePaymentIntentSucceeded(paymentIntent: any, supabase: SupabaseClient) {
   console.log(`Processing successful payment: ${paymentIntent.id}`);
@@ -200,12 +200,41 @@ async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseCl
       }
     }
     
+    // Try to resolve patient ID for consistency with payment records
+    let patientId = payment?.patient_id;
+    
+    // If patient ID is not set in the payment record (by trigger), try to find/create it
+    if (!patientId && (patientEmail || patientPhone)) {
+      try {
+        patientId = await PatientService.findOrCreatePatient(
+          supabase,
+          patientName,
+          patientEmail,
+          patientPhone,
+          clinicId
+        );
+        
+        if (patientId) {
+          console.log(`Resolved patient ID: ${patientId} for payment record`);
+          
+          // Update payment record with patient_id if it wasn't set by the trigger
+          await supabase
+            .from('payments')
+            .update({ patient_id: patientId })
+            .eq('id', payment?.id);
+        }
+      } catch (patientErr) {
+        console.error("Error resolving patient ID:", patientErr);
+        // Non-critical, continue processing
+      }
+    }
+    
     // Record payment activity
     await supabase
       .from('payment_activity')
       .insert({
         payment_link_id: paymentLinkId,
-        patient_id: null, // We'll update this if patient exists
+        patient_id: patientId, // Now using the resolved patient ID
         clinic_id: clinicId,
         action_type: 'installment_payment_received',
         plan_id: planId,
@@ -354,6 +383,8 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
   const platformFeeAmount = Math.round((parseFloat(platformFeePercent) / 100) * amount);
   const netAmount = amount - (paymentIntent.application_fee_amount || 0) - platformFeeAmount;
   
+  console.log(`Processing standard payment for clinic ${clinicId}, amount: ${amount}p, reference: ${paymentReference}`);
+  
   try {
     // Create payment record
     const { data: payment, error: paymentError } = await supabase
@@ -383,6 +414,35 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
     
     console.log('Payment record created:', payment.id);
     
+    // Try to resolve patient ID for consistency
+    let patientId = payment.patient_id;
+    
+    // If patient ID is not set in the payment record (by trigger), try to find/create it
+    if (!patientId && (patientEmail || patientPhone)) {
+      try {
+        patientId = await PatientService.findOrCreatePatient(
+          supabase,
+          patientName,
+          patientEmail,
+          patientPhone,
+          clinicId
+        );
+        
+        if (patientId) {
+          console.log(`Resolved patient ID: ${patientId} for standard payment record`);
+          
+          // Update payment record with patient_id if it wasn't set by the trigger
+          await supabase
+            .from('payments')
+            .update({ patient_id: patientId })
+            .eq('id', payment.id);
+        }
+      } catch (patientErr) {
+        console.error("Error resolving patient ID:", patientErr);
+        // Non-critical, continue processing
+      }
+    }
+    
     // If this payment was for a payment request, update it
     if (requestId) {
       console.log(`Updating payment request: ${requestId}`);
@@ -392,7 +452,8 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
         .update({
           status: 'paid',
           paid_at: new Date().toISOString(),
-          payment_id: payment.id
+          payment_id: payment.id,
+          patient_id: patientId || null // Ensure patient_id is consistently set here too
         })
         .eq('id', requestId);
         
@@ -404,20 +465,23 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
       }
     }
     
-    // Record payment activity
+    // Record payment activity - using the resolved patient_id for consistency
     await supabase
       .from('payment_activity')
       .insert({
         payment_link_id: paymentLinkId,
-        patient_id: null, // We'll update this if patient exists
+        patient_id: patientId,
         clinic_id: clinicId,
         action_type: 'payment_received',
         details: {
           amount: amount,
           paymentId: payment.id,
-          paymentReference
+          paymentReference,
+          requestId: requestId || null
         }
       });
+    
+    console.log('Payment activity record created with patient_id:', patientId);
     
     // Queue notification
     try {
