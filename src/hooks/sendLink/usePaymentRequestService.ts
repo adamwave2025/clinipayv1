@@ -20,7 +20,7 @@ export function usePaymentRequestService() {
         clinicId,
         patientId,
         paymentLinkId,
-        amount: customAmount,
+        amount: customAmount, // This amount is already in pence at this point
         patientName: formData.patientName,
         message: formData.message || null
       });

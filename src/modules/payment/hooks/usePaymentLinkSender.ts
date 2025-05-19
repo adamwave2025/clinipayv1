@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { poundsToPence } from '@/services/CurrencyService';
 
 interface PaymentLinkSenderProps {
   formData: {
@@ -48,10 +49,12 @@ export function usePaymentLinkSender() {
         
         amount = linkData.amount;
       } else if (formData.customAmount) {
-        amount = parseInt(formData.customAmount, 10);
+        // FIXED: Convert custom amount from pounds to pence
+        amount = poundsToPence(formData.customAmount);
         if (isNaN(amount) || amount <= 0) {
           throw new Error('Invalid custom amount');
         }
+        console.log('Custom amount converted from pounds to pence:', formData.customAmount, '->', amount);
       } else {
         throw new Error('Either a payment link ID or custom amount must be provided');
       }

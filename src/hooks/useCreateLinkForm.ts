@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { PaymentLink } from '@/types/payment';
+import { poundsToPence } from '@/services/CurrencyService';
 
 export interface LinkFormData {
   paymentTitle: string;
@@ -25,8 +26,8 @@ interface UseCreateLinkFormProps {
 // Converts display amounts (e.g., 100.50) to cents (10050) for database storage
 // Now using snake_case for database compatibility
 const transformFormDataToPaymentLink = (formData: LinkFormData): any => {
-  // Parse amount as float and multiply by 100 to convert to cents
-  const amountInCents = Math.round(parseFloat(formData.amount) * 100);
+  // Parse amount as float and multiply by 100 to convert to cents using CurrencyService
+  const amountInCents = poundsToPence(formData.amount);
   
   // Calculate plan total amount in cents if it's a payment plan
   const planTotalAmountInCents = formData.paymentPlan 
