@@ -1,3 +1,4 @@
+
 import { format } from 'date-fns';
 import { 
   penceToPounds, 
@@ -79,6 +80,7 @@ export const formatDateTime = (
  * 
  * IMPORTANT: This function assumes all monetary values are stored in pence/cents (1/100 of currency unit)
  * and ALWAYS divides the input amount by 100 to convert to standard currency units (pounds/dollars/etc.)
+ * Always shows 2 decimal places even for whole numbers.
  *
  * @param amount - The amount in pence/cents to format
  * @param currency - The currency symbol
@@ -102,6 +104,7 @@ export const formatCurrency = (amount: number | null | undefined, currency: stri
  * 
  * IMPORTANT: This formatter is specifically for values that are ALREADY in standard currency units (pounds/dollars/etc.)
  * such as user input values. It does NOT divide by 100 like the regular formatCurrency function.
+ * Always shows 2 decimal places even for whole numbers.
  * 
  * Use this function ONLY for displaying user input amounts or calculated values that are already in pounds/dollars,
  * NOT for values from the database (which are stored in pence/cents).
