@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
@@ -41,12 +40,12 @@ export class PlanService {
       }
       
       // MODIFIED: Count actual paid installments from payment_schedule table
-      // instead of incrementing a counter
+      // and INCLUDE refunded and partially refunded statuses as paid
       const { count: paidInstallments, error: countError } = await supabaseClient
         .from("payment_schedule")
         .select("id", { count: 'exact', head: true })
         .eq("plan_id", scheduleData.plan_id)
-        .eq("status", "paid");
+        .in("status", ["paid", "refunded", "partially_refunded"]);
         
       if (countError) {
         console.error("Error counting paid installments:", countError);
@@ -262,12 +261,12 @@ export class PlanService {
         }
         
         // MODIFIED: Count actual paid installments from payment_schedule table
-        // instead of decrementing a counter
+        // Include refunded and partially refunded in the count
         const { count: paidInstallments, error: countError } = await supabaseClient
           .from("payment_schedule")
           .select("id", { count: 'exact', head: true })
           .eq("plan_id", scheduleData.plan_id)
-          .eq("status", "paid");
+          .in("status", ["paid", "refunded", "partially_refunded"]);
           
         if (countError) {
           console.error("Error counting paid installments after refund:", countError);

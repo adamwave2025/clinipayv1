@@ -48,6 +48,8 @@ async function checkPlanForOverduePayments(supabase: any, planId: string): Promi
 /**
  * Counts the number of paid installments for a plan directly from the payment_schedule table
  * This ensures an accurate count even if webhook duplicates occur
+ * 
+ * UPDATED: Now includes refunded and partially refunded payments in the count
  */
 async function getAccuratePaidInstallmentCount(supabase: any, planId: string): Promise<number> {
   try {
@@ -55,7 +57,7 @@ async function getAccuratePaidInstallmentCount(supabase: any, planId: string): P
       .from('payment_schedule')
       .select('id', { count: 'exact', head: true })
       .eq('plan_id', planId)
-      .eq('status', 'paid');
+      .in('status', ['paid', 'refunded', 'partially_refunded']);
       
     if (error) {
       console.error('Error counting paid installments:', error);

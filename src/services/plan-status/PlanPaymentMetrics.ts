@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -9,6 +8,8 @@ export class PlanPaymentMetrics {
    * Calculate an accurate count of paid installments for a plan by counting
    * directly from the payment_schedule table.
    * This ensures an accurate count even if webhook duplicates occur.
+   * 
+   * UPDATED: Now also includes refunded and partially refunded payments as paid
    */
   static async getAccuratePaidInstallmentCount(planId: string): Promise<number> {
     try {
@@ -16,7 +17,7 @@ export class PlanPaymentMetrics {
         .from('payment_schedule')
         .select('id', { count: 'exact', head: true })
         .eq('plan_id', planId)
-        .eq('status', 'paid');
+        .in('status', ['paid', 'refunded', 'partially_refunded']);
         
       if (error) {
         console.error('Error counting paid installments:', error);
