@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -202,13 +203,12 @@ export class PlanPaymentService {
       
       // Update the plan progress
       if (scheduleEntry.plan_id) {
-        // MODIFIED: Instead of incrementing a counter, query the actual paid installments
-        // from payment_schedule table to get an accurate count
+        // MODIFIED: Count installments with paid, refunded or partially_refunded status as "paid"
         const { count: paidInstallments, error: countError } = await supabase
           .from('payment_schedule')
           .select('id', { count: 'exact', head: true })
           .eq('plan_id', scheduleEntry.plan_id)
-          .eq('status', 'paid');
+          .in('status', ['paid', 'refunded', 'partially_refunded']);
           
         if (countError) {
           console.error('Error counting paid installments:', countError);
