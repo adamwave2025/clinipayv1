@@ -440,7 +440,7 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
       }
     }
 
-    // Create payment record
+    // Create payment record with correct payment type and title information
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .insert({
@@ -457,7 +457,7 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
         net_amount: netAmount,
         platform_fee: platformFeeAmount,
         stripe_fee: paymentIntent.application_fee_amount || 0,
-        // NEW: Include payment type information if available
+        // Set payment_type and payment_title correctly based on what we found
         payment_type: paymentLinkType || null,
         payment_title: paymentLinkTitle || null
       })

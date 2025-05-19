@@ -1,4 +1,3 @@
-
 import { Payment, PaymentLink } from '@/types/payment';
 import { formatDate } from '@/utils/formatters';
 
@@ -9,26 +8,13 @@ export function usePaymentFormatter() {
       const paidDate = payment.paid_at ? new Date(payment.paid_at) : new Date();
       
       // Determine the payment type - Use payment_type field if available
-      let paymentType: Payment['type'] = 'consultation'; // Default type as fallback
-      let linkTitle: string | undefined = undefined;
+      let paymentType: Payment['type'] = payment.payment_type || 'consultation'; // First check direct field
+      let linkTitle: string | undefined = payment.payment_title; // First check direct field
       let description: string | undefined = undefined;
       let paymentLinkId: string | undefined = undefined;
       
-      // Check if payment has direct payment_type and payment_title fields (new approach)
-      if (payment.payment_type) {
-        console.log(`Using direct payment_type: ${payment.payment_type}`);
-        // Ensure type is one of the allowed values
-        if (['deposit', 'treatment', 'consultation', 'other'].includes(payment.payment_type)) {
-          paymentType = payment.payment_type as Payment['type'];
-        }
-        
-        // Use payment_title if available
-        if (payment.payment_title) {
-          linkTitle = payment.payment_title;
-        }
-      }
-      // If direct fields aren't available, fall back to payment_links relationship data
-      else if (payment.payment_links) {
+      // If direct payment_type isn't available, fall back to payment_links relationship data
+      if (!paymentType && payment.payment_links) {
         console.log(`Using payment_links type: ${payment.payment_links.type}`);
         // Check if this is a payment plan first
         if (payment.payment_links.payment_plan === true) {
@@ -41,7 +27,7 @@ export function usePaymentFormatter() {
           }
         }
         
-        if (payment.payment_links.title) {
+        if (!linkTitle && payment.payment_links.title) {
           linkTitle = payment.payment_links.title;
         }
 
@@ -51,6 +37,8 @@ export function usePaymentFormatter() {
 
         paymentLinkId = payment.payment_links.id;
       }
+      
+      console.log(`Final payment type determined for ${payment.id}: ${paymentType}`);
       
       // Calculate net amount if not provided
       const netAmount = payment.net_amount || (payment.amount_paid - (payment.platform_fee || 0));

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import StatusBadge from '@/components/common/StatusBadge';
 import { formatCurrency, capitalizeFirstLetter, formatDate } from '@/utils/formatters';
 import { Payment } from '@/types/payment';
@@ -11,6 +11,18 @@ interface PaymentTableRowProps {
 }
 
 const PaymentTableRow = ({ payment, onClick }: PaymentTableRowProps) => {
+  // Add logging for debugging payment types
+  useEffect(() => {
+    if (payment.type === 'consultation') {
+      console.log('Payment with consultation type:', {
+        id: payment.id,
+        type: payment.type,
+        linkTitle: payment.linkTitle,
+        reference: payment.reference
+      });
+    }
+  }, [payment]);
+
   return (
     <tr 
       className="border-b hover:bg-gray-50 transition-colors cursor-pointer"

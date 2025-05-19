@@ -9,13 +9,13 @@ export function usePaymentFormatter() {
       const paidDate = payment.paid_at ? new Date(payment.paid_at) : new Date();
       
       // Determine the payment type
-      let paymentType: Payment['type'] = 'consultation'; // Default type
-      let linkTitle: string | undefined = undefined;
+      let paymentType: Payment['type'] = payment.payment_type || 'consultation'; // First check direct field
+      let linkTitle: string | undefined = payment.payment_title; // First check direct field
       let description: string | undefined = undefined;
       let paymentLinkId: string | undefined = undefined;
       
       // If linked to a payment link, use that type and title
-      if (payment.payment_links) {
+      if (!paymentType && payment.payment_links) {
         // Check if this is a payment plan first
         if (payment.payment_links.payment_plan === true) {
           paymentType = 'payment_plan';
@@ -27,7 +27,7 @@ export function usePaymentFormatter() {
           }
         }
         
-        if (payment.payment_links.title) {
+        if (!linkTitle && payment.payment_links.title) {
           linkTitle = payment.payment_links.title;
         }
 
