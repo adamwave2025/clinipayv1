@@ -8,7 +8,6 @@ import { useClinicDataService } from './sendLink/useClinicDataService';
 import { usePatientOperations } from './sendLink/usePatientOperations';
 import { usePaymentRequestService } from './sendLink/usePaymentRequestService';
 import { useNotificationService } from './sendLink/useNotificationService';
-import { poundsToPence } from '@/services/CurrencyService';
 
 export function usePaymentLinkSender() {
   const [isLoading, setIsLoading] = useState(false);
@@ -58,9 +57,8 @@ export function usePaymentLinkSender() {
           console.error('⚠️ CRITICAL ERROR: Selected payment link not found in available links');
         }
       } else if (formData.customAmount) {
-        // FIXED: Convert custom amount from pounds to pence
-        amount = poundsToPence(formData.customAmount);
-        console.log('⚠️ CRITICAL: Using custom amount:', formData.customAmount, 'pounds ->', amount, 'pence');
+        amount = Number(formData.customAmount);
+        console.log('⚠️ CRITICAL: Using custom amount:', amount);
       }
 
       // Step 4: Find or create patient
