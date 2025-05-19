@@ -113,8 +113,8 @@ export function usePaymentLinkSender() {
             amount: amount,
             refund_amount: null,
             payment_link: `https://clinipay.co.uk/payment/${paymentRequest.id}`,
-            message: formData.message || (paymentTitle ? `Payment for ${paymentTitle}` : "Payment request"),
-            is_custom_amount: isCustomAmount
+            message: formData.message || (paymentTitle ? `Payment for ${paymentTitle}` : "Payment request")
+            // Don't add custom properties that aren't in the type definition
           }
         }, notificationMethod);
 
