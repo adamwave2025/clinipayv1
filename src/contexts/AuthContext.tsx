@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { useUnifiedAuth } from './UnifiedAuthContext';
@@ -8,7 +9,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signUp: (email: string, password: string, clinicName: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: any, needsVerification?: boolean }>;
   signOut: () => Promise<void>;
   authTriggerStatus: {
     isSetupComplete: boolean;
@@ -46,7 +47,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       const result = await newSignIn(email, password);
-      return { error: result.error };
+      return { 
+        error: result.error,
+        needsVerification: result.needsVerification
+      };
     } catch (err) {
       return { error: err };
     }

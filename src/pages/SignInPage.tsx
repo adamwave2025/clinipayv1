@@ -43,12 +43,21 @@ const SignInPage = () => {
     setLocalLoading(true);
     
     try {
-      const { error } = await signIn(formData.email, formData.password);
+      const { error, needsVerification } = await signIn(formData.email, formData.password);
       
-      if (!error) {
-        toast.success('Signed in successfully');
-      } else {
+      if (error) {
+        // Special handling for verification required
+        if (needsVerification) {
+          console.log('Email verification required');
+          localStorage.setItem('verificationEmail', formData.email);
+          toast.error('Please verify your email address before signing in');
+          navigate('/verify-email');
+          return;
+        }
+        
         toast.error(`Sign in failed: ${error.message}`);
+      } else {
+        toast.success('Signed in successfully');
       }
     } finally {
       setLocalLoading(false);

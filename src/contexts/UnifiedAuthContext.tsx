@@ -4,9 +4,11 @@ import { Session, User } from '@supabase/supabase-js';
 import { useAuthSession, AuthSessionState } from '@/hooks/useAuthSession';
 import { useUserData, UserDataState } from '@/hooks/useUserData';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface SignInResult {
   error: Error | null;
+  needsVerification?: boolean;
 }
 
 interface SignUpResult {
@@ -52,12 +54,63 @@ export const UnifiedAuthProvider: React.FC<{ children: ReactNode }> = ({ childre
   const signIn = async (email: string, password: string): Promise<SignInResult> => {
     try {
       console.log('[AUTH] Signing in:', email);
+
+      // First check if the user is verified in our custom system
+      // by trying to find them by email
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, verified, clinic_id, role')
+        .eq('email', email)
+        .maybeSingle();
+      
+      console.log('[AUTH] User verification check:', userData, userError);
+      
+      // If user exists but is not verified, prevent sign in
+      if (userData && !userData.verified) {
+        console.log('[AUTH] User not verified, preventing sign in');
+        localStorage.setItem('verificationEmail', email);
+        localStorage.setItem('userId', userData.id);
+        return { 
+          error: new Error('Email not verified'), 
+          needsVerification: true 
+        };
+      }
+      
+      // Proceed with sign in attempt
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      if (error) throw error;
+      if (error) {
+        // Handle email verification error from Supabase Auth
+        if (error.message.includes('Email not confirmed')) {
+          console.log('[AUTH] Email not confirmed in Supabase Auth');
+          localStorage.setItem('verificationEmail', email);
+          return { 
+            error: error, 
+            needsVerification: true 
+          };
+        }
+        throw error;
+      }
+      
+      // Double-check verification in our custom system
+      if (data.user) {
+        const verificationCheck = await checkUserVerification(data.user.id);
+        
+        if (!verificationCheck.verified) {
+          // User is not verified in our custom system
+          await supabase.auth.signOut(); // Sign them out
+          console.log('[AUTH] User not verified in our system');
+          localStorage.setItem('verificationEmail', email);
+          localStorage.setItem('userId', data.user.id);
+          return { 
+            error: new Error('Email not verified'), 
+            needsVerification: true 
+          };
+        }
+      }
       
       console.log('[AUTH] Sign in successful');
       return { error: null };
@@ -93,6 +146,10 @@ export const UnifiedAuthProvider: React.FC<{ children: ReactNode }> = ({ childre
       console.log('[AUTH] Sign up successful, verification may be required');
       
       if (data.user) {
+        // Store userId and email for verification page
+        localStorage.setItem('userId', data.user.id);
+        localStorage.setItem('verificationEmail', email);
+        
         console.log('[AUTH] Calling handle-new-signup for user:', data.user.id);
         
         // Call edge function to handle verification setup
@@ -107,7 +164,11 @@ export const UnifiedAuthProvider: React.FC<{ children: ReactNode }> = ({ childre
         
         if (webhookError) {
           console.error('[AUTH] Error calling handle-new-signup:', webhookError);
+          throw webhookError;
         }
+        
+        // Sign out to force verification flow
+        await supabase.auth.signOut();
       }
       
       return { 
@@ -131,6 +192,39 @@ export const UnifiedAuthProvider: React.FC<{ children: ReactNode }> = ({ childre
     } catch (error) {
       console.error('[AUTH] Sign out error:', error);
       throw error instanceof Error ? error : new Error('Sign out failed');
+    }
+  };
+
+  // Helper function to check user verification
+  const checkUserVerification = async (userId: string) => {
+    try {
+      console.log('[AUTH] Checking verification status for:', userId);
+      
+      const { data, error } = await supabase.functions.invoke('handle-new-signup', {
+        method: 'POST',
+        body: { 
+          userId, 
+          type: 'check_verification'
+        }
+      });
+      
+      if (error) {
+        console.error('[AUTH] Error checking verification:', error);
+        return { verified: false, error: error.message };
+      }
+      
+      console.log('[AUTH] Verification check result:', data);
+      
+      return { 
+        verified: !!data?.verified,
+        error: data?.error 
+      };
+    } catch (error: any) {
+      console.error('[AUTH] Error in checkUserVerification:', error);
+      return { 
+        verified: false, 
+        error: error.message || 'An unexpected error occurred' 
+      };
     }
   };
   

@@ -8,12 +8,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import AuthLayout from '@/components/layouts/AuthLayout';
 import { toast } from 'sonner';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { useAuth } from '@/contexts/AuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import { AlertCircle } from 'lucide-react';
 
 const SignUpPage = () => {
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const { signUp } = useUnifiedAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [signupError, setSignupError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -62,7 +62,7 @@ const SignUpPage = () => {
     console.log('Starting sign up process...', { email: formData.email, clinicName: formData.clinicName });
     
     try {
-      const { error } = await signUp(
+      const { error, verificationSent } = await signUp(
         formData.email, 
         formData.password, 
         formData.clinicName
@@ -89,6 +89,9 @@ const SignUpPage = () => {
         }
       } else {
         console.log('Sign up successful, navigating to verification page');
+        localStorage.setItem('verificationEmail', formData.email);
+        toast.success('Sign up successful! Please verify your email to continue.');
+        navigate('/verify-email');
       }
     } catch (error: any) {
       console.error('Unexpected sign up error:', error);
