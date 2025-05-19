@@ -95,7 +95,7 @@ export function usePaymentFormatter() {
       if (isCustomAmount) {
         // It's a custom payment request
         paymentType = 'other';
-        linkTitle = 'Custom Payment Request';
+        linkTitle = 'Custom Payment';  // Changed this from 'Custom Payment Request' to 'Custom Payment'
       } else if (request.payment_links) {
         // Check if this is a payment plan first
         if (request.payment_links.payment_plan === true) {
