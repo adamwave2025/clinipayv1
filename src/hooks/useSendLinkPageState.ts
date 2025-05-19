@@ -156,7 +156,6 @@ export function useSendLinkPageState() {
         }
       } else {
         // For regular payment links, use the link sender with the verified patient ID
-        console.log('ffforororororro datattata', formData);
         const result = await sendPaymentLink({ 
           formData, 
           paymentLinks: [...regularLinks, ...paymentPlans],
@@ -171,7 +170,7 @@ export function useSendLinkPageState() {
         // Use formatCurrency for proper amount formatting
         const formattedAmount = selectedLink ? 
           formatCurrency(selectedLink.amount) : 
-          (formData.customAmount ? Number(formData.customAmount).toFixed(2) : 'unknown amount');
+          (formData.customAmount ? formatCurrency(Number(formData.customAmount)) : 'unknown amount');
           
         const linkTitle = selectedLink ? selectedLink.title : 'Custom payment';
         
@@ -202,7 +201,7 @@ export function useSendLinkPageState() {
   
   const paymentAmount = selectedPaymentLink 
     ? formatCurrency(selectedPaymentLink.amount)
-    : (formData.customAmount ? Number(formData.customAmount).toFixed(2) : '');
+    : (formData.customAmount ? formatCurrency(Number(formData.customAmount)) : '');
 
   return {
     showConfirmation,
