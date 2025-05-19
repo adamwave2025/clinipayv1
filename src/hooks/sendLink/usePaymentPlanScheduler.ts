@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -156,6 +155,10 @@ export function usePaymentPlanScheduler() {
 
         console.log(`⚠️ CRITICAL: Creating installment ${i}/${paymentCount} due on ${dueDate}`);
         
+        // FIXED: Only mark the first payment as "sent" if the plan starts today
+        // Otherwise, all payments should be "pending" initially
+        const paymentStatus = (i === 1 && planStartsToday) ? 'sent' : 'pending';
+        
         const scheduleItem = {
           plan_id: planId,
           clinic_id: clinicId,
@@ -164,7 +167,7 @@ export function usePaymentPlanScheduler() {
           amount: installmentAmount,
           due_date: dueDate,
           payment_frequency: paymentFrequency,
-          status: i === 1 && planStartsToday ? 'sent' : 'pending',
+          status: paymentStatus,
           payment_number: i,
           total_payments: paymentCount
         };
@@ -213,48 +216,56 @@ export function usePaymentPlanScheduler() {
       
       console.log('⚠️ CRITICAL SUCCESS: First payment schedule created:', firstPaymentSchedule.id);
 
-      // Now create a payment request for the first installment
-      const { data: paymentRequestData, error: paymentRequestError } = await supabase
-        .from('payment_requests')
-        .insert({
-          clinic_id: clinicId,
-          patient_id: patientId,
-          payment_link_id: selectedPlan.id,
-          patient_name: formData.patientName,
-          patient_email: formData.patientEmail,
-          patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,
-          status: 'sent',
-          message: formData.message || `Payment plan: ${selectedPlan.title || 'Payment Plan'} - Installment 1 of ${paymentCount}`
-        })
-        .select()
-        .single();
+      // FIXED: Only create a payment request for the first installment if the plan starts today
+      let paymentRequestData = null;
+      
+      if (planStartsToday) {
+        // Now create a payment request for the first installment (only for plans starting today)
+        const { data: requestData, error: paymentRequestError } = await supabase
+          .from('payment_requests')
+          .insert({
+            clinic_id: clinicId,
+            patient_id: patientId,
+            payment_link_id: selectedPlan.id,
+            patient_name: formData.patientName,
+            patient_email: formData.patientEmail,
+            patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,
+            status: 'sent',
+            message: formData.message || `Payment plan: ${selectedPlan.title || 'Payment Plan'} - Installment 1 of ${paymentCount}`
+          })
+          .select()
+          .single();
 
-      if (paymentRequestError) {
-        console.error('⚠️ CRITICAL ERROR: Error creating payment request:', paymentRequestError);
-        throw new Error(`Failed to create payment request: ${paymentRequestError.message}`);
-      }
+        if (paymentRequestError) {
+          console.error('⚠️ CRITICAL ERROR: Error creating payment request:', paymentRequestError);
+          throw new Error(`Failed to create payment request: ${paymentRequestError.message}`);
+        }
 
-      if (!paymentRequestData) {
-        throw new Error('Failed to create payment request: No data returned');
-      }
+        if (!requestData) {
+          throw new Error('Failed to create payment request: No data returned');
+        }
 
-      console.log('⚠️ CRITICAL SUCCESS: Created payment request for first installment:', paymentRequestData.id);
+        console.log('⚠️ CRITICAL SUCCESS: Created payment request for first installment:', requestData.id);
+        paymentRequestData = requestData;
 
-      // Update the first payment schedule with the request ID AND SET STATUS TO SENT
-      const { error: updateError } = await supabase
-        .from('payment_schedule')
-        .update({ 
-          payment_request_id: paymentRequestData.id,
-          status: 'sent',  // Update status to 'sent' to match the payment request status
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', firstPaymentSchedule.id);
+        // Update the first payment schedule with the request ID AND SET STATUS TO SENT
+        const { error: updateError } = await supabase
+          .from('payment_schedule')
+          .update({ 
+            payment_request_id: paymentRequestData.id,
+            status: 'sent',  // Update status to 'sent' to match the payment request status
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', firstPaymentSchedule.id);
 
-      if (updateError) {
-        console.error('Error updating payment schedule with request ID:', updateError);
-        // Non-fatal error, we can continue
+        if (updateError) {
+          console.error('Error updating payment schedule with request ID:', updateError);
+          // Non-fatal error, we can continue
+        } else {
+          console.log('Updated payment schedule with request ID and set status to sent');
+        }
       } else {
-        console.log('Updated payment schedule with request ID and set status to sent');
+        console.log('⚠️ CRITICAL: Plan starts in the future - not creating immediate payment request');
       }
 
       // Create an activity record for this plan creation
@@ -285,7 +296,7 @@ export function usePaymentPlanScheduler() {
       }
 
       // Only create and send notification if the plan starts today
-      if (planStartsToday) {
+      if (planStartsToday && paymentRequestData) {
         console.log('⚠️ CRITICAL: Plan starts today - creating notification for first installment');
         
         const formattedAddress = ClinicFormatter.formatAddress(clinicData);
@@ -378,7 +389,7 @@ export function usePaymentPlanScheduler() {
       return { 
         success: true, 
         planId: planId,
-        paymentRequestId: paymentRequestData.id,
+        paymentRequestId: paymentRequestData?.id,
         sentNotification: planStartsToday
       };
 
