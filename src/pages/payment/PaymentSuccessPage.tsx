@@ -23,60 +23,77 @@ const PaymentSuccessPage = () => {
   const [searchParams] = useSearchParams();
   const linkId = searchParams.get('link_id');
   const paymentId = searchParams.get('payment_id');
+  const requestId = searchParams.get('request_id');
   const { linkData, isLoading, error } = usePaymentLinkData(linkId);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>([]);
   const [paymentReference, setPaymentReference] = useState<string>('');
   const [isLoadingReference, setIsLoadingReference] = useState<boolean>(true);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 10; // Increased from 8 to 10
-  const retryDelayMs = 3000; // Using longer delay of 3000ms
+  const maxRetries = 10; // Maximum number of retries
+  const retryDelayMs = 3000; // Delay between retries
   
   // Function to fetch payment reference
   const fetchPaymentReference = async () => {
-    if (!paymentId) {
-      console.log('No payment ID provided, skipping reference fetch');
+    if (!paymentId && !requestId) {
+      console.log('No payment ID or request ID provided, skipping reference fetch');
       setIsLoadingReference(false);
       return false;
     }
     
     try {
-      console.log('Fetching payment reference for payment ID:', paymentId);
-      
-      // First try to find by stripe_payment_id
-      const { data: paymentByStripeId, error: stripeIdError } = await supabase
-        .from('payments')
-        .select('payment_ref, id')
-        .eq('stripe_payment_id', paymentId)
-        .maybeSingle();
-        
-      if (stripeIdError) {
-        console.error('Error fetching payment by stripe_payment_id:', stripeIdError);
-        // Continue to try by payment ID as fallback
-      } else if (paymentByStripeId && paymentByStripeId.payment_ref) {
-        console.log('Found payment reference by stripe_payment_id:', paymentByStripeId.payment_ref);
-        setPaymentReference(paymentByStripeId.payment_ref);
-        setIsLoadingReference(false);
-        return true;
-      }
-      
-      // Try to find by UUID if stripe_payment_id lookup failed
-      // This handles the case where paymentId might be a Supabase payment UUID
-      try {
-        const { data: paymentById, error: idError } = await supabase
-          .from('payments')
-          .select('payment_ref')
-          .eq('id', paymentId)
+      // If we have a request ID, we might be dealing with a payment request
+      if (requestId) {
+        console.log('Attempting to fetch reference for payment request:', requestId);
+        const { data: requestData, error: requestError } = await supabase
+          .from('payment_requests')
+          .select('payment_ref, id')
+          .eq('id', requestId)
           .maybeSingle();
           
-        if (!idError && paymentById && paymentById.payment_ref) {
-          console.log('Found payment reference by payment id:', paymentById.payment_ref);
-          setPaymentReference(paymentById.payment_ref);
+        if (!requestError && requestData && requestData.payment_ref) {
+          console.log('Found payment reference by request ID:', requestData.payment_ref);
+          setPaymentReference(requestData.payment_ref);
+          setIsLoadingReference(false);
+          return true;
+        } else {
+          console.log('No payment reference found for request ID, will check for payment');
+        }
+      }
+      
+      // Next attempt: find payment by stripe_payment_id (common path)
+      if (paymentId) {
+        console.log('Fetching payment reference for payment ID:', paymentId);
+        
+        const { data: paymentByStripeId, error: stripeIdError } = await supabase
+          .from('payments')
+          .select('payment_ref, id')
+          .eq('stripe_payment_id', paymentId)
+          .maybeSingle();
+            
+        if (!stripeIdError && paymentByStripeId && paymentByStripeId.payment_ref) {
+          console.log('Found payment reference by stripe_payment_id:', paymentByStripeId.payment_ref);
+          setPaymentReference(paymentByStripeId.payment_ref);
           setIsLoadingReference(false);
           return true;
         }
-      } catch (err) {
-        console.log('Error or invalid UUID when looking up by id:', err);
-        // Continue with retry logic
+        
+        // Try to find by UUID if stripe_payment_id lookup failed
+        try {
+          const { data: paymentById, error: idError } = await supabase
+            .from('payments')
+            .select('payment_ref')
+            .eq('id', paymentId)
+            .maybeSingle();
+              
+          if (!idError && paymentById && paymentById.payment_ref) {
+            console.log('Found payment reference by payment id:', paymentById.payment_ref);
+            setPaymentReference(paymentById.payment_ref);
+            setIsLoadingReference(false);
+            return true;
+          }
+        } catch (err) {
+          console.log('Error or invalid UUID when looking up by id:', err);
+        }
       }
       
       console.log('No payment reference found yet');
@@ -113,22 +130,19 @@ const PaymentSuccessPage = () => {
     };
     
     initialFetch();
-  }, [paymentId, retryCount]);
+  }, [paymentId, requestId, retryCount]);
   
   useEffect(() => {
     if (linkData) {
       const details: PaymentDetail[] = [
         { label: 'Amount Paid', value: formatCurrency(linkData.amount) },
         { label: 'Date', value: new Date().toLocaleDateString() },
-        // Removed the redundant clinic name as it's in the ClinicInformationCard
       ];
       
       // Add the payment title if available
       if (linkData.title) {
         details.push({ label: 'Payment For', value: linkData.title });
       }
-      
-      // Removed the payment type as it's only for clinics
       
       setPaymentDetails(details);
     }

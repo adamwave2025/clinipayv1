@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { SendLinkFormData } from './types';
+import { generateRequestReference } from '@/utils/paymentUtils';
 
 export function usePaymentRequestService() {
   const [isCreatingPaymentRequest, setIsCreatingPaymentRequest] = useState(false);
@@ -16,13 +17,17 @@ export function usePaymentRequestService() {
     setIsCreatingPaymentRequest(true);
     
     try {
+      // Generate a payment reference for the request
+      const paymentReference = generateRequestReference();
+      
       console.log('⚠️ CRITICAL: Creating payment request with:', {
         clinicId,
         patientId,
         paymentLinkId,
         amount: customAmount,
         patientName: formData.patientName,
-        message: formData.message || null
+        message: formData.message || null,
+        paymentReference
       });
 
       const { data, error } = await supabase
@@ -36,7 +41,8 @@ export function usePaymentRequestService() {
           patient_email: formData.patientEmail,
           patient_phone: formData.patientPhone ? formData.patientPhone.replace(/\D/g, '') : null,
           status: 'sent',
-          message: formData.message || null
+          message: formData.message || null,
+          payment_ref: paymentReference // Store the reference in the payment_request
         })
         .select();
 
@@ -52,6 +58,7 @@ export function usePaymentRequestService() {
 
       const paymentRequest = data[0];
       console.log('⚠️ CRITICAL: Payment request created successfully:', paymentRequest.id);
+      console.log('⚠️ CRITICAL: Payment reference assigned:', paymentReference);
       
       return paymentRequest;
     } finally {

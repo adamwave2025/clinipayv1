@@ -23,3 +23,18 @@ export const generateManualPaymentReference = (): string => {
   }
   return `${prefix}${result}`;
 };
+
+/**
+ * Generate a payment request reference with format REQ-XXXXX
+ * Used for tracking payment requests before they become payments
+ */
+export const generateRequestReference = (): string => {
+  const prefix = 'REQ-';
+  // Generate 5 random alphanumeric characters
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 5; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return `${prefix}${result}`;
+};
