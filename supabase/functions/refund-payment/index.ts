@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0";
+import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -54,15 +54,9 @@ serve(async (req) => {
     // Log the raw refund amount received (should be in pounds)
     console.log(`🧾 Processing refund for payment ${paymentId}, raw amount: ${refundAmount}, fullRefund: ${fullRefund}`);
 
-    // Create both a connected account Stripe client and a platform Stripe client
-    // The connected account client is used for creating the refund
-    // The platform client is used for retrieving fee information
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16"
     });
-    
-    // Platform Stripe client uses the same key as we're operating from the platform perspective
-    const platformStripe = stripe;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -117,11 +111,8 @@ serve(async (req) => {
       });
       
       console.log(`✅ Stripe refund created with ID: ${stripeRefund.id}`);
-      console.log(`📊 Full refund response:`, JSON.stringify(stripeRefund, null, 2));
       
-      // Add a longer delay to allow Stripe to process the refund and update the balance transaction
-      console.log(`⏳ Adding delay of 2500ms to allow Stripe to process the refund...`);
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       if (stripeRefund.balance_transaction) {
         try {
@@ -129,16 +120,14 @@ serve(async (req) => {
             ? stripeRefund.balance_transaction 
             : stripeRefund.balance_transaction.id;
             
-          console.log(`🔍 Retrieving balance transaction with ID: ${transactionId} using platform account`);
+          console.log(`🔍 Retrieving balance transaction with ID: ${transactionId}`);
           
-          // Use the platform Stripe client to retrieve the transaction
-          // This is critical to get the refund fee which is charged to the platform
-          balanceTransaction = await platformStripe.balanceTransactions.retrieve(transactionId);
+          balanceTransaction = await stripe.balanceTransactions.retrieve(transactionId);
           
-          console.log('📊 Platform balance transaction details:', JSON.stringify(balanceTransaction, null, 2));
+          console.log('📊 Balance transaction details:', JSON.stringify(balanceTransaction, null, 2));
           
           if (balanceTransaction.fee !== undefined) {
-            refundFeeInCents = Math.abs(balanceTransaction.fee); // Use absolute value since fee is negative
+            refundFeeInCents = balanceTransaction.fee;
             console.log(`💰 Stripe refund fee found: ${refundFeeInCents} cents (${refundFeeInCents / 100} GBP)`);
             
             if (balanceTransaction.fee_details) {
@@ -151,70 +140,29 @@ serve(async (req) => {
           console.error(`❌ Error retrieving refund fee:`, feeError);
           console.error(`🔍 Error details:`, JSON.stringify(feeError, null, 2));
           
-          // Try an alternative approach as a background task to retrieve the fee later
           EdgeRuntime.waitUntil((async () => {
             try {
-              console.log(`🔄 Starting background fee retrieval task for refund ${stripeRefund.id}`);
-              await new Promise(resolve => setTimeout(resolve, 3500));
+              await new Promise(resolve => setTimeout(resolve, 2000));
               
               console.log(`🔄 Retrying balance transaction retrieval...`);
+              const retryTransaction = await stripe.balanceTransactions.retrieve(
+                typeof stripeRefund.balance_transaction === 'string'
+                  ? stripeRefund.balance_transaction
+                  : stripeRefund.balance_transaction.id
+              );
               
-              // Try retrieving the refund directly with expanded balance transaction
-              const refundWithDetails = await platformStripe.refunds.retrieve(stripeRefund.id, {
-                expand: ['balance_transaction']
-              });
-              
-              console.log(`📊 Expanded refund details:`, JSON.stringify(refundWithDetails, null, 2));
-              
-              if (refundWithDetails.balance_transaction) {
-                const retryTransaction = refundWithDetails.balance_transaction;
+              if (retryTransaction.fee !== undefined) {
+                console.log(`✅ Successfully retrieved fee on retry: ${retryTransaction.fee} cents`);
                 
-                if (retryTransaction.fee !== undefined) {
-                  const retrievedFee = Math.abs(retryTransaction.fee);
-                  console.log(`✅ Successfully retrieved fee on retry: ${retrievedFee} cents`);
+                const { error: updateError } = await supabase
+                  .from('payments')
+                  .update({ stripe_refund_fee: retryTransaction.fee })
+                  .eq('id', paymentId);
                   
-                  const { error: updateError } = await supabase
-                    .from('payments')
-                    .update({ stripe_refund_fee: retrievedFee })
-                    .eq('id', paymentId);
-                    
-                  if (updateError) {
-                    console.error('❌ Error updating payment with retry fee:', updateError);
-                  } else {
-                    console.log('✅ Successfully updated payment with retry fee');
-                  }
+                if (updateError) {
+                  console.error('❌ Error updating payment with retry fee:', updateError);
                 } else {
-                  console.log(`⚠️ No fee found in expanded refund transaction. Transaction:`, JSON.stringify(retryTransaction, null, 2));
-                }
-              } else {
-                // Try fallback to retrieving by transaction ID directly
-                const transactionId = typeof stripeRefund.balance_transaction === 'string' 
-                  ? stripeRefund.balance_transaction 
-                  : stripeRefund.balance_transaction?.id;
-                  
-                if (transactionId) {
-                  console.log(`🔍 Fallback: Retrieving transaction by ID: ${transactionId}`);
-                  const retryTransaction = await platformStripe.balanceTransactions.retrieve(transactionId);
-                  
-                  console.log(`📊 Fallback transaction details:`, JSON.stringify(retryTransaction, null, 2));
-                  
-                  if (retryTransaction.fee !== undefined) {
-                    const retrievedFee = Math.abs(retryTransaction.fee);
-                    console.log(`✅ Successfully retrieved fee on fallback retry: ${retrievedFee} cents`);
-                    
-                    const { error: updateError } = await supabase
-                      .from('payments')
-                      .update({ stripe_refund_fee: retrievedFee })
-                      .eq('id', paymentId);
-                      
-                    if (updateError) {
-                      console.error('❌ Error updating payment with fallback fee:', updateError);
-                    } else {
-                      console.log('✅ Successfully updated payment with fallback fee');
-                    }
-                  } else {
-                    console.log(`⚠️ No fee found in fallback transaction. Transaction:`, JSON.stringify(retryTransaction, null, 2));
-                  }
+                  console.log('✅ Successfully updated payment with retry fee');
                 }
               }
             } catch (retryError) {
@@ -224,45 +172,6 @@ serve(async (req) => {
         }
       } else {
         console.log(`⚠️ No balance transaction ID found in refund response. Full refund:`, JSON.stringify(stripeRefund, null, 2));
-        
-        // Try to retrieve the refund with expanded balance transaction as a fallback
-        EdgeRuntime.waitUntil((async () => {
-          try {
-            console.log(`🔄 Starting expanded refund details background task for refund ${stripeRefund.id}`);
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            
-            console.log(`🔄 Attempting to retrieve expanded refund details...`);
-            const expandedRefund = await platformStripe.refunds.retrieve(stripeRefund.id, {
-              expand: ['balance_transaction']
-            });
-            
-            console.log(`📊 Expanded refund details from background task:`, JSON.stringify(expandedRefund, null, 2));
-            
-            if (expandedRefund.balance_transaction) {
-              if (expandedRefund.balance_transaction.fee !== undefined) {
-                const retrievedFee = Math.abs(expandedRefund.balance_transaction.fee || 0);
-                console.log(`✅ Retrieved fee from expanded refund: ${retrievedFee} cents`);
-                
-                const { error: updateError } = await supabase
-                  .from('payments')
-                  .update({ stripe_refund_fee: retrievedFee })
-                  .eq('id', paymentId);
-                  
-                if (!updateError) {
-                  console.log('✅ Updated payment with fee from expanded refund');
-                } else {
-                  console.error('❌ Error updating payment with expanded fee:', updateError);
-                }
-              } else {
-                console.log(`⚠️ Fee field is undefined in expanded refund balance transaction`);
-              }
-            } else {
-              console.log(`⚠️ No balance transaction in expanded refund response`);
-            }
-          } catch (expandError) {
-            console.error('❌ Error retrieving expanded refund:', expandError);
-          }
-        })());
       }
     } catch (stripeError) {
       console.error("❌ Stripe refund error:", stripeError);
@@ -297,7 +206,6 @@ serve(async (req) => {
     
     console.log(`💾 Updating payment record to status: ${newStatus} (isFullRefund: ${isFullRefund})`);
     console.log(`💰 Storing refund amount in pence: ${refundAmountToStore} (${refundAmountToStore/100} GBP)`);
-    console.log(`💰 Storing refund fee in cents: ${refundFeeInCents} (${refundFeeInCents/100} GBP)`);
     
     const updateData = {
       status: newStatus,
@@ -688,47 +596,6 @@ serve(async (req) => {
     } catch (notifyErr) {
       console.error(`❌ Error in refund notification processing: ${notifyErr.message}`);
     }
-
-    // Schedule a final fee check after response is sent
-    EdgeRuntime.waitUntil((async () => {
-      try {
-        console.log(`🔄 Starting final fee check task after 5 seconds for refund ${stripeRefund.id}`);
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        
-        console.log(`🔍 Final fee check: Retrieving refund details...`);
-        const finalRefundCheck = await platformStripe.refunds.retrieve(stripeRefund.id, {
-          expand: ['balance_transaction']
-        });
-        
-        let finalFee = 0;
-        if (finalRefundCheck.balance_transaction && 
-            finalRefundCheck.balance_transaction.fee !== undefined) {
-          finalFee = Math.abs(finalRefundCheck.balance_transaction.fee);
-          console.log(`💰 Final fee check: Found refund fee: ${finalFee} cents`);
-          
-          if (finalFee > 0 && finalFee !== refundFeeInCents) {
-            console.log(`🔄 Found updated fee amount ${finalFee}, previously had ${refundFeeInCents}`);
-            
-            const { error: finalUpdateError } = await supabase
-              .from('payments')
-              .update({ stripe_refund_fee: finalFee })
-              .eq('id', paymentId);
-              
-            if (finalUpdateError) {
-              console.error('❌ Final fee check: Error updating payment:', finalUpdateError);
-            } else {
-              console.log(`✅ Final fee check: Updated payment ${paymentId} with fee: ${finalFee} cents`);
-            }
-          } else {
-            console.log(`ℹ️ Final fee check: Fee unchanged at ${finalFee} cents`);
-          }
-        } else {
-          console.log(`⚠️ Final fee check: No fee available in final check`);
-        }
-      } catch (finalError) {
-        console.error('❌ Error in final fee check:', finalError);
-      }
-    })());
 
     console.log(`✅ Refund process completed successfully`);
     return new Response(
