@@ -32,15 +32,15 @@ export class PlanOperationsService {
       }
       
       // Log activity if not already logged by the service
-      try {
-        await this.logPlanActivity(plan.id, 'plan_cancelled', { 
-          planId: plan.id,
-          planName: plan.title || plan.planName,
-          cancelledAt: new Date().toISOString(),
-        });
-      } catch (err) {
-        console.warn('Could not log plan activity for cancellation:', err);
-      }
+      // try {
+      //   await this.logPlanActivity(plan.id, 'plan_cancelled', { 
+      //     planId: plan.id,
+      //     planName: plan.title || plan.planName,
+      //     cancelledAt: new Date().toISOString(),
+      //   });
+      // } catch (err) {
+      //   console.warn('Could not log plan activity for cancellation:', err);
+      // }
       
       return true;
     } catch (err) {
