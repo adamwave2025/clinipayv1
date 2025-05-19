@@ -16,7 +16,7 @@ export class PlanPaymentMetrics {
         .from('payment_schedule')
         .select('id', { count: 'exact', head: true })
         .eq('plan_id', planId)
-        .eq('status', 'paid');
+        .in('status', ['paid', 'refunded', 'partially_refunded']);
         
       if (error) {
         console.error('Error counting paid installments:', error);
