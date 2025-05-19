@@ -71,13 +71,46 @@ export async function handleRefundUpdated(refund: any, stripeClient: Stripe, sup
     
     console.log(`Refund amount: ${refundAmount}, Payment amount: ${paymentAmount}, Full refund: ${isFullRefund}`);
     
+    // Try to retrieve refund fee information
+    let refundFeeAmount = 0;
+    try {
+      // First try to get refund with expanded balance transaction
+      const refundDetails = await stripeClient.refunds.retrieve(refund.id, {
+        expand: ['balance_transaction']
+      });
+      
+      console.log("Retrieved expanded refund details:", refundDetails.id);
+      
+      if (refundDetails.balance_transaction) {
+        // Extract the fee from the balance transaction (use absolute value as fee is negative)
+        refundFeeAmount = Math.abs(refundDetails.balance_transaction.fee || 0);
+        console.log(`Found refund fee from expanded transaction: ${refundFeeAmount} cents`);
+      } else if (refund.balance_transaction) {
+        // If we have a balance transaction ID but it's not expanded, retrieve it directly
+        const transactionId = typeof refund.balance_transaction === 'string'
+          ? refund.balance_transaction
+          : refund.balance_transaction.id;
+          
+        console.log(`Retrieving balance transaction: ${transactionId}`);
+        const balanceTransaction = await stripeClient.balanceTransactions.retrieve(transactionId);
+        
+        refundFeeAmount = Math.abs(balanceTransaction.fee || 0);
+        console.log(`Found refund fee from direct transaction: ${refundFeeAmount} cents`);
+      }
+    } catch (feeError) {
+      console.error("Error retrieving refund fee:", feeError);
+      console.log("Continuing with refund processing without fee information");
+    }
+    
     // Update the payment record
     const { error: updateError } = await supabaseClient
       .from("payments")
       .update({
         status: isFullRefund ? 'refunded' : 'partially_refunded',
         refund_amount: refundAmount,
-        refunded_at: new Date().toISOString()
+        refunded_at: new Date().toISOString(),
+        stripe_refund_id: refund.id,
+        stripe_refund_fee: refundFeeAmount
       })
       .eq("id", paymentData.id);
       
@@ -86,7 +119,7 @@ export async function handleRefundUpdated(refund: any, stripeClient: Stripe, sup
       return;
     }
     
-    console.log(`Updated payment ${paymentData.id} status to ${isFullRefund ? 'refunded' : 'partially_refunded'}`);
+    console.log(`Updated payment ${paymentData.id} status to ${isFullRefund ? 'refunded' : 'partially_refunded'} with refund fee: ${refundFeeAmount} cents`);
     
     // Check if this payment is associated with a payment request
     const { data: requestData, error: requestError } = await supabaseClient
