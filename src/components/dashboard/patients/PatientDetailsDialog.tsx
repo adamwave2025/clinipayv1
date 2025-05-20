@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { formatCurrency } from '@/utils/formatters';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,7 +70,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     handleOpenCancelDialog,
     handleOpenPauseDialog,
     handleOpenResumeDialog,
-    handleOpenRescheduleDialog,
+    handleOpenReschedulePlan,
     handleCancelPlan,
     handlePausePlan,
     handleResumePlan,
@@ -78,7 +79,8 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     isProcessing
   } = planQuickAccess;
 
-  const fetchPaymnetLinkData = async (paymentLinkId: string) => {
+  // Fixed function: Properly typed return value and error handling
+  const fetchPaymentLinkData = async (paymentLinkId: string): Promise<number | null> => {
     try {
       const { data: paymentLinkData, error: paymentLinkError } = await supabase
       .from('payment_links')
@@ -88,9 +90,15 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
       .eq('id', paymentLinkId)
       .single();
 
-      return paymentLinkData.amount;
+      if (paymentLinkError) {
+        console.error('Error fetching payment link data:', paymentLinkError);
+        return null;
+      }
+      
+      return paymentLinkData?.amount || null;
     } catch(error: any) {
       console.error('Error fetching payment link data:', error);
+      return null;
     }
   }
 
