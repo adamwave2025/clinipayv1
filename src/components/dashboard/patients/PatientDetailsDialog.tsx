@@ -132,7 +132,8 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
         // Format payment requests - filter out £0 amounts
         const formattedRequests = requestsData
           .map((request: any) => {
-            const amount = request.custom_amount || (request.payment_links ? request.payment_links.amount : 0);
+            let amount = request.custom_amount || (request.payment_links ? request.payment_links.amount : 0);
+            amount = amount == undefined ? 1 : amount;
             return {
               id: request.id,
               date: request.sent_at, // Full ISO timestamp
