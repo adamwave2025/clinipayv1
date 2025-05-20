@@ -208,6 +208,10 @@ export async function handleRefundDotUpdated(refund: any, stripeClient: Stripe, 
       payment_intent: refund.payment_intent
     }, null, 2));
     
+    // Initialize variable to store refund fee
+    let refundFee = 0;
+    let paymentIntentId = null;
+    
     if (refund.charge) {
       try {
         // Retrieve and log charge details
@@ -225,6 +229,14 @@ export async function handleRefundDotUpdated(refund: any, stripeClient: Stripe, 
           failure_code: charge.failure_code,
           failure_message: charge.failure_message
         }, null, 2));
+        
+        // Get payment intent ID from charge
+        if (charge.payment_intent) {
+          paymentIntentId = typeof charge.payment_intent === 'string' 
+            ? charge.payment_intent 
+            : charge.payment_intent.id;
+          console.log(`Found payment intent: ${paymentIntentId}`);
+        }
         
         // If there's a balance transaction, retrieve and log it
         if (charge.balance_transaction && typeof charge.balance_transaction === 'string') {
@@ -266,13 +278,55 @@ export async function handleRefundDotUpdated(refund: any, stripeClient: Stripe, 
           status: refundBalanceTransaction.status,
           type: refundBalanceTransaction.type
         }, null, 2));
+        
+        // Store the refund fee
+        refundFee = refundBalanceTransaction.fee || 0;
+        console.log(`Extracted refund fee: ${refundFee}`);
+        
+        // Update the payments table with the refund fee if we have a payment intent ID
+        if (paymentIntentId) {
+          const { data: paymentData, error: paymentError } = await supabaseClient
+            .from("payments")
+            .select("id")
+            .eq("stripe_payment_id", paymentIntentId)
+            .maybeSingle();
+            
+          if (paymentError) {
+            console.error("Error finding payment record:", paymentError);
+          } else if (paymentData) {
+            console.log(`Found payment record: ${paymentData.id}, updating with refund fee: ${refundFee}`);
+            
+            const { error: updateError } = await supabaseClient
+              .from("payments")
+              .update({ 
+                stripe_refund_fee: refundFee,
+                stripe_refund_id: refund.id
+              })
+              .eq("id", paymentData.id);
+              
+            if (updateError) {
+              console.error("Error updating payment with refund fee:", updateError);
+            } else {
+              console.log(`Successfully updated payment ${paymentData.id} with refund fee ${refundFee}`);
+            }
+          } else {
+            console.error(`No payment record found for payment intent: ${paymentIntentId}`);
+          }
+        } else {
+          console.error("No payment intent ID found, cannot update payment record");
+        }
       } catch (refundBalanceError) {
         console.error("Error retrieving refund balance transaction:", refundBalanceError);
       }
     }
     
     // Return a simple response for now
-    return { status: "logged", refundId: refund.id };
+    return { 
+      status: "logged", 
+      refundId: refund.id,
+      refundFee: refundFee,
+      paymentUpdated: !!paymentIntentId
+    };
     
   } catch (error) {
     console.error("Error in handleRefundDotUpdated:", error);
