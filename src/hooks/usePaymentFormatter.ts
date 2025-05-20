@@ -1,10 +1,10 @@
+
 import { Payment, PaymentLink } from '@/types/payment';
 import { formatDate } from '@/utils/formatters';
 
 export function usePaymentFormatter() {
   const formatCompletedPayments = (paymentsData: any[]): Payment[] => {
     return paymentsData.map(payment => {
-      // Format the date correctly using our utility function
       const paidDate = payment.paid_at ? new Date(payment.paid_at) : new Date();
       
       // Determine the payment type - Use payment_type field if available
