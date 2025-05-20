@@ -12,7 +12,8 @@ import {
   CheckCircle,
   RefreshCcw,
   AlertCircle,
-  MessageCircle
+  MessageCircle,
+  Send
 } from 'lucide-react';
 
 interface ActivityLogProps {
@@ -59,7 +60,7 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
         return <FileText className="h-4 w-4 text-purple-500" />;
       case 'payment_made':
       case 'payment_marked_paid':
-      case 'card_payment_processed': // Added the new action type here
+      case 'card_payment_processed': 
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'payment_failed':
         return <AlertCircle className="h-4 w-4 text-red-500" />;
@@ -80,6 +81,8 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
         return <RefreshCcw className="h-4 w-4 text-orange-500" />;
       case 'payment_reminder_sent':
         return <MessageCircle className="h-4 w-4 text-blue-500" />;
+      case 'custom_payment_sent':
+        return <Send className="h-4 w-4 text-blue-500" />;
       default:
         return <FileText className="h-4 w-4 text-gray-500" />;
     }
@@ -149,128 +152,36 @@ const ActivityLog: React.FC<ActivityLogProps> = React.memo(({
             </div>
           </>
         );
-      case 'plan_rescheduled':
-      case 'reschedule_plan':
-        return (
-          <>
-            <div className="font-medium">Rescheduled plan</div>
-            <div className="mt-1 space-y-1 text-sm">
-              {activity.details?.oldStartDate && activity.details?.newStartDate && (
-                <p>Changed from {formatDate(activity.details.oldStartDate)} to {formatDate(activity.details.newStartDate)}</p>
-              )}
-              {!activity.details?.oldStartDate && activity.details?.newStartDate && (
-                <p>Next payment date: {formatDate(activity.details.newStartDate)}</p>
-              )}
-              {!activity.details?.oldStartDate && !activity.details?.newStartDate && activity.details?.nextDueDate && (
-                <p>Next payment date: {formatDate(activity.details.nextDueDate)}</p>
-              )}
-            </div>
-          </>
-        );
-      case 'payment_rescheduled':
-      case 'reschedule_payment':
-        return (
-          <>
-            <div className="font-medium">Rescheduled payment</div>
-            <div className="mt-1 space-y-1 text-sm">
-              {activity.details?.paymentNumber && activity.details?.totalPayments && (
-                <p>Payment {activity.details.paymentNumber} of {activity.details.totalPayments}</p>
-              )}
-              {activity.details?.oldDueDate && activity.details?.newDate && (
-                <p>Changed from {formatDate(activity.details.oldDueDate)} to {formatDate(activity.details.newDate)}</p>
-              )}
-              {activity.details?.amount && (
-                <p>Amount: {formatCurrency(activity.details.amount)}</p>
-              )}
-            </div>
-          </>
-        );
-      case 'plan_cancelled':
-        return (
-          <>
-            <div className="font-medium">Cancelled plan</div>
-            {activity.details?.reason && (
-              <div className="mt-1 space-y-1 text-sm">
-                <p>Reason: {activity.details.reason}</p>
-              </div>
-            )}
-          </>
-        );
-      case 'plan_paused':
-        return (
-          <>
-            <div className="font-medium">Paused plan</div>
-            {activity.details?.reason && (
-              <div className="mt-1 space-y-1 text-sm">
-                <p>Reason: {activity.details.reason}</p>
-              </div>
-            )}
-          </>
-        );
-      case 'plan_resumed':
-        return (
-          <>
-            <div className="font-medium">Resumed plan</div>
-            <div className="mt-1 space-y-1 text-sm">
-            </div>
-          </>
-        );
-      case 'payment_refunded':
-      case 'payment_refund':
-      case 'partial_refund':
-        const isPartial = activity.actionType === 'partial_refund';
+      
+      case 'custom_payment_sent':
         return (
           <>
             <div className="font-medium">
-              {isPartial ? "Payment partially refunded" : "Payment fully refunded"}
+              Custom payment request sent
+              {activity.details?.amount ? ` for ${formatCurrency(activity.details.amount)}` : ''}
             </div>
             <div className="mt-1 space-y-1 text-sm">
-              {activity.details?.refundAmount && (
-                <p>Refund amount: {formatCurrency(activity.details.refundAmount)}</p>
-              )}
-              {activity.details?.paymentNumber && activity.details?.totalPayments && (
-                <p>Payment {activity.details.paymentNumber} of {activity.details.totalPayments}</p>
-              )}
-              {activity.details?.payment_reference && (
-                <p className="text-xs text-gray-500">Reference: {activity.details.payment_reference}</p>
-              )}
-              {activity.details?.reference && !activity.details?.payment_reference && (
-                <p className="text-xs text-gray-500">Reference: {activity.details.reference}</p>
-              )}
+              <p>Payment request sent to patient</p>
+              {activity.details?.patientName && <p>Patient: {activity.details.patientName}</p>}
+              {activity.details?.patientEmail && <p>Email: {activity.details.patientEmail}</p>}
+              {activity.details?.message && <p>Message: "{activity.details.message}"</p>}
+              {activity.details?.requestId && <p className="text-xs text-gray-500">Request ID: {activity.details.requestId}</p>}
             </div>
           </>
         );
+
+      case 'plan_rescheduled':
+      case 'reschedule_plan':
+      case 'payment_rescheduled':
+      case 'reschedule_payment':
+      case 'plan_cancelled':
+      case 'plan_paused':
+      case 'plan_resumed':
+      case 'payment_refunded':
+      case 'payment_refund':
+      case 'partial_refund':
       case 'payment_reminder_sent':
-        return (
-          <>
-            <div className="font-medium">Payment reminder sent</div>
-            <div className="mt-1 space-y-1 text-sm">
-              {activity.details?.paymentNumber && activity.details?.totalPayments && (
-                <p>Payment {activity.details.paymentNumber} of {activity.details.totalPayments}</p>
-              )}
-              {activity.details?.dueDate && (
-                <p>Due date: {formatDate(activity.details.dueDate)}</p>
-              )}
-              {activity.details?.amount && (
-                <p>Amount: {formatCurrency(activity.details.amount)}</p>
-              )}
-            </div>
-          </>
-        );
       case 'payment_failed':
-        return (
-          <>
-            <div className="font-medium">Payment failed</div>
-            <div className="mt-1 space-y-1 text-sm">
-              {activity.details?.amount && (
-                <p>Amount: {formatCurrency(activity.details.amount)}</p>
-              )}
-              {activity.details?.error && (
-                <p className="text-red-500">Error: {activity.details.error}</p>
-              )}
-            </div>
-          </>
-        );
       default:
         return (
           <div className="font-medium">{activity.actionType.replace(/_/g, ' ')}</div>
