@@ -116,7 +116,7 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
       
       const refundAmount = amount || payment.amount;
       const epsilon = 0.001;
-      const isFullRefund = Math.abs(payment.amount - refundAmount) < epsilon;
+      const isFullRefund = Math.abs(payment.amount - refundAmount * 100) < epsilon;
 
       // Process the refund through the service
       const result = await PaymentRefundService.processRefund(refundPaymentId, refundAmount);
