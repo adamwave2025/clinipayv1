@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { formatCurrency } from '@/utils/formatters';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,7 +79,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     isProcessing
   } = planQuickAccess;
 
-  const fetchPaymnetLinkData = async (paymentLinkId: string) => {
+  const fetchPaymentLinkData = async (paymentLinkId: string): Promise<number | undefined> => {
     try {
       const { data: paymentLinkData, error: paymentLinkError } = await supabase
       .from('payment_links')
@@ -88,9 +89,15 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
       .eq('id', paymentLinkId)
       .single();
 
+      if (paymentLinkError) {
+        console.error('Error fetching payment link data:', paymentLinkError);
+        return undefined;
+      }
+
       return paymentLinkData.amount;
     } catch(error: any) {
       console.error('Error fetching payment link data:', error);
+      return undefined;
     }
   }
 
@@ -153,7 +160,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
         
             if (amount === undefined || amount === null) {
               console.log('yes we are here');
-              amount = await fetchPaymnetLinkData(request.payment_link_id);
+              amount = await fetchPaymentLinkData(request.payment_link_id);
               console.log('amount', amount);
             }
         
@@ -170,7 +177,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
           })
         );
         
-        const filteredRequests = formattedRequests.filter(request => request.amount > 0);        
+        const filteredRequests = formattedRequests.filter(request => request.amount && request.amount > 0);        
         // Combine and sort by date (newest first)
         const combinedHistory = [...formattedPayments, ...filteredRequests].sort((a, b) => {
           const dateA = new Date(a.date).getTime();

@@ -79,17 +79,30 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
     console.log("Checking if clinic was created via trigger...");
     const { data: clinicData, error: clinicError } = await supabase
       .from('clinics')
-      .select('id, email_notifications, sms_notifications')
+      .select('id, email_notifications, sms_notifications, clinic_name')
       .eq('email', email)
       .maybeSingle();
       
     if (clinicError) {
       console.error("Error checking clinic:", clinicError);
-    } else if (clinicData) {
+    }
+
+    // Get clinic name from either the database or the request
+    let clinicNameToUse = "your clinic";
+    if (clinicData && clinicData.clinic_name) {
       console.log(`Found clinic with ID ${clinicData.id} for email ${email}`);
       console.log(`Clinic notification settings: email=${clinicData.email_notifications}, sms=${clinicData.sms_notifications}`);
+      clinicNameToUse = clinicData.clinic_name;
+    } else if (clinic_name) {
+      // Use the clinic name from the request if available
+      if (typeof clinic_name === 'object' && clinic_name?.name) {
+        clinicNameToUse = clinic_name.name;
+      } else if (typeof clinic_name === 'string') {
+        clinicNameToUse = clinic_name;
+      }
+      console.log(`No clinic found in database, using provided clinic name: ${clinicNameToUse}`);
     } else {
-      console.log(`No clinic found for email ${email}, the trigger may not have run yet`);
+      console.log(`No clinic name available, using default: ${clinicNameToUse}`);
     }
     
     // Forward the verification URL to the NEW_SIGN_UP webhook if configured
@@ -106,10 +119,7 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
             email: email,
             verificationUrl: verificationUrl,
             userId: id,
-            // Fix the [object Object] issue by properly formatting the clinic name
-            clinicName: typeof clinic_name === 'object' ? 
-              (clinic_name?.name || 'your clinic') : 
-              clinic_name || 'your clinic'
+            clinicName: clinicNameToUse
           })
         });
         
@@ -236,16 +246,19 @@ async function handleResendVerification(supabase, requestData, corsHeaders) {
       throw tokenError;
     }
     
-    // Get clinic name for this user
-    const { data: clinicData, error: clinicError } = await supabase
-      .from('clinics')
-      .select('name')
+    // Get clinic name for this user by joining users and clinics tables
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id, clinic_id, clinics:clinic_id(clinic_name)')
       .eq('id', userId)
       .maybeSingle();
       
     let clinicName = 'your clinic';
-    if (!clinicError && clinicData && clinicData.name) {
-      clinicName = clinicData.name;
+    if (!userError && userData && userData.clinics && userData.clinics.clinic_name) {
+      clinicName = userData.clinics.clinic_name;
+      console.log(`Found clinic name: ${clinicName} for user ${userId}`);
+    } else {
+      console.log(`No clinic found for userId ${userId}, using default clinic name`);
     }
     
     // Generate verification URL with token
