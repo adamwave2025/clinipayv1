@@ -9,7 +9,7 @@ export function usePaymentFormatter() {
       
       // Determine the payment type - Use payment_type field if available
       let paymentType: Payment['type'] = payment.payment_type || 'other'; // First check direct field
-      let linkTitle: string | undefined = payment.payment_title; // First check direct field
+      let linkTitle: string | undefined = payment.payment_title || 'Custom Payment Request'; // First check direct field
       let description: string | undefined = undefined;
       let paymentLinkId: string | undefined = undefined;
       
