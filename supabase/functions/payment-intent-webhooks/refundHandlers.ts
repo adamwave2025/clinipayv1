@@ -192,5 +192,90 @@ export async function handleRefundUpdated(refund: any, stripeClient: Stripe, sup
 
 export async function handleRefundDotUpdated(refund: any, stripeClient: Stripe, supabaseClient: any) {
   console.log("Processing refund.updated event:", refund.id);
-
+  
+  try {
+    // Log detailed refund object (excluding potentially large fields)
+    console.log("Refund details:", JSON.stringify({
+      id: refund.id,
+      amount: refund.amount,
+      currency: refund.currency,
+      status: refund.status,
+      reason: refund.reason,
+      charge: refund.charge,
+      created: refund.created,
+      failure_reason: refund.failure_reason,
+      metadata: refund.metadata,
+      payment_intent: refund.payment_intent
+    }, null, 2));
+    
+    if (refund.charge) {
+      try {
+        // Retrieve and log charge details
+        const charge = await stripeClient.charges.retrieve(refund.charge);
+        console.log("Charge details:", JSON.stringify({
+          id: charge.id,
+          amount: charge.amount,
+          currency: charge.currency,
+          payment_method: charge.payment_method,
+          payment_method_details: charge.payment_method_details,
+          status: charge.status,
+          paid: charge.paid,
+          refunded: charge.refunded,
+          amount_refunded: charge.amount_refunded,
+          failure_code: charge.failure_code,
+          failure_message: charge.failure_message
+        }, null, 2));
+        
+        // If there's a balance transaction, retrieve and log it
+        if (charge.balance_transaction && typeof charge.balance_transaction === 'string') {
+          try {
+            const balanceTransaction = await stripeClient.balanceTransactions.retrieve(
+              charge.balance_transaction
+            );
+            console.log("Balance transaction details:", JSON.stringify({
+              id: balanceTransaction.id,
+              amount: balanceTransaction.amount,
+              net: balanceTransaction.net,
+              fee: balanceTransaction.fee,
+              fee_details: balanceTransaction.fee_details,
+              status: balanceTransaction.status,
+              type: balanceTransaction.type,
+              available_on: balanceTransaction.available_on
+            }, null, 2));
+          } catch (balanceError) {
+            console.error("Error retrieving balance transaction:", balanceError);
+          }
+        }
+      } catch (chargeError) {
+        console.error("Error retrieving charge details:", chargeError);
+      }
+    }
+    
+    // Check for balance transaction directly on refund if it exists
+    if (refund.balance_transaction && typeof refund.balance_transaction === 'string') {
+      try {
+        const refundBalanceTransaction = await stripeClient.balanceTransactions.retrieve(
+          refund.balance_transaction
+        );
+        console.log("Refund balance transaction details:", JSON.stringify({
+          id: refundBalanceTransaction.id,
+          amount: refundBalanceTransaction.amount,
+          net: refundBalanceTransaction.net,
+          fee: refundBalanceTransaction.fee,
+          fee_details: refundBalanceTransaction.fee_details,
+          status: refundBalanceTransaction.status,
+          type: refundBalanceTransaction.type
+        }, null, 2));
+      } catch (refundBalanceError) {
+        console.error("Error retrieving refund balance transaction:", refundBalanceError);
+      }
+    }
+    
+    // Return a simple response for now
+    return { status: "logged", refundId: refund.id };
+    
+  } catch (error) {
+    console.error("Error in handleRefundDotUpdated:", error);
+    return { status: "error", message: error.message };
+  }
 }
