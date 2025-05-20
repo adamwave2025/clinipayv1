@@ -36,6 +36,8 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
     );
   }
 
+  console.log("'pppppaaatttttiiiieeennnttt pppaaaayyyymnnnner", payments)
+
   return (
     <div>
       <h3 className="text-lg font-medium mb-4">Activity Log</h3>
@@ -54,7 +56,7 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
                 </div>
                 <div className="flex-1">
                   <div className="font-medium">
-                    Payment received for {formatCurrency(payment.amount || 0)}
+                  {payment.reference ? `Payment received for ${formatCurrency(payment.amount || 0)}` : `Payment request sent for ${formatCurrency(payment.amount || 0)}`}
                   </div>
                   <div className="mt-1 space-y-1 text-sm">
                     {/* Display payment source differently based on type */}
