@@ -265,14 +265,6 @@ const enrichActivityDetails = (actionType: string, details: any): any => {
     }
   }
   
-  // For custom payment requests
-  if (actionType === 'custom_payment_sent') {
-    // Ensure we have the amount field properly set
-    if (!enhancedDetails.amount && enhancedDetails.customAmount) {
-      enhancedDetails.amount = enhancedDetails.customAmount;
-    }
-  }
-  
   console.log(`Fully enriched details for ${actionType}:`, enhancedDetails);
   return enhancedDetails;
 };
@@ -306,8 +298,6 @@ export const getActionTypeLabel = (actionType: string): string => {
       return 'Payment reminder sent';
     case 'payment_failed':
       return 'Payment failed';
-    case 'custom_payment_sent':
-      return 'Custom payment request sent';
     default:
       return capitalize(actionType.replace(/_/g, ' '));
   }

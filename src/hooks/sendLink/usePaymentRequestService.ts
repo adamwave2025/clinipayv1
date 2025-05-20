@@ -53,34 +53,6 @@ export function usePaymentRequestService() {
       const paymentRequest = data[0];
       console.log('⚠️ CRITICAL: Payment request created successfully:', paymentRequest.id);
       
-      // Record an activity entry for custom payment requests
-      if (!paymentLinkId && customAmount) {
-        console.log('Recording custom payment request activity');
-        
-        // Create activity record for custom payment request
-        const { error: activityError } = await supabase
-          .from('payment_activity')
-          .insert({
-            clinic_id: clinicId,
-            patient_id: patientId,
-            payment_link_id: null,
-            action_type: 'custom_payment_sent',
-            details: {
-              amount: customAmount,
-              requestId: paymentRequest.id,
-              patientName: formData.patientName,
-              patientEmail: formData.patientEmail,
-              patientPhone: formData.patientPhone,
-              message: formData.message || null
-            }
-          });
-          
-        if (activityError) {
-          console.error('Error recording custom payment activity:', activityError);
-          // Non-blocking, continue with the operation
-        }
-      }
-      
       return paymentRequest;
     } finally {
       setIsCreatingPaymentRequest(false);
