@@ -120,11 +120,11 @@ export const usePlanResumeActions = (
     try {
       console.log(`Resuming plan ${selectedPlan.id} with date:`, resumeDate);
 
-      // Add validation check for date in the past
+      // Add validation check for date - must be in the future (after today)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      if (resumeDate < today) {
-        throw new Error('Resume date cannot be in the past');
+      if (resumeDate <= today) {
+        throw new Error('Resume date must be after today');
       }
       
       // Use date-fns format to ensure the correct date is preserved, regardless of timezone

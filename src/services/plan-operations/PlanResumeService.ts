@@ -43,7 +43,6 @@ export class PlanResumeService {
       console.log(`Plan has paid payments: ${hasPaidPayments ? 'YES' : 'NO'}`);
       
       // Call our complete_resume_plan database function
-      // Note: The function doesn't accept p_target_status parameter so we remove it
       const { data, error } = await supabase.rpc('complete_resume_plan', {
         p_plan_id: plan.id,
         p_resume_date: formattedDate
