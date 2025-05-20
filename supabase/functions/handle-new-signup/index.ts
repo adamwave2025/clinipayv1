@@ -87,21 +87,29 @@ async function handleNewSignup(supabase, requestData, corsHeaders) {
       console.error("Error checking clinic:", clinicError);
     }
 
-    // Get clinic name from either the database or the request
-    let clinicNameToUse = "your clinic";
+    // Determine the clinic name to use, prioritizing database value over request data
+    let clinicNameToUse = "";
+    
+    // First check if we have clinic data from the database
     if (clinicData && clinicData.clinic_name) {
       console.log(`Found clinic with ID ${clinicData.id} for email ${email}`);
       console.log(`Clinic notification settings: email=${clinicData.email_notifications}, sms=${clinicData.sms_notifications}`);
       clinicNameToUse = clinicData.clinic_name;
-    } else if (clinic_name) {
-      // Use the clinic name from the request if available
+    } 
+    // Then check if clinic_name was provided in the request
+    else if (clinic_name) {
+      // Handle different formats of clinic_name in the request
       if (typeof clinic_name === 'object' && clinic_name?.name) {
         clinicNameToUse = clinic_name.name;
       } else if (typeof clinic_name === 'string') {
         clinicNameToUse = clinic_name;
       }
       console.log(`No clinic found in database, using provided clinic name: ${clinicNameToUse}`);
-    } else {
+    }
+    
+    // If we still don't have a name, use a default
+    if (!clinicNameToUse) {
+      clinicNameToUse = "your clinic";
       console.log(`No clinic name available, using default: ${clinicNameToUse}`);
     }
     
@@ -253,12 +261,31 @@ async function handleResendVerification(supabase, requestData, corsHeaders) {
       .eq('id', userId)
       .maybeSingle();
       
-    let clinicName = 'your clinic';
+    // Determine the clinic name to use  
+    let clinicName = "";
     if (!userError && userData && userData.clinics && userData.clinics.clinic_name) {
       clinicName = userData.clinics.clinic_name;
       console.log(`Found clinic name: ${clinicName} for user ${userId}`);
     } else {
-      console.log(`No clinic found for userId ${userId}, using default clinic name`);
+      // Look up clinic directly if the join didn't work
+      if (userData && userData.clinic_id) {
+        const { data: clinicData, error: clinicError } = await supabase
+          .from('clinics')
+          .select('clinic_name')
+          .eq('id', userData.clinic_id)
+          .maybeSingle();
+          
+        if (!clinicError && clinicData && clinicData.clinic_name) {
+          clinicName = clinicData.clinic_name;
+          console.log(`Found clinic name: ${clinicName} via direct query`);
+        }
+      }
+      
+      // If we still don't have a name, use a default
+      if (!clinicName) {
+        clinicName = "your clinic";
+        console.log(`No clinic found for userId ${userId}, using default clinic name`);
+      }
     }
     
     // Generate verification URL with token
