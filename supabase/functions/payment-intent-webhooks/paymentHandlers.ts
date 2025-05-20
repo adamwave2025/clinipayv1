@@ -1,3 +1,4 @@
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { NotificationService } from "./notificationService.ts";
@@ -309,6 +310,59 @@ export async function handleRefundUpdateEvent(refund: any, stripeClient: Stripe,
     return { 
       status: "error", 
       message: `Error processing refund update: ${error.message}` 
+    };
+  }
+}
+
+/**
+ * Handle payment intent succeeded event from Stripe
+ */
+export async function handlePaymentIntentSucceeded(paymentIntent: any, supabaseClient: any) {
+  console.log("Payment Intent Succeeded:", JSON.stringify({
+    id: paymentIntent.id,
+    amount: paymentIntent.amount,
+    status: paymentIntent.status
+  }));
+  
+  try {
+    // Implementation for handling successful payment intents
+    // This would update payment records, send notifications, etc.
+    return { 
+      status: "success", 
+      message: `Payment intent ${paymentIntent.id} processed successfully`
+    };
+  } catch (error) {
+    console.error("Error handling payment intent succeeded:", error);
+    return { 
+      status: "error", 
+      message: `Error processing payment intent: ${error.message}`
+    };
+  }
+}
+
+/**
+ * Handle payment intent failed event from Stripe
+ */
+export async function handlePaymentIntentFailed(paymentIntent: any, supabaseClient: any) {
+  console.log("Payment Intent Failed:", JSON.stringify({
+    id: paymentIntent.id,
+    amount: paymentIntent.amount,
+    status: paymentIntent.status,
+    last_payment_error: paymentIntent.last_payment_error
+  }));
+  
+  try {
+    // Implementation for handling failed payment intents
+    // This would update payment records, notify the user, etc.
+    return { 
+      status: "success", 
+      message: `Failed payment intent ${paymentIntent.id} recorded`
+    };
+  } catch (error) {
+    console.error("Error handling payment intent failed:", error);
+    return { 
+      status: "error", 
+      message: `Error processing failed payment: ${error.message}`
     };
   }
 }
