@@ -45,8 +45,8 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
           No activity recorded yet
         </div>
       ) : (
-        <ScrollArea className="max-h-[400px]">
-          <div className="space-y-4">
+        <ScrollArea className="h-[300px] pr-4">
+          <div className="space-y-4 pb-2">
             {/* Payment History - Updated with different icons based on reference */}
             {payments.map((payment) => (
               <div key={payment.id} className="flex items-start gap-3 p-3 border rounded-md">
