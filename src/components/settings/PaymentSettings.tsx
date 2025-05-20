@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Check, X, Clock, Loader2 } from 'lucide-react';
+import { Check, X, Clock, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -21,8 +21,15 @@ const PaymentSettings = ({
   handleDisconnectStripe 
 }: PaymentSettingsProps) => {
   const [isConnecting, setIsConnecting] = useState(false);
-  const isConnected = stripeStatus === 'connected';
-  const isPending = stripeStatus === 'pending';
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [localStripeStatus, setLocalStripeStatus] = useState(stripeStatus);
+  const isConnected = localStripeStatus === 'connected';
+  const isPending = localStripeStatus === 'pending';
+
+  // Update local state when props change
+  useEffect(() => {
+    setLocalStripeStatus(stripeStatus);
+  }, [stripeStatus]);
 
   const startStripeConnect = async () => {
     try {
@@ -46,6 +53,46 @@ const PaymentSettings = ({
       console.error('Error connecting to Stripe:', error);
       toast.error(`Failed to connect to Stripe: ${error.message || 'Unknown error'}`);
       setIsConnecting(false);
+    }
+  };
+
+  // Function to verify Stripe account status
+  const verifyStripeStatus = async () => {
+    if (!stripeAccountId) return;
+    
+    try {
+      setIsVerifying(true);
+      const { data, error } = await supabase.functions.invoke('connect-onboarding', {
+        body: { action: 'check_account_status', accountId: stripeAccountId }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data && data.status) {
+        setLocalStripeStatus(data.status);
+        toast.success(`Stripe status refreshed: ${data.status}`);
+        
+        // If status has changed, update in the database
+        if (data.status !== stripeStatus) {
+          const { error: updateError } = await supabase
+            .from('clinics')
+            .update({ stripe_status: data.status })
+            .eq('stripe_account_id', stripeAccountId);
+            
+          if (updateError) {
+            console.error('Error updating stripe status:', updateError);
+          }
+        }
+      } else {
+        toast.error('Unable to verify Stripe status');
+      }
+    } catch (error: any) {
+      console.error('Error verifying Stripe status:', error);
+      toast.error(`Failed to verify Stripe status: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -87,6 +134,21 @@ const PaymentSettings = ({
                 {getStatusDisplay()}
                 {(isConnected || isPending) && (
                   <span className="text-xs text-gray-500 ml-2">ID: {stripeAccountId}</span>
+                )}
+                {isPending && stripeAccountId && (
+                  <Button 
+                    onClick={verifyStripeStatus} 
+                    variant="ghost" 
+                    size="sm"
+                    className="p-0 ml-2"
+                    disabled={isVerifying}
+                  >
+                    {isVerifying ? (
+                      <LoadingSpinner size="sm" className="text-amber-600" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3 text-amber-600" />
+                    )}
+                  </Button>
                 )}
               </div>
               {isPending && (

@@ -87,17 +87,31 @@ const AuthCallbackPage = () => {
         }
         
         if (data?.accountId) {
-          // Update clinic data with the Stripe account ID
+          // Check account status with Stripe
+          const { data: statusData, error: statusError } = await supabase.functions.invoke('connect-onboarding', {
+            body: { action: 'check_account_status', accountId: data.accountId }
+          });
+          
+          if (statusError) {
+            console.error('Error checking stripe status:', statusError);
+          }
+          
+          // Update clinic data with the Stripe account ID and status
+          const stripeStatus = statusData?.status || 'pending';
+          
           const { error: updateError } = await supabase
             .from('clinics')
-            .update({ stripe_account_id: data.accountId })
+            .update({ 
+              stripe_account_id: data.accountId,
+              stripe_status: stripeStatus 
+            })
             .eq('id', data.clinicId);
             
           if (updateError) {
             throw updateError;
           }
           
-          toast.success('Successfully connected to Stripe');
+          toast.success(`Successfully connected to Stripe (${stripeStatus})`);
         } else {
           toast.error('Failed to retrieve Stripe account ID');
         }

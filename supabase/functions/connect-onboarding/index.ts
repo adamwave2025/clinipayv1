@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -37,7 +36,8 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Parse request body
-    const { returnUrl, action } = await req.json();
+    const requestData = await req.json();
+    const { returnUrl, action, accountId } = requestData;
 
     // Get user ID from JWT
     const authHeader = req.headers.get('Authorization');
@@ -47,6 +47,39 @@ serve(async (req) => {
 
     // Extract the JWT token
     const token = authHeader ? authHeader.replace('Bearer ', '') : '';
+    
+    // If action is 'check_account_status', verify the Stripe account status
+    if (action === 'check_account_status' && accountId) {
+      console.log(`Checking Stripe account status for: ${accountId}`);
+      
+      // Retrieve the account from Stripe
+      const account = await stripe.accounts.retrieve(accountId);
+      
+      let status = 'pending';
+      // Check if account is fully onboarded
+      if (account.charges_enabled && account.details_submitted && account.payouts_enabled) {
+        status = 'connected';
+      } else if (account.details_submitted) {
+        status = 'pending_verification';
+      } else if (!account.details_submitted) {
+        status = 'pending';
+      }
+      
+      console.log(`Account status for ${accountId}: ${status}`);
+      
+      return new Response(JSON.stringify({
+        status: status,
+        detailsSubmitted: account.details_submitted,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled
+      }), {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json"
+        },
+        status: 200
+      });
+    }
     
     // If action is 'retrieve_account_id', this is a callback from Stripe
     if (action === 'retrieve_account_id') {
@@ -136,16 +169,32 @@ serve(async (req) => {
         .eq("id", clinicId);
         
       if (updateError) throw updateError;
-    } else if (clinic.stripe_status !== "active") {
-      // If account exists but status is not active, ensure it's marked as pending
-      const { error: updateError } = await supabase
-        .from("clinics")
-        .update({
-          stripe_status: "pending"
-        })
-        .eq("id", clinicId);
+    } else if (clinic.stripe_status !== "connected") {
+      // If account exists but status is not active, check it with Stripe
+      try {
+        const account = await stripe.accounts.retrieve(stripeAccountId);
+        let newStatus = 'pending';
         
-      if (updateError) throw updateError;
+        if (account.charges_enabled && account.details_submitted && account.payouts_enabled) {
+          newStatus = 'connected';
+        } else if (account.details_submitted) {
+          newStatus = 'pending_verification';
+        }
+        
+        // Update the status if it differs from the current one
+        if (newStatus !== clinic.stripe_status) {
+          const { error: updateError } = await supabase
+            .from("clinics")
+            .update({
+              stripe_status: newStatus
+            })
+            .eq("id", clinicId);
+            
+          if (updateError) throw updateError;
+        }
+      } catch (error) {
+        console.error('Error retrieving Stripe account:', error);
+      }
     }
 
     // Create an onboarding link
