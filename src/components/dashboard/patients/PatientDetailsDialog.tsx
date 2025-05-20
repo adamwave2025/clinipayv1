@@ -149,9 +149,9 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
         // Format payment requests - filter out £0 amounts
         const formattedRequests = await Promise.all(
           requestsData.map(async (request) => {
-            let amount = request.custom_amount || (request.payment_links ? request.payment_links.amount : 0);
+            let amount = request.custom_amount;
         
-            if (amount === undefined) {
+            if (amount === undefined || amount === null) {
               console.log('yes we are here');
               amount = await fetchPaymnetLinkData(request.payment_link_id);
               console.log('amount', amount);
