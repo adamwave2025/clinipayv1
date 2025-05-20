@@ -13,7 +13,8 @@ import {
   PlayCircle,
   CalendarClock,
   FileText,
-  RefreshCcw
+  RefreshCcw,
+  SendHorizonal
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
@@ -36,8 +37,6 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
     );
   }
 
-  console.log("'pppppaaatttttiiiieeennnttt pppaaaayyyymnnnner", payments)
-
   return (
     <div>
       <h3 className="text-lg font-medium mb-4">Activity Log</h3>
@@ -48,11 +47,15 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
       ) : (
         <ScrollArea className="max-h-[400px]">
           <div className="space-y-4">
-            {/* Payment History - Updated to match the specified format */}
+            {/* Payment History - Updated with different icons based on reference */}
             {payments.map((payment) => (
               <div key={payment.id} className="flex items-start gap-3 p-3 border rounded-md">
                 <div className="mt-1">
-                  <CreditCard className="h-4 w-4 text-green-500" />
+                  {payment.reference ? (
+                    <CreditCard className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <SendHorizonal className="h-4 w-4 text-blue-500" />
+                  )}
                 </div>
                 <div className="flex-1">
                   <div className="font-medium">
