@@ -35,10 +35,10 @@ serve(async (req) => {
       }
     );
 
-    // First, find the user by email
+    // First, find the user by email and join with clinics table to get clinic name
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
-      .select('id')
+      .select('id, clinic_id, clinics:clinic_id(clinic_name)')
       .eq('email', email)
       .maybeSingle();
 
@@ -60,6 +60,9 @@ serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Extract clinic name from the joined data, with fallback
+    const clinicName = userData.clinics?.clinic_name || "Your Clinic";
 
     // Generate a random token 
     const token = crypto.randomUUID();
@@ -107,10 +110,11 @@ serve(async (req) => {
       );
     }
 
-    // Prepare the data for GHL webhook
+    // Prepare the data for GHL webhook, now including the clinic name
     const webhookData = {
       email,
       resetLink,
+      clinicName,
       timestamp: new Date().toISOString(),
       source: "CliniPay Password Reset"
     };
