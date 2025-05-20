@@ -188,3 +188,9 @@ export async function handleRefundUpdated(refund: any, stripeClient: Stripe, sup
     console.error("Stack trace:", error.stack);
   }
 }
+
+
+export async function handleRefundDotUpdated(refund: any, stripeClient: Stripe, supabaseClient: any) {
+  console.log("Processing refund.updated event:", refund.id);
+
+}

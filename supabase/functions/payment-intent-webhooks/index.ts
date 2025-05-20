@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { corsHeaders } from "./utils.ts";
 import { handlePaymentIntentSucceeded, handlePaymentIntentFailed } from "./paymentHandlers.ts";
-import { handleRefundUpdated } from "./refundHandlers.ts";
+import { handleRefundDotUpdated, handleRefundUpdated } from "./refundHandlers.ts";
 
 serve(async (req) => {
   // Log each webhook request received
@@ -110,6 +110,11 @@ serve(async (req) => {
       case "charge.refunded":
         console.log("Processing charge.refunded event");
         result = await handleRefundUpdated(event.data.object, stripe, supabaseClient);
+        break;
+
+      case "refund.updated":
+        console.log("Processing refund.updated event");
+        result = await handleRefundDotUpdated(event.data.object, stripe, supabaseClient);
         break;
         
       default:
