@@ -97,6 +97,8 @@ serve(async (req) => {
     switch (event.type) {
       case "payment_intent.succeeded":
         console.log("Processing payment_intent.succeeded event");
+        // Add Stripe instance to paymentIntent for fee calculation
+        event.data.object._stripe = stripe;
         result = await handlePaymentIntentSucceeded(event.data.object, supabaseClient);
         break;
         
