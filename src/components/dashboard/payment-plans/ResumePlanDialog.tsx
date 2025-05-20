@@ -46,12 +46,11 @@ const ResumePlanDialog = React.memo(({
   isProcessing = false,
   resumeError = null,
 }: ResumePlanDialogProps) => {
-  // Default resume date set to tomorrow to avoid issues with today's date
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  // Default resume date set to today
+  const today = new Date();
   
-  const [resumeDate, setResumeDate] = useState<Date>(tomorrow);
-  const [dateSelected, setDateSelected] = useState(false);
+  const [resumeDate, setResumeDate] = useState<Date>(today);
+  const [dateSelected, setDateSelected] = useState(true);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [isCalendarLoading, setIsCalendarLoading] = useState(false);
@@ -93,11 +92,11 @@ const ResumePlanDialog = React.memo(({
   React.useEffect(() => {
     if (showDialog) {
       setValidationErrors([]);
-      setDateSelected(false);
-      // Reset to tomorrow's date when dialog opens
-      const newTomorrow = new Date();
-      newTomorrow.setDate(newTomorrow.getDate() + 1);
-      setResumeDate(newTomorrow);
+      // Reset to today's date when dialog opens
+      const newToday = new Date();
+      setResumeDate(newToday);
+      // Since we're setting a valid default date, mark it as selected
+      setDateSelected(true);
     }
   }, [showDialog]);
 
@@ -188,7 +187,7 @@ const ResumePlanDialog = React.memo(({
                       onSelect={handleDateSelect}
                       disabled={disablePastDates}
                       initialFocus
-                      className="pointer-events-auto"
+                      className={cn("p-3 pointer-events-auto")}
                     />
                   )}
                 </PopoverContent>

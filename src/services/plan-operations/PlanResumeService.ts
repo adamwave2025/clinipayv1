@@ -11,16 +11,15 @@ export class PlanResumeService {
   /**
    * Resume a paused plan
    * @param plan The plan to resume
-   * @param resumeDate Optional date to resume the plan (defaults to tomorrow)
+   * @param resumeDate Optional date to resume the plan (defaults to today)
    * @returns Promise<boolean> indicating success or failure
    */
   static async resumePlan(plan: Plan, resumeDate?: Date): Promise<boolean> {
     try {
-      // Default to tomorrow if no date is specified
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      // Default to today if no date is specified
+      const today = new Date();
       
-      const dateToUse = resumeDate || tomorrow;
+      const dateToUse = resumeDate || today;
       
       // Use date-fns format to ensure correct date preservation for UK timezone
       const formattedDate = format(dateToUse, 'yyyy-MM-dd');
