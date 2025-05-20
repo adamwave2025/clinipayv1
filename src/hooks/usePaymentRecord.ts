@@ -55,7 +55,7 @@ export function usePaymentRecord() {
           // Wait for the calculated delay
           await new Promise(resolve => setTimeout(resolve, delayMs));
           
-          // Check if payment record already exists - USING STRIPE_PAYMENT_ID COLUMN
+          // Check if payment record already exists
           const { data, error } = await supabase
             .from('payments')
             .select('id, payment_ref')
