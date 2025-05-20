@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Check, X, Clock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { verifyStripeConnectionStatus } from '@/utils/stripe-connection-utils';
 
 interface PaymentSettingsProps {
   stripeAccountId: string | null;
@@ -16,13 +17,61 @@ interface PaymentSettingsProps {
 
 const PaymentSettings = ({ 
   stripeAccountId, 
-  stripeStatus,
+  stripeStatus: initialStripeStatus,
   handleConnectStripe, 
   handleDisconnectStripe 
 }: PaymentSettingsProps) => {
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [stripeStatus, setStripeStatus] = useState(initialStripeStatus);
+  
   const isConnected = stripeStatus === 'connected';
   const isPending = stripeStatus === 'pending';
+
+  // Verify Stripe status when component mounts or stripeAccountId changes
+  useEffect(() => {
+    if (stripeAccountId) {
+      verifyStatus();
+    }
+  }, [stripeAccountId]);
+
+  const verifyStatus = async () => {
+    try {
+      setIsVerifying(true);
+      
+      // Get the clinic ID
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const { data: userData } = await supabase
+        .from('users')
+        .select('clinic_id')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (!userData?.clinic_id) return;
+      
+      // Verify the Stripe connection status
+      const result = await verifyStripeConnectionStatus(userData.clinic_id);
+      
+      if (result.success) {
+        setStripeStatus(result.status);
+        
+        // If status changed from what we initially had, show a toast
+        if (result.status !== initialStripeStatus) {
+          if (result.status === 'connected') {
+            toast.success('Your Stripe account is now fully connected!');
+          } else if (result.status === 'pending') {
+            toast.info('Please complete the Stripe onboarding process to enable payments');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error verifying Stripe status:', error);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const startStripeConnect = async () => {
     try {
@@ -50,7 +99,14 @@ const PaymentSettings = ({
   };
 
   const getStatusDisplay = () => {
-    if (isConnected) {
+    if (isVerifying) {
+      return (
+        <span className="inline-flex items-center text-sm text-blue-600">
+          <LoadingSpinner size="xs" className="mr-1" />
+          Verifying...
+        </span>
+      );
+    } else if (isConnected) {
       return (
         <span className="inline-flex items-center text-sm text-green-600">
           <Check className="h-4 w-4 mr-1" />
@@ -120,6 +176,27 @@ const PaymentSettings = ({
               </Button>
             )}
           </div>
+          
+          {(isConnected || isPending) && (
+            <div className="mt-3 flex justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={verifyStatus}
+                disabled={isVerifying}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                {isVerifying ? (
+                  <>
+                    <LoadingSpinner size="xs" className="mr-1" />
+                    Verifying...
+                  </>
+                ) : (
+                  'Verify Connection Status'
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
