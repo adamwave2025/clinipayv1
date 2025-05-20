@@ -77,95 +77,6 @@ double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
 enable_confirmations = false
 
-# Configure one of the supported auth providers.
-# [auth.external.apple]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-# [auth.external.azure]
-# enabled = false
-# client_id = ""
-# secret = ""
-# url = ""
-# redirect_uri = ""
-# [auth.external.bitbucket]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-# [auth.external.discord]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-# [auth.external.facebook]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-# [auth.external.github]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-# [auth.external.gitlab]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-# [auth.external.google]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-# [auth.external.keycloak]
-# enabled = false
-# client_id = ""
-# secret = ""
-# url = ""
-# redirect_uri = ""
-# [auth.external.linkedin]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-# [auth.external.notion]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-# [auth.external.twitch]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-# [auth.external.twitter]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-# [auth.external.slack]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-# [auth.external.spotify]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-# [auth.external.workos]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-# [auth.external.zoom]
-# enabled = false
-# client_id = ""
-# secret = ""
-# redirect_uri = ""
-
 [auth.external.google]
 enabled = true
 client_id = "347037938592-k3tj2l2gcgkrho7i0v4r3lflqb7q1bce.apps.googleusercontent.com"
@@ -213,15 +124,6 @@ verify_jwt = false
 enabled = false
 port = 54327
 vector_port = 54328
-# Configure one of the supported backends.
-# [analytics.backends.postgres]
-# enabled = false
-# [analytics.backends.bigquery]
-# enabled = false
-# private_key = ""
-# project_id = ""
-# client_email = ""
-# location = ""
 
 [experimental]
 # Configures Postgres storage engine to use OrioleDB (S3)

@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
+import { generatePaymentReference } from "./utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -135,6 +136,108 @@ serve(async (req) => {
           status: "success", 
           account_id: account.id,
           new_status: status
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+      
+      case "payment_intent.succeeded": {
+        console.log("Processing payment_intent.succeeded event");
+        const paymentIntent = event.data.object;
+        
+        // Extract metadata from the payment intent
+        const metadata = paymentIntent.metadata || {};
+        const {
+          clinicId,
+          paymentLinkId,
+          requestId,
+          paymentReference: existingReference,
+          patientName,
+          patientEmail,
+          patientPhone
+        } = metadata;
+
+        if (!clinicId) {
+          console.error("Missing clinicId in payment intent metadata");
+          return new Response(JSON.stringify({ error: "Missing clinic ID" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+
+        // Use existing reference or generate a new one
+        const paymentReference = existingReference || generatePaymentReference();
+        console.log(`Using payment reference: ${paymentReference}`);
+        
+        // Check if a payment record already exists to avoid duplicates
+        const { data: existingPayment, error: checkError } = await supabase
+          .from("payments")
+          .select("id")
+          .eq("stripe_payment_id", paymentIntent.id)
+          .maybeSingle();
+          
+        if (checkError) {
+          console.error("Error checking for existing payment:", checkError);
+        }
+        
+        if (existingPayment) {
+          console.log(`Payment record already exists for payment ID ${paymentIntent.id}`);
+          return new Response(JSON.stringify({ status: "payment_already_exists" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+        
+        // Prepare payment record data
+        const paymentData = {
+          clinic_id: clinicId,
+          amount_paid: paymentIntent.amount, // Store as integer (cents)
+          paid_at: new Date().toISOString(),
+          patient_name: patientName || "Unknown",
+          patient_email: patientEmail || null,
+          patient_phone: patientPhone || null,
+          payment_link_id: paymentLinkId || null,
+          payment_ref: paymentReference,
+          status: "paid",
+          stripe_payment_id: paymentIntent.id
+        };
+        
+        console.log("Inserting payment record:", JSON.stringify(paymentData));
+        
+        // Record the payment in the payments table
+        const { data, error } = await supabase
+          .from("payments")
+          .insert(paymentData)
+          .select();
+          
+        if (error) {
+          console.error("Error inserting payment record:", error);
+          throw error;
+        }
+        
+        console.log("Payment record created successfully");
+        
+        // If this payment was for a payment request, update the request status
+        if (requestId) {
+          const { error: requestUpdateError } = await supabase
+            .from("payment_requests")
+            .update({
+              status: "paid",
+              paid_at: new Date().toISOString(),
+              payment_id: data[0].id
+            })
+            .eq("id", requestId);
+            
+          if (requestUpdateError) {
+            console.error("Error updating payment request:", requestUpdateError);
+          } else {
+            console.log(`Payment request ${requestId} marked as paid`);
+          }
+        }
+        
+        return new Response(JSON.stringify({ 
+          status: "success",
+          payment_id: data[0].id,
+          payment_reference: paymentReference
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
