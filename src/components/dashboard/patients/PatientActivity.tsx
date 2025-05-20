@@ -13,7 +13,8 @@ import {
   PlayCircle,
   CalendarClock,
   FileText,
-  RefreshCcw
+  RefreshCcw,
+  Send
 } from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
@@ -75,11 +76,13 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
             {/* Only include specific activity types for patient view */}
             {planActivities
               .filter(activity => 
-                ['payment_made', 'payment_refund', 'partial_refund', 'card_payment_processed'].includes(activity.actionType))
+                ['payment_made', 'payment_refund', 'partial_refund', 'card_payment_processed', 'custom_payment_sent'].includes(activity.actionType))
               .map((activity) => (
                 <div key={activity.id} className="flex items-start gap-3 p-3 border rounded-md">
                   <div className="mt-1">
-                    {activity.actionType.includes('refund') ? (
+                    {activity.actionType === 'custom_payment_sent' ? (
+                      <Send className="h-4 w-4 text-blue-500" />
+                    ) : activity.actionType.includes('refund') ? (
                       <RefreshCcw className="h-4 w-4 text-orange-500" />
                     ) : (
                       <CreditCard className="h-4 w-4 text-green-500" />
@@ -87,12 +90,22 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
                   </div>
                   <div className="flex-1">
                     <div className="font-medium">
-                      {activity.actionType.includes('refund') 
-                        ? `Payment ${activity.actionType === 'partial_refund' ? 'partially' : 'fully'} refunded for ${formatCurrency(activity.details?.refundAmount || 0)}` 
-                        : `Payment received for ${formatCurrency(activity.details?.amount || 0)}`}
+                      {activity.actionType === 'custom_payment_sent' ? (
+                        `Payment request sent for ${formatCurrency(activity.details?.amount || 0)}`
+                      ) : activity.actionType.includes('refund') ? (
+                        `Payment ${activity.actionType === 'partial_refund' ? 'partially' : 'fully'} refunded for ${formatCurrency(activity.details?.refundAmount || 0)}`
+                      ) : (
+                        `Payment received for ${formatCurrency(activity.details?.amount || 0)}`
+                      )}
                     </div>
                     <div className="mt-1 space-y-1 text-sm">
-                      <p>{activity.details?.planName ? `Payment plan: ${activity.details.planName}` : 'Payment'}</p>
+                      {activity.actionType === 'custom_payment_sent' ? (
+                        <p>Custom payment request</p>
+                      ) : activity.details?.planName ? (
+                        <p>Payment plan: {activity.details.planName}</p>
+                      ) : (
+                        <p>Payment</p>
+                      )}
                       {activity.details?.reference && <p>Reference: {activity.details.reference}</p>}
                       {activity.details?.payment_reference && <p>Reference: {activity.details.payment_reference}</p>}
                       {activity.details?.payment_ref && <p>Reference: {activity.details.payment_ref}</p>}
