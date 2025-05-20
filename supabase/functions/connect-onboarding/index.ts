@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -52,33 +53,95 @@ serve(async (req) => {
     if (action === 'check_account_status' && accountId) {
       console.log(`Checking Stripe account status for: ${accountId}`);
       
-      // Retrieve the account from Stripe
-      const account = await stripe.accounts.retrieve(accountId);
-      
-      let status = 'pending';
-      // Check if account is fully onboarded
-      if (account.charges_enabled && account.details_submitted && account.payouts_enabled) {
-        status = 'connected';
-      } else if (account.details_submitted) {
-        status = 'pending_verification';
-      } else if (!account.details_submitted) {
-        status = 'pending';
+      try {
+        // Retrieve the account from Stripe with expanded capabilities
+        const account = await stripe.accounts.retrieve(accountId, {
+          expand: ['capabilities']
+        });
+        
+        console.log("Account details:", JSON.stringify({
+          charges_enabled: account.charges_enabled,
+          details_submitted: account.details_submitted,
+          payouts_enabled: account.payouts_enabled,
+          capabilities: account.capabilities,
+          requirements: account.requirements
+        }, null, 2));
+        
+        let status = 'pending';
+        
+        // More comprehensive status determination
+        if (account.charges_enabled && account.details_submitted && account.payouts_enabled) {
+          status = 'connected';
+          console.log(`Account ${accountId} is fully onboarded with all capabilities`);
+          
+          // Update the clinic database record immediately
+          const { data: userData, error: userError } = await supabase.auth.getUser(token);
+          if (userError) {
+            console.error("Error getting user:", userError.message);
+          } else if (userData.user) {
+            const { data: clinicData, error: clinicError } = await supabase
+              .from('users')
+              .select('clinic_id')
+              .eq('id', userData.user.id)
+              .single();
+              
+            if (clinicError) {
+              console.error("Error getting clinic ID:", clinicError.message);
+            } else if (clinicData?.clinic_id) {
+              const { error: updateError } = await supabase
+                .from('clinics')
+                .update({ stripe_status: status })
+                .eq('stripe_account_id', accountId);
+                
+              if (updateError) {
+                console.error("Error updating clinic status:", updateError.message);
+              } else {
+                console.log(`Successfully updated clinic status to ${status}`);
+              }
+            }
+          }
+        } else if (account.details_submitted) {
+          if (account.requirements?.currently_due?.length > 0) {
+            status = 'review_pending';
+            console.log(`Account ${accountId} is pending review with requirements: ${account.requirements.currently_due.join(', ')}`);
+          } else {
+            status = 'pending_verification';
+            console.log(`Account ${accountId} has submitted details but is pending verification`);
+          }
+        } else if (!account.details_submitted) {
+          status = 'pending';
+          console.log(`Account ${accountId} has not completed onboarding`);
+        }
+        
+        console.log(`Final account status for ${accountId}: ${status}`);
+        
+        return new Response(JSON.stringify({
+          status: status,
+          detailsSubmitted: account.details_submitted,
+          chargesEnabled: account.charges_enabled,
+          payoutsEnabled: account.payouts_enabled,
+          requirements: account.requirements,
+          updated: true
+        }), {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json"
+          },
+          status: 200
+        });
+      } catch (error) {
+        console.error(`Error retrieving account ${accountId} from Stripe:`, error);
+        return new Response(JSON.stringify({
+          error: `Failed to retrieve Stripe account: ${error.message}`,
+          status: 'error'
+        }), {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json"
+          },
+          status: 500
+        });
       }
-      
-      console.log(`Account status for ${accountId}: ${status}`);
-      
-      return new Response(JSON.stringify({
-        status: status,
-        detailsSubmitted: account.details_submitted,
-        chargesEnabled: account.charges_enabled,
-        payoutsEnabled: account.payouts_enabled
-      }), {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json"
-        },
-        status: 200
-      });
     }
     
     // If action is 'retrieve_account_id', this is a callback from Stripe
@@ -105,6 +168,29 @@ serve(async (req) => {
         .single();
         
       if (fetchError) throw fetchError;
+      
+      // Verify account status immediately and update if fully connected
+      if (clinic?.stripe_account_id) {
+        try {
+          const account = await stripe.accounts.retrieve(clinic.stripe_account_id);
+          
+          // Update status if the account is fully onboarded
+          if (account.charges_enabled && account.details_submitted && account.payouts_enabled) {
+            const { error: updateError } = await supabase
+              .from("clinics")
+              .update({ stripe_status: 'connected' })
+              .eq("id", clinicId);
+              
+            if (updateError) {
+              console.error(`Error updating clinic status: ${updateError.message}`);
+            } else {
+              console.log(`Updated clinic ${clinicId} to 'connected' status`);
+            }
+          }
+        } catch (error) {
+          console.error(`Error checking account status: ${error.message}`);
+        }
+      }
       
       return new Response(JSON.stringify({
         accountId: clinic.stripe_account_id,

@@ -9,9 +9,13 @@ import { toast } from 'sonner';
 const AuthCallbackPage = () => {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(true);
+  const [statusMessage, setStatusMessage] = useState<string>('Finishing up your authentication...');
 
   useEffect(() => {
     const handleAuthCallback = async () => {
+      setIsProcessing(true);
+      
       // Check for query params first (used for Stripe connect)
       const queryParams = new URLSearchParams(window.location.search);
       const type = queryParams.get('type');
@@ -53,12 +57,14 @@ const AuthCallbackPage = () => {
         } catch (err: any) {
           console.error('Error handling auth callback:', err);
           setError(err.message || 'An error occurred during authentication');
+          setIsProcessing(false);
         }
       } else {
         // If no tokens are present, check if this is an error
         const errorMessage = hashParams.get('error_description');
         if (errorMessage) {
           setError(decodeURIComponent(errorMessage));
+          setIsProcessing(false);
         } else {
           // Not a valid callback URL, redirect to sign in
           navigate('/sign-in');
@@ -68,6 +74,8 @@ const AuthCallbackPage = () => {
     
     const handleStripeConnect = async () => {
       try {
+        setStatusMessage('Processing Stripe connection...');
+        
         // Get the current user's session
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -78,6 +86,7 @@ const AuthCallbackPage = () => {
         }
         
         // Call the retrieve-account-id edge function to get the account ID
+        setStatusMessage('Retrieving Stripe account information...');
         const { data, error } = await supabase.functions.invoke('connect-onboarding', {
           body: { action: 'retrieve_account_id' }
         });
@@ -87,18 +96,40 @@ const AuthCallbackPage = () => {
         }
         
         if (data?.accountId) {
-          // Check account status with Stripe
-          const { data: statusData, error: statusError } = await supabase.functions.invoke('connect-onboarding', {
-            body: { action: 'check_account_status', accountId: data.accountId }
-          });
+          // Check account status with Stripe with retry logic
+          setStatusMessage('Verifying Stripe account status...');
+          let statusData;
+          let statusError;
+          let retryCount = 0;
+          const maxRetries = 3;
           
-          if (statusError) {
-            console.error('Error checking stripe status:', statusError);
+          while (retryCount < maxRetries) {
+            const response = await supabase.functions.invoke('connect-onboarding', {
+              body: { action: 'check_account_status', accountId: data.accountId }
+            });
+            
+            statusData = response.data;
+            statusError = response.error;
+            
+            if (statusError) {
+              console.error('Error checking stripe status:', statusError);
+              retryCount++;
+              // Wait 1 second before retrying
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            } else if (statusData?.status === 'connected') {
+              // If the account is fully connected, break out of retry loop
+              break;
+            } else {
+              retryCount++;
+              // Wait 1 second before retrying if not yet connected
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
           }
           
           // Update clinic data with the Stripe account ID and status
           const stripeStatus = statusData?.status || 'pending';
           
+          setStatusMessage(`Updating your payment settings (${stripeStatus})...`);
           const { error: updateError } = await supabase
             .from('clinics')
             .update({ 
@@ -111,7 +142,13 @@ const AuthCallbackPage = () => {
             throw updateError;
           }
           
-          toast.success(`Successfully connected to Stripe (${stripeStatus})`);
+          if (stripeStatus === 'connected') {
+            toast.success('Successfully connected to Stripe! Your account is ready to process payments.');
+          } else if (stripeStatus === 'pending_verification') {
+            toast.info('Your Stripe account is pending verification. Check back soon or verify your account status.');
+          } else {
+            toast.info(`Your Stripe connection is ${stripeStatus}. You may need to complete additional steps in the settings.`);
+          }
         } else {
           toast.error('Failed to retrieve Stripe account ID');
         }
@@ -124,6 +161,8 @@ const AuthCallbackPage = () => {
         toast.error(`Failed to connect Stripe: ${err.message || 'Unknown error'}`);
         // Still redirect to settings page so user can try again
         navigate('/dashboard/settings?tab=payments');
+      } finally {
+        setIsProcessing(false);
       }
     };
 
@@ -150,7 +189,7 @@ const AuthCallbackPage = () => {
     <AuthLayout title="Completing Authentication" subtitle="Please wait while we complete the process">
       <div className="flex flex-col items-center justify-center py-12">
         <LoadingSpinner size="lg" />
-        <p className="mt-4 text-gray-600">Finishing up your authentication...</p>
+        <p className="mt-4 text-gray-600">{statusMessage}</p>
       </div>
     </AuthLayout>
   );
