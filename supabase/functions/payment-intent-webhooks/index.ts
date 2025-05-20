@@ -110,11 +110,6 @@ serve(async (req) => {
         result = await handleRefundUpdated(event.data.object, stripe, supabaseClient);
         break;
         
-      case "refund.updated":
-        console.log("Processing refund.updated event");
-        result = await handleRefundUpdated(event.data.object, stripe, supabaseClient);
-        break;
-        
       default:
         console.log(`Unhandled event type: ${event.type}`);
         result = { status: "ignored", message: `Event type ${event.type} not handled` };
