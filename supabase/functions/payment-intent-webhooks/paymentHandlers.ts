@@ -1,6 +1,6 @@
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { generateUUID } from './utils.ts';
-import { PatientService } from './patientService.ts';  // New import
+import { PatientService } from './patientService.ts';
 
 export async function handlePaymentIntentSucceeded(paymentIntent: any, supabase: SupabaseClient) {
   console.log(`Processing successful payment: ${paymentIntent.id}`);
@@ -28,6 +28,36 @@ export async function handlePaymentIntentSucceeded(paymentIntent: any, supabase:
   }
 }
 
+async function retrieveStripeFee(paymentIntent: any, stripe: any) {
+  try {
+    // Check for the latest charge
+    if (paymentIntent.latest_charge) {
+      console.log(`Retrieving charge details: ${paymentIntent.latest_charge}`);
+      const charge = await stripe.charges.retrieve(paymentIntent.latest_charge);
+      
+      // If charge has balance_transaction, retrieve it to get the fee
+      if (charge && charge.balance_transaction) {
+        console.log(`Retrieving balance transaction: ${charge.balance_transaction}`);
+        const balanceTransaction = await stripe.balanceTransactions.retrieve(
+          charge.balance_transaction
+        );
+        
+        if (balanceTransaction) {
+          // The fee is in the smallest currency unit (cents, pennies, etc.)
+          console.log(`Retrieved Stripe fee: ${balanceTransaction.fee}`);
+          return balanceTransaction.fee || 0;
+        }
+      }
+    }
+    
+    console.warn(`Could not retrieve Stripe fee for payment intent ${paymentIntent.id}`);
+    return 0; // Default to 0 if we can't retrieve the fee
+  } catch (error) {
+    console.error(`Error retrieving Stripe fee: ${error.message}`);
+    return 0; // Default to 0 on error
+  }
+}
+
 async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseClient, paymentScheduleId: string, planId: string) {
   console.log(`Processing installment payment for schedule ID: ${paymentScheduleId}`);
   
@@ -44,7 +74,19 @@ async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseCl
   // Calculate fees
   const amount = paymentIntent.amount;
   const platformFeeAmount = Math.round((parseFloat(platformFeePercent) / 100) * amount);
-  const netAmount = amount - (paymentIntent.application_fee_amount || 0) - platformFeeAmount;
+
+  // Create Stripe instance to retrieve fee information
+  const stripe = new Stripe(Deno.env.get("SECRET_KEY") || "", {
+    apiVersion: "2023-10-16",
+    httpClient: Stripe.createFetchHttpClient(),
+  });
+  
+  // Retrieve the actual Stripe fee from balance transaction
+  const stripeFee = await retrieveStripeFee(paymentIntent, stripe);
+  console.log(`Stripe fee for payment ${paymentIntent.id}: ${stripeFee}`);
+  
+  // Calculate net amount correctly
+  const netAmount = amount - stripeFee - platformFeeAmount;
   
   try {
     console.log('Creating payment record for installment payment');
@@ -65,7 +107,7 @@ async function handleInstallmentPayment(paymentIntent: any, supabase: SupabaseCl
         status: 'paid',
         net_amount: netAmount,
         platform_fee: platformFeeAmount,
-        stripe_fee: paymentIntent.application_fee_amount || 0,
+        stripe_fee: stripeFee, // Use the actual Stripe fee
         payment_schedule_id: paymentScheduleId
       })
       .select()
@@ -381,7 +423,19 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
   // Calculate fees
   const amount = paymentIntent.amount;
   const platformFeeAmount = Math.round((parseFloat(platformFeePercent) / 100) * amount);
-  const netAmount = amount - (paymentIntent.application_fee_amount || 0) - platformFeeAmount;
+
+  // Create Stripe instance to retrieve fee information
+  const stripe = new Stripe(Deno.env.get("SECRET_KEY") || "", {
+    apiVersion: "2023-10-16",
+    httpClient: Stripe.createFetchHttpClient(),
+  });
+  
+  // Retrieve the actual Stripe fee from balance transaction
+  const stripeFee = await retrieveStripeFee(paymentIntent, stripe);
+  console.log(`Stripe fee for payment ${paymentIntent.id}: ${stripeFee}`);
+  
+  // Calculate net amount correctly
+  const netAmount = amount - stripeFee - platformFeeAmount;
   
   console.log(`Processing standard payment for clinic ${clinicId}, amount: ${amount}p, reference: ${paymentReference}`);
   
@@ -456,7 +510,7 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
         status: 'paid',
         net_amount: netAmount,
         platform_fee: platformFeeAmount,
-        stripe_fee: paymentIntent.application_fee_amount || 0,
+        stripe_fee: stripeFee, // Use the actual Stripe fee
         // Set payment_type and payment_title correctly based on what we found
         payment_type: paymentLinkType || null,
         payment_title: paymentLinkTitle || null
