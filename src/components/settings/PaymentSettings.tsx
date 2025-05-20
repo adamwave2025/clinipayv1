@@ -102,7 +102,7 @@ const PaymentSettings = ({
     if (isVerifying) {
       return (
         <span className="inline-flex items-center text-sm text-blue-600">
-          <LoadingSpinner size="xs" className="mr-1" />
+          <LoadingSpinner size="sm" className="mr-1" />
           Verifying...
         </span>
       );
@@ -188,7 +188,7 @@ const PaymentSettings = ({
               >
                 {isVerifying ? (
                   <>
-                    <LoadingSpinner size="xs" className="mr-1" />
+                    <LoadingSpinner size="sm" className="mr-1" />
                     Verifying...
                   </>
                 ) : (
