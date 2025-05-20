@@ -78,6 +78,22 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     isProcessing
   } = planQuickAccess;
 
+  const fetchPaymnetLinkData = async (paymentLinkId: string) => {
+    try {
+      const { data: paymentLinkData, error: paymentLinkError } = await supabase
+      .from('payment_links')
+      .select(`
+        amount
+      `)
+      .eq('id', paymentLinkId)
+      .single();
+
+      return paymentLinkData.amount;
+    } catch(error: any) {
+      console.error('Error fetching payment link data:', error);
+    }
+  }
+
   // Fetch patient payment history
   useEffect(() => {
     const fetchPatientHistory = async () => {
@@ -110,7 +126,8 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
             sent_at,
             custom_amount,
             status,
-            payment_links(type, title)
+            payment_links(type, title),
+            payment_link_id
           `)
           .eq('patient_id', patient.id)
           .is('paid_at', null) // Only get unpaid requests
@@ -130,25 +147,32 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
         }));
         
         // Format payment requests - filter out £0 amounts
-        const formattedRequests = requestsData
-          .map((request: any) => {
+        const formattedRequests = await Promise.all(
+          requestsData.map(async (request) => {
             let amount = request.custom_amount || (request.payment_links ? request.payment_links.amount : 0);
-            amount = amount == undefined ? 1 : amount;
+        
+            if (amount === undefined) {
+              console.log('yes we are here');
+              amount = await fetchPaymnetLinkData(request.payment_link_id);
+              console.log('amount', amount);
+            }
+        
             return {
               id: request.id,
               date: request.sent_at, // Full ISO timestamp
               reference: null,
               type: request.payment_links?.type || 'custom',
               title: request.payment_links?.title || 'Custom Payment',
-              amount: amount, 
-              status: 'sent' as const,
+              amount: amount,
+              status: 'sent',
               paymentUrl: `https://clinipay.co.uk/payment/${request.id}`
             };
           })
-          .filter(request => request.amount > 0); // Filter out zero amounts
+        );
         
+        const filteredRequests = formattedRequests.filter(request => request.amount > 0);        
         // Combine and sort by date (newest first)
-        const combinedHistory = [...formattedPayments, ...formattedRequests].sort((a, b) => {
+        const combinedHistory = [...formattedPayments, ...filteredRequests].sort((a, b) => {
           const dateA = new Date(a.date).getTime();
           const dateB = new Date(b.date).getTime();
           return dateB - dateA; // Newest first
@@ -164,6 +188,7 @@ const PatientDetailsDialog = ({ patient, open, onClose }: PatientDetailsDialogPr
     
     fetchPatientHistory();
   }, [patient.id, open, showPlanDetails]);
+
 
   // Fetch plan activities
   useEffect(() => {
