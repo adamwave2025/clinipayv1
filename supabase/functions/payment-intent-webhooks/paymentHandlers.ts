@@ -1,4 +1,3 @@
-
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { generateUUID } from './utils.ts';
 import { PatientService } from './patientService.ts';  // New import
@@ -942,5 +941,125 @@ export async function handlePaymentIntentFailed(paymentIntent: any, supabase: Su
   } catch (error) {
     console.error('Error handling failed payment:', error);
     throw error;
+  }
+}
+
+/**
+ * Handler for refund.updated webhook events
+ * This function logs detailed information about the refund update
+ */
+export async function handleRefundUpdateEvent(refundObject: any, stripe: any, supabase: SupabaseClient) {
+  console.log(`Processing refund.updated event for refund ID: ${refundObject.id}`);
+  
+  try {
+    // Log the entire refund object for debugging
+    console.log("Complete refund object data:", JSON.stringify(refundObject, null, 2));
+    
+    // Extract key information from the refund
+    const refundId = refundObject.id;
+    const amount = refundObject.amount;
+    const status = refundObject.status;
+    const chargeId = refundObject.charge;
+    const currency = refundObject.currency;
+    const created = new Date(refundObject.created * 1000).toISOString();
+    const reason = refundObject.reason;
+    
+    console.log(`Refund details:
+      ID: ${refundId}
+      Amount: ${amount}
+      Status: ${status}
+      Charge ID: ${chargeId}
+      Currency: ${currency}
+      Created: ${created}
+      Reason: ${reason || 'Not specified'}
+    `);
+    
+    // If we have a charge ID, retrieve more details about the charge
+    if (chargeId) {
+      console.log(`Retrieving charge details for: ${chargeId}`);
+      
+      try {
+        const charge = await stripe.charges.retrieve(chargeId);
+        console.log("Charge object data:", JSON.stringify(charge, null, 2));
+        
+        // Extract payment intent ID if available
+        const paymentIntentId = charge.payment_intent;
+        console.log(`Associated payment intent ID: ${paymentIntentId}`);
+        
+        // If the charge has a balance transaction, retrieve and log it
+        if (charge.balance_transaction) {
+          console.log(`Retrieving balance transaction for: ${charge.balance_transaction}`);
+          
+          try {
+            const balanceTransaction = await stripe.balanceTransactions.retrieve(
+              charge.balance_transaction
+            );
+            
+            console.log("Balance transaction data:", JSON.stringify(balanceTransaction, null, 2));
+            console.log(`Balance transaction details:
+              Type: ${balanceTransaction.type}
+              Amount: ${balanceTransaction.amount}
+              Fee: ${balanceTransaction.fee}
+              Net: ${balanceTransaction.net}
+              Status: ${balanceTransaction.status}
+            `);
+            
+            // Log fee details if available
+            if (balanceTransaction.fee_details && balanceTransaction.fee_details.length > 0) {
+              console.log("Fee breakdown details:");
+              balanceTransaction.fee_details.forEach((fee: any, idx: number) => {
+                console.log(`Fee ${idx + 1}: ${fee.type}, Amount: ${fee.amount}, Description: ${fee.description}`);
+              });
+            }
+          } catch (balanceError) {
+            console.error(`Error retrieving balance transaction: ${balanceError.message}`);
+          }
+        }
+        
+        // If the charge is connected to a customer, log customer details
+        if (charge.customer) {
+          console.log(`Associated customer ID: ${charge.customer}`);
+        }
+        
+        // Find payment in our database using the payment intent ID or charge ID
+        if (paymentIntentId) {
+          console.log(`Looking up payment record with stripe_payment_id: ${paymentIntentId}`);
+          
+          const { data: payment, error: paymentError } = await supabase
+            .from('payments')
+            .select('*')
+            .eq('stripe_payment_id', paymentIntentId)
+            .maybeSingle();
+            
+          if (paymentError) {
+            console.error(`Error looking up payment record: ${paymentError.message}`);
+          } else if (payment) {
+            console.log(`Found payment record:
+              ID: ${payment.id}
+              Reference: ${payment.payment_ref}
+              Amount: ${payment.amount_paid}
+              Status: ${payment.status}
+            `);
+          } else {
+            console.log(`No payment record found for payment intent: ${paymentIntentId}`);
+          }
+        }
+      } catch (chargeError) {
+        console.error(`Error retrieving charge data: ${chargeError.message}`);
+      }
+    }
+    
+    return {
+      success: true,
+      message: `Refund update event processed for refund ID: ${refundId}`,
+      refundStatus: status
+    };
+  } catch (error) {
+    console.error(`Error processing refund update event: ${error.message}`);
+    console.error("Error details:", error);
+    return {
+      success: false,
+      message: `Error processing refund update event: ${error.message}`
+    };
   }
 }

@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { corsHeaders } from "./utils.ts";
-import { handlePaymentIntentSucceeded, handlePaymentIntentFailed } from "./paymentHandlers.ts";
+import { handlePaymentIntentSucceeded, handlePaymentIntentFailed, handleRefundUpdateEvent } from "./paymentHandlers.ts";
 import { handleRefundUpdated } from "./refundHandlers.ts";
 
 serve(async (req) => {
@@ -110,6 +110,12 @@ serve(async (req) => {
       case "charge.refunded":
         console.log("Processing charge.refunded event");
         result = await handleRefundUpdated(event.data.object, stripe, supabaseClient);
+        break;
+        
+      case "refund.updated":
+        console.log("Processing refund.updated event");
+        // Pass the refund object, stripe client, and supabase client
+        result = await handleRefundUpdateEvent(event.data.object, stripe, supabaseClient);
         break;
         
       default:
