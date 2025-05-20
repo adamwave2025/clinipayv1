@@ -192,6 +192,7 @@ export async function handleRefundUpdated(refund: any, stripeClient: Stripe, sup
 /**
  * Handle refund update events specifically of type refund.updated
  * This handler logs detailed information about the refund for debugging
+ * and updates payment records with fee information
  */
 export async function handleRefundUpdateEvent(refund: any, stripeClient: Stripe, supabaseClient: any) {
   console.log("Processing refund.updated event:", refund.id);
@@ -215,6 +216,11 @@ export async function handleRefundUpdateEvent(refund: any, stripeClient: Stripe,
     }
     
     console.log(`Looking up charge data for: ${chargeId}`);
+    
+    // Variables to store the fee and balance transaction details
+    let stripeFee = 0;
+    let netAmount = 0;
+    let balanceTransactionId = null;
     
     // Get detailed charge information
     try {
@@ -268,32 +274,56 @@ export async function handleRefundUpdateEvent(refund: any, stripeClient: Stripe,
             refund_amount: paymentRecord.refund_amount,
             refunded_at: paymentRecord.refunded_at
           }));
+          
+          // Get balance transaction data for fee information
+          if (charge.balance_transaction) {
+            try {
+              balanceTransactionId = typeof charge.balance_transaction === 'string'
+                ? charge.balance_transaction
+                : charge.balance_transaction.id;
+                
+              console.log(`Looking up balance transaction: ${balanceTransactionId}`);
+              
+              const balanceTransaction = await stripeClient.balanceTransactions.retrieve(balanceTransactionId);
+              console.log("Balance transaction details:", JSON.stringify({
+                id: balanceTransaction.id,
+                amount: balanceTransaction.amount,
+                fee: balanceTransaction.fee,
+                net: balanceTransaction.net,
+                type: balanceTransaction.type,
+                available_on: balanceTransaction.available_on,
+                status: balanceTransaction.status
+              }));
+              
+              // Extract fee and net amount from the balance transaction
+              stripeFee = balanceTransaction.fee || 0;
+              netAmount = balanceTransaction.net || 0;
+              
+              console.log(`Extracted stripe fee: ${stripeFee}, net amount: ${netAmount}`);
+              
+              // Update the payment record with the fee and net amount information
+              const { error: updateError } = await supabaseClient
+                .from("payments")
+                .update({
+                  stripe_refund_fee: stripeFee,
+                  net_amount: netAmount,
+                  updated_at: new Date().toISOString()
+                })
+                .eq("id", paymentRecord.id);
+                
+              if (updateError) {
+                console.error("Error updating payment record with fee information:", updateError);
+              } else {
+                console.log(`Successfully updated payment ${paymentRecord.id} with stripe_refund_fee: ${stripeFee} and net_amount: ${netAmount}`);
+              }
+            } catch (btError) {
+              console.error("Error fetching balance transaction:", btError);
+            }
+          } else {
+            console.log("No balance_transaction found on charge, cannot update fee information");
+          }
         } else {
           console.log("No matching payment record found in our database");
-        }
-      }
-      
-      // Get balance transaction data if available
-      if (charge.balance_transaction) {
-        try {
-          const balanceTransactionId = typeof charge.balance_transaction === 'string'
-            ? charge.balance_transaction
-            : charge.balance_transaction.id;
-            
-          console.log(`Looking up balance transaction: ${balanceTransactionId}`);
-          
-          const balanceTransaction = await stripeClient.balanceTransactions.retrieve(balanceTransactionId);
-          console.log("Balance transaction details:", JSON.stringify({
-            id: balanceTransaction.id,
-            amount: balanceTransaction.amount,
-            fee: balanceTransaction.fee,
-            net: balanceTransaction.net,
-            type: balanceTransaction.type,
-            available_on: balanceTransaction.available_on,
-            status: balanceTransaction.status
-          }));
-        } catch (btError) {
-          console.error("Error fetching balance transaction:", btError);
         }
       }
     } catch (chargeError) {
@@ -302,7 +332,8 @@ export async function handleRefundUpdateEvent(refund: any, stripeClient: Stripe,
     
     return { 
       status: "success", 
-      message: `Refund update for ${refund.id} processed and logged successfully` 
+      message: `Refund update for ${refund.id} processed and logged successfully`,
+      fee_updated: stripeFee > 0
     };
   } catch (error) {
     console.error("Error processing refund update event:", error);
