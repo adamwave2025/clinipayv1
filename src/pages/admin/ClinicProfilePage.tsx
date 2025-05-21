@@ -12,6 +12,7 @@ import ClinicInfo from '@/components/clinic/ClinicInfo';
 import { useClinicProfile } from '@/hooks/useClinicProfile';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatCurrency } from '@/utils/formatters';
 
 const ClinicProfilePage = () => {
   const { clinicId } = useParams<{ clinicId: string }>();
@@ -118,26 +119,26 @@ const ClinicProfilePage = () => {
         <StatCard
           title="Total Payments"
           value={`${stats.totalPayments}`}
-          secondaryText={`£${stats.totalAmount.toFixed(2)}`}
+          secondaryText={formatCurrency(stats.totalAmount)}
           icon={<CreditCard className="h-5 w-5 text-white" />}
         />
         
         <StatCard
           title="Total Refunds"
           value={`${stats.totalRefunds}`}
-          secondaryText={`£${stats.refundAmount.toFixed(2)}`}
+          secondaryText={formatCurrency(stats.refundAmount)}
           icon={<RefreshCcw className="h-5 w-5 text-white" />}
         />
         
         <StatCard
-          title="CliniPay Fees"
-          value={`£${stats.feesCollected.toFixed(2)}`}
+          title="CliniPay Revenue"
+          value={formatCurrency(stats.feesCollected)}
           icon={<DollarSign className="h-5 w-5 text-white" />}
         />
         
         <StatCard
           title="Average Payment"
-          value={`£${stats.averagePayment.toFixed(2)}`}
+          value={formatCurrency(stats.averagePayment)}
           icon={<BarChart2 className="h-5 w-5 text-white" />}
         />
       </div>
@@ -184,7 +185,7 @@ const ClinicProfilePage = () => {
                     <TableRow key={payment.id}>
                       <TableCell className="font-medium">{payment.patientName}</TableCell>
                       <TableCell>{new Date(payment.date).toLocaleDateString()}</TableCell>
-                      <TableCell>£{payment.amount.toFixed(2)}</TableCell>
+                      <TableCell>{formatCurrency(payment.amount)}</TableCell>
                       <TableCell>
                         <StatusBadge status={payment.status as any} />
                       </TableCell>
