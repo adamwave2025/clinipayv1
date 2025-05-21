@@ -120,17 +120,17 @@ export class PlanOperationsService {
         return false;
       }
       
-      // // Log activity if not already logged by the service
-      // try {
-      //   await this.logPlanActivity(plan.id, 'plan_rescheduled', { 
-      //     planId: plan.id,
-      //     planName: plan.title || plan.planName,
-      //     oldStartDate: plan.startDate,
-      //     newStartDate: format(newStartDate, 'yyyy-MM-dd')
-      //   });
-      // } catch (err) {
-      //   console.warn('Could not log plan activity for reschedule operation:', err);
-      // }
+      // Log activity if not already logged by the service
+      try {
+        await this.logPlanActivity(plan.id, 'plan_rescheduled', { 
+          planId: plan.id,
+          planName: plan.title || plan.planName,
+          oldStartDate: plan.startDate,
+          newStartDate: format(newStartDate, 'yyyy-MM-dd')
+        });
+      } catch (err) {
+        console.warn('Could not log plan activity for reschedule operation:', err);
+      }
       
       return true;
     } catch (err) {

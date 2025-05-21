@@ -187,23 +187,23 @@ export class PlanRescheduleService {
         console.log(`Updated plan next due date to ${formattedDate}`);
       }
       
-      // Record the reschedule activity
-      const { error: activityError } = await supabase
-        .from('payment_activity')
-        .insert({
-          payment_link_id: plan.paymentLinkId,
-          patient_id: plan.patientId,
-          clinic_id: plan.clinicId,
-          plan_id: plan.id,
-          action_type: 'reschedule_plan',
-          details: {
-            plan_name: plan.title || plan.planName,
-            previous_date: currentPlan.start_date,
-            new_date: formattedDate, // Using formatted date string
-            payments_shifted: scheduleEntries?.length || 0,
-            payment_requests_cancelled: paymentRequestCount
-          }
-        });
+      // // Record the reschedule activity
+      // const { error: activityError } = await supabase
+      //   .from('payment_activity')
+      //   .insert({
+      //     payment_link_id: plan.paymentLinkId,
+      //     patient_id: plan.patientId,
+      //     clinic_id: plan.clinicId,
+      //     plan_id: plan.id,
+      //     action_type: 'reschedule_plan',
+      //     details: {
+      //       plan_name: plan.title || plan.planName,
+      //       previous_date: currentPlan.start_date,
+      //       new_date: formattedDate, // Using formatted date string
+      //       payments_shifted: scheduleEntries?.length || 0,
+      //       payment_requests_cancelled: paymentRequestCount
+      //     }
+      //   });
       
       if (activityError) {
         console.error('Error logging reschedule activity:', activityError);
