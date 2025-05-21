@@ -34,10 +34,16 @@ export const RecentClinicsTable = () => {
 
   const fetchRecentClinics = async () => {
     try {
-      // Fetch the most recent clinics
+      // Fetch the most recent clinics, excluding those associated with admin users
       const { data: clinicsData, error: clinicsError } = await supabase
         .from('clinics')
         .select('id, clinic_name, created_at, stripe_status, logo_url')
+        .not('id', 'in', (query) => {
+          return query
+            .from('users')
+            .select('clinic_id')
+            .eq('role', 'admin');
+        })
         .order('created_at', { ascending: false })
         .limit(5);
 

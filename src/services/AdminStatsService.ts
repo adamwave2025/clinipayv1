@@ -5,11 +5,19 @@ import { DateRange } from 'react-day-picker';
 
 /**
  * Fetches the total number of clinics from the database
+ * excluding those associated with admin users
  */
 export const fetchTotalClinics = async () => {
+  // Query that excludes clinics associated with admin users
   const { count, error } = await supabase
     .from('clinics')
-    .select('*', { count: 'exact', head: true });
+    .select('*', { count: 'exact', head: true })
+    .not('id', 'in', (query) => {
+      return query
+        .from('users')
+        .select('clinic_id')
+        .eq('role', 'admin');
+    });
 
   if (error) throw error;
   return count || 0;
