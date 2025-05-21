@@ -93,9 +93,16 @@ export function useClinicProfile(clinicId: string) {
         const totalRefundsCount = refundsData.length;
         const refundAmount = refundsData.reduce((sum, payment) => sum + (payment.refund_amount || 0), 0);
         
-        // Calculate platform fee (3% by default, should be fetched from settings in a production app)
-        const platformFeePercentage = 0.03;
-        const feesCollected = totalAmount * platformFeePercentage;
+        // Calculate CliniPay revenue following the same logic as in adminStats.ts (platform_fee - stripe_fee)
+        // This matches the calculation in calculateClinicpayRevenue() function
+        const feesCollected = paymentsData.reduce((sum, payment) => {
+          const platformFeeAmount = payment.platform_fee || 0;
+          const stripeFeeAmount = payment.stripe_fee || 0;
+          
+          // Calculate the actual revenue CliniPay receives (after Stripe's cut)
+          const paymentRevenue = Math.max(0, platformFeeAmount - stripeFeeAmount);
+          return sum + paymentRevenue;
+        }, 0);
         
         // Calculate average payment
         const averagePayment = totalPaymentsCount > 0 ? totalAmount / totalPaymentsCount : 0;
