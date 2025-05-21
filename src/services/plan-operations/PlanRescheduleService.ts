@@ -205,9 +205,9 @@ export class PlanRescheduleService {
       //     }
       //   });
       
-      if (activityError) {
-        console.error('Error logging reschedule activity:', activityError);
-      }
+      // if (activityError) {
+      //   console.error('Error logging reschedule activity:', activityError);
+      // }
 
       return true;
       
