@@ -423,6 +423,8 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
   const patientPhone = metadata.patientPhone || null;
   const paymentLinkId = metadata.paymentLinkId || null;
   const requestId = metadata.requestId || null;
+  // Extract payment_schedule_id directly from metadata if available
+  const paymentScheduleId = metadata.payment_schedule_id || null;
   const platformFeePercent = metadata.platformFeePercent || '3';
   const paymentReference = metadata.paymentReference || `CLN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   
@@ -516,7 +518,9 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
         stripe_fee: stripeFee, // Use actual Stripe fee
         // Set payment_type and payment_title correctly based on what we found
         payment_type: paymentLinkType || null,
-        payment_title: paymentLinkTitle || null
+        payment_title: paymentLinkTitle || null,
+        // Add payment_schedule_id if it was provided in metadata
+        payment_schedule_id: paymentScheduleId
       })
       .select()
       .single();
@@ -557,7 +561,173 @@ async function handleStandardPayment(paymentIntent: any, supabase: SupabaseClien
       }
     }
     
-    // If this payment was for a payment request, update it and check if it's part of a plan
+    // Handle two different scenarios for updating payment_schedule:
+    // 1. Direct payment_schedule_id from metadata (cron job initiated payment)
+    // 2. Via payment_request (manual payment request)
+    
+    // SCENARIO 1: Direct payment_schedule_id from metadata
+    if (paymentScheduleId) {
+      console.log(`Direct paymentScheduleId found in metadata: ${paymentScheduleId}`);
+      
+      try {
+        // Update the payment schedule status
+        const { error: updateScheduleError } = await supabase
+          .from('payment_schedule')
+          .update({ 
+            status: 'paid',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', paymentScheduleId);
+          
+        if (updateScheduleError) {
+          console.error('Error updating payment schedule status:', updateScheduleError);
+        } else {
+          console.log(`Updated payment schedule ${paymentScheduleId} status to 'paid'`);
+          
+          // Get the plan_id associated with this payment_schedule entry
+          const { data: scheduleData, error: scheduleGetError } = await supabase
+            .from('payment_schedule')
+            .select(`
+              id, 
+              patient_id, 
+              payment_link_id, 
+              clinic_id,
+              payment_number,
+              total_payments,
+              payment_frequency,
+              plan_id
+            `)
+            .eq('id', paymentScheduleId)
+            .single();
+            
+          if (scheduleGetError) {
+            console.error('Error getting payment schedule data:', scheduleGetError);
+          } else if (scheduleData && scheduleData.plan_id) {
+            console.log(`Found plan ID: ${scheduleData.plan_id} for payment schedule ${paymentScheduleId}`);
+            
+            // Update plan data if this payment is linked to a plan
+            try {
+              // Get current plan data
+              const { data: planData, error: planFetchError } = await supabase
+                .from('plans')
+                .select('total_installments, paid_installments, status')
+                .eq('id', scheduleData.plan_id)
+                .single();
+                
+              if (planFetchError) {
+                console.error('Error fetching plan details:', planFetchError);
+              } else {
+                // Count actual paid installments from payment_schedule table
+                const { count: paidInstallments, error: countError } = await supabase
+                  .from('payment_schedule')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('plan_id', scheduleData.plan_id)
+                  .eq('status', 'paid');
+                  
+                if (countError) {
+                  console.error('Error counting paid installments:', countError);
+                } else {
+                  // Calculate new values
+                  const progress = Math.round((paidInstallments / planData.total_installments) * 100);
+                  
+                  // Determine if all installments are paid
+                  const isCompleted = paidInstallments >= planData.total_installments;
+                  
+                  console.log(`Plan update details:
+                    - Paid installments: ${paidInstallments}/${planData.total_installments}
+                    - Progress: ${progress}%
+                    - Completed: ${isCompleted}
+                  `);
+                  
+                  // Update plan with new values
+                  const { error: planUpdateError } = await supabase
+                    .from('plans')
+                    .update({
+                      paid_installments: paidInstallments,
+                      progress: progress,
+                      status: isCompleted ? 'completed' : 'active',
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('id', scheduleData.plan_id);
+                    
+                  if (planUpdateError) {
+                    console.error('Error updating plan record:', planUpdateError);
+                  } else {
+                    console.log(`Successfully updated plan record. New progress: ${progress}%`);
+                  }
+                  
+                  // Update next due date if not completed
+                  if (!isCompleted) {
+                    // Find the next unpaid installment
+                    const { data: nextPayment, error: nextPaymentError } = await supabase
+                      .from('payment_schedule')
+                      .select('due_date')
+                      .eq('plan_id', scheduleData.plan_id)
+                      .eq('status', 'pending')
+                      .order('due_date', { ascending: true })
+                      .limit(1)
+                      .single();
+                      
+                    if (nextPayment && !nextPaymentError) {
+                      // Update plan's next due date
+                      await supabase
+                        .from('plans')
+                        .update({
+                          next_due_date: nextPayment.due_date
+                        })
+                        .eq('id', scheduleData.plan_id);
+                        
+                      console.log(`Updated plan ${scheduleData.plan_id} next due date to ${nextPayment.due_date}`);
+                    }
+                  } else {
+                    // If completed, set next_due_date to null
+                    await supabase
+                      .from('plans')
+                      .update({
+                        next_due_date: null
+                      })
+                      .eq('id', scheduleData.plan_id);
+                      
+                    console.log(`Plan ${scheduleData.plan_id} completed, next_due_date set to null`);
+                  }
+                  
+                  // Record payment activity for plan payment - CHANGED ACTION TYPE HERE
+                  try {
+                    await supabase
+                      .from('payment_activity')
+                      .insert({
+                        payment_link_id: scheduleData.payment_link_id,
+                        patient_id: patientId || scheduleData.patient_id,
+                        clinic_id: clinicId,
+                        action_type: 'card_payment_processed', // Consistent action type
+                        plan_id: scheduleData.plan_id,
+                        details: {
+                          amount: amount,
+                          paymentId: payment.id,
+                          paymentReference,
+                          installmentNumber: paidInstallments,
+                          totalInstallments: planData.total_installments,
+                          progress: progress
+                        }
+                      });
+                      
+                    console.log('Recorded plan payment activity');
+                  } catch (activityError) {
+                    console.error('Error recording plan payment activity:', activityError);
+                  }
+                }
+              }
+            } catch (planError) {
+              console.error('Error updating plan:', planError);
+            }
+          }
+        }
+      } catch (scheduleUpdateError) {
+        console.error('Error handling payment schedule update:', scheduleUpdateError);
+      }
+    }
+    
+    // SCENARIO 2: If this payment was for a payment request, update it and check if it's part of a plan
     if (requestId) {
       console.log(`Updating payment request: ${requestId}`);
       
