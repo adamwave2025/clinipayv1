@@ -1,4 +1,3 @@
-
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -11,7 +10,6 @@ import AuthRedirectWrapper from "./components/common/AuthRedirectWrapper";
 // Public Pages
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
-import FeaturesPage from "./pages/FeaturesPage";  // Added import for FeaturesPage
 import FeesPage from "./pages/FeesPage";
 import ContactPage from "./pages/ContactPage";
 import TermsPage from "./pages/TermsPage";
@@ -73,7 +71,6 @@ const App = () => (
                 </AuthRedirectWrapper>
               } />
               <Route path="/about" element={<AboutPage />} />
-              <Route path="/features" element={<FeaturesPage />} /> {/* Added route for FeaturesPage */}
               <Route path="/fees" element={<FeesPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/terms" element={<TermsPage />} />

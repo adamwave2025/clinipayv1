@@ -182,7 +182,7 @@ const PlanDetailsDialog = ({
                         </TableCell>
                         <TableCell>
                           {installment.paidDate 
-                            ? formatDateTime(installment.paidDate + 'Z', 'en-GB', 'Europe/London') 
+                            ? formatDateTime(installment.paidDate, 'en-GB', 'Europe/London') 
                             : '-'}
                         </TableCell>
                         {/* Add Actions column with PaymentActionMenu for unpaid installments */}
