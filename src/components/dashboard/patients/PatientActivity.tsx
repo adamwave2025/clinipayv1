@@ -71,7 +71,7 @@ const PatientActivity: React.FC<PatientActivityProps> = ({
                     {payment.reference && <p>Reference: {payment.reference}</p>}
                   </div>
                   <p className="text-sm text-gray-500 mt-1">
-                    {formatDateTime(payment.date, 'en-GB', 'Europe/London')}
+                    {formatDateTime(payment.date + 'Z', 'en-GB', 'Europe/London')}
                   </p>
                 </div>
               </div>
