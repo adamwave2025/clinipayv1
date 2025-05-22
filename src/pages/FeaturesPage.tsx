@@ -246,7 +246,7 @@ const FeaturesPage = () => {
               <Link to="/sign-up">Get Started Today</Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link to="/contact">Schedule a Demo</Link>
+              
             </Button>
           </div>
         </div>
