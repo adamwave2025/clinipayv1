@@ -4,7 +4,40 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
-import { CreditCard, Check, Shield, TrendingUp, ShieldCheck, PhoneOff, LinkIcon } from 'lucide-react';
+import { 
+  AreaChart, 
+  Check, 
+  CreditCard, 
+  LinkIcon, 
+  TrendingUp, 
+  Users, 
+  BarChart3, 
+  Calendar, 
+  ChevronRight, 
+  Clock,
+  Mail,
+  Phone,
+  MapPin,
+  Building,
+  ShieldCheck,
+  Lock
+} from 'lucide-react';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHeader, 
+  TableHead, 
+  TableRow 
+} from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { FormItem, FormLabel } from '@/components/ui/form';
 
 const FeaturesPage = () => {
   return (
@@ -68,51 +101,239 @@ const FeaturesPage = () => {
                 </div>
               </div>
             </div>
+            
+            {/* Realistic Payment Form Mockup */}
             <div className="relative">
-              <div className="bg-white rounded-xl p-6 card-shadow max-w-md w-full">
-                <div className="flex justify-between items-center mb-6">
-                  <h4 className="font-semibold text-xl">Consultation Fee</h4>
-                  <div className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
-                    Active
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white rounded-xl card-shadow">
+                {/* Left Column - Clinic Info */}
+                <div className="p-6 border-r border-gray-100">
+                  <div className="mb-6">
+                    <h3 className="font-semibold text-xl">Consultation Fee</h3>
+                    <div className="mt-2 flex items-center">
+                      <span className="text-2xl font-bold">£75.00</span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <Building className="h-5 w-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-gray-700 font-medium">Northside Medical Clinic</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-gray-500">Address</p>
+                        <p className="text-gray-700">123 Harley Street, London W1</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3">
+                      <Mail className="h-5 w-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-gray-500">Email</p>
+                        <p className="text-gray-700">contact@northsidemedical.com</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3">
+                      <Phone className="h-5 w-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-gray-500">Phone</p>
+                        <p className="text-gray-700">+44 20 7123 4567</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <ShieldCheck className="h-4 w-4 text-green-600" />
+                      <p className="text-sm">Secure Payment</p>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-4 mb-6">
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-gray-600">Amount</span>
-                    <span className="font-medium">£75.00</span>
+                
+                {/* Right Column - Payment Form */}
+                <div className="p-6">
+                  <h3 className="font-semibold text-lg mb-4">Complete Your Payment</h3>
+                  
+                  {/* Personal Information Section */}
+                  <div className="space-y-4 mb-6">
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <Input placeholder="Enter your full name" />
+                    </FormItem>
+                    
+                    <FormItem>
+                      <FormLabel>Email Address</FormLabel>
+                      <Input type="email" placeholder="Enter your email" />
+                    </FormItem>
+                    
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <Input type="tel" placeholder="Enter your phone number" />
+                    </FormItem>
                   </div>
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-gray-600">Link type</span>
-                    <span className="font-medium">Reusable</span>
+                  
+                  {/* Payment Details Section */}
+                  <div className="mb-6">
+                    <FormItem>
+                      <FormLabel>Card Details</FormLabel>
+                      <div className="mt-1 p-3 border rounded-md bg-white">
+                        <div className="h-6 flex items-center justify-between">
+                          <span className="text-gray-400">Card number</span>
+                          <div className="flex space-x-1">
+                            <div className="w-8 h-5 bg-gray-100 rounded"></div>
+                            <div className="w-8 h-5 bg-gray-100 rounded"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </FormItem>
                   </div>
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-gray-600">Created</span>
-                    <span className="font-medium">10 May 2025</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
-                  <div className="text-sm text-gray-600">
-                    https://clinipay.co/pay/cnst75
-                  </div>
-                  <Button variant="outline" size="sm" className="flex items-center gap-1">
-                    <LinkIcon className="h-4 w-4" />
-                    <span>Copy</span>
+                  
+                  {/* Submit Button */}
+                  <Button className="w-full h-12 btn-gradient text-lg">
+                    Pay Now
                   </Button>
+                  
+                  {/* Security Text */}
+                  <div className="text-center text-sm text-gray-500 flex items-center justify-center mt-4">
+                    <Lock className="h-4 w-4 mr-1 text-green-600" />
+                    Secure payment processed by CliniPay
+                  </div>
                 </div>
               </div>
+              
               <div className="absolute -bottom-6 -left-6 bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center shadow-lg z-10">
-                <LinkIcon className="text-white h-6 w-6" />
+                <CreditCard className="text-white h-6 w-6" />
               </div>
             </div>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-20">
             <div className="order-2 lg:order-1">
-              <img 
-                src="https://jbtxxlkhiubuzanegtzn.supabase.co/storage/v1/object/public/clinipaywebsiteimages//analytics-dashboard.png" 
-                alt="CliniPay Analytics Dashboard" 
-                className="w-full h-auto rounded-xl shadow-lg"
-              />
+              {/* Analytics Dashboard UI Component */}
+              <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div className="bg-gradient-primary p-4">
+                  <h3 className="text-white font-semibold text-lg">Dashboard Analytics</h3>
+                </div>
+                <div className="p-6">
+                  {/* Stats Row */}
+                  <div className="grid grid-cols-3 gap-4 mb-6">
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500 text-sm">Payments</span>
+                        <CreditCard className="h-5 w-5 text-blue-500" />
+                      </div>
+                      <p className="font-bold text-2xl mt-2">£2,450</p>
+                      <div className="flex items-center text-xs text-green-500 mt-2">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        <span>+12% vs last month</span>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500 text-sm">Patients</span>
+                        <Users className="h-5 w-5 text-blue-500" />
+                      </div>
+                      <p className="font-bold text-2xl mt-2">36</p>
+                      <div className="flex items-center text-xs text-green-500 mt-2">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        <span>+8% vs last month</span>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500 text-sm">Plans</span>
+                        <Calendar className="h-5 w-5 text-blue-500" />
+                      </div>
+                      <p className="font-bold text-2xl mt-2">14</p>
+                      <div className="flex items-center text-xs text-green-500 mt-2">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        <span>+5% vs last month</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Chart Area */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-medium">Payment Trend</h4>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm">Week</Button>
+                        <Button variant="outline" size="sm" className="bg-gray-100">Month</Button>
+                      </div>
+                    </div>
+                    <div className="h-48 bg-gray-50 rounded-lg relative overflow-hidden">
+                      {/* Simulated Chart */}
+                      <div className="absolute bottom-0 left-0 w-full h-full flex items-end px-2">
+                        <div className="w-1/7 h-20 bg-blue-200 mx-1 rounded-t-sm"></div>
+                        <div className="w-1/7 h-24 bg-blue-300 mx-1 rounded-t-sm"></div>
+                        <div className="w-1/7 h-16 bg-blue-200 mx-1 rounded-t-sm"></div>
+                        <div className="w-1/7 h-28 bg-blue-400 mx-1 rounded-t-sm"></div>
+                        <div className="w-1/7 h-32 bg-blue-500 mx-1 rounded-t-sm"></div>
+                        <div className="w-1/7 h-20 bg-blue-300 mx-1 rounded-t-sm"></div>
+                        <div className="w-1/7 h-36 bg-blue-600 mx-1 rounded-t-sm"></div>
+                      </div>
+                      <div className="absolute top-1/2 left-0 w-full border-t border-dashed border-gray-300"></div>
+                      <div className="absolute bottom-2 left-0 w-full flex justify-between px-4 text-xs text-gray-500">
+                        <span>Mon</span>
+                        <span>Tue</span>
+                        <span>Wed</span>
+                        <span>Thu</span>
+                        <span>Fri</span>
+                        <span>Sat</span>
+                        <span>Sun</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Recent Payments */}
+                  <div>
+                    <h4 className="font-medium mb-3">Recent Payments</h4>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Patient</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell className="font-medium">John Smith</TableCell>
+                          <TableCell>£75.00</TableCell>
+                          <TableCell>
+                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                              Paid
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Sarah Jones</TableCell>
+                          <TableCell>£120.00</TableCell>
+                          <TableCell>
+                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                              Paid
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">David Lee</TableCell>
+                          <TableCell>£95.00</TableCell>
+                          <TableCell>
+                            <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full">
+                              Pending
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="order-1 lg:order-2 space-y-6">
               <h2 className="text-3xl font-bold mb-6">Track everything in one place</h2>
@@ -184,11 +405,133 @@ const FeaturesPage = () => {
               </div>
             </div>
             <div>
-              <img 
-                src="https://jbtxxlkhiubuzanegtzn.supabase.co/storage/v1/object/public/clinipaywebsiteimages//payment-plans-interface.png" 
-                alt="CliniPay Payment Plans Interface" 
-                className="w-full h-auto rounded-xl shadow-lg"
-              />
+              {/* Payment Plan Interface Component */}
+              <Card className="shadow-lg border-0">
+                <CardHeader className="border-b bg-gray-50 flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl">Treatment Payment Plan</CardTitle>
+                    <p className="text-sm text-gray-500 mt-1">Patient: Emma Wilson</p>
+                  </div>
+                  <div className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
+                    Active
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {/* Plan Details */}
+                  <div className="mb-6 grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Total Amount</p>
+                      <p className="font-semibold text-xl">£600.00</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Paid to Date</p>
+                      <p className="font-semibold text-xl">£300.00</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Installments</p>
+                      <p className="font-semibold">3 payments</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Next Due</p>
+                      <p className="font-semibold">15 June 2025</p>
+                    </div>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Plan Progress</span>
+                      <span className="text-sm font-medium">50%</span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-200 rounded-full">
+                      <div className="bg-gradient-primary h-full rounded-full w-1/2"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Payment Schedule */}
+                  <div className="mb-6">
+                    <h4 className="font-medium mb-3">Payment Schedule</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center p-3 bg-green-50 border border-green-100 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium">Initial Payment</p>
+                          <div className="flex items-center text-sm text-gray-500">
+                            <Clock className="h-3 w-3 mr-1" />
+                            <span>15 Apr 2025</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">£200.00</p>
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                            Paid
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center p-3 bg-green-50 border border-green-100 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium">Second Payment</p>
+                          <div className="flex items-center text-sm text-gray-500">
+                            <Clock className="h-3 w-3 mr-1" />
+                            <span>15 May 2025</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">£100.00</p>
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                            Paid
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center p-3 bg-amber-50 border border-amber-100 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium">Third Payment</p>
+                          <div className="flex items-center text-sm text-gray-500">
+                            <Clock className="h-3 w-3 mr-1" />
+                            <span>15 Jun 2025</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">£150.00</p>
+                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                            Upcoming
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center p-3 bg-gray-50 border border-gray-100 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium">Final Payment</p>
+                          <div className="flex items-center text-sm text-gray-500">
+                            <Clock className="h-3 w-3 mr-1" />
+                            <span>15 Jul 2025</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">£150.00</p>
+                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                            Scheduled
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" className="flex items-center gap-1">
+                      <CreditCard className="h-4 w-4" />
+                      <span>Take Payment</span>
+                    </Button>
+                    <Button variant="outline" className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>Reschedule</span>
+                    </Button>
+                    <Button variant="outline" className="text-gray-500 flex items-center gap-1">
+                      <BarChart3 className="h-4 w-4" />
+                      <span>View Activity</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
