@@ -457,6 +457,7 @@ export class PlanOperationsService {
       }
       
       // Insert activity record with all required fields including payment_link_id
+      // IMPORTANT: Use UTC time for performed_at timestamp to ensure consistency
       const { data, error } = await supabase.from('payment_activity').insert({
         plan_id: planId,
         clinic_id: planData.clinic_id,
@@ -464,7 +465,7 @@ export class PlanOperationsService {
         payment_link_id: planData.payment_link_id,
         action_type: actionType,
         details: details,
-        performed_at: new Date().toISOString()
+        performed_at: new Date().toISOString() // This ensures UTC time format
       }).select();
       
       if (error) {

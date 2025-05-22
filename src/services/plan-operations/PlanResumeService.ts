@@ -1,19 +1,12 @@
-
-import { Plan } from '@/utils/planTypes';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
-import { CompleteResumePlanResponse } from '@/types/supabaseRpcTypes';
+import { Plan } from '@/utils/planTypes';
+import { toast } from 'sonner';
+import { addDays, format } from 'date-fns';
 
 /**
- * Service for handling plan resume operations
+ * Service to handle plan resume operations
  */
 export class PlanResumeService {
-  /**
-   * Resume a paused plan
-   * @param plan The plan to resume
-   * @param resumeDate Optional date to resume the plan (defaults to tomorrow)
-   * @returns Promise<boolean> indicating success or failure
-   */
   static async resumePlan(plan: Plan, resumeDate?: Date): Promise<boolean> {
     try {
       // Default to tomorrow if no date is specified
@@ -87,7 +80,7 @@ export class PlanResumeService {
       
       return true;
     } catch (error) {
-      console.error('Error in resumePlan:', error);
+      console.error('Error resuming plan:', error);
       return false;
     }
   }
