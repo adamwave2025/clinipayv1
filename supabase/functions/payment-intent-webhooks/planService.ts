@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
@@ -174,12 +173,11 @@ export class PlanService {
         details: {
           payment_reference: paymentReference,
           amount: amountInCents,
-          payment_date: new Date().toISOString(), // Ensures UTC time format
+          payment_date: new Date().toISOString(),
           payment_number: scheduleData.payment_number,
           total_payments: scheduleData.total_payments,
           payment_id: paymentId
-        },
-        performed_at: new Date().toISOString() // Explicitly set performed_at to UTC ISO format
+        }
       };
       
       console.log("Recording payment activity in plan history:", JSON.stringify(activityPayload));
