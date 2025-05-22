@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,43 +5,37 @@ import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
 import { Check, LineChart, CreditCard, Calendar, BarChart3, ArrowRight, RefreshCcw, Users, Wallet, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-
-const FeatureSection = ({ 
-  title, 
-  description, 
-  benefits, 
-  visual, 
-  reversed = false 
-}: { 
-  title: string; 
-  description: string; 
-  benefits: string[]; 
-  visual: React.ReactNode; 
+const FeatureSection = ({
+  title,
+  description,
+  benefits,
+  visual,
+  reversed = false
+}: {
+  title: string;
+  description: string;
+  benefits: string[];
+  visual: React.ReactNode;
   reversed?: boolean;
-}) => (
-  <div className={`flex flex-col ${reversed ? 'md:flex-row-reverse' : 'md:flex-row'} gap-12 py-16 border-b items-center`}>
+}) => <div className={`flex flex-col ${reversed ? 'md:flex-row-reverse' : 'md:flex-row'} gap-12 py-16 border-b items-center`}>
     <div className="flex-1">
       <h2 className="text-3xl font-bold mb-4">{title}</h2>
       <p className="text-lg mb-8 text-gray-600">{description}</p>
       
       <ul className="space-y-3">
-        {benefits.map((benefit, index) => (
-          <li key={index} className="flex items-start gap-2">
+        {benefits.map((benefit, index) => <li key={index} className="flex items-start gap-2">
             <Check className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />
             <span>{benefit}</span>
-          </li>
-        ))}
+          </li>)}
       </ul>
     </div>
     <div className="flex-1 flex justify-center">
       {visual}
     </div>
-  </div>
-);
+  </div>;
 
 // Payment Link Visual Mockup
-const ReusableLinkVisual = () => (
-  <Card className="w-full max-w-lg shadow-lg border-0">
+const ReusableLinkVisual = () => <Card className="w-full max-w-lg shadow-lg border-0">
     <CardContent className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
@@ -91,12 +84,10 @@ const ReusableLinkVisual = () => (
         </Button>
       </div>
     </CardContent>
-  </Card>
-);
+  </Card>;
 
 // Payment Plan Visual Mockup
-const PaymentPlanVisual = () => (
-  <Card className="w-full max-w-lg shadow-lg border-0">
+const PaymentPlanVisual = () => <Card className="w-full max-w-lg shadow-lg border-0">
     <CardContent className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
@@ -115,7 +106,9 @@ const PaymentPlanVisual = () => (
           <span>33% complete</span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full" style={{ width: "33%" }}></div>
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full" style={{
+          width: "33%"
+        }}></div>
         </div>
       </div>
       
@@ -139,19 +132,17 @@ const PaymentPlanVisual = () => (
       <div className="flex justify-between">
         <div className="flex items-center gap-1 text-sm text-gray-600">
           <Clock className="h-4 w-4" />
-          <span>3 of 3 installments remaining</span>
+          <span>2 of 3 installments remaining</span>
         </div>
         <Button className="btn-gradient rounded-full">
           Take Payment
         </Button>
       </div>
     </CardContent>
-  </Card>
-);
+  </Card>;
 
 // Dashboard Analytics Visual Mockup
-const DashboardVisual = () => (
-  <Card className="w-full max-w-lg shadow-lg border-0">
+const DashboardVisual = () => <Card className="w-full max-w-lg shadow-lg border-0">
     <CardContent className="p-6 space-y-6">
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-xl font-bold">Performance Overview</h3>
@@ -200,12 +191,9 @@ const DashboardVisual = () => (
         </Button>
       </div>
     </CardContent>
-  </Card>
-);
-
+  </Card>;
 const FeaturesPage = () => {
-  return (
-    <MainLayout>
+  return <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
         <Logo className="h-10 w-auto" />
@@ -237,48 +225,11 @@ const FeaturesPage = () => {
 
       {/* Features Section */}
       <section className="max-w-6xl mx-auto px-6 md:px-8">
-        <FeatureSection
-          title="Reusable Payment Links"
-          description="Create flexible, branded payment links that can be used repeatedly for common services or appointments."
-          benefits={[
-            "Create unlimited payment links for any service",
-            "Share via email, SMS, or your website",
-            "Track usage and conversion rates",
-            "Customize payment amounts and descriptions",
-            "Brand the payment experience with your clinic's logo",
-            "Perfect for consultation fees, deposits, and common treatments"
-          ]}
-          visual={<ReusableLinkVisual />}
-        />
+        <FeatureSection title="Reusable Payment Links" description="Create flexible, branded payment links that can be used repeatedly for common services or appointments." benefits={["Create unlimited payment links for any service", "Share via email, SMS, or your website", "Track usage and conversion rates", "Customize payment amounts and descriptions", "Brand the payment experience with your clinic's logo", "Perfect for consultation fees, deposits, and common treatments"]} visual={<ReusableLinkVisual />} />
 
-        <FeatureSection
-          title="Flexible Payment Plans"
-          description="Offer patients the convenience of splitting larger payments into manageable installments, improving affordability and access to care."
-          benefits={[
-            "Create custom payment schedules for any treatment",
-            "Set flexible installment amounts and timings",
-            "Automated payment reminders to patients",
-            "Real-time tracking of payment progress",
-            "Easily manage plans with pause, reschedule, and cancellation options",
-            "Improve cash flow and reduce payment friction"
-          ]}
-          visual={<PaymentPlanVisual />}
-          reversed
-        />
+        <FeatureSection title="Flexible Payment Plans" description="Offer patients the convenience of splitting larger payments into manageable installments, improving affordability and access to care." benefits={["Create custom payment schedules for any treatment", "Set flexible installment amounts and timings", "Automated payment reminders to patients", "Real-time tracking of payment progress", "Easily manage plans with pause, reschedule, and cancellation options", "Improve cash flow and reduce payment friction"]} visual={<PaymentPlanVisual />} reversed />
 
-        <FeatureSection
-          title="Comprehensive Analytics"
-          description="Gain valuable insights into your clinic's financial performance with our intuitive dashboard and reporting tools."
-          benefits={[
-            "Real-time overview of all payments and plans",
-            "Track key metrics like payment completion rates",
-            "Monitor no-show reductions over time",
-            "Identify your most popular services",
-            "Export detailed reports for accounting purposes",
-            "Make data-driven decisions to optimize your practice"
-          ]}
-          visual={<DashboardVisual />}
-        />
+        <FeatureSection title="Comprehensive Analytics" description="Gain valuable insights into your clinic's financial performance with our intuitive dashboard and reporting tools." benefits={["Real-time overview of all payments and plans", "Track key metrics like payment completion rates", "Monitor no-show reductions over time", "Identify your most popular services", "Export detailed reports for accounting purposes", "Make data-driven decisions to optimize your practice"]} visual={<DashboardVisual />} />
       </section>
 
       {/* CTA Section */}
@@ -320,8 +271,6 @@ const FeaturesPage = () => {
           </div>
         </div>
       </footer>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default FeaturesPage;
