@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { PlanActivity, capitalize } from '@/utils/planActivityUtils';
 import { formatDate, formatCurrency, formatDateTime } from '@/utils/formatters';
