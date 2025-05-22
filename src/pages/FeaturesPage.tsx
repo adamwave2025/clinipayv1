@@ -14,13 +14,7 @@ import {
   BarChart3, 
   Calendar, 
   ChevronRight, 
-  Clock,
-  Mail,
-  Phone,
-  MapPin,
-  Building,
-  ShieldCheck,
-  Lock
+  Clock
 } from 'lucide-react';
 import { 
   Card, 
@@ -36,8 +30,6 @@ import {
   TableHead, 
   TableRow 
 } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
-import { FormItem, FormLabel } from '@/components/ui/form';
 
 const FeaturesPage = () => {
   return (
@@ -101,113 +93,40 @@ const FeaturesPage = () => {
                 </div>
               </div>
             </div>
-            
-            {/* Realistic Payment Form Mockup */}
             <div className="relative">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white rounded-xl card-shadow">
-                {/* Left Column - Clinic Info */}
-                <div className="p-6 border-r border-gray-100">
-                  <div className="mb-6">
-                    <h3 className="font-semibold text-xl">Consultation Fee</h3>
-                    <div className="mt-2 flex items-center">
-                      <span className="text-2xl font-bold">£75.00</span>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <Building className="h-5 w-5 text-gray-400 mt-0.5" />
-                      <div>
-                        <p className="text-gray-700 font-medium">Northside Medical Clinic</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-3">
-                      <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-gray-500">Address</p>
-                        <p className="text-gray-700">123 Harley Street, London W1</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-3">
-                      <Mail className="h-5 w-5 text-gray-400 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-gray-500">Email</p>
-                        <p className="text-gray-700">contact@northsidemedical.com</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-3">
-                      <Phone className="h-5 w-5 text-gray-400 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-gray-500">Phone</p>
-                        <p className="text-gray-700">+44 20 7123 4567</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6 pt-4 border-t border-gray-100">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <ShieldCheck className="h-4 w-4 text-green-600" />
-                      <p className="text-sm">Secure Payment</p>
-                    </div>
+              <div className="bg-white rounded-xl p-6 card-shadow max-w-md w-full">
+                <div className="flex justify-between items-center mb-6">
+                  <h4 className="font-semibold text-xl">Consultation Fee</h4>
+                  <div className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
+                    Active
                   </div>
                 </div>
-                
-                {/* Right Column - Payment Form */}
-                <div className="p-6">
-                  <h3 className="font-semibold text-lg mb-4">Complete Your Payment</h3>
-                  
-                  {/* Personal Information Section */}
-                  <div className="space-y-4 mb-6">
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <Input placeholder="Enter your full name" />
-                    </FormItem>
-                    
-                    <FormItem>
-                      <FormLabel>Email Address</FormLabel>
-                      <Input type="email" placeholder="Enter your email" />
-                    </FormItem>
-                    
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <Input type="tel" placeholder="Enter your phone number" />
-                    </FormItem>
+                <div className="space-y-4 mb-6">
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-gray-600">Amount</span>
+                    <span className="font-medium">£75.00</span>
                   </div>
-                  
-                  {/* Payment Details Section */}
-                  <div className="mb-6">
-                    <FormItem>
-                      <FormLabel>Card Details</FormLabel>
-                      <div className="mt-1 p-3 border rounded-md bg-white">
-                        <div className="h-6 flex items-center justify-between">
-                          <span className="text-gray-400">Card number</span>
-                          <div className="flex space-x-1">
-                            <div className="w-8 h-5 bg-gray-100 rounded"></div>
-                            <div className="w-8 h-5 bg-gray-100 rounded"></div>
-                          </div>
-                        </div>
-                      </div>
-                    </FormItem>
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-gray-600">Link type</span>
+                    <span className="font-medium">Reusable</span>
                   </div>
-                  
-                  {/* Submit Button */}
-                  <Button className="w-full h-12 btn-gradient text-lg">
-                    Pay Now
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-gray-600">Created</span>
+                    <span className="font-medium">10 May 2025</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-4 rounded-lg bg-gray-50">
+                  <div className="text-sm text-gray-600">
+                    https://clinipay.co/pay/cnst75
+                  </div>
+                  <Button variant="outline" size="sm" className="flex items-center gap-1">
+                    <LinkIcon className="h-4 w-4" />
+                    <span>Copy</span>
                   </Button>
-                  
-                  {/* Security Text */}
-                  <div className="text-center text-sm text-gray-500 flex items-center justify-center mt-4">
-                    <Lock className="h-4 w-4 mr-1 text-green-600" />
-                    Secure payment processed by CliniPay
-                  </div>
                 </div>
               </div>
-              
               <div className="absolute -bottom-6 -left-6 bg-gradient-primary w-12 h-12 rounded-full flex items-center justify-center shadow-lg z-10">
-                <CreditCard className="text-white h-6 w-6" />
+                <LinkIcon className="text-white h-6 w-6" />
               </div>
             </div>
           </div>
