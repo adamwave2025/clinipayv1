@@ -4,32 +4,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
-import { 
-  AreaChart, 
-  Check, 
-  CreditCard, 
-  LinkIcon, 
-  TrendingUp, 
-  Users, 
-  BarChart3, 
-  Calendar, 
-  ChevronRight, 
-  Clock
-} from 'lucide-react';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHeader, 
-  TableHead, 
-  TableRow 
-} from '@/components/ui/table';
+import { CreditCard, Check, Shield, TrendingUp, ShieldCheck, PhoneOff, LinkIcon } from 'lucide-react';
 
 const FeaturesPage = () => {
   return (
@@ -133,126 +108,11 @@ const FeaturesPage = () => {
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-20">
             <div className="order-2 lg:order-1">
-              {/* Analytics Dashboard UI Component */}
-              <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                <div className="bg-gradient-primary p-4">
-                  <h3 className="text-white font-semibold text-lg">Dashboard Analytics</h3>
-                </div>
-                <div className="p-6">
-                  {/* Stats Row */}
-                  <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-500 text-sm">Payments</span>
-                        <CreditCard className="h-5 w-5 text-blue-500" />
-                      </div>
-                      <p className="font-bold text-2xl mt-2">£2,450</p>
-                      <div className="flex items-center text-xs text-green-500 mt-2">
-                        <TrendingUp className="h-3 w-3 mr-1" />
-                        <span>+12% vs last month</span>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-500 text-sm">Patients</span>
-                        <Users className="h-5 w-5 text-blue-500" />
-                      </div>
-                      <p className="font-bold text-2xl mt-2">36</p>
-                      <div className="flex items-center text-xs text-green-500 mt-2">
-                        <TrendingUp className="h-3 w-3 mr-1" />
-                        <span>+8% vs last month</span>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-500 text-sm">Plans</span>
-                        <Calendar className="h-5 w-5 text-blue-500" />
-                      </div>
-                      <p className="font-bold text-2xl mt-2">14</p>
-                      <div className="flex items-center text-xs text-green-500 mt-2">
-                        <TrendingUp className="h-3 w-3 mr-1" />
-                        <span>+5% vs last month</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Chart Area */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-medium">Payment Trend</h4>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">Week</Button>
-                        <Button variant="outline" size="sm" className="bg-gray-100">Month</Button>
-                      </div>
-                    </div>
-                    <div className="h-48 bg-gray-50 rounded-lg relative overflow-hidden">
-                      {/* Simulated Chart */}
-                      <div className="absolute bottom-0 left-0 w-full h-full flex items-end px-2">
-                        <div className="w-1/7 h-20 bg-blue-200 mx-1 rounded-t-sm"></div>
-                        <div className="w-1/7 h-24 bg-blue-300 mx-1 rounded-t-sm"></div>
-                        <div className="w-1/7 h-16 bg-blue-200 mx-1 rounded-t-sm"></div>
-                        <div className="w-1/7 h-28 bg-blue-400 mx-1 rounded-t-sm"></div>
-                        <div className="w-1/7 h-32 bg-blue-500 mx-1 rounded-t-sm"></div>
-                        <div className="w-1/7 h-20 bg-blue-300 mx-1 rounded-t-sm"></div>
-                        <div className="w-1/7 h-36 bg-blue-600 mx-1 rounded-t-sm"></div>
-                      </div>
-                      <div className="absolute top-1/2 left-0 w-full border-t border-dashed border-gray-300"></div>
-                      <div className="absolute bottom-2 left-0 w-full flex justify-between px-4 text-xs text-gray-500">
-                        <span>Mon</span>
-                        <span>Tue</span>
-                        <span>Wed</span>
-                        <span>Thu</span>
-                        <span>Fri</span>
-                        <span>Sat</span>
-                        <span>Sun</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Recent Payments */}
-                  <div>
-                    <h4 className="font-medium mb-3">Recent Payments</h4>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Patient</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell className="font-medium">John Smith</TableCell>
-                          <TableCell>£75.00</TableCell>
-                          <TableCell>
-                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                              Paid
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">Sarah Jones</TableCell>
-                          <TableCell>£120.00</TableCell>
-                          <TableCell>
-                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                              Paid
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">David Lee</TableCell>
-                          <TableCell>£95.00</TableCell>
-                          <TableCell>
-                            <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full">
-                              Pending
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              </div>
+              <img 
+                src="https://jbtxxlkhiubuzanegtzn.supabase.co/storage/v1/object/public/clinipaywebsiteimages//analytics-dashboard.png" 
+                alt="CliniPay Analytics Dashboard" 
+                className="w-full h-auto rounded-xl shadow-lg"
+              />
             </div>
             <div className="order-1 lg:order-2 space-y-6">
               <h2 className="text-3xl font-bold mb-6">Track everything in one place</h2>
@@ -324,133 +184,11 @@ const FeaturesPage = () => {
               </div>
             </div>
             <div>
-              {/* Payment Plan Interface Component */}
-              <Card className="shadow-lg border-0">
-                <CardHeader className="border-b bg-gray-50 flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="text-xl">Treatment Payment Plan</CardTitle>
-                    <p className="text-sm text-gray-500 mt-1">Patient: Emma Wilson</p>
-                  </div>
-                  <div className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
-                    Active
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {/* Plan Details */}
-                  <div className="mb-6 grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-500 mb-1">Total Amount</p>
-                      <p className="font-semibold text-xl">£600.00</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 mb-1">Paid to Date</p>
-                      <p className="font-semibold text-xl">£300.00</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 mb-1">Installments</p>
-                      <p className="font-semibold">3 payments</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 mb-1">Next Due</p>
-                      <p className="font-semibold">15 June 2025</p>
-                    </div>
-                  </div>
-                  
-                  {/* Progress Bar */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Plan Progress</span>
-                      <span className="text-sm font-medium">50%</span>
-                    </div>
-                    <div className="w-full h-2 bg-gray-200 rounded-full">
-                      <div className="bg-gradient-primary h-full rounded-full w-1/2"></div>
-                    </div>
-                  </div>
-                  
-                  {/* Payment Schedule */}
-                  <div className="mb-6">
-                    <h4 className="font-medium mb-3">Payment Schedule</h4>
-                    <div className="space-y-3">
-                      <div className="flex items-center p-3 bg-green-50 border border-green-100 rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium">Initial Payment</p>
-                          <div className="flex items-center text-sm text-gray-500">
-                            <Clock className="h-3 w-3 mr-1" />
-                            <span>15 Apr 2025</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">£200.00</p>
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                            Paid
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center p-3 bg-green-50 border border-green-100 rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium">Second Payment</p>
-                          <div className="flex items-center text-sm text-gray-500">
-                            <Clock className="h-3 w-3 mr-1" />
-                            <span>15 May 2025</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">£100.00</p>
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                            Paid
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center p-3 bg-amber-50 border border-amber-100 rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium">Third Payment</p>
-                          <div className="flex items-center text-sm text-gray-500">
-                            <Clock className="h-3 w-3 mr-1" />
-                            <span>15 Jun 2025</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">£150.00</p>
-                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-                            Upcoming
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center p-3 bg-gray-50 border border-gray-100 rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium">Final Payment</p>
-                          <div className="flex items-center text-sm text-gray-500">
-                            <Clock className="h-3 w-3 mr-1" />
-                            <span>15 Jul 2025</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">£150.00</p>
-                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
-                            Scheduled
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" className="flex items-center gap-1">
-                      <CreditCard className="h-4 w-4" />
-                      <span>Take Payment</span>
-                    </Button>
-                    <Button variant="outline" className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>Reschedule</span>
-                    </Button>
-                    <Button variant="outline" className="text-gray-500 flex items-center gap-1">
-                      <BarChart3 className="h-4 w-4" />
-                      <span>View Activity</span>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <img 
+                src="https://jbtxxlkhiubuzanegtzn.supabase.co/storage/v1/object/public/clinipaywebsiteimages//payment-plans-interface.png" 
+                alt="CliniPay Payment Plans Interface" 
+                className="w-full h-auto rounded-xl shadow-lg"
+              />
             </div>
           </div>
         </div>
