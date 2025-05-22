@@ -1,7 +1,9 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Plan } from '@/utils/planTypes';
 import { toast } from 'sonner';
 import { addDays, format } from 'date-fns';
+import { CompleteResumePlanResponse } from '@/types/supabaseRpcTypes';
 
 /**
  * Service to handle plan resume operations
@@ -66,6 +68,7 @@ export class PlanResumeService {
           plan_id: plan.id,
           payment_link_id: plan.paymentLinkId,
           action_type: 'plan_resumed',
+          performed_at: new Date().toISOString(), // Ensure UTC time format
           details: {
             planName: plan.title || plan.planName,
             resumeDate: formattedDate,
