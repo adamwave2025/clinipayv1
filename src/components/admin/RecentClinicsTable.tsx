@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatDate } from '@/utils/formatters';
 import {
   Table,
   TableBody,
@@ -144,7 +143,7 @@ export const RecentClinicsTable = () => {
               </TableCell>
               <TableCell className="text-gray-500">
                 {clinic.created_at 
-                  ? formatDate(clinic.created_at)
+                  ? new Date(clinic.created_at).toLocaleDateString() 
                   : 'Unknown'}
               </TableCell>
               <TableCell>

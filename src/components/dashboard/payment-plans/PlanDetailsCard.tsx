@@ -4,7 +4,6 @@ import { Plan } from '@/utils/planTypes';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { formatDate } from '@/utils/formatters';
 
 interface PlanDetailsCardProps {
   plan: Plan;
@@ -29,6 +28,11 @@ const PlanDetailsCard: React.FC<PlanDetailsCardProps> = ({ plan, isLoading }) =>
       </Card>
     );
   }
+  
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Not set';
+    return new Date(dateString).toLocaleDateString();
+  };
   
   const getBadgeVariant = (status?: string) => {
     switch (status) {
