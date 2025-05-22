@@ -10,7 +10,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { formatDate } from '@/utils/formatters';
 
 interface DateFilterProps {
   date: Date | undefined;
@@ -32,7 +31,7 @@ const DateFilter = ({ date, onDateChange, className }: DateFilterProps) => {
             )}
           >
             <CalendarIcon className="mr-2 h-3 w-3" />
-            {date ? formatDate(date) : <span>Filter by date</span>}
+            {date ? format(date, 'PPP') : <span>Filter by date</span>}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="end">
