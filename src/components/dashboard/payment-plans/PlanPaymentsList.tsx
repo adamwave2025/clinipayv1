@@ -8,7 +8,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatCurrency, formatDate, formatDateTime } from '@/utils/formatters';
 import StatusBadge from '@/components/common/StatusBadge';
 import { PlanInstallment } from '@/utils/paymentPlanUtils';
 import PaymentActionMenu from './PaymentActionMenu';
