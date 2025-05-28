@@ -4,10 +4,8 @@ import { Button } from '@/components/ui/button';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
 import { CreditCard, Check, Shield, TrendingUp, ShieldCheck, PhoneOff } from 'lucide-react';
-
 const HomePage = () => {
-  return (
-    <MainLayout>
+  return <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
         <Logo className="h-10 w-auto" />
@@ -25,7 +23,7 @@ const HomePage = () => {
       <section className="py-12 md:py-20 px-6 md:px-8">
         <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-            <span className="gradient-text">Trusted payments</span> for your clinic
+            <span className="gradient-text">Clinic-friendly</span> for your clinic
           </h1>
           <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
             Ditch clunky bank transfers and manual admin. CliniPay gives your clinic a faster, more professional way to collect payments and reduce no-shows — all through branded, secure payment links.
@@ -94,11 +92,7 @@ const HomePage = () => {
             </div>
 
             <div className="flex justify-center lg:justify-end">
-              <img 
-                src="https://jbtxxlkhiubuzanegtzn.supabase.co/storage/v1/object/public/clinipaywebsiteimages//clinicinfopaymentscreen.png" 
-                alt="CliniPay Payment Form Preview" 
-                className="w-full max-h-[630px] object-contain animate-fade-in"
-              />
+              <img src="https://jbtxxlkhiubuzanegtzn.supabase.co/storage/v1/object/public/clinipaywebsiteimages//clinicinfopaymentscreen.png" alt="CliniPay Payment Form Preview" className="w-full max-h-[630px] object-contain animate-fade-in" />
             </div>
           </div>
         </div>
@@ -163,10 +157,7 @@ const HomePage = () => {
           <p className="text-xl mb-8 max-w-2xl mx-auto">
             Join clinics using CliniPay to reduce admin, increase uptake, and give patients a smoother experience.
           </p>
-          <Button 
-            className="btn-gradient-outline text-lg py-6 px-8 rounded-full" 
-            asChild
-          >
+          <Button className="btn-gradient-outline text-lg py-6 px-8 rounded-full" asChild>
             <Link to="/sign-up">Get Started</Link>
           </Button>
         </div>
@@ -191,8 +182,6 @@ const HomePage = () => {
           </div>
         </div>
       </footer>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default HomePage;
