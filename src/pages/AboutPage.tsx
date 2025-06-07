@@ -3,10 +3,8 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
-
 const AboutPage = () => {
-  return (
-    <MainLayout>
+  return <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
         <Logo className="h-10 w-auto" />
@@ -28,20 +26,20 @@ const AboutPage = () => {
           </h1>
           
           <div className="space-y-8 text-lg">
-            <p>
-              CliniPay was founded with a simple mission: to help private healthcare providers reduce no-shows and streamline their payment processes while building trust with patients.
-            </p>
+            <p>CliniPay has a simple mission: help clinics manage and streamline payment processes, while building trust. No more juggling spreadsheets. No more guesswork. No more no-shows. Just payments, done right and on time.</p>
             
-            <p>
-              We understand the unique challenges faced by clinics and practitioners. That's why we've created a platform that seamlessly handles payments, ensuring that your focus remains on what matters most—providing excellent care to your patients.
-            </p>
+            <p>Why? 
+
+
+Because we understand the unique challenges you face. 
+And because you need a platform that handles payments & admin for you, so that you can focus on what matters most: providing excellent care to your patients. After all, that’s why you opened a clinic, not a debt collection agency.
+
+          </p>
             
-            <h2 className="text-2xl font-bold mt-12 mb-4">Our Vision</h2>
-            <p>
-              To be the trusted payment platform for healthcare providers worldwide, improving operational efficiency and patient commitment through secure, transparent payment processes.
-            </p>
+            <h2 className="text-2xl font-bold mt-12 mb-4">Our goal</h2>
+            <p>Is to improve operational efficiency & patient commitment through secure, transparent payment processes - so that you can stop chasing & start collecting.</p>
             
-            <h2 className="text-2xl font-bold mt-12 mb-4">Why Choose CliniPay?</h2>
+            <h2 className="text-2xl font-bold mt-12 mb-4">Why upgrade to CliniPay?</h2>
             <ul className="list-disc pl-6 space-y-3">
               <li>
                 <strong>Reduced No-Shows:</strong> When patients commit with a deposit, they're significantly more likely to attend appointments.
@@ -85,8 +83,6 @@ const AboutPage = () => {
           </div>
         </div>
       </footer>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default AboutPage;
