@@ -4,10 +4,8 @@ import { Button } from '@/components/ui/button';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
 import { CreditCard, Check, Shield, TrendingUp, ShieldCheck, PhoneOff } from 'lucide-react';
-
 const HomePage = () => {
-  return (
-    <MainLayout>
+  return <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
         <Logo className="h-10 w-auto" />
@@ -30,7 +28,7 @@ const HomePage = () => {
           <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-3xl mx-auto">More cash in, less admin: start using CliniPay to manage payments, automate reminders & reduce no-shows. Get paid on time, every time with secure, branded links that work for your clinic.</p>
           <div className="flex justify-center">
             <Button className="btn-gradient rounded-full text-lg py-6 px-8" asChild>
-              <Link to="/sign-up">Ready, set, collect.</Link>
+              <Link to="/sign-up">Ready, set, collect</Link>
             </Button>
           </div>
         </div>
@@ -180,8 +178,6 @@ const HomePage = () => {
           </div>
         </div>
       </footer>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default HomePage;
