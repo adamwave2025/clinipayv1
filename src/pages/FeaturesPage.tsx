@@ -213,10 +213,7 @@ const FeaturesPage = () => {
           <h1 className="text-4xl md:text-5xl font-bold mb-6">
             Powerful features for <span className="gradient-text">modern healthcare</span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8">
-            Our intuitive platform offers everything you need to streamline payments
-            and reduce no-shows for your healthcare practice
-          </p>
+          <p className="text-xl text-gray-600 mb-8">Our intuitive platform offers all you need to streamline payments and reduce no-shows.</p>
           <Button size="lg" className="btn-gradient rounded-full text-lg py-6 px-8" asChild>
             <Link to="/sign-up">Start Your Free Trial</Link>
           </Button>
@@ -238,12 +235,13 @@ const FeaturesPage = () => {
           <h2 className="text-3xl font-bold mb-6">
             Ready to transform your practice?
           </h2>
-          <p className="text-lg text-gray-600 mb-8">
-            Join hundreds of healthcare providers already using CliniPay to improve patient commitment and streamline payments
-          </p>
+          <p className="text-lg text-gray-600 mb-8">Join the clinics using CliniPay!
+Reduce admin, streamline payments, and keep your patients happy.
+
+        </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="btn-gradient rounded-full" asChild>
-              <Link to="/sign-up">Get Started Today</Link>
+              <Link to="/sign-up">Let's get paid!</Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
               
