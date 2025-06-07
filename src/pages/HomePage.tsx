@@ -114,10 +114,8 @@ const HomePage = () => {
                 <TrendingUp className="text-white h-8 w-8" />
               </div>
               <div>
-                <h3 className="text-xl font-bold mb-3 gradient-text">Increase conversion rates</h3>
-                <p className="text-gray-600">
-                  Branded, mobile-friendly payment pages feel seamless and secure — which means fewer abandoned payments and more committed patients.
-                </p>
+                <h3 className="text-xl font-bold mb-3 gradient-text">Increased conversion rates</h3>
+                <p className="text-gray-600">Branded, mobile-friendly payment pages beat clunky bank transfers every single time. They’re seamless, secure & super-easy to use  — which means fewer abandoned payments and more committed patients..</p>
               </div>
             </div>
 
@@ -138,7 +136,7 @@ const HomePage = () => {
                 <PhoneOff className="text-white h-8 w-8" />
               </div>
               <div>
-                <h3 className="text-xl font-bold mb-3 gradient-text">No more awkward calls</h3>
+                <h3 className="text-xl font-bold mb-3 gradient-text">No more chasing</h3>
                 <p className="text-gray-600">
                   Forget taking card details over the phone or waiting on manual transfers. CliniPay handles it all — and keeps your team focused on patient care.
                 </p>
@@ -151,10 +149,9 @@ const HomePage = () => {
       {/* CTA section */}
       <section className="py-16 px-6 md:px-8">
         <div className="max-w-6xl mx-auto bg-gradient-primary rounded-2xl p-8 md:p-12 text-center text-white">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to get started?</h2>
-          <p className="text-xl mb-8 max-w-2xl mx-auto">
-            Join clinics using CliniPay to reduce admin, increase uptake, and give patients a smoother experience.
-          </p>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to get paid your way?</h2>
+          <p className="text-xl mb-8 max-w-2xl mx-auto">Join clinics using CliniPay! 
+ Reduce admin, increase uptake, and keep your patients happy.</p>
           <Button className="btn-gradient-outline text-lg py-6 px-8 rounded-full" asChild>
             <Link to="/sign-up">Get Started</Link>
           </Button>
