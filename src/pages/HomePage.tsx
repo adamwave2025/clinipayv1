@@ -25,10 +25,10 @@ const HomePage = () => {
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
             <span className="gradient-text">Clinic-friendly test</span> for your clinic
           </h1>
-          <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-3xl mx-auto">Ditch clunky bank transfers and manual admin. CliniPay gives your clinic a faster, more professional way to collect payments and reduce no-shows — all through branded, secure payment links. testing</p>
+          <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-3xl mx-auto">More cash in, less admin: start using CliniPay to manage payments, automate reminders & reduce no-shows. Get paid on time, every time with secure, branded links that work for your clinic.</p>
           <div className="flex justify-center">
             <Button className="btn-gradient rounded-full text-lg py-6 px-8" asChild>
-              <Link to="/sign-up">Start collecting payments</Link>
+              <Link to="/sign-up">Ready, set, collect.</Link>
             </Button>
           </div>
         </div>
