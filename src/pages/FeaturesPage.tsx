@@ -5,6 +5,7 @@ import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
 import { Check, LineChart, CreditCard, Calendar, BarChart3, ArrowRight, RefreshCcw, Users, Wallet, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+
 const FeatureSection = ({
   title,
   description,
@@ -192,8 +193,10 @@ const DashboardVisual = () => <Card className="w-full max-w-lg shadow-lg border-
       </div>
     </CardContent>
   </Card>;
+
 const FeaturesPage = () => {
-  return <MainLayout>
+  return (
+    <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
         <Logo className="h-10 w-auto" />
@@ -262,6 +265,7 @@ Reduce admin, streamline payments, and keep your patients happy.
               <Link to="/contact" className="text-gray-600 hover:text-gray-900">Contact</Link>
               <Link to="/terms" className="text-gray-600 hover:text-gray-900">Terms</Link>
               <Link to="/privacy" className="text-gray-600 hover:text-gray-900">Privacy</Link>
+              <Link to="/gdpr" className="text-gray-600 hover:text-gray-900">GDPR</Link>
             </div>
           </div>
           <div className="mt-6 text-center md:text-left text-gray-500 text-sm">
@@ -269,6 +273,8 @@ Reduce admin, streamline payments, and keep your patients happy.
           </div>
         </div>
       </footer>
-    </MainLayout>;
+    </MainLayout>
+  );
 };
+
 export default FeaturesPage;

@@ -7,8 +7,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Mail, MessageSquare, Phone } from 'lucide-react';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
+
 const ContactPage = () => {
-  return <MainLayout>
+  return (
+    <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
         <Logo className="h-10 w-auto" />
@@ -114,10 +116,12 @@ Get in touch and let’s talk all things CliniPay!</p>
             <Logo className="h-8 w-auto mb-4 md:mb-0" />
             <div className="flex gap-6">
               <Link to="/about" className="text-gray-600 hover:text-gray-900">About</Link>
+              <Link to="/features" className="text-gray-600 hover:text-gray-900">Features</Link>
               <Link to="/fees" className="text-gray-600 hover:text-gray-900">Fees</Link>
               <Link to="/contact" className="text-gray-600 hover:text-gray-900">Contact</Link>
               <Link to="/terms" className="text-gray-600 hover:text-gray-900">Terms</Link>
               <Link to="/privacy" className="text-gray-600 hover:text-gray-900">Privacy</Link>
+              <Link to="/gdpr" className="text-gray-600 hover:text-gray-900">GDPR</Link>
             </div>
           </div>
           <div className="mt-6 text-center md:text-left text-gray-500 text-sm">
@@ -125,6 +129,8 @@ Get in touch and let’s talk all things CliniPay!</p>
           </div>
         </div>
       </footer>
-    </MainLayout>;
+    </MainLayout>
+  );
 };
+
 export default ContactPage;

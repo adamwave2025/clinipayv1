@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
 import { CreditCard, Check, Shield, TrendingUp, ShieldCheck, PhoneOff } from 'lucide-react';
+
 const HomePage = () => {
-  return <MainLayout>
+  return (
+    <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
         <Logo className="h-10 w-auto" />
@@ -170,6 +172,7 @@ const HomePage = () => {
               <Link to="/contact" className="text-gray-600 hover:text-gray-900">Contact</Link>
               <Link to="/terms" className="text-gray-600 hover:text-gray-900">Terms</Link>
               <Link to="/privacy" className="text-gray-600 hover:text-gray-900">Privacy</Link>
+              <Link to="/gdpr" className="text-gray-600 hover:text-gray-900">GDPR</Link>
             </div>
           </div>
           <div className="mt-6 text-center md:text-left text-gray-500 text-sm">
@@ -177,6 +180,8 @@ const HomePage = () => {
           </div>
         </div>
       </footer>
-    </MainLayout>;
+    </MainLayout>
+  );
 };
+
 export default HomePage;
