@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,10 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Mail, MessageSquare, Phone } from 'lucide-react';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
-
 const ContactPage = () => {
-  return (
-    <MainLayout>
+  return <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
         <Logo className="h-10 w-auto" />
@@ -32,9 +29,8 @@ const ContactPage = () => {
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Get in <span className="gradient-text">touch</span>
             </h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Have questions about CliniPay? We're here to help.
-            </p>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">Got questions? Good, we’ve got answers.
+Get in touch and let’s talk all things CliniPay!</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 mb-12">
@@ -42,7 +38,7 @@ const ContactPage = () => {
               <div className="mx-auto w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
                 <Mail className="text-white h-5 w-5" />
               </div>
-              <h3 className="font-bold mb-2">Email Us</h3>
+              <h3 className="font-bold mb-2">Drop an email 📨</h3>
               <p className="text-gray-600 mb-4">For general inquiries and support</p>
               <a href="mailto:support@clinipay.com" className="gradient-text font-medium">
                 support@clinipay.com
@@ -53,7 +49,7 @@ const ContactPage = () => {
               <div className="mx-auto w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
                 <Phone className="text-white h-5 w-5" />
               </div>
-              <h3 className="font-bold mb-2">Call Us</h3>
+              <h3 className="font-bold mb-2">Give us a call 🤙</h3>
               <p className="text-gray-600 mb-4">Available Monday-Friday, 9am-5pm</p>
               <a href="tel:+44123456789" className="gradient-text font-medium">
                 +44 123 456 789
@@ -64,8 +60,8 @@ const ContactPage = () => {
               <div className="mx-auto w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center mb-4">
                 <MessageSquare className="text-white h-5 w-5" />
               </div>
-              <h3 className="font-bold mb-2">Live Chat</h3>
-              <p className="text-gray-600 mb-4">Chat with our support team</p>
+              <h3 className="font-bold mb-2">Live Chat 🤓</h3>
+              <p className="text-gray-600 mb-4">Chat with our nice support team</p>
               <Button variant="outline" className="gradient-text">
                 Start a Chat
               </Button>
@@ -129,8 +125,6 @@ const ContactPage = () => {
           </div>
         </div>
       </footer>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default ContactPage;
