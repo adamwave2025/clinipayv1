@@ -30,7 +30,7 @@ const AboutPage = () => {
           <div className="space-y-8 text-lg">
             <p>CliniPay has a simple mission: help clinics manage and streamline payment processes, while building trust. No more juggling spreadsheets. No more guesswork. No more no-shows. Just payments, done right and on time.</p>
             
-            <p>Why? 
+            <p>Why? </p>
 
 
 Because we understand the unique challenges you face. 
