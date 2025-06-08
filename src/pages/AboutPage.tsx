@@ -42,6 +42,8 @@ And because you need a platform that handles payments & admin for you, so that y
             <p>Is to improve operational efficiency & patient commitment through secure, transparent payment processes - so that you can stop chasing & start collecting.</p>
             
             <h2 className="text-2xl font-bold mt-12 mb-4">Why upgrade to CliniPay?</h2>
+            Because your clinic deserves more than just spreadsheets.
+And because you’ll get:
             <ul className="list-disc pl-6 space-y-3">
               <li>
                 <strong>Reduced No-Shows:</strong> When patients commit with a deposit, they're significantly more likely to attend appointments.
