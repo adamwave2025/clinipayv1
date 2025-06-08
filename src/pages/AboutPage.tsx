@@ -1,13 +1,10 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
-
 const AboutPage = () => {
-  return (
-    <MainLayout>
+  return <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
         <Logo className="h-10 w-auto" />
@@ -31,7 +28,7 @@ const AboutPage = () => {
           <div className="space-y-8 text-lg">
             <p>CliniPay has a simple mission: help clinics manage and streamline payment processes, while building trust. No more juggling spreadsheets. No more guesswork. No more no-shows. Just payments, done right and on time.</p>
             
-            <h2 className="text-2xl font-bold mt-12 mb-4">Why?</h2>
+            <p>Why?</p>
             
             <p>Because we understand the unique challenges you face. And because you need a platform that handles payments & admin for you, so that you can focus on what matters most: providing excellent care to your patients. After all, that's why you opened a clinic, not a debt collection agency.</p>
             
@@ -39,23 +36,8 @@ const AboutPage = () => {
             <p>Is to improve operational efficiency & patient commitment through secure, transparent payment processes - so that you can stop chasing & start collecting.</p>
             
             <h2 className="text-2xl font-bold mt-12 mb-4">Why upgrade to CliniPay?</h2>
-            <p>Because your clinic deserves more than just spreadsheets. 
-             <li> And because you'll get:
-             </li></p>
-            <ul className="list-disc pl-6 space-y-3">
-              <li>
-                <strong>Reduced No-Shows:</strong> When patients commit with a deposit, they're significantly more likely to attend appointments.
-              </li>
-              <li>
-                <strong>Trusted Platform:</strong> Our secure, professional payment experience builds confidence with your patients.
-              </li>
-              <li>
-                <strong>Streamlined Operations:</strong> Manage all payments in one place, saving you time and reducing administrative burden.
-              </li>
-              <li>
-                <strong>Simple Integration:</strong> No complex setup or technical knowledge required—start accepting payments in minutes.
-              </li>
-            </ul>
+            <p>Because your clinic deserves more than just spreadsheets. Plus you'll get:</p>
+            
           </div>
           
           <div className="mt-12 text-center">
@@ -86,8 +68,6 @@ const AboutPage = () => {
           </div>
         </div>
       </footer>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default AboutPage;
