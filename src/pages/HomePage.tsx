@@ -23,7 +23,7 @@ const HomePage = () => {
       <section className="py-12 md:py-20 px-6 md:px-8">
         <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-            <span className="gradient-text">Clinic payments,</span> paid and simple
+            <span className="gradient-text">Clinic-friendly test</span> for your clinic
           </h1>
           <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-3xl mx-auto">More cash in, less admin: start using CliniPay to manage payments, automate reminders & reduce no-shows. Get paid on time, every time with secure, branded links that work for your clinic.</p>
           <div className="flex justify-center">
@@ -52,10 +52,8 @@ const HomePage = () => {
                     <CreditCard className="text-white h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold mb-2">Create payment links</h3>
-                    <p className="text-gray-600">
-                      Generate branded links for treatments, consultations, or deposits in just a few clicks.
-                    </p>
+                    <h3 className="text-xl font-bold mb-2">Create</h3>
+                    <p className="text-gray-600">Generate your own branded links for treatments, consultations, or deposits in just a few clicks – secure, reusable, professional.</p>
                   </div>
                 </div>
               </div>
@@ -66,10 +64,8 @@ const HomePage = () => {
                     <Check className="text-white h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold mb-2">Collect payments</h3>
-                    <p className="text-gray-600">
-                      Patients pay instantly using card or Apple Pay. No accounts, no logins, no fuss.
-                    </p>
+                    <h3 className="text-xl font-bold mb-2">Collect</h3>
+                    <p className="text-gray-600">Offer instant pay to your patients: no accounts, no logins, no fuss. Just a card or Apple Pay and they’re good to go.</p>
                   </div>
                 </div>
               </div>
@@ -80,10 +76,8 @@ const HomePage = () => {
                     <Shield className="text-white h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold mb-2">Manage everything</h3>
-                    <p className="text-gray-600">
-                      Track patient payments, process instant refunds, and download detailed reports seamlessly.
-                    </p>
+                    <h3 className="text-xl font-bold mb-2">Manage</h3>
+                    <p className="text-gray-600">You get your very own clinic dashboard: track patient payments, process instant refunds, and download detailed reports seamlessly. </p>
                   </div>
                 </div>
               </div>
