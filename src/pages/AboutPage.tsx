@@ -24,7 +24,7 @@ const AboutPage = () => {
       <section className="py-12 md:py-20 px-6 md:px-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-bold mb-8">
-            About <span className="gradient-text">CliniPay</span>
+            <span className="gradient-text">CliniPay,</span> the easiest way to get paid
           </h1>
           
           <div className="space-y-8 text-lg">
