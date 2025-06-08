@@ -29,7 +29,7 @@ const ContactPage = () => {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Get in <span className="gradient-text">touch</span>
+              Let's <span className="gradient-text">talk</span>
             </h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">Got questions? Good, we’ve got answers.
 Get in touch and let’s talk all things CliniPay!</p>
