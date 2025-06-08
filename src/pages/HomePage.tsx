@@ -52,8 +52,10 @@ const HomePage = () => {
                     <CreditCard className="text-white h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold mb-2">Create</h3>
-                    <p className="text-gray-600">Generate your own branded links for treatments, consultations, or deposits in just a few clicks – secure, reusable, professional.</p>
+                    <h3 className="text-xl font-bold mb-2">Create payment links</h3>
+                    <p className="text-gray-600">
+                      Generate branded links for treatments, consultations, or deposits in just a few clicks.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -64,8 +66,10 @@ const HomePage = () => {
                     <Check className="text-white h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold mb-2">Collect</h3>
-                    <p className="text-gray-600">Offer instant pay to your patients: no accounts, no logins, no fuss. Just a card or Apple Pay and they’re good to go.</p>
+                    <h3 className="text-xl font-bold mb-2">Collect payments</h3>
+                    <p className="text-gray-600">
+                      Patients pay instantly using card or Apple Pay. No accounts, no logins, no fuss.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -76,8 +80,10 @@ const HomePage = () => {
                     <Shield className="text-white h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold mb-2">Manage</h3>
-                    <p className="text-gray-600">You get your very own clinic dashboard: track patient payments, process instant refunds, and download detailed reports seamlessly. </p>
+                    <h3 className="text-xl font-bold mb-2">Manage everything</h3>
+                    <p className="text-gray-600">
+                      Track patient payments, process instant refunds, and download detailed reports seamlessly.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -95,7 +101,7 @@ const HomePage = () => {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Why CliniPay Beats <span className="gradient-text">Bank Transfers & Phone Payments</span>
+              <span className="gradient-text">Why CliniPay</span>
             </h2>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto">
               Old-school payments are costing you bookings. CliniPay converts more patients and saves your team hours.
