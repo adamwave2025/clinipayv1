@@ -31,7 +31,7 @@ const AboutPage = () => {
           <div className="space-y-8 text-lg">
             <p>CliniPay has a simple mission: help clinics manage and streamline payment processes, while building trust. No more juggling spreadsheets. No more guesswork. No more no-shows. Just payments, done right and on time.</p>
             
-            <h2 className="text-2xl font-bold mt-12 mb-4">Why?</h2>
+            <p>Why?</p>
             
             <p>Because we understand the unique challenges you face. And because you need a platform that handles payments & admin for you, so that you can focus on what matters most: providing excellent care to your patients. After all, that's why you opened a clinic, not a debt collection agency.</p>
             
@@ -42,16 +42,16 @@ const AboutPage = () => {
             <p>Because your clinic deserves more than just spreadsheets. And because you'll get:</p>
             <ul className="list-disc pl-6 space-y-3">
               <li>
-                <strong>Reduced No-Shows:</strong> When patients commit with a deposit, they're significantly more likely to attend appointments.
+                <strong>A Trusted Platform:</strong> Our secure, professional payment experience builds confidence with your patients. Seamless, safe, on brand 👌
               </li>
               <li>
-                <strong>Trusted Platform:</strong> Our secure, professional payment experience builds confidence with your patients.
+                <strong>Streamlined Operations:</strong> You get to manage all your payments in one place, saving time, reducing admin and getting a bird’s eye view with a dedicated dashboard 📈
               </li>
               <li>
-                <strong>Streamlined Operations:</strong> Manage all payments in one place, saving you time and reducing administrative burden.
+                <strong>Simple Integration:</strong> No complex setup or technical knowledge required — it’s all plug-in ready so you can start accepting payments in minutes 💸
               </li>
               <li>
-                <strong>Simple Integration:</strong> No complex setup or technical knowledge required—start accepting payments in minutes.
+                <strong>Reduce No-Shows:</strong> A smooth & safe payment process makes it easy for patients to commit with a deposit — which makes them more likely to attend appointments 👩🏻‍🔬
               </li>
             </ul>
           </div>
