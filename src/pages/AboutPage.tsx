@@ -31,9 +31,10 @@ const AboutPage = () => {
           <div className="space-y-8 text-lg">
             <p>CliniPay has a simple mission: help clinics manage and streamline payment processes, while building trust. No more juggling spreadsheets. No more guesswork. No more no-shows. Just payments, done right and on time.</p>
             
-            <h2 className="text-2xl font-bold mt-12 mb-4">Why?</h2>
+            <p>Why?</p>
             
-            <p>Because we understand the unique challenges you face. And because you need a platform that handles payments & admin for you, so that you can focus on what matters most: providing excellent care to your patients. After all, that's why you opened a clinic, not a debt collection agency.</p>
+            <p>Because we understand the unique challenges you face. 
+              And because you need a platform that handles payments & admin for you, so that you can focus on what matters most: providing excellent care to your patients. After all, that's why you opened a clinic, not a debt collection agency.</p>
             
             <h2 className="text-2xl font-bold mt-12 mb-4">Our goal</h2>
             <p>Is to improve operational efficiency & patient commitment through secure, transparent payment processes - so that you can stop chasing & start collecting.</p>
