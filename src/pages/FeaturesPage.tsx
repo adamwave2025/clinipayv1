@@ -214,7 +214,7 @@ const FeaturesPage = () => {
       <section className="py-16 px-6 md:px-8 text-center">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-bold mb-6">
-            Powerful features for <span className="gradient-text">modern healthcare</span>
+            <span className="gradient-text">Powerful, easy, effective,</span> features designed for clinic success
           </h1>
           <p className="text-xl text-gray-600 mb-8">Our intuitive platform offers all you need to streamline payments and reduce no-shows.</p>
           <Button size="lg" className="btn-gradient rounded-full text-lg py-6 px-8" asChild>
@@ -225,11 +225,11 @@ const FeaturesPage = () => {
 
       {/* Features Section */}
       <section className="max-w-6xl mx-auto px-6 md:px-8">
-        <FeatureSection title="Reusable Payment Links" description="Create flexible, branded payment links that can be used repeatedly for common services or appointments." benefits={["Create unlimited payment links for any service", "Share via email, SMS, or your website", "Track usage and conversion rates", "Customize payment amounts and descriptions", "Brand the payment experience with your clinic's logo", "Perfect for consultation fees, deposits, and common treatments"]} visual={<ReusableLinkVisual />} />
+        <FeatureSection title="Reusable Payment Links" description="Flexible, branded and reusable? These links were made for sharing — and paying, for everything from common services to appointments." benefits={["Create unlimited payment links for any service", "Share via email, SMS, or your website", "Track usage and conversion rates", "Customize payment amounts and descriptions", "Brand the payment experience with your clinic's logo", "Perfect for consultation fees, deposits, and common treatments"]} visual={<ReusableLinkVisual />} />
 
-        <FeatureSection title="Flexible Payment Plans" description="Offer patients the convenience of splitting larger payments into manageable installments, improving affordability and access to care." benefits={["Create custom payment schedules for any treatment", "Set flexible installment amounts and timings", "Automated payment reminders to patients", "Real-time tracking of payment progress", "Easily manage plans with pause, reschedule, and cancellation options", "Improve cash flow and reduce payment friction"]} visual={<PaymentPlanVisual />} reversed />
+        <FeatureSection title="Flexible Payment Plans" description="Get the best, in bits: offer your patients the convenience of splitting larger payments into manageable installments. Improved affordability and better cash flow all in one go." benefits={["Create custom payment schedules for any treatment", "Set flexible installment amounts and timings", "Automated payment reminders to patients", "Real-time tracking of payment progress", "Easily manage plans with pause, reschedule, and cancellation options", "Improve cash flow and reduce payment friction"]} visual={<PaymentPlanVisual />} reversed />
 
-        <FeatureSection title="Comprehensive Analytics" description="Gain valuable insights into your clinic's financial performance with our intuitive dashboard and reporting tools." benefits={["Real-time overview of all payments and plans", "Track key metrics like payment completion rates", "Monitor no-show reductions over time", "Identify your most popular services", "Export detailed reports for accounting purposes", "Make data-driven decisions to optimize your practice"]} visual={<DashboardVisual />} />
+        <FeatureSection title="Comprehensive Analytics" description="Keep your finger on the pulse: Gain valuable insights into your clinic's financial performance with our intuitive dashboard and reporting tools." benefits={["Real-time overview of all payments and plans", "Track key metrics like payment completion rates", "Monitor no-show reductions over time", "Identify your most popular services", "Export detailed reports for accounting purposes", "Make data-driven decisions to optimize your practice"]} visual={<DashboardVisual />} />
       </section>
 
       {/* CTA Section */}
