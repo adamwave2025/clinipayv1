@@ -52,7 +52,7 @@ const HomePage = () => {
                     <CreditCard className="text-white h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold mb-2">Create payment links</h3>
+                    <h3 className="text-xl font-bold mb-2">Create</h3>
                     <p className="text-gray-600">
                       Generate branded links for treatments, consultations, or deposits in just a few clicks.
                     </p>
