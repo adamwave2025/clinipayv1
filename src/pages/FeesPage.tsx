@@ -7,15 +7,18 @@ import Logo from '@/components/common/Logo';
 import { Check } from 'lucide-react';
 import { usePlatformFee } from '@/hooks/useAdminSettings';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+
 const FeesPage = () => {
   const {
     platformFee,
     isLoading
   } = usePlatformFee();
-  return <MainLayout>
+
+  return (
+    <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
-        <Logo className="h-10 w-auto" />
+        <Logo className="h-10 w-auto" to="/" />
         <div className="flex items-center gap-4">
           <Button variant="ghost" asChild>
             <Link to="/sign-in">Sign In</Link>
@@ -55,7 +58,7 @@ const FeesPage = () => {
                 </div>
                 <div className="flex items-start">
                   <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <p>No charges for failed payments or refunds - we’re fair 😇</p>
+                  <p>No charges for failed payments or refunds - we're fair 😇</p>
                 </div>
                 <div className="flex items-start">
                   <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
@@ -80,7 +83,7 @@ const FeesPage = () => {
           <div className="mt-12 bg-gray-50 p-6 rounded-xl">
             <h2 className="text-xl font-bold mb-4">It pays to use CliniPay</h2>
             <div className="space-y-4">
-              <p>Our 3% transaction fee doesn’t just cover our awesome features – it includes everything you need to improve patient attendance and streamline your payment process:</p>
+              <p>Our 3% transaction fee doesn't just cover our awesome features – it includes everything you need to improve patient attendance and streamline your payment process:</p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>Reduced no-shows through payment commitment</li>
                 <li>Improved cash flow with secure pre-payments</li>
@@ -103,7 +106,7 @@ const FeesPage = () => {
       <footer className="py-8 px-6 md:px-8 border-t mt-12">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <Logo className="h-8 w-auto mb-4 md:mb-0" />
+            <Logo className="h-8 w-auto mb-4 md:mb-0" to="/" />
             <div className="flex gap-6">
               <Link to="/about" className="text-gray-600 hover:text-gray-900">About</Link>
               <Link to="/features" className="text-gray-600 hover:text-gray-900">Features</Link>
@@ -111,6 +114,7 @@ const FeesPage = () => {
               <Link to="/contact" className="text-gray-600 hover:text-gray-900">Contact</Link>
               <Link to="/terms" className="text-gray-600 hover:text-gray-900">Terms</Link>
               <Link to="/privacy" className="text-gray-600 hover:text-gray-900">Privacy</Link>
+              <Link to="/gdpr" className="text-gray-600 hover:text-gray-900">GDPR</Link>
             </div>
           </div>
           <div className="mt-6 text-center md:text-left text-gray-500 text-sm">
@@ -118,6 +122,8 @@ const FeesPage = () => {
           </div>
         </div>
       </footer>
-    </MainLayout>;
+    </MainLayout>
+  );
 };
+
 export default FeesPage;

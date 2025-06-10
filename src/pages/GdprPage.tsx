@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ const GdprPage = () => {
     <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
-        <Logo className="h-10 w-auto" />
+        <Logo className="h-10 w-auto" to="/" />
         <div className="flex items-center gap-4">
           <Button variant="ghost" asChild>
             <Link to="/sign-in">Sign In</Link>
@@ -55,7 +54,7 @@ const GdprPage = () => {
       <footer className="py-8 px-6 md:px-8 border-t mt-12">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <Logo className="h-8 w-auto mb-4 md:mb-0" />
+            <Logo className="h-8 w-auto mb-4 md:mb-0" to="/" />
             <div className="flex gap-6">
               <Link to="/about" className="text-gray-600 hover:text-gray-900">About</Link>
               <Link to="/features" className="text-gray-600 hover:text-gray-900">Features</Link>
