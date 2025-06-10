@@ -93,7 +93,7 @@ const FeesPage = () => {
 
           <div className="mt-12 text-center">
             <Button className="btn-gradient rounded-full text-lg py-6 px-8" asChild>
-              <Link to="/sign-up">Get Started Today</Link>
+              <Link to="/sign-up">Join CliniPay today</Link>
             </Button>
           </div>
         </div>
