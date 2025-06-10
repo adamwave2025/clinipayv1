@@ -31,7 +31,7 @@ const FeesPage = () => {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Simple, transparent <span className="gradient-text">pricing</span>
+              <span className="gradient-text">One fee,</span> zero hassle
             </h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               One straightforward fee structure that scales with your practice
