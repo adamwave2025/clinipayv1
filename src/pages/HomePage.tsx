@@ -75,9 +75,7 @@ const HomePage = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold mb-2">Manage everything</h3>
-                    <p className="text-gray-600">
-                      Track patient payments, process instant refunds, and download detailed reports seamlessly.
-                    </p>
+                    <p className="text-gray-600">You get your very own clinic dashboard: track patient payments, process instant refunds, and download detailed reports seamlessly. </p>
                   </div>
                 </div>
               </div>
