@@ -80,7 +80,7 @@ const FeesPage = () => {
           <div className="mt-12 bg-gray-50 p-6 rounded-xl">
             <h2 className="text-xl font-bold mb-4">It pays to use CliniPay</h2>
             <div className="space-y-4">
-              <p>Our {platformFee}% transaction fee includes everything you need to improve patient attendance and streamline your payment process:</p>
+              <p>Our 3% transaction fee doesn’t just cover our awesome features – it includes everything you need to improve patient attendance and streamline your payment process:</p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>Reduced no-shows through payment commitment</li>
                 <li>Improved cash flow with secure pre-payments</li>
