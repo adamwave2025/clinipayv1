@@ -78,7 +78,7 @@ const FeesPage = () => {
           </Card>
 
           <div className="mt-12 bg-gray-50 p-6 rounded-xl">
-            <h2 className="text-xl font-bold mb-4">Why CliniPay's fee is valuable</h2>
+            <h2 className="text-xl font-bold mb-4">It pays to use CliniPay</h2>
             <div className="space-y-4">
               <p>Our {platformFee}% transaction fee includes everything you need to improve patient attendance and streamline your payment process:</p>
               <ul className="list-disc pl-6 space-y-2">
