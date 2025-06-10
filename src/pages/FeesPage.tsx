@@ -38,7 +38,7 @@ const FeesPage = () => {
 
           <Card className="w-full mx-auto shadow-lg border-0 overflow-hidden">
             <CardHeader className="bg-gradient-primary text-white text-center py-8">
-              <CardTitle className="text-3xl font-bold">Transaction Fee</CardTitle>
+              <CardTitle className="text-3xl font-bold">Simple. Flat. Transparent</CardTitle>
             </CardHeader>
             <CardContent className="p-8">
               <div className="text-center mb-6">
