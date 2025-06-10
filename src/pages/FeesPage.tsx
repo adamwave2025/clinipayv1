@@ -51,23 +51,23 @@ const FeesPage = () => {
               <div className="space-y-4 mt-8">
                 <div className="flex items-start">
                   <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <p>No monthly fees or setup costs</p>
+                  <p>No monthly fees or setup costs - just setting you up for success 😎</p>
                 </div>
                 <div className="flex items-start">
                   <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <p>No charges for failed payments or refunds</p>
+                  <p>No charges for failed payments or refunds - we’re fair 😇</p>
                 </div>
                 <div className="flex items-start">
                   <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <p>Unlimited payment links and patients</p>
+                  <p>Unlimited payment links &amp; patients - so you can grow with the flow 💸</p>
                 </div>
                 <div className="flex items-start">
                   <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <p>Fully branded payment experience</p>
+                  <p>Fully branded payment experience - so put that pretty logo everywhere! ✨</p>
                 </div>
                 <div className="flex items-start">
                   <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <p>Access to all platform features</p>
+                  <p>Access to all platform features - all the value, all the time 👌</p>
                 </div>
               </div>
             </CardContent>
