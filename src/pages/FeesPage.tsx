@@ -69,6 +69,10 @@ const FeesPage = () => {
                   <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
                   <p>Access to all platform features - all the value, all the time 👌</p>
                 </div>
+                <div className="flex items-start">
+                  <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
+                  <p>Nothing else to pay - forget about other payment processing fees 💳</p>
+                </div>
               </div>
             </CardContent>
           </Card>
