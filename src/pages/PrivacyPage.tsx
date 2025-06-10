@@ -85,6 +85,7 @@ const PrivacyPage = () => {
             <Logo className="h-8 w-auto mb-4 md:mb-0" to="/" />
             <div className="flex gap-6">
               <Link to="/about" className="text-gray-600 hover:text-gray-900">About</Link>
+              <Link to="/features" className="text-gray-600 hover:text-gray-900">Features</Link>
               <Link to="/fees" className="text-gray-600 hover:text-gray-900">Fees</Link>
               <Link to="/contact" className="text-gray-600 hover:text-gray-900">Contact</Link>
               <Link to="/terms" className="text-gray-600 hover:text-gray-900">Terms</Link>
