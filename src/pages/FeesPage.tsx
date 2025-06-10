@@ -7,12 +7,12 @@ import Logo from '@/components/common/Logo';
 import { Check } from 'lucide-react';
 import { usePlatformFee } from '@/hooks/useAdminSettings';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-
 const FeesPage = () => {
-  const { platformFee, isLoading } = usePlatformFee();
-  
-  return (
-    <MainLayout>
+  const {
+    platformFee,
+    isLoading
+  } = usePlatformFee();
+  return <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
         <Logo className="h-10 w-auto" />
@@ -33,9 +33,7 @@ const FeesPage = () => {
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               <span className="gradient-text">One fee,</span> zero hassle
             </h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              One straightforward fee structure that scales with your practice
-            </p>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">Our fee structure is simple, transparent &amp; all-inclusive</p>
           </div>
 
           <Card className="w-full mx-auto shadow-lg border-0 overflow-hidden">
@@ -44,13 +42,9 @@ const FeesPage = () => {
             </CardHeader>
             <CardContent className="p-8">
               <div className="text-center mb-6">
-                {isLoading ? (
-                  <div className="flex justify-center">
+                {isLoading ? <div className="flex justify-center">
                     <LoadingSpinner size="lg" />
-                  </div>
-                ) : (
-                  <p className="text-5xl font-bold mb-2">{platformFee}%</p>
-                )}
+                  </div> : <p className="text-5xl font-bold mb-2">{platformFee}%</p>}
                 <p className="text-gray-500">per successful transaction</p>
               </div>
 
@@ -120,8 +114,6 @@ const FeesPage = () => {
           </div>
         </div>
       </footer>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default FeesPage;
