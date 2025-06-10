@@ -51,9 +51,7 @@ const HomePage = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold mb-2">Create</h3>
-                    <p className="text-gray-600">
-                      Generate branded links for treatments, consultations, or deposits in just a few clicks.
-                    </p>
+                    <p className="text-gray-600">Generate your own branded links for treatments, consultations, or deposits in just a few clicks – secure, reusable, professional.</p>
                   </div>
                 </div>
               </div>
