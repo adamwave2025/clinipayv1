@@ -115,9 +115,7 @@ const HomePage = () => {
               </div>
               <div>
                 <h3 className="text-xl font-bold mb-3 gradient-text">Built-in trust</h3>
-                <p className="text-gray-600">
-                  Patients are more likely to pay when the process feels professional. CliniPay is backed by Stripe and your clinic's branding, giving patients instant peace of mind.
-                </p>
+                <p className="text-gray-600">Patients need peace of mind and a no-stress process: and that’s what CliniPay offers. A professional, frictionless way to secure payments – backed by Stripe and covered in your clinic’s branding.</p>
               </div>
             </div>
 
