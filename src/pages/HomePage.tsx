@@ -125,9 +125,7 @@ const HomePage = () => {
               </div>
               <div>
                 <h3 className="text-xl font-bold mb-3 gradient-text">No more chasing</h3>
-                <p className="text-gray-600">
-                  Forget taking card details over the phone or waiting on manual transfers. CliniPay handles it all — and keeps your team focused on patient care.
-                </p>
+                <p className="text-gray-600">Taking card details over the phone or waiting on manual transfers are a thing of the past. CliniPay is all about the future: you’ve got all the awkward admin sorted, so your team can finally focus on what matters most: patient care.</p>
               </div>
             </div>
           </div>
