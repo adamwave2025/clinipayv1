@@ -95,7 +95,7 @@ const HomePage = () => {
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               <span className="gradient-text">Why CliniPay</span>
             </h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">CliniPay converts more patients, saves more hours & gets you paid on time – every time.</p>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">Clunky bank transfers &amp; awkward phone payments are keeping you back. CliniPay is taking you forward: convert more patients, save more hours &amp; get paid on time, every time</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-5xl mx-auto">
