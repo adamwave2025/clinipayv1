@@ -86,7 +86,7 @@ const FeesPage = () => {
                 <li>Improved cash flow with secure pre-payments</li>
                 <li>Professional, trusted payment experience for your patients</li>
                 <li>Streamlined administrative processes and payment tracking</li>
-                <li>All payment processing fees and infrastructure costs</li>
+                <li>All payment processing fees and infrastructure costs covered</li>
               </ul>
             </div>
           </div>
