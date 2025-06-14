@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -81,19 +80,23 @@ const FeesPage = () => {
             </CardContent>
           </Card>
 
-          <div className="mt-12 bg-gray-50 p-6 rounded-xl">
-            <h2 className="text-xl font-bold mb-4">It pays to use CliniPay</h2>
-            <div className="space-y-4">
-              <p>Our 3% transaction fee doesn't just cover our awesome features – it includes everything you need to improve patient attendance and streamline your payment process:</p>
-              <ul className="list-disc pl-6 space-y-2">
-                <li>Reduced no-shows through payment commitment</li>
-                <li>Improved cash flow with secure pre-payments</li>
-                <li>Professional, trusted payment experience for your patients</li>
-                <li>Streamlined administrative processes and payment tracking</li>
-                <li>All payment processing fees and infrastructure costs covered</li>
-              </ul>
-            </div>
-          </div>
+          <Card className="w-full mx-auto shadow-lg border-0 overflow-hidden mt-12">
+            <CardHeader className="bg-gradient-primary text-white text-center py-8">
+              <CardTitle className="text-2xl font-bold">It pays to use CliniPay</CardTitle>
+            </CardHeader>
+            <CardContent className="p-8">
+              <div className="space-y-4">
+                <p>Our 3% transaction fee doesn't just cover our awesome features – it includes everything you need to improve patient attendance and streamline your payment process:</p>
+                <ul className="list-disc pl-6 space-y-2">
+                  <li>Reduced no-shows through payment commitment</li>
+                  <li>Improved cash flow with secure pre-payments</li>
+                  <li>Professional, trusted payment experience for your patients</li>
+                  <li>Streamlined administrative processes and payment tracking</li>
+                  <li>All payment processing fees and infrastructure costs covered</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="mt-12 text-center">
             <Button className="btn-gradient rounded-full text-lg py-6 px-8" asChild>
