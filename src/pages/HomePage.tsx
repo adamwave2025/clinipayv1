@@ -3,7 +3,66 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
-import { CreditCard, Check, Shield, TrendingUp, ShieldCheck, PhoneOff } from 'lucide-react';
+import { CreditCard, Check, Shield, TrendingUp, ShieldCheck, PhoneOff, Calendar, Wallet, Clock } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+
+// Payment Plan Visual Mockup
+const PaymentPlanVisual = () => (
+  <Card className="w-full max-w-lg shadow-lg border-0">
+    <CardContent className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="text-xl font-bold gradient-text">Orthodontic Treatment</h3>
+          <p className="text-gray-600">James Wilson</p>
+        </div>
+        <div className="text-right">
+          <span className="block text-lg font-bold text-gray-600">£1,200.00 total</span>
+          <span className="text-sm text-green-600">£400.00 paid</span>
+        </div>
+      </div>
+      
+      <div>
+        <div className="flex justify-between text-sm mb-1">
+          <span>Progress</span>
+          <span>33% complete</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full" style={{
+            width: "33%"
+          }}></div>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="p-3 bg-gray-50 rounded-md">
+          <div className="text-sm font-medium text-gray-600 mb-1">Next payment</div>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-blue-500" />
+            <span>June 15, 2025</span>
+          </div>
+        </div>
+        <div className="p-3 bg-gray-50 rounded-md">
+          <div className="text-sm font-medium text-gray-600 mb-1">Installment</div>
+          <div className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-green-500" />
+            <span>£400.00</span>
+          </div>
+        </div>
+      </div>
+      
+      <div className="flex justify-between">
+        <div className="flex items-center gap-1 text-sm text-gray-600">
+          <Clock className="h-4 w-4" />
+          <span>2 of 3 installments remaining</span>
+        </div>
+        <Button className="btn-gradient rounded-full">
+          Take Payment
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
+);
+
 const HomePage = () => {
   return <MainLayout>
       {/* Navigation */}
@@ -63,7 +122,7 @@ const HomePage = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold mb-2">Collect</h3>
-                    <p className="text-gray-600">Offer instant pay to your patients: no accounts, no logins, no fuss. Just a card or Apple Pay and they’re good to go.</p>
+                    <p className="text-gray-600">Offer instant pay to your patients: no accounts, no logins, no fuss. Just a card or Apple Pay and they're good to go.</p>
                   </div>
                 </div>
               </div>
@@ -75,14 +134,14 @@ const HomePage = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold mb-2">Manage everything</h3>
-                    <p className="text-gray-600">You get your very own clinic dashboard: track patient payments, process instant refunds, and download detailed reports seamlessly. </p>
+                    <p className="text-gray-600">You get your very own clinic dashboard: track patient payments, process instant refunds, and download detailed reports seamlessly. </p>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="flex justify-center lg:justify-end">
-              <img src="https://jbtxxlkhiubuzanegtzn.supabase.co/storage/v1/object/public/clinipaywebsiteimages//clinicinfopaymentscreen.png" alt="CliniPay Payment Form Preview" className="w-full max-h-[630px] object-contain animate-fade-in" />
+              <PaymentPlanVisual />
             </div>
           </div>
         </div>
