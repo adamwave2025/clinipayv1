@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -173,13 +172,6 @@ const DashboardVisual = () => <Card className="w-full max-w-lg shadow-lg border-
             <ArrowRight className="h-3 w-3 transform rotate-45" />
             <span>+2 new this month</span>
           </div>
-        </div>
-      </div>
-      
-      <div className="p-4 bg-gray-50 rounded-lg h-40 flex items-center justify-center">
-        <div className="flex items-center gap-2 flex-col">
-          <BarChart3 className="h-8 w-8 text-gray-400" />
-          <span className="text-gray-500 text-sm">Revenue chart visualization</span>
         </div>
       </div>
       
