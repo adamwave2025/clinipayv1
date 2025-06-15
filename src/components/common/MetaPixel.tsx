@@ -26,19 +26,17 @@ const MetaPixel: React.FC = () => {
       return;
     }
 
-    // Mark as initializing immediately to prevent race conditions
-    window._metaPixelInitialized = true;
-
     console.log('[META PIXEL] Starting initialization process...');
 
-    // Double-check we haven't been initialized by another component
+    // If fbq already exists, just mark as initialized and skip firing
     if (window.fbq && typeof window.fbq === 'function') {
-      console.log('[META PIXEL] Facebook pixel already exists, firing events');
-      window.fbq('init', '1260903102365595');
-      window.fbq('track', 'PageView');
-      console.log('[META PIXEL] Re-used existing pixel');
+      console.log('[META PIXEL] Facebook pixel already exists, marking as initialized');
+      window._metaPixelInitialized = true;
       return;
     }
+
+    // Mark as initializing to prevent race conditions
+    window._metaPixelInitialized = true;
 
     console.log('[META PIXEL] Injecting Facebook pixel script...');
 
@@ -58,7 +56,11 @@ const MetaPixel: React.FC = () => {
       t.src = v;
       
       t.onload = () => {
-        console.log('[META PIXEL] Script loaded successfully');
+        console.log('[META PIXEL] Script loaded successfully, firing events');
+        // Only fire events after script loads
+        window.fbq('init', '1260903102365595');
+        window.fbq('track', 'PageView');
+        console.log('[META PIXEL] Events fired successfully');
       };
       
       t.onerror = () => {
@@ -70,10 +72,6 @@ const MetaPixel: React.FC = () => {
       s.parentNode.insertBefore(t, s);
     })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
 
-    // Initialize with our pixel ID
-    window.fbq('init', '1260903102365595');
-    window.fbq('track', 'PageView');
-
     // Add noscript fallback
     const noscript = document.createElement('noscript');
     const img = document.createElement('img');
@@ -84,8 +82,8 @@ const MetaPixel: React.FC = () => {
     noscript.appendChild(img);
     document.head.appendChild(noscript);
 
-    console.log('[META PIXEL] Initialized successfully');
-  }, [hasConsent]); // Single effect that depends on hasConsent
+    console.log('[META PIXEL] Script injection completed');
+  }, [hasConsent]);
 
   return null;
 };
