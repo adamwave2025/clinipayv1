@@ -37,15 +37,14 @@ export const CookieConsentProvider: React.FC<CookieConsentProviderProps> = ({ ch
   }, []);
 
   const acceptCookies = () => {
+    console.log('Cookies accepted - updating consent state');
     setHasConsent(true);
     setShowBanner(false);
     localStorage.setItem('cookie-consent', 'accepted');
-    
-    // Trigger Meta pixel initialization
-    window.dispatchEvent(new CustomEvent('cookiesAccepted'));
   };
 
   const rejectCookies = () => {
+    console.log('Cookies rejected - updating consent state');
     setHasConsent(false);
     setShowBanner(false);
     localStorage.setItem('cookie-consent', 'rejected');
