@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useCookieConsent } from '@/contexts/CookieConsentContext';
 
@@ -13,6 +13,7 @@ declare global {
 const MetaPixel: React.FC = () => {
   const { hasConsent } = useCookieConsent();
   const location = useLocation();
+  const hasInitialized = useRef(false);
 
   // Initialize the pixel only once when consent is granted
   useEffect(() => {
@@ -62,6 +63,9 @@ const MetaPixel: React.FC = () => {
     noscript.appendChild(img);
     document.head.appendChild(noscript);
 
+    // Mark as initialized to prevent double firing
+    hasInitialized.current = true;
+
     console.log('[META PIXEL] Facebook Pixel initialized with SPA tracking enabled');
   }, [hasConsent]);
 
@@ -69,6 +73,13 @@ const MetaPixel: React.FC = () => {
   useEffect(() => {
     // Only track if we have consent and fbq is loaded
     if (hasConsent !== true || !window.fbq) {
+      return;
+    }
+
+    // Skip firing PageView if we just initialized (Facebook already fired one automatically)
+    if (hasInitialized.current) {
+      hasInitialized.current = false;
+      console.log('[META PIXEL] Skipping initial PageView (Facebook auto-fired)');
       return;
     }
 
