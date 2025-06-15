@@ -9,7 +9,10 @@ declare global {
   }
 }
 
-// Module-level flag to prevent duplicate initialization
+// Session storage key for tracking pixel initialization
+const PIXEL_SESSION_KEY = 'meta_pixel_initialized';
+
+// Module-level flag to prevent duplicate initialization within same component lifecycle
 let isMetaPixelInitialized = false;
 
 const MetaPixel: React.FC = () => {
@@ -17,9 +20,23 @@ const MetaPixel: React.FC = () => {
 
   useEffect(() => {
     const initializeMetaPixel = () => {
+      console.log('[META PIXEL] Checking initialization conditions...', {
+        hasConsent,
+        isMetaPixelInitialized,
+        windowFbq: !!window.fbq,
+        sessionInitialized: sessionStorage.getItem(PIXEL_SESSION_KEY),
+        scriptExists: !!document.querySelector('script[src*="fbevents.js"]')
+      });
+
       // Only initialize if consent is given
       if (hasConsent !== true) {
-        console.log('Meta pixel initialization skipped - no consent');
+        console.log('[META PIXEL] Initialization skipped - no consent');
+        return;
+      }
+
+      // Check session storage first - most important check
+      if (sessionStorage.getItem(PIXEL_SESSION_KEY) === 'true') {
+        console.log('[META PIXEL] Already initialized in this session, skipping...');
         return;
       }
 
@@ -27,14 +44,17 @@ const MetaPixel: React.FC = () => {
       if (isMetaPixelInitialized || 
           window.fbq || 
           document.querySelector('script[src*="fbevents.js"]')) {
-        console.log('Meta pixel already initialized, skipping...');
+        console.log('[META PIXEL] Already initialized (module/window/script check), skipping...');
+        // Mark as initialized in session storage even if we detect existing initialization
+        sessionStorage.setItem(PIXEL_SESSION_KEY, 'true');
         return;
       }
 
-      console.log('Initializing Meta pixel...');
+      console.log('[META PIXEL] Initializing Meta pixel...');
       
-      // Set our flag immediately to prevent race conditions
+      // Set our flags immediately to prevent race conditions
       isMetaPixelInitialized = true;
+      sessionStorage.setItem(PIXEL_SESSION_KEY, 'true');
 
       // Meta Pixel Code
       (function(f, b, e, v, n, t, s) {
@@ -67,7 +87,7 @@ const MetaPixel: React.FC = () => {
       noscript.appendChild(img);
       document.head.appendChild(noscript);
 
-      console.log('Meta pixel initialized successfully');
+      console.log('[META PIXEL] Meta pixel initialized successfully');
     };
 
     // Initialize when consent is given
