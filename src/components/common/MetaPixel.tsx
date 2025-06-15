@@ -1,5 +1,6 @@
 
 import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useCookieConsent } from '@/contexts/CookieConsentContext';
 
 declare global {
@@ -11,7 +12,9 @@ declare global {
 
 const MetaPixel: React.FC = () => {
   const { hasConsent } = useCookieConsent();
+  const location = useLocation();
 
+  // Initialize the pixel only once when consent is granted
   useEffect(() => {
     // Only proceed if we have consent
     if (hasConsent !== true) {
@@ -43,8 +46,11 @@ const MetaPixel: React.FC = () => {
       s.parentNode.insertBefore(t, s);
     })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
 
-    // Initialize the pixel - Facebook will automatically fire PageView
-    window.fbq('init', '1260903102365595');
+    // Initialize the pixel with advanced SPA tracking enabled
+    window.fbq('init', '1260903102365595', {
+      autoConfig: true,
+      debug: false
+    });
 
     // Add noscript fallback
     const noscript = document.createElement('noscript');
@@ -56,8 +62,19 @@ const MetaPixel: React.FC = () => {
     noscript.appendChild(img);
     document.head.appendChild(noscript);
 
-    console.log('[META PIXEL] Facebook Pixel initialized - automatic PageView tracking enabled');
+    console.log('[META PIXEL] Facebook Pixel initialized with SPA tracking enabled');
   }, [hasConsent]);
+
+  // Track page views on route changes (manual fallback for SPA navigation)
+  useEffect(() => {
+    // Only track if we have consent and fbq is loaded
+    if (hasConsent !== true || !window.fbq) {
+      return;
+    }
+
+    console.log('[META PIXEL] Route changed to:', location.pathname);
+    window.fbq('track', 'PageView');
+  }, [location.pathname, hasConsent]);
 
   return null;
 };
