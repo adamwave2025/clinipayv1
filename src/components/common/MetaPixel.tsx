@@ -18,11 +18,12 @@ const MetaPixel: React.FC = () => {
       if (hasConsent === true) {
         // Check if Meta pixel is already loaded
         if (window.fbq) {
+          console.log('Meta pixel already initialized, skipping...');
           return;
         }
 
         // Meta Pixel Code
-        (function(f: any, b: any, e: any, v: any, n: any, t: any, s: any) {
+        (function(f, b, e, v, n, t, s) {
           if (f.fbq) return;
           n = f.fbq = function() {
             n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
@@ -51,6 +52,8 @@ const MetaPixel: React.FC = () => {
         img.src = 'https://www.facebook.com/tr?id=1260903102365595&ev=PageView&noscript=1';
         noscript.appendChild(img);
         document.head.appendChild(noscript);
+
+        console.log('Meta pixel initialized successfully');
       }
     };
 
