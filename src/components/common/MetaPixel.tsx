@@ -57,17 +57,7 @@ const MetaPixel: React.FC = () => {
     document.head.appendChild(noscript);
 
     console.log('[META PIXEL] Initialized successfully');
-  }, []); // Empty dependency array - only run once when component mounts
-
-  // Separate effect to handle consent changes after initial mount
-  useEffect(() => {
-    if (hasConsent === true && !window.fbq) {
-      // If consent is granted but pixel isn't initialized, trigger the initialization
-      // This handles the case where consent is granted after the component mounts
-      const initEvent = new Event('metapixel-init');
-      window.dispatchEvent(initEvent);
-    }
-  }, [hasConsent]);
+  }, [hasConsent]); // React to consent changes
 
   return null;
 };
