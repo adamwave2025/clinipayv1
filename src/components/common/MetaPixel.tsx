@@ -43,9 +43,8 @@ const MetaPixel: React.FC = () => {
       s.parentNode.insertBefore(t, s);
     })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
 
-    // Initialize the pixel
+    // Initialize the pixel - Facebook will automatically fire PageView
     window.fbq('init', '1260903102365595');
-    window.fbq('track', 'PageView');
 
     // Add noscript fallback
     const noscript = document.createElement('noscript');
@@ -57,7 +56,7 @@ const MetaPixel: React.FC = () => {
     noscript.appendChild(img);
     document.head.appendChild(noscript);
 
-    console.log('[META PIXEL] Facebook Pixel initialized successfully');
+    console.log('[META PIXEL] Facebook Pixel initialized - automatic PageView tracking enabled');
   }, [hasConsent]);
 
   return null;
