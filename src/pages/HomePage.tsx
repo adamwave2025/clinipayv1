@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -56,7 +57,7 @@ const PaymentPlanVisual = () => (
           <span>2 of 3 installments remaining</span>
         </div>
         <Button className="btn-gradient rounded-full">
-          Take Payment
+          Request Payment
         </Button>
       </div>
     </CardContent>

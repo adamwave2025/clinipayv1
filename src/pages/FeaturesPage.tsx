@@ -136,7 +136,7 @@ const PaymentPlanVisual = () => <Card className="w-full max-w-lg shadow-lg borde
           <span>2 of 3 installments remaining</span>
         </div>
         <Button className="btn-gradient rounded-full">
-          Take Payment
+          Request Payment
         </Button>
       </div>
     </CardContent>
