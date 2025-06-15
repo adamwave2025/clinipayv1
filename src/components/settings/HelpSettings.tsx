@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { HelpCircle, Youtube, Calendar, Plus, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { HelpCircle, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 const HelpSettings = () => {
@@ -26,84 +26,6 @@ const HelpSettings = () => {
           <p className="text-sm text-gray-500 mb-6">
             Learn how to use CliniPay effectively with our comprehensive resources.
           </p>
-
-          <h4 className="font-medium mb-3">Getting Started</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <Card className="overflow-hidden">
-              <div className="bg-gradient-to-r from-purple-100 to-indigo-100 p-4">
-                <h5 className="font-medium">CliniPay Basics</h5>
-                <p className="text-sm text-gray-600 mt-1">Learn the fundamentals of CliniPay</p>
-              </div>
-              <div className="p-4">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <ExternalLink className="h-4 w-4 text-primary" />
-                    <a href="#" className="text-sm hover:underline hover:text-primary">Getting Started Guide</a>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <ExternalLink className="h-4 w-4 text-primary" />
-                    <a href="#" className="text-sm hover:underline hover:text-primary">Setting Up Your Account</a>
-                  </li>
-                </ul>
-              </div>
-            </Card>
-            
-            <Card className="overflow-hidden">
-              <div className="bg-gradient-to-r from-teal-100 to-green-100 p-4">
-                <h5 className="font-medium">Payment Processing</h5>
-                <p className="text-sm text-gray-600 mt-1">How payments work in CliniPay</p>
-              </div>
-              <div className="p-4">
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2">
-                    <ExternalLink className="h-4 w-4 text-primary" />
-                    <a href="#" className="text-sm hover:underline hover:text-primary">Payment Methods Guide</a>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <ExternalLink className="h-4 w-4 text-primary" />
-                    <a href="#" className="text-sm hover:underline hover:text-primary">Understanding Fees</a>
-                  </li>
-                </ul>
-              </div>
-            </Card>
-          </div>
-
-          <h4 className="font-medium mb-3">Video Tutorials</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {/* Video Card 1 - UPDATED TITLE AND DESCRIPTION */}
-            <Card className="overflow-hidden">
-              <div className="relative bg-gray-100 pt-[56.25%]">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Youtube className="h-12 w-12 text-red-500 opacity-80" />
-                </div>
-              </div>
-              <div className="p-4">
-                <h5 className="font-medium">Creating Reusable Payment Links</h5>
-                <p className="text-sm text-gray-500 mt-1">Learn how to create and manage reusable payment links</p>
-                <Button variant="outline" size="sm" className="mt-3 w-full flex items-center gap-2">
-                  <ExternalLink className="h-4 w-4" />
-                  Watch Video
-                </Button>
-              </div>
-            </Card>
-
-            {/* Video Card 2 */}
-            <Card className="overflow-hidden">
-              <div className="relative bg-gray-100 pt-[56.25%]">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Youtube className="h-12 w-12 text-red-500 opacity-80" />
-                </div>
-              </div>
-              <div className="p-4">
-                <h5 className="font-medium">Setting Up Payment Plans</h5>
-                <p className="text-sm text-gray-500 mt-1">Create flexible payment plans for your patients</p>
-                <Button variant="outline" size="sm" className="mt-3 w-full flex items-center gap-2">
-                  <ExternalLink className="h-4 w-4" />
-                  Watch Video
-                </Button>
-              </div>
-            </Card>
-          </div>
 
           {/* FAQ Section */}
           <h4 className="font-medium mb-3">Frequently Asked Questions</h4>
@@ -145,8 +67,7 @@ const HelpSettings = () => {
               </CollapsibleTrigger>
               <CollapsibleContent className="p-4 pt-0 text-sm text-gray-600 border-t">
                 <p>
-                  Platform fees are calculated as a percentage of the transaction amount. The standard 
-                  fee is 2.9% + 30p per transaction. For detailed information, please see our 
+                  Platform fees are calculated as a percentage of the transaction amount. For detailed information, please see our 
                   <a href="#" className="text-primary hover:underline ml-1">Fees page</a>.
                 </p>
               </CollapsibleContent>
@@ -196,7 +117,10 @@ const HelpSettings = () => {
                 Our team will help you with any questions or issues you're experiencing.
               </p>
             </div>
-            <Button className="bg-gradient-primary hover:bg-primary/90 flex items-center gap-2">
+            <Button 
+              className="bg-gradient-primary hover:bg-primary/90 flex items-center gap-2"
+              onClick={() => window.open('https://api.leadconnectorhq.com/widget/booking/G8Z0dGlpeKfEqFBQIJy7', '_blank')}
+            >
               <Calendar className="h-4 w-4" />
               Book a Call
             </Button>
@@ -207,14 +131,15 @@ const HelpSettings = () => {
           <div className="text-center">
             <h4 className="font-medium mb-2">Need immediate help?</h4>
             <p className="text-sm text-gray-500 mb-4">
-              Contact our support team directly via email or phone.
+              Contact our support team directly via email.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button variant="outline" className="flex items-center gap-2">
+            <div className="flex justify-center">
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-2"
+                onClick={() => window.open('mailto:support@clinipay.com', '_self')}
+              >
                 support@clinipay.com
-              </Button>
-              <Button variant="outline" className="flex items-center gap-2">
-                +44 (0) 20 1234 5678
               </Button>
             </div>
           </div>
