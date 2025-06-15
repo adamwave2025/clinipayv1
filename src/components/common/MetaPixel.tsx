@@ -28,7 +28,7 @@ const MetaPixel: React.FC = () => {
 
     console.log('[META PIXEL] Starting initialization process...');
 
-    // If fbq already exists, just mark as initialized and skip firing
+    // If fbq already exists, just mark as initialized and skip
     if (window.fbq && typeof window.fbq === 'function') {
       console.log('[META PIXEL] Facebook pixel already exists, marking as initialized');
       window._metaPixelInitialized = true;
@@ -41,6 +41,7 @@ const MetaPixel: React.FC = () => {
     console.log('[META PIXEL] Injecting Facebook pixel script...');
 
     // Meta Pixel Code - Facebook's official initialization
+    // The script will automatically initialize and fire PageView when it loads
     (function(f, b, e, v, n, t, s) {
       if (f.fbq) return;
       n = f.fbq = function() {
@@ -53,14 +54,11 @@ const MetaPixel: React.FC = () => {
       n.queue = [];
       t = b.createElement(e);
       t.async = true;
-      t.src = v;
+      // Include pixel ID in the script URL so Facebook auto-initializes
+      t.src = v + '?id=1260903102365595';
       
       t.onload = () => {
-        console.log('[META PIXEL] Script loaded successfully, firing events');
-        // Only fire events after script loads
-        window.fbq('init', '1260903102365595');
-        window.fbq('track', 'PageView');
-        console.log('[META PIXEL] Events fired successfully');
+        console.log('[META PIXEL] Script loaded successfully - Facebook will handle events automatically');
       };
       
       t.onerror = () => {
@@ -82,7 +80,7 @@ const MetaPixel: React.FC = () => {
     noscript.appendChild(img);
     document.head.appendChild(noscript);
 
-    console.log('[META PIXEL] Script injection completed');
+    console.log('[META PIXEL] Script injection completed - Facebook will auto-initialize');
   }, [hasConsent]);
 
   return null;
