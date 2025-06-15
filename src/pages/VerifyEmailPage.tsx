@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -23,6 +22,14 @@ const VerifyEmailPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { hasConsent } = useCookieConsent();
+  
+  // Fire Meta Pixel CompleteRegistration event on page load
+  useEffect(() => {
+    if (hasConsent && window.fbq) {
+      console.log('[META PIXEL] Firing CompleteRegistration event on verify-email page load');
+      window.fbq('track', 'CompleteRegistration');
+    }
+  }, [hasConsent]);
   
   useEffect(() => {
     const token = searchParams.get('token');
@@ -73,12 +80,6 @@ const VerifyEmailPage = () => {
       }
       
       toast.success('Email verification successful! You can now sign in.');
-      
-      // Fire Meta Pixel CompleteRegistration event
-      if (hasConsent && window.fbq) {
-        console.log('[META PIXEL] Firing CompleteRegistration event');
-        window.fbq('track', 'CompleteRegistration');
-      }
       
       navigate('/sign-in');
       return;
