@@ -26,7 +26,7 @@ const VerifyEmailPage = () => {
   // Fire Meta Pixel CompleteRegistration event on page load
   useEffect(() => {
     if (hasConsent && window.fbq) {
-      console.log('[META PIXEL] Firing CompleteRegistration event on verify-email page load');
+      console.log('[META PIXEL] Firing CompleteRegistration event on verify-email page');
       window.fbq('track', 'CompleteRegistration');
     }
   }, [hasConsent]);
