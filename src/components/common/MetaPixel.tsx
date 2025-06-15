@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useCookieConsent } from '@/contexts/CookieConsentContext';
 
 declare global {
@@ -11,13 +11,14 @@ declare global {
 
 const MetaPixel: React.FC = () => {
   const { hasConsent } = useCookieConsent();
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    // Only initialize if consent is given and fbq doesn't already exist
-    if (hasConsent !== true || window.fbq) {
+    // Only initialize if consent is given and we haven't already initialized
+    if (hasConsent !== true || hasInitialized.current) {
       if (!hasConsent) {
         console.log('[META PIXEL] Waiting for consent...');
-      } else {
+      } else if (hasInitialized.current) {
         console.log('[META PIXEL] Already initialized, skipping...');
       }
       return;
@@ -56,6 +57,8 @@ const MetaPixel: React.FC = () => {
     noscript.appendChild(img);
     document.head.appendChild(noscript);
 
+    // Mark as initialized
+    hasInitialized.current = true;
     console.log('[META PIXEL] Initialized successfully');
   }, [hasConsent]); // React to consent changes
 
