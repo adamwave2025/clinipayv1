@@ -13,18 +13,13 @@ const MetaPixel: React.FC = () => {
   const { hasConsent } = useCookieConsent();
 
   useEffect(() => {
-    // Clean up any existing session storage from previous implementations
-    sessionStorage.removeItem('meta_pixel_initialized');
-    
-    // Only initialize if consent is given
-    if (hasConsent !== true) {
-      console.log('[META PIXEL] Waiting for consent...');
-      return;
-    }
-
-    // Simple check - if fbq already exists, don't initialize again
-    if (window.fbq) {
-      console.log('[META PIXEL] Already initialized, skipping...');
+    // Only initialize if consent is given and fbq doesn't already exist
+    if (hasConsent !== true || window.fbq) {
+      if (!hasConsent) {
+        console.log('[META PIXEL] Waiting for consent...');
+      } else {
+        console.log('[META PIXEL] Already initialized, skipping...');
+      }
       return;
     }
 
@@ -62,6 +57,16 @@ const MetaPixel: React.FC = () => {
     document.head.appendChild(noscript);
 
     console.log('[META PIXEL] Initialized successfully');
+  }, []); // Empty dependency array - only run once when component mounts
+
+  // Separate effect to handle consent changes after initial mount
+  useEffect(() => {
+    if (hasConsent === true && !window.fbq) {
+      // If consent is granted but pixel isn't initialized, trigger the initialization
+      // This handles the case where consent is granted after the component mounts
+      const initEvent = new Event('metapixel-init');
+      window.dispatchEvent(initEvent);
+    }
   }, [hasConsent]);
 
   return null;
