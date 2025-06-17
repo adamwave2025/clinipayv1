@@ -1,12 +1,18 @@
-
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useCookieConsent } from '@/contexts/CookieConsentContext';
+import { isPaymentRoute } from '@/utils/routeUtils';
 
 const CookieConsentBanner: React.FC = () => {
   const { showBanner, acceptCookies, rejectCookies } = useCookieConsent();
+  const location = useLocation();
+
+  // Don't show banner on payment pages
+  if (isPaymentRoute(location.pathname)) {
+    return null;
+  }
 
   if (!showBanner) {
     return null;

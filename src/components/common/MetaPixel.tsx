@@ -1,7 +1,7 @@
-
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useCookieConsent } from '@/contexts/CookieConsentContext';
+import { isPaymentRoute } from '@/utils/routeUtils';
 
 declare global {
   interface Window {
@@ -14,6 +14,11 @@ const MetaPixel: React.FC = () => {
   const { hasConsent } = useCookieConsent();
   const location = useLocation();
   const hasInitialized = useRef(false);
+
+  // Don't activate pixel on payment pages
+  if (isPaymentRoute(location.pathname)) {
+    return null;
+  }
 
   // Initialize the pixel only once when consent is granted
   useEffect(() => {
