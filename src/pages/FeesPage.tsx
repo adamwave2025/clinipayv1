@@ -7,15 +7,12 @@ import Logo from '@/components/common/Logo';
 import { Check } from 'lucide-react';
 import { usePlatformFee } from '@/hooks/useAdminSettings';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-
 const FeesPage = () => {
   const {
     platformFee,
     isLoading
   } = usePlatformFee();
-
-  return (
-    <MainLayout>
+  return <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
         <Logo className="h-10 w-auto" to="/" />
@@ -54,27 +51,27 @@ const FeesPage = () => {
               <div className="space-y-4 mt-8">
                 <div className="flex items-start">
                   <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <p>No monthly fees or setup costs - just setting you up for success 😎</p>
+                  <p>No monthly fees or setup costs - just setting you up for success </p>
                 </div>
                 <div className="flex items-start">
                   <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <p>No charges for failed payments or refunds - we're fair 😇</p>
+                  <p>No charges for failed payments or refunds - we're fair </p>
                 </div>
                 <div className="flex items-start">
                   <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <p>Unlimited payment links &amp; patients - so you can grow with the flow 💸</p>
+                  <p>Unlimited payment links & patients - so you can grow with the flow </p>
                 </div>
                 <div className="flex items-start">
                   <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <p>Fully branded payment experience - so put that pretty logo everywhere! ✨</p>
+                  <p>Fully branded payment experience - so put that pretty logo everywhere! </p>
                 </div>
                 <div className="flex items-start">
                   <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <p>Access to all platform features - all the value, all the time 👌</p>
+                  <p>Access to all platform features - all the value, all the time </p>
                 </div>
                 <div className="flex items-start">
                   <Check className="text-green-500 mt-1 mr-3 flex-shrink-0" />
-                  <p>Nothing else to pay - forget about other payment processing fees 💳</p>
+                  <p>Nothing else to pay - forget about other payment processing fees </p>
                 </div>
               </div>
             </CardContent>
@@ -125,8 +122,6 @@ const FeesPage = () => {
           </div>
         </div>
       </footer>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default FeesPage;
