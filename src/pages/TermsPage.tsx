@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ const TermsPage = () => {
           </h1>
           
           <div className="prose prose-lg max-w-none">
+            <p><strong>Terms of Service (including Data Processing Schedule)</strong></p>
             <p>Last updated: 8 June 2025</p>
             
             <p><strong>IMPORTANT – READ CAREFULLY.</strong> By creating an account or using the CliniPay platform you ("Clinic", "you") agree to these Terms. If you do not accept them, do not use the Service.</p>
@@ -64,30 +66,30 @@ const TermsPage = () => {
             <p>Nothing in these Terms limits or excludes liability for death or personal injury caused by negligence, fraud or fraudulent misrepresentation. Subject to the foregoing, each party's total aggregate liability arising under or in connection with the Service in any 12‑month period shall not exceed the greater of £10,000 or the Service Fees paid to CliniPay in that period.</p>
             
             <h2 className="text-2xl font-bold mt-8 mb-4">10. Suspension and Termination</h2>
-            <p><strong>11.1</strong> Clinic‑initiated – You may discontinue use of the Service at any time by disconnecting your Stripe account and ceasing all access.</p>
-            <p><strong>11.2</strong> CliniPay‑initiated – CliniPay may suspend or terminate your access immediately if (a) you materially breach these Terms; (b) your use poses a security risk, could subject CliniPay to legal liability, or is fraudulent or abusive; or (c) required by law or a payment‑network rule.</p>
+            <p><strong>10.1</strong> Clinic‑initiated – You may discontinue use of the Service at any time by disconnecting your Stripe account and ceasing all access.</p>
+            <p><strong>10.2</strong> CliniPay‑initiated – CliniPay may suspend or terminate your access immediately if (a) you materially breach these Terms; (b) your use poses a security risk, could subject CliniPay to legal liability, or is fraudulent or abusive; or (c) required by law or a payment‑network rule.</p>
             
             <h2 className="text-2xl font-bold mt-8 mb-4">11. Governing Law</h2>
             <p>These Terms are governed by the laws of England and Wales. The courts of England and Wales shall have exclusive jurisdiction over any dispute arising out of or in connection with them.</p>
             
             <h2 className="text-2xl font-bold mt-8 mb-4">Annex 1 – Data Processing Schedule (Article 28 UK‑GDPR)</h2>
             
-            <h3 className="text-xl font-bold mt-6 mb-3">Subject matter and duration</h3>
+            <h3 className="text-xl font-bold mt-6 mb-3">1. Subject matter and duration</h3>
             <p>Processing of patient payment data for the term of the Agreement plus retention periods specified in the Privacy & Cookie Notice.</p>
             
-            <h3 className="text-xl font-bold mt-6 mb-3">Nature and purpose of processing</h3>
+            <h3 className="text-xl font-bold mt-6 mb-3">2. Nature and purpose of processing</h3>
             <p>Hosting, storage, transmission and retrieval of payment‑related personal data to facilitate payment collection and instalment plans.</p>
             
-            <h3 className="text-xl font-bold mt-6 mb-3">Categories of data subjects</h3>
+            <h3 className="text-xl font-bold mt-6 mb-3">3. Categories of data subjects</h3>
             <p>Patients of the Clinic; authorised clinic staff.</p>
             
-            <h3 className="text-xl font-bold mt-6 mb-3">Categories of personal data</h3>
+            <h3 className="text-xl font-bold mt-6 mb-3">4. Categories of personal data</h3>
             <p>Patient: name, email, phone, treatment reference, payment amount, card network, last four digits, timestamps. Staff: name, business email, role, login activity.</p>
             
-            <h3 className="text-xl font-bold mt-6 mb-3">Special category data</h3>
+            <h3 className="text-xl font-bold mt-6 mb-3">5. Special category data</h3>
             <p>None intentionally collected.</p>
             
-            <h3 className="text-xl font-bold mt-6 mb-3">Obligations of Processor</h3>
+            <h3 className="text-xl font-bold mt-6 mb-3">6. Obligations of Processor</h3>
             <p><strong>6.1</strong> Process data only on documented instructions from the Controller.</p>
             <p><strong>6.2</strong> Ensure persons authorised to process data are bound by confidentiality.</p>
             <p><strong>6.3</strong> Implement appropriate technical and organisational security measures (see Section 7 of the Privacy & Cookie Notice).</p>
@@ -95,14 +97,14 @@ const TermsPage = () => {
             <p><strong>6.5</strong> Delete or return personal data on termination (except where law requires retention).</p>
             <p><strong>6.6</strong> Make available information necessary to demonstrate compliance and allow audits once per year with 30 days' notice.</p>
             
-            <h3 className="text-xl font-bold mt-6 mb-3">Sub‑processors</h3>
+            <h3 className="text-xl font-bold mt-6 mb-3">7. Sub‑processors</h3>
             <p>Stripe Payments Europe Ltd (payments)</p>
             <p>Amazon Web Services EMEA SARL, London region (hosting)</p>
             
-            <h3 className="text-xl font-bold mt-6 mb-3">International transfers</h3>
+            <h3 className="text-xl font-bold mt-6 mb-3">8. International transfers</h3>
             <p>Not applicable. At the time of this Agreement CliniPay does not transfer personal data outside the United Kingdom.</p>
             
-            <h3 className="text-xl font-bold mt-6 mb-3">Technical and organisational measures</h3>
+            <h3 className="text-xl font-bold mt-6 mb-3">9. Technical and organisational measures</h3>
             <p>Encryption in transit and at rest – All data are protected by TLS 1.2+ and AES‑256 encryption managed by our infrastructure providers, Supabase (database) and Stripe (payment processing).</p>
             <p>Provider‑managed backups – Supabase maintains automated encrypted backups with point‑in‑time recovery; Stripe secures all card data under PCI‑DSS. – No additional technical controls are implemented at this stage. CliniPay will continually review and enhance security measures as the platform scales.</p>
           </div>
