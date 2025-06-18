@@ -18,6 +18,7 @@ const DashboardContent = () => {
     detailDialogOpen,
     refundDialogOpen,
     isArchiveLoading,
+    isLoading,
     setDetailDialogOpen,
     setRefundDialogOpen,
     openRefundDialog,
@@ -38,7 +39,8 @@ const DashboardContent = () => {
   // This ensures that creating a payment plan also completes the "create a payment link" task
   const paymentLinksExist = paymentLinks.length > 0 || rawPaymentLinks.some(link => link.paymentPlan === true);
   
-  const hasSentPaymentLink = payments.some(payment => payment.status === 'sent');
+  // Only evaluate payment link sending status when data is loaded
+  const hasSentPaymentLink = !isLoading && payments.some(payment => payment.status === 'sent');
 
   // Create a wrapper function to adapt parameter types 
   const handleRefundClick = (paymentId: string) => {
@@ -51,6 +53,7 @@ const DashboardContent = () => {
         stripeConnected={stripeConnected} 
         paymentLinksExist={paymentLinksExist}
         hasSentPaymentLink={hasSentPaymentLink}
+        isLoading={isLoading}
       />
       
       <PaymentStatsCards stats={stats} />

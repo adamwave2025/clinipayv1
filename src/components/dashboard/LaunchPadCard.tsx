@@ -27,12 +27,14 @@ interface LaunchPadCardProps {
   stripeConnected?: boolean;
   paymentLinksExist?: boolean;
   hasSentPaymentLink?: boolean;
+  isLoading?: boolean;
 }
 
 const LaunchPadCard = ({ 
   stripeConnected = false, 
   paymentLinksExist = false, 
-  hasSentPaymentLink = false 
+  hasSentPaymentLink = false,
+  isLoading = false
 }: LaunchPadCardProps) => {
   const [visible, setVisible] = useState(true);
   
@@ -45,6 +47,7 @@ const LaunchPadCard = ({
   }, []);
   
   // Task completion states - we now use the props directly
+  // Only evaluate task completion when not loading
   const tasks: LaunchPadTask[] = [
     {
       id: 'connect-stripe',
@@ -62,7 +65,8 @@ const LaunchPadCard = ({
       id: 'send-link',
       title: 'Request your first payment',
       description: 'Request a payment using a reusable link or payment plan',
-      completed: hasSentPaymentLink,
+      // Don't mark as complete/incomplete while loading to avoid false states
+      completed: isLoading ? false : hasSentPaymentLink,
     },
   ];
 
