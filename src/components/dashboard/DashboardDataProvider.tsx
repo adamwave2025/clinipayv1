@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Payment, PaymentLink } from '@/types/payment';
 import { toast } from 'sonner';
@@ -42,10 +41,12 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isProcessingRefund, setIsProcessingRefund] = useState(false);
 
   useEffect(() => {
-    if (paymentLinks.length > 0) {
-      fetchPayments(paymentLinks);
+    if (rawPaymentLinks.length > 0) {
+      // CRITICAL FIX: Pass rawPaymentLinks instead of filtered paymentLinks
+      // This ensures payment plans are included when formatting payment requests
+      fetchPayments(rawPaymentLinks);
     }
-  }, [paymentLinks]);
+  }, [rawPaymentLinks]);
 
   const archivePaymentLink = async (linkId: string) => {
     const linkToArchive = paymentLinks.find(link => link.id === linkId);
