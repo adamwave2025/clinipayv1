@@ -1,13 +1,10 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
-
 const TermsPage = () => {
-  return (
-    <MainLayout>
+  return <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
         <Logo className="h-10 w-auto" to="/" />
@@ -29,7 +26,7 @@ const TermsPage = () => {
           </h1>
           
           <div className="prose prose-lg max-w-none">
-            <p><strong>Terms of Service (including Data Processing Schedule)</strong></p>
+            
             <p>Last updated: 8 June 2025</p>
             
             <p><strong>IMPORTANT – READ CAREFULLY.</strong> By creating an account or using the CliniPay platform you ("Clinic", "you") agree to these Terms. If you do not accept them, do not use the Service.</p>
@@ -130,8 +127,6 @@ const TermsPage = () => {
           </div>
         </div>
       </footer>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default TermsPage;
