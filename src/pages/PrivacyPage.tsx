@@ -1,13 +1,10 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
-
 const PrivacyPage = () => {
-  return (
-    <MainLayout>
+  return <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
         <Logo className="h-10 w-auto" to="/" />
@@ -29,7 +26,7 @@ const PrivacyPage = () => {
           </h1>
           
           <div className="prose prose-lg max-w-none">
-            <p><strong>CliniPay Privacy &amp; Cookie Notice</strong></p>
+            
             <p>Last updated: 8 June 2025</p>
             
             <h2 className="text-2xl font-bold mt-8 mb-4">1. Who we are</h2>
@@ -99,8 +96,6 @@ const PrivacyPage = () => {
           </div>
         </div>
       </footer>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default PrivacyPage;
