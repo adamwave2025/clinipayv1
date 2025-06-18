@@ -28,10 +28,10 @@ const TermsPage = () => {
           <div className="prose prose-lg max-w-none">
             <p>Last updated: June 8th, 2025</p>
             
-            <p>Please read these Terms of Service ("Terms", "Terms of Service") carefully before using the CliniPay website and service operated by CliniPay Ltd.</p>
+            <p>IMPORTANT. By creating an account or using the CliniPay platform you (“Clinic”, “you”) agree to these Terms. If you do not accept them, do not use the Service.</p>
             
-            <h2 className="text-2xl font-bold mt-8 mb-4">1. Agreement to Terms</h2>
-            <p>By accessing or using our Service, you agree to be bound by these Terms. If you disagree with any part of the terms, you do not have permission to access the Service.</p>
+            <h2 className="text-2xl font-bold mt-8 mb-4">1. The Service</h2>
+            <p>CliniPay provides a web application that allows clinics to generate payment links, collect payments via Stripe Connect, and administer payment plans.</p>
             
             <h2 className="text-2xl font-bold mt-8 mb-4">2. Intellectual Property</h2>
             <p>The Service and its original content, features, and functionality are and will remain the exclusive property of CliniPay Ltd and its licensors. The Service is protected by copyright, trademark, and other laws of both the United Kingdom and foreign countries.</p>
