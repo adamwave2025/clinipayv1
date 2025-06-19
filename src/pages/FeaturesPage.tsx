@@ -204,7 +204,7 @@ const FeaturesPage = () => {
       <section className="py-16 px-6 md:px-8 text-center">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-bold mb-6">
-            <span className="gradient-text">Powerful, easy, effective,</span> features designed for clinic success
+            <span className="gradient-text">Powerful, easy, effective</span> features designed for clinic success
           </h1>
           <p className="text-xl text-gray-600 mb-8">Our intuitive platform offers all you need to streamline payments and reduce no-shows.</p>
           <Button size="lg" className="btn-gradient rounded-full text-lg py-6 px-8" asChild>
