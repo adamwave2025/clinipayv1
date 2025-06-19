@@ -22,7 +22,7 @@ export const fetchPaymentData = async (dateRange?: DateRange) => {
   // Initialize query for payments data
   let paymentsQuery = supabase
     .from('payments')
-    .select('amount_paid, status, refund_amount, net_amount, platform_fee, stripe_fee')
+    .select('amount_paid, status, refund_amount, net_amount, platform_fee, stripe_fee, stripe_refund_fee')
     .in('status', ['paid', 'partially_refunded', 'refunded']);
   
   // Apply date filters if dateRange is provided
@@ -53,7 +53,7 @@ export const fetchPreviousPeriodData = async (dateRange?: DateRange) => {
   // Initialize query for previous period payments data
   let previousPaymentsQuery = supabase
     .from('payments')
-    .select('amount_paid, status, refund_amount, platform_fee, stripe_fee')
+    .select('amount_paid, status, refund_amount, platform_fee, stripe_fee, stripe_refund_fee')
     .in('status', ['paid', 'partially_refunded', 'refunded']);
   
   // Apply date filters if dateRange is provided
