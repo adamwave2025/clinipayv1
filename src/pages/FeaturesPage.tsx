@@ -5,7 +5,6 @@ import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
 import { Check, LineChart, CreditCard, Calendar, BarChart3, ArrowRight, RefreshCcw, Users, Wallet, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-
 const FeatureSection = ({
   title,
   description,
@@ -186,10 +185,8 @@ const DashboardVisual = () => <Card className="w-full max-w-lg shadow-lg border-
       </div>
     </CardContent>
   </Card>;
-
 const FeaturesPage = () => {
-  return (
-    <MainLayout>
+  return <MainLayout>
       {/* Navigation */}
       <nav className="py-4 px-6 md:px-8 flex justify-between items-center">
         <Logo className="h-10 w-auto" to="/" />
@@ -211,7 +208,7 @@ const FeaturesPage = () => {
           </h1>
           <p className="text-xl text-gray-600 mb-8">Our intuitive platform offers all you need to streamline payments and reduce no-shows.</p>
           <Button size="lg" className="btn-gradient rounded-full text-lg py-6 px-8" asChild>
-            <Link to="/sign-up">Start Your Free Trial</Link>
+            <Link to="/sign-up">Get started</Link>
           </Button>
         </div>
       </section>
@@ -265,8 +262,6 @@ Reduce admin, streamline payments, and keep your patients happy.
           </div>
         </div>
       </footer>
-    </MainLayout>
-  );
+    </MainLayout>;
 };
-
 export default FeaturesPage;
