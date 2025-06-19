@@ -29,7 +29,7 @@ const TermsPage = () => {
           
           <div className="prose prose-lg max-w-none">
             
-            <p>Last updated: 8 June 2025</p>
+            <p className="mb-4">Last updated: 8 June 2025</p>
             
             <p><strong>IMPORTANT – READ CAREFULLY.</strong> By creating an account or using the CliniPay platform you ("Clinic", "you") agree to these Terms. If you do not accept them, do not use the Service.</p>
             
