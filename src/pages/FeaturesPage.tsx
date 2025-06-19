@@ -208,7 +208,7 @@ const FeaturesPage = () => {
           </h1>
           <p className="text-xl text-gray-600 mb-8">Our intuitive platform offers all you need to streamline payments and reduce no-shows.</p>
           <Button size="lg" className="btn-gradient rounded-full text-lg py-6 px-8" asChild>
-            <Link to="/sign-up">Get started</Link>
+            <Link to="/sign-up">Get Started</Link>
           </Button>
         </div>
       </section>
