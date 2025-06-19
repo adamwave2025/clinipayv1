@@ -1,4 +1,3 @@
-
 import { DateRange } from "react-day-picker";
 
 /**
@@ -63,17 +62,43 @@ export const calculateTotalRefunds = (paymentsData: any[]) => {
 };
 
 /**
- * Calculates CliniPay revenue from payment data
+ * Calculates CliniPay revenue from payment data, accounting for refund costs
  */
 export const calculateClinicpayRevenue = (paymentsData: any[]) => {
   return paymentsData.reduce((sum, payment) => {
-    // Calculate net platform fee (platform_fee - stripe_fee)
     const platformFeeAmount = payment.platform_fee || 0;
     const stripeFeeAmount = payment.stripe_fee || 0;
+    const stripeRefundFeeAmount = payment.stripe_refund_fee || 0;
+    const refundAmount = payment.refund_amount || 0;
+    const originalAmount = payment.amount_paid || 0;
     
-    // Calculate the actual revenue CliniPay receives (after Stripe's cut)
-    // Remove Math.max to allow negative values to be displayed
-    const paymentRevenue = platformFeeAmount - stripeFeeAmount;
+    let paymentRevenue = 0;
+    
+    if (payment.status === 'paid') {
+      // Normal calculation for successful payments
+      paymentRevenue = platformFeeAmount - stripeFeeAmount;
+    } else if (payment.status === 'refunded') {
+      // For fully refunded payments:
+      // - Lose the original platform fee (have to return it)
+      // - Pay the stripe refund fee (additional cost)
+      // - Original stripe fee remains a cost (not refunded by Stripe)
+      paymentRevenue = -(platformFeeAmount + stripeRefundFeeAmount + stripeFeeAmount);
+    } else if (payment.status === 'partially_refunded') {
+      // For partially refunded payments:
+      // Calculate the proportion of the refund
+      const refundProportion = originalAmount > 0 ? refundAmount / originalAmount : 0;
+      
+      // Platform fee impact: lose the refunded portion
+      const platformFeeLoss = platformFeeAmount * refundProportion;
+      
+      // Keep the non-refunded portion of platform fee, minus original stripe fee
+      const remainingPlatformFee = platformFeeAmount - platformFeeLoss;
+      const netFromOriginal = remainingPlatformFee - stripeFeeAmount;
+      
+      // Subtract the refund fee (full amount as it's charged per refund transaction)
+      paymentRevenue = netFromOriginal - stripeRefundFeeAmount;
+    }
+    
     return sum + (paymentRevenue / 100); // Convert cents to pounds
   }, 0);
 };
