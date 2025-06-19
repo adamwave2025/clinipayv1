@@ -72,7 +72,8 @@ export const calculateClinicpayRevenue = (paymentsData: any[]) => {
     const stripeFeeAmount = payment.stripe_fee || 0;
     
     // Calculate the actual revenue CliniPay receives (after Stripe's cut)
-    const paymentRevenue = Math.max(0, platformFeeAmount - stripeFeeAmount);
+    // Remove Math.max to allow negative values to be displayed
+    const paymentRevenue = platformFeeAmount - stripeFeeAmount;
     return sum + (paymentRevenue / 100); // Convert cents to pounds
   }, 0);
 };
