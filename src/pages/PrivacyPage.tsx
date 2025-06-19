@@ -1,8 +1,10 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import MainLayout from '@/components/layouts/MainLayout';
 import Logo from '@/components/common/Logo';
+
 const PrivacyPage = () => {
   return <MainLayout>
       {/* Navigation */}
@@ -82,7 +84,7 @@ const PrivacyPage = () => {
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <Logo className="h-8 w-auto mb-4 md:mb-0" to="/" />
-            <div className="flex gap-6">
+            <div className="flex flex-wrap gap-4 md:gap-6 justify-center md:justify-end">
               <Link to="/about" className="text-gray-600 hover:text-gray-900">About</Link>
               <Link to="/features" className="text-gray-600 hover:text-gray-900">Features</Link>
               <Link to="/fees" className="text-gray-600 hover:text-gray-900">Fees</Link>
