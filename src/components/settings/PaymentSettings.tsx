@@ -80,8 +80,8 @@ const PaymentSettings = ({
         <h3 className="text-lg font-medium mb-4">Payment Processing</h3>
         
         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <div className="flex-1">
               <h4 className="font-medium">Stripe Connect</h4>
               <div className="flex items-center mt-1">
                 {getStatusDisplay()}
@@ -95,30 +95,33 @@ const PaymentSettings = ({
                 </p>
               )}
             </div>
-            {isConnected || isPending ? (
-              <Button 
-                onClick={handleDisconnectStripe} 
-                variant="outline"
-                className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
-              >
-                Disconnect Stripe
-              </Button>
-            ) : (
-              <Button 
-                onClick={startStripeConnect} 
-                className="btn-gradient"
-                disabled={isConnecting}
-              >
-                {isConnecting ? (
-                  <>
-                    <LoadingSpinner size="sm" className="mr-2" />
-                    Connecting...
-                  </>
-                ) : (
-                  'Connect Stripe'
-                )}
-              </Button>
-            )}
+            <div className="flex-shrink-0 w-full sm:w-auto">
+              {isConnected || isPending ? (
+                <Button 
+                  onClick={handleDisconnectStripe} 
+                  variant="outline"
+                  className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 w-full sm:w-auto"
+                >
+                  <span className="sm:hidden">Disconnect</span>
+                  <span className="hidden sm:inline">Disconnect Stripe</span>
+                </Button>
+              ) : (
+                <Button 
+                  onClick={startStripeConnect} 
+                  className="btn-gradient w-full sm:w-auto"
+                  disabled={isConnecting}
+                >
+                  {isConnecting ? (
+                    <>
+                      <LoadingSpinner size="sm" className="mr-2" />
+                      Connecting...
+                    </>
+                  ) : (
+                    'Connect Stripe'
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </CardContent>
