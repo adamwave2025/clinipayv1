@@ -102,8 +102,8 @@ const AuthCallbackPage = () => {
           toast.error('Failed to retrieve Stripe account ID');
         }
         
-        // Redirect to settings page with the payments tab selected
-        navigate('/dashboard/settings?tab=payments');
+        // Redirect to settings page with the payments tab selected and stripe_connected flag
+        navigate('/dashboard/settings?tab=payments&stripe_connected=true');
       } catch (err: any) {
         console.error('Error handling Stripe connect callback:', err);
         setError(err.message || 'An error occurred during Stripe connection');

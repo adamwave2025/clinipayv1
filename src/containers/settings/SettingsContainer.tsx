@@ -28,9 +28,20 @@ const SettingsContainer = () => {
   
   // Get current tab from URL params
   const currentTab = searchParams.get('tab');
+  const stripeConnected = searchParams.get('stripe_connected');
   
   // Make sure the tab is valid
   const safeTab = VALID_TABS.includes(currentTab || '') ? currentTab : DEFAULT_TAB;
+  
+  const { 
+    clinicData, 
+    isLoading: dataLoading, 
+    isUploading,
+    updateClinicData,
+    uploadLogo,
+    deleteLogo,
+    fetchClinicData
+  } = useClinicData();
   
   // Set the initial tab parameter if needed (only once)
   useEffect(() => {
@@ -46,6 +57,19 @@ const SettingsContainer = () => {
       }
     }
   }, [currentTab, safeTab, setSearchParams]);
+
+  // Handle Stripe connection return - refresh clinic data and clean up URL
+  useEffect(() => {
+    if (stripeConnected === 'true') {
+      console.log('Stripe connection detected, refreshing clinic data');
+      fetchClinicData();
+      
+      // Clean up the stripe_connected parameter from URL
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete('stripe_connected');
+      setSearchParams(newSearchParams, { replace: true });
+    }
+  }, [stripeConnected, fetchClinicData, searchParams, setSearchParams]);
   
   // Handle tab selection from UI (direct user action)
   const handleTabChange = (value: string) => {
@@ -55,15 +79,6 @@ const SettingsContainer = () => {
       setSearchParams({ tab: value }, { replace: true });
     }
   };
-
-  const { 
-    clinicData, 
-    isLoading: dataLoading, 
-    isUploading,
-    updateClinicData,
-    uploadLogo,
-    deleteLogo
-  } = useClinicData();
 
   if (dataLoading) {
     return (
